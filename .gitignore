@@ -1,0 +1,7 @@
+.svn
+.DS_Store
+._*
+*.suo
+*.ncb
+*.perspectivev3
+*.pbxuser
