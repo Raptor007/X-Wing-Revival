@@ -48,13 +48,15 @@
 				AdditionalIncludeDirectories="Sources;Sources\UI;Sources\Game;..\RaptorEngine\Core;..\RaptorEngine\Graphics;..\RaptorEngine\Input;..\RaptorEngine\Libs;..\RaptorEngine\Net;..\RaptorEngine\Sound;..\RaptorEngine\UI;..\RaptorEngine\Game"
 				PreprocessorDefinitions="WIN32;_DEBUG;_WINDOWS"
 				MinimalRebuild="true"
-				BasicRuntimeChecks="0"
+				BasicRuntimeChecks="3"
 				RuntimeLibrary="3"
+				EnableFunctionLevelLinking="true"
 				EnableEnhancedInstructionSet="2"
+				FloatingPointModel="2"
 				OpenMP="true"
 				UsePrecompiledHeader="0"
 				WarningLevel="1"
-				DebugInformationFormat="3"
+				DebugInformationFormat="4"
 			/>
 			<Tool
 				Name="VCManagedResourceCompilerTool"
@@ -68,8 +70,9 @@
 			<Tool
 				Name="VCLinkerTool"
 				AdditionalDependencies="OpenGL32.lib GLU32.lib GLEW32.lib SDL.lib SDLmain.lib SDL_net.lib SDL_image.lib SDL_ttf.lib SDL_mixer.lib"
-				LinkIncremental="1"
+				LinkIncremental="2"
 				AdditionalLibraryDirectories="&quot;Y:\Documents\Frameworks\SDL-1.2.14\lib&quot;;&quot;Y:\Documents\Frameworks\SDL_image-1.2.10\lib&quot;;&quot;Y:\Documents\Frameworks\SDL_mixer-1.2.11\lib&quot;;&quot;Y:\Documents\Frameworks\SDL_net-1.2.7\lib&quot;;&quot;Y:\Documents\Frameworks\SDL_ttf-2.0.9\lib&quot;;&quot;Y:\Documents\Frameworks\GLUT&quot;"
+				IgnoreDefaultLibraryNames="msvcrt.lib"
 				GenerateDebugInformation="true"
 				AssemblyDebug="1"
 				GenerateMapFile="true"
@@ -77,7 +80,7 @@
 				MapExports="true"
 				SubSystem="2"
 				LargeAddressAware="2"
-				LinkTimeCodeGeneration="1"
+				LinkTimeCodeGeneration="0"
 				TargetMachine="1"
 			/>
 			<Tool
@@ -137,6 +140,7 @@
 				RuntimeLibrary="2"
 				EnableFunctionLevelLinking="true"
 				EnableEnhancedInstructionSet="2"
+				FloatingPointModel="2"
 				OpenMP="true"
 				UsePrecompiledHeader="0"
 				WarningLevel="1"
@@ -200,7 +204,7 @@
 				Name="Core"
 				>
 				<File
-					RelativePath="..\RaptorEngine\Core\platforms.h"
+					RelativePath="..\RaptorEngine\Core\PlatformSpecific.h"
 					>
 				</File>
 				<File
@@ -253,6 +257,22 @@
 				</File>
 				<File
 					RelativePath="..\RaptorEngine\UI\ClientConsole.h"
+					>
+				</File>
+				<File
+					RelativePath="..\RaptorEngine\UI\DropDown.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\RaptorEngine\UI\DropDown.h"
+					>
+				</File>
+				<File
+					RelativePath="..\RaptorEngine\UI\FirstLoadScreen.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\RaptorEngine\UI\FirstLoadScreen.h"
 					>
 				</File>
 				<File
@@ -325,6 +345,14 @@
 				</File>
 				<File
 					RelativePath="..\RaptorEngine\UI\TextBox.h"
+					>
+				</File>
+				<File
+					RelativePath="..\RaptorEngine\UI\WaitScreen.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\RaptorEngine\UI\WaitScreen.h"
 					>
 				</File>
 				<File
@@ -445,6 +473,10 @@
 				</File>
 				<File
 					RelativePath="..\RaptorEngine\Graphics\Model.h"
+					>
+				</File>
+				<File
+					RelativePath="..\RaptorEngine\Graphics\RaptorGL.h"
 					>
 				</File>
 				<File
@@ -694,6 +726,10 @@
 			Filter="rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav"
 			UniqueIdentifier="{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}"
 			>
+			<File
+				RelativePath=".\XWing.rc"
+				>
+			</File>
 			<Filter
 				Name="Shaders"
 				>
@@ -711,7 +747,7 @@
 			Name="XWing"
 			>
 			<File
-				RelativePath=".\Sources\main.cpp"
+				RelativePath=".\Sources\Main.cpp"
 				>
 			</File>
 			<File
@@ -798,14 +834,6 @@
 				Name="UI"
 				>
 				<File
-					RelativePath=".\Sources\UI\FirstLoadScreen.cpp"
-					>
-				</File>
-				<File
-					RelativePath=".\Sources\UI\FirstLoadScreen.h"
-					>
-				</File>
-				<File
 					RelativePath=".\Sources\UI\IngameMenu.cpp"
 					>
 				</File>
@@ -843,14 +871,6 @@
 				</File>
 				<File
 					RelativePath=".\Sources\UI\PrefsMenu.h"
-					>
-				</File>
-				<File
-					RelativePath=".\Sources\UI\WaitScreen.cpp"
-					>
-				</File>
-				<File
-					RelativePath=".\Sources\UI\WaitScreen.h"
 					>
 				</File>
 			</Filter>

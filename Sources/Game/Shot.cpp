@@ -89,15 +89,15 @@ double Shot::TurnRate( void ) const
 Color Shot::LightColor( void ) const
 {
 	if( ShotType == TYPE_LASER_RED )
-		return Color( 7., 0., 0. );
+		return Color( 20., 0., 0. );
 	else if( ShotType == TYPE_LASER_GREEN )
-		return Color( 0., 4.5, 0. );
+		return Color( 0., 10., 0. );
 	else if( ShotType == TYPE_TURBO_LASER_GREEN )
-		return Color( 0., 6., 0. );
+		return Color( 0., 15., 0. );
 	else if( ShotType == TYPE_TORPEDO )
-		return Color( 6., 4., 2. );
+		return Color( 18., 12., 6. );
 	
-	return Color( 4., 4., 4. );
+	return Color( 12., 12., 12. );
 }
 
 

@@ -4,15 +4,15 @@
 
 #pragma once
 class PrefsMenu;
-class PrefsMenuInputHandler;
 class PrefsMenuCheckBox;
 class PrefsMenuRadioButton;
 class PrefsMenuTextBox;
 class PrefsMenuListBox;
+class PrefsMenuDropDown;
 class PrefsMenuDoneButton;
 class PrefsMenuDefaultsButton;
 
-#include "platforms.h"
+#include "PlatformSpecific.h"
 
 #include "Window.h"
 #include <list>
@@ -22,6 +22,7 @@ class PrefsMenuDefaultsButton;
 #include "TextBox.h"
 #include "ListBox.h"
 #include "LabelledButton.h"
+#include "DropDown.h"
 
 
 class PrefsMenu : public Window
@@ -37,15 +38,7 @@ public:
 	
 	void UpdateContents( void );
 	void Draw( void );
-};
-
-
-class PrefsMenuInputHandler : public Layer
-{
-public:
-	PrefsMenuInputHandler( PrefsMenu *menu );
-	void Draw( void );
-	bool HandleEvent( SDL_Event *event, bool already_handled = false );
+	bool KeyUp( SDLKey key );
 };
 
 
@@ -89,6 +82,16 @@ public:
 	TextBox *LinkedTextBox;
 	
 	PrefsMenuListBox( Window *wind, SDL_Rect *rect, Font *font, int scroll_bar_size, std::string variable, TextBox *linked_text_box );
+	void Changed( void );
+};
+
+
+class PrefsMenuDropDown : public DropDown
+{
+public:
+	std::string Variable;
+	
+	PrefsMenuDropDown( Layer *container, SDL_Rect *rect, Font *font, uint8_t align, int scroll_bar_size, std::string variable );
 	void Changed( void );
 };
 

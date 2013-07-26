@@ -160,12 +160,11 @@ void Asteroid::Draw( void )
 	{
 		// We're not drawing the model, so draw a sphere instead.
 		
-		#if !( defined(_ppc_) || defined(__ppc__) )
-			int max_detail = 8;
-		#else
+		#ifdef APPLE_POWERPC
 			int max_detail = 6;
+		#else
+			int max_detail = 8;
 		#endif
-		
 		if( detail > max_detail )
 			detail = max_detail;
 		else if( detail < 3 )

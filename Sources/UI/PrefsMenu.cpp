@@ -170,17 +170,68 @@ void PrefsMenu::UpdateContents( void )
 	rect.y += rect.h + 8;
 	AddElement( new PrefsMenuCheckBox( this, &rect, ItemFont, "Draw With Shaders", "g_shader_enable" ) );
 	
+	/*
 	rect.x += 20;
 	rect.y += rect.h + 8;
 	AddElement( new PrefsMenuCheckBox( this, &rect, ItemFont, "Lighting", "g_shader_file", "model", "model_simple" ) );
+	*/
 	
+	/*
 	rect.x += 20;
 	rect.y += rect.h + 8;
 	AddElement( new PrefsMenuCheckBox( this, &rect, ItemFont, "Dynamic Lights", "g_dynamic_lights", "1", "0" ) );
 	rect.x -= 40;
+	*/
+	
+	rect.x += 20;
+	rect.y += rect.h + 8;
+	rect.w = 210;
+	AddElement( new Label( this, &rect, "Dynamic Lights Per Object:", ItemFont, Font::ALIGN_MIDDLE_LEFT ) );
+	rect.x += rect.w + 5;
+	PrefsMenuRadioButton *dynamic0 = new PrefsMenuRadioButton( this, &rect, ItemFont, "Off", "g_dynamic_lights", "0" );
+	dynamic0->Rect.w = dynamic0->GetWidth();
+	AddElement( dynamic0 );
+	rect.x += dynamic0->Rect.w + 5;
+	PrefsMenuRadioButton *dynamic1 = new PrefsMenuRadioButton( this, &rect, ItemFont, "1", "g_dynamic_lights", "1" );
+	dynamic1->Rect.w = dynamic1->GetWidth();
+	AddElement( dynamic1 );
+	rect.x += dynamic1->Rect.w + 5;
+	PrefsMenuRadioButton *dynamic2 = new PrefsMenuRadioButton( this, &rect, ItemFont, "2", "g_dynamic_lights", "2" );
+	dynamic2->Rect.w = dynamic2->GetWidth();
+	AddElement( dynamic2 );
+	rect.x += dynamic2->Rect.w + 5;
+	PrefsMenuRadioButton *dynamic3 = new PrefsMenuRadioButton( this, &rect, ItemFont, "3", "g_dynamic_lights", "3" );
+	dynamic3->Rect.w = dynamic3->GetWidth();
+	AddElement( dynamic3 );
+	rect.x += dynamic3->Rect.w + 5;
+	PrefsMenuRadioButton *dynamic4 = new PrefsMenuRadioButton( this, &rect, ItemFont, "4", "g_dynamic_lights", "4" );
+	dynamic4->Rect.w = dynamic4->GetWidth();
+	AddElement( dynamic4 );
+	dynamic0->OtherButtons.push_back( dynamic1 );
+	dynamic0->OtherButtons.push_back( dynamic2 );
+	dynamic0->OtherButtons.push_back( dynamic3 );
+	dynamic0->OtherButtons.push_back( dynamic4 );
+	dynamic1->OtherButtons.push_back( dynamic0 );
+	dynamic1->OtherButtons.push_back( dynamic2 );
+	dynamic1->OtherButtons.push_back( dynamic3 );
+	dynamic1->OtherButtons.push_back( dynamic4 );
+	dynamic2->OtherButtons.push_back( dynamic0 );
+	dynamic2->OtherButtons.push_back( dynamic1 );
+	dynamic2->OtherButtons.push_back( dynamic3 );
+	dynamic2->OtherButtons.push_back( dynamic4 );
+	dynamic3->OtherButtons.push_back( dynamic0 );
+	dynamic3->OtherButtons.push_back( dynamic1 );
+	dynamic3->OtherButtons.push_back( dynamic2 );
+	dynamic3->OtherButtons.push_back( dynamic4 );
+	dynamic4->OtherButtons.push_back( dynamic0 );
+	dynamic4->OtherButtons.push_back( dynamic1 );
+	dynamic4->OtherButtons.push_back( dynamic2 );
+	dynamic4->OtherButtons.push_back( dynamic3 );
+	rect.x = 10;
+	rect.w = 300;
 	
 	rect.y += rect.h + 8;
-	AddElement( new PrefsMenuCheckBox( this, &rect, ItemFont, "High-Quality Ships (Shaders Recommended)", "g_hq_ships" ) );
+	AddElement( new PrefsMenuCheckBox( this, &rect, ItemFont, "High-Quality Ships", "g_hq_ships" ) );
 	
 	/*
 	rect.y += rect.h + 8;
@@ -239,9 +290,9 @@ void PrefsMenu::UpdateContents( void )
 	*/
 	
 	rect.y += rect.h + 8;
-	rect.w = 160;
+	rect.w = 150;
 	AddElement( new Label( this, &rect, "Joystick Deadzone:", ItemFont, Font::ALIGN_MIDDLE_LEFT ) );
-	rect.x = rect.w + 5;
+	rect.x += rect.w + 5;
 	rect.w = 60;
 	AddElement( new PrefsMenuTextBox( this, &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, "joy_deadzone" ) );
 	rect.x = 10;
@@ -249,6 +300,20 @@ void PrefsMenu::UpdateContents( void )
 	
 	rect.y += rect.h + 8;
 	AddElement( new PrefsMenuCheckBox( this, &rect, ItemFont, "Swap Joystick Yaw/Roll (Classic Controls)", "joy_swap_xz" ) );
+	
+	rect.y += rect.h + 8;
+	rect.w = 190;
+	AddElement( new Label( this, &rect, "Joystick Twist Smoothing:", ItemFont, Font::ALIGN_MIDDLE_LEFT ) );
+	rect.x += rect.w + 5;
+	rect.w = 80;
+	PrefsMenuDropDown *joy_smooth_dropdown = new PrefsMenuDropDown( this, &rect, ItemFont, Font::ALIGN_MIDDLE_LEFT, 0, "joy_smooth_z" );
+	joy_smooth_dropdown->Items.push_back( ListBoxItem("0"," Off ") );
+	joy_smooth_dropdown->Items.push_back( ListBoxItem("0.5"," Low ") );
+	joy_smooth_dropdown->Items.push_back( ListBoxItem("1"," High ") );
+	joy_smooth_dropdown->Update();
+	AddElement( joy_smooth_dropdown );
+	rect.x = 10;
+	rect.w = 300;
 	
 	rect.y += rect.h + 8;
 	AddElement( new Label( this, &rect, "Fly With Mouse (If No Joystick):", ItemFont, Font::ALIGN_MIDDLE_LEFT ) );
@@ -295,8 +360,6 @@ void PrefsMenu::UpdateContents( void )
 	
 	rect.x -= (rect.w + 10);
 	AddElement( new PrefsMenuDefaultsButton( this, &rect, "Defaults" ) );
-	
-	AddElement( new PrefsMenuInputHandler(this) );
 }
 
 
@@ -314,32 +377,14 @@ void PrefsMenu::Draw( void )
 }
 
 
-// ---------------------------------------------------------------------------
-
-
-PrefsMenuInputHandler::PrefsMenuInputHandler( PrefsMenu *menu ) : Layer( menu )
+bool PrefsMenu::KeyUp( SDLKey key )
 {
-	Rect.x = -Container->CalcRect.x;
-	Rect.y = -Container->CalcRect.y;
-	Rect.w = Raptor::Game->Gfx.W;
-	Rect.h = Raptor::Game->Gfx.H;
-}
-
-
-void PrefsMenuInputHandler::Draw( void )
-{
-}
-
-
-bool PrefsMenuInputHandler::HandleEvent( SDL_Event *event, bool already_handled )
-{
-	if( (event->type == SDL_KEYDOWN) && (event->key.keysym.sym == SDLK_ESCAPE) )
+	if( key == SDLK_ESCAPE )
 	{
-		Container->Remove();
+		Remove();
 		return true;
 	}
 	
-	// If it's not escape, pass events through.
 	return false;
 }
 
@@ -397,7 +442,7 @@ void PrefsMenuRadioButton::Clicked( Uint8 button )
 // ---------------------------------------------------------------------------
 
 
-PrefsMenuTextBox::PrefsMenuTextBox( Window *Container, SDL_Rect *rect, Font *font, uint8_t align, std::string variable ) : TextBox( Container, rect, font, align, Raptor::Game->Cfg.Settings[ variable ] )
+PrefsMenuTextBox::PrefsMenuTextBox( Window *Container, SDL_Rect *rect, Font *font, uint8_t align, std::string variable ) : TextBox( Container, rect, font, align, Raptor::Game->Cfg.SettingAsString( variable ) )
 {
 	Variable = variable;
 	LinkedListBox = NULL;
@@ -427,6 +472,22 @@ void PrefsMenuListBox::Changed( void )
 		LinkedTextBox->Text = SelectedValue();
 	
 	Raptor::Game->Cfg.Settings[ Variable ] = SelectedValue();
+}
+
+
+// ---------------------------------------------------------------------------
+
+
+PrefsMenuDropDown::PrefsMenuDropDown( Layer *container, SDL_Rect *rect, Font *font, uint8_t align, int scroll_bar_size, std::string variable ) : DropDown( container, rect, font, align, scroll_bar_size, Raptor::Game->Res.GetAnimation("button.ani"), Raptor::Game->Res.GetAnimation("button_mdown.ani") )
+{
+	Variable = variable;
+	Value = Raptor::Game->Cfg.SettingAsString( Variable );
+}
+
+
+void PrefsMenuDropDown::Changed( void )
+{
+	Raptor::Game->Cfg.Settings[ Variable ] = Value;
 }
 
 
@@ -518,7 +579,7 @@ void PrefsMenuDefaultsButton::Clicked( Uint8 button )
 	if( button != SDL_BUTTON_LEFT )
 		return;
 	
-	std::string old_name = Raptor::Game->Cfg.Settings["name"];
+	std::string old_name = Raptor::Game->Cfg.SettingAsString("name");
 	
 	Raptor::Game->Cfg.Settings.clear();
 	Raptor::Game->SetDefaults();

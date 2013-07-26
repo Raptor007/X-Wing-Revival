@@ -8,7 +8,7 @@ class MainMenuPlayButton;
 class MainMenuPrefsButton;
 class MainMenuQuitButton;
 
-#include "platforms.h"
+#include "PlatformSpecific.h"
 
 #include "Layer.h"
 #include "Animation.h"

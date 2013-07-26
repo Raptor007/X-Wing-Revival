@@ -5,7 +5,7 @@
 #pragma once
 class Shot;
 
-#include "platforms.h"
+#include "PlatformSpecific.h"
 
 #include "GameObject.h"
 #include "Model.h"

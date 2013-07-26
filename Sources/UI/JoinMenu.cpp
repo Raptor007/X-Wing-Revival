@@ -73,8 +73,6 @@ JoinMenu::JoinMenu( void )
 	rect.x = Rect.w - rect.w - 10;
 	AddElement( new JoinMenuGoButton( this, &rect, "Join" ) );
 	
-	AddElement( new JoinMenuInputHandler(this) );
-
 	ServerFinder.Initialize();
 	ServerFinder.StartListening( 7000 );
 }
@@ -202,32 +200,14 @@ void JoinMenu::Draw( void )
 }
 
 
-// ---------------------------------------------------------------------------
-
-
-JoinMenuInputHandler::JoinMenuInputHandler( JoinMenu *menu ) : Layer( menu )
+bool JoinMenu::KeyUp( SDLKey key )
 {
-	Rect.x = -Container->CalcRect.x;
-	Rect.y = -Container->CalcRect.y;
-	Rect.w = Raptor::Game->Gfx.W;
-	Rect.h = Raptor::Game->Gfx.H;
-}
-
-
-void JoinMenuInputHandler::Draw( void )
-{
-}
-
-
-bool JoinMenuInputHandler::HandleEvent( SDL_Event *event, bool already_handled )
-{
-	if( (event->type == SDL_KEYDOWN) && (event->key.keysym.sym == SDLK_ESCAPE) )
+	if( key == SDLK_ESCAPE )
 	{
-		Container->Remove();
+		Remove();
 		return true;
 	}
 	
-	// If it's not escape, pass events through.
 	return false;
 }
 

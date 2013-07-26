@@ -1,5 +1,5 @@
 /*
- *  main.cpp
+ *  Main.cpp
  */
 
 #include "XWingGame.h"
@@ -13,13 +13,15 @@
 
 int main( int argc, char **argv )
 {
-	bool dedicated = false, terminal = false;
+	bool dedicated = false;
 	if( (argc >= 2) && (strcmp( argv[ 1 ], "-dedicated" ) == 0) )
 		dedicated = true;
-	else if( (argc >= 2) && (strcmp( argv[ 1 ], "-terminal" ) == 0) )
-		terminal = true;
 	
 	#ifdef WIN32
+		bool terminal = false;
+		if( (argc >= 2) && (strcmp( argv[ 1 ], "-terminal" ) == 0) )
+			terminal = true;
+		
 		if( (terminal || dedicated) && AllocConsole() )
 		{
 			freopen( "CONIN$", "rt", stdin );

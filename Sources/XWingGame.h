@@ -5,7 +5,7 @@
 #pragma once
 class XWingGame;
 
-#include "platforms.h"
+#include "PlatformSpecific.h"
 
 #include "RaptorGame.h"
 

@@ -6,7 +6,7 @@
 class XWingServer;
 class XWingServerAlert;
 
-#include "platforms.h"
+#include "PlatformSpecific.h"
 
 #include "RaptorServer.h"
 
@@ -38,7 +38,7 @@ public:
 	virtual ~XWingServer();
 	
 	void Started( void );
-	bool ProcessPacket( Packet *packet );
+	bool ProcessPacket( Packet *packet, ConnectedClient *from_client );
 	void AcceptedClient( ConnectedClient *client );
 	void DroppedClient( ConnectedClient *client );
 	

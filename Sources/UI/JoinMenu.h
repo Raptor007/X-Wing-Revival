@@ -4,14 +4,13 @@
 
 #pragma once
 class JoinMenu;
-class JoinMenuInputHandler;
 class JoinMenuTextBox;
 class JoinMenuListBox;
 class JoinMenuGoButton;
 class JoinMenuHostButton;
 class JoinMenuBackButton;
 
-#include "platforms.h"
+#include "PlatformSpecific.h"
 
 #include <SDL/SDL.h>
 #include <SDL_ttf/SDL_ttf.h>
@@ -35,15 +34,7 @@ public:
 	virtual ~JoinMenu();
 	
 	void Draw( void );
-};
-
-
-class JoinMenuInputHandler : public Layer
-{
-public:
-	JoinMenuInputHandler( JoinMenu *menu );
-	void Draw( void );
-	bool HandleEvent( SDL_Event *event, bool already_handled = false );
+	bool KeyUp( SDLKey key );
 };
 
 

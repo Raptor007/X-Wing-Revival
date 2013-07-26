@@ -5,7 +5,7 @@
 #pragma once
 class Asteroid;
 
-#include "platforms.h"
+#include "PlatformSpecific.h"
 
 #include "GameObject.h"
 #include "Model.h"

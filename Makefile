@@ -1,17 +1,20 @@
 # User can override these variables as needed:
 CC = g++
-CFLAGS = -O3 -fopenmp -Wall -Wno-multichar
-LDFLAGS = -fopenmp
+LD = $(CC)
+CFLAGS = -O3 -ffast-math -msse3 -Wall -Wno-multichar
+LDFLAGS =
+ARCH =
 INC = /opt/local/include /opt/local/include/SDL
 LIBDIR = /usr/lib64
 LIB = libSDLmain.a libSDL_net.so libSDL_mixer.so libSDL_ttf.so libSDL_image.so libSDL.so libGLEW.a libGLU.so libGL.so
+DEF =
 EXE = xwingrev
 GAMEDIR = /Games/X-Wing Revival
+BUILD_FINALIZE =
 INSTALL_FINALIZE =
-MAC_LIB = /Library/Frameworks/GLEW.framework/GLEW /System/Library/Frameworks/OpenGL.framework/OpenGL /Library/Frameworks/SDL_net.framework/SDL_net /Library/Frameworks/SDL_ttf.framework/SDL_ttf /Library/Frameworks/SDL_image.framework/SDL_image /Library/Frameworks/SDL_mixer.framework/SDL_mixer /Library/Frameworks/SDL_mixer.framework/Frameworks/mikmod.framework/mikmod /Library/Frameworks/SDL_mixer.framework/Frameworks/smpeg.framework/smpeg /Library/Frameworks/SDL.framework/SDL /System/Library/Frameworks/Cocoa.framework/Cocoa /System/Library/Frameworks/AudioUnit.framework/AudioUnit /System/Library/Frameworks/AudioToolbox.framework/AudioToolbox /System/Library/Frameworks/IOKit.framework/IOKit /System/Library/Frameworks/Carbon.framework/Carbon
-MAC_SRC = ../RaptorEngine/Core/SDLMain.m
+MAC_FRAMEWORKS = OpenGL Cocoa AudioUnit AudioToolbox IOKit Carbon
+MAC_MFLAGS = -fobjc-direct-dispatch
 MAC_APP = X-Wing Revival
-ARCH = ppc i386 x86_64
 
 
 CARCH =
@@ -23,71 +26,98 @@ OBJECTS = $(patsubst %.cpp,%.o,$(patsubst %.m,%.o,$(SOURCES)))
 EXE_INSTALL = $(EXE)
 BINDIR = $(GAMEDIR)
 
+
 UNAME = $(shell uname)
 ifeq ($(UNAME), Darwin)
 # Begin Mac OS X section.
 
-CPU = $(shell uname -p)
-
 ifndef ARCH
-ifeq ($(CPU), i386)
-# Undefined ARCH on i386/x86_64 should just build i386.
-ARCH = i386
-endif
+# Unless ARCH is defined, Macs should make 32-bit universal binaries by default.
+ARCH = ppc i386
 endif
 
-ifdef ARCH
-CARCH = $(foreach arch,$(ARCH),-arch $(arch))
-LDARCH = $(foreach arch,$(ARCH),-arch $(arch))
-ifeq ($(ARCH), ppc)
-ifeq ($(CPU), powerpc)
-# If ARCH=ppc and CPU=powerpc, it's native; assume we don't need the frameworks.
-NATIVE = true
-endif
-endif
-ifeq ($(ARCH), x86_64)
-ifeq ($(CPU), i386)
-# If ARCH=x86_64 and CPU=i386, it's probably native; assume we don't need the frameworks.
-NATIVE = true
-endif
-endif
-else
-# No ARCH defined, so it's native; assume we don't need the frameworks.
-NATIVE = true
-endif
-
-# Use MacPorts directories.
+# Use MacPorts lib directory.
 LIBDIR = /opt/local/lib
-LIB = libGLEW.a libSDL_net.a libSDL_ttf.a libSDL_image.a libSDL_mixer.a libSDLmain.a libSDL.a libmikmod.a libsmpeg.a libflac.a libpng.a libjpeg.a libtiff.a libfreetype.a libxcb.a libXdmcp.a libXrandr.a libXrender.a libXau.a libXext.a libX11.a libbz2.a libz.a
+
+# Macs must pad install names so install_name_tool can make them longer.
+LDFLAGS += -headerpad_max_install_names
+
+# Always suggest 10.4 Tiger as the minimum Mac OS X version.
+CFLAGS += -mmacosx-version-min=10.4
+LDFLAGS += -mmacosx-version-min=10.4
+
+ifeq (,$(findstring x86_64,$(ARCH)))
+# When building without x86_64 target, use the 10.4 Tiger universal SDK.
+CFLAGS += -isysroot /Developer/SDKs/MacOSX10.4u.sdk
+LDFLAGS += -isysroot /Developer/SDKs/MacOSX10.4u.sdk
+endif
+
+KERNEL_VERSION = $(shell uname -r)
+ifneq (8.11.0,$(KERNEL_VERSION))
+ifneq (x86_64,$(ARCH))
+# When building on 10.5+ with any non-x86_64 target, use Apple gcc 4.0.
+CC = /Developer/usr/bin/g++-4.0
+CFLAGS += -fno-stack-protector
+LDFLAGS += -fno-stack-protector
+endif
+endif
+
+# Override LIB specified above for Linux.
+LIB =
+
+ifneq (g++-4.0,$(findstring g++-4.0,$(CC))$(findstring /Volumes,$(LIBDIR)))
+# When using the system's version of GCC or another drive's libraries, statically-link as many libraries as possible.
+LIB += libSDL_net.a libSDL_ttf.a libSDL_image.a libSDL_mixer.a libSDL.a libSDLmain.a
+else
+# When building for 10.4 Tiger on a newer system without compatible libs, use SDLMain.m and Frameworks instead.
+SOURCES += ../RaptorEngine/Core/SDLMain.m
+MAC_FRAMEWORKS += GLEW SDL_net SDL_ttf SDL_image SDL_mixer SDL mikmod smpeg
+endif
+
+# These libraries should always be statically-linked.
+LIB += libGLEW.a libmikmod.a libsmpeg.a libflac.a libpng.a libfreetype.a libvorbisfile.a libvorbis.a libogg.a libtiff.a libXrandr.a libXrender.a libXext.a libX11.a libxcb.a libXdmcp.a libXau.a libjpeg.a libbz2.a liblzma.a libz.a
 
 # Macs don't have .so files, so replace with .a files.
 LIBRARIES := $(patsubst %.so,%.a,$(LIBRARIES))
 
-# Include Mac-specific libraries (Frameworks) and sources (SDLMain.m).
-LIBRARIES += $(MAC_LIB)
-SOURCES += $(MAC_SRC)
+# Add frameworks to Mac linker line.
+LIBRARIES += $(foreach framework,$(MAC_FRAMEWORKS),-framework $(framework))
+
+# Fix dynamic library paths.
+BUILD_FINALIZE += install_name_tool -change "@loader_path/Frameworks/mikmod.framework/Versions/A/mikmod" "@executable_path/../Frameworks/mikmod.framework/Versions/A/mikmod" "$(EXE)";
+BUILD_FINALIZE += install_name_tool -change "@loader_path/Frameworks/smpeg.framework/Versions/A/smpeg" "@executable_path/../Frameworks/smpeg.framework/Versions/A/smpeg" "$(EXE)";
 
 ifdef MAC_APP
+# Create application package.
 EXE_INSTALL = $(MAC_APP)
 BINDIR = $(GAMEDIR)/$(MAC_APP).app/Contents/MacOS
-#INSTALL_FINALIZE += mkdir -p "$(GAMEDIR)/$(MAC_APP).app/Contents/Resources"; cp -p "Info.plist" "$(GAMEDIR)/$(MAC_APP).app/Contents/"; rsync -ax --exclude=".*" "English.lproj" "/$(GAMEDIR)/$(MAC_APP).app/Contents/Resources";
-INSTALL_FINALIZE += mkdir -p "$(GAMEDIR)/$(MAC_APP).app/Contents/Frameworks"; rsync -ax /Library/Frameworks/SDL_mixer.framework/Frameworks/smpeg.framework "$(GAMEDIR)/$(MAC_APP).app/Contents/Frameworks"; rsync -ax /Library/Frameworks/SDL_mixer.framework/Frameworks/mikmod.framework "$(GAMEDIR)/$(MAC_APP).app/Contents/Frameworks";
-INSTALL_FINALIZE += cd "$(GAMEDIR)"; ln -shf "$(MAC_APP).app/Contents" "$(GAMEDIR)/@loader_path";
-else
-INSTALL_FINALIZE += cd "$(GAMEDIR)"; ln -shf "/Library/Frameworks/SDL_mixer.framework" "$(GAMEDIR)/@loader_path";
+INSTALL_FINALIZE += mkdir -p "$(GAMEDIR)/$(MAC_APP).app/Contents/Resources"; cp -p "Info.plist" "$(GAMEDIR)/$(MAC_APP).app/Contents/"; rsync -ax --exclude=".*" "English.lproj" "$(GAMEDIR)/$(MAC_APP).app/Contents/Resources/"; cp -p "xwing128.icns" "$(GAMEDIR)/$(MAC_APP).app/Contents/Resources/";
 endif
 
 # End Mac OS X section.
 endif
 
 
+ifdef ARCH
+# Add compiler/linker flags for arch.
+CARCH = $(foreach arch,$(ARCH),-arch $(arch))
+LDARCH = $(foreach arch,$(ARCH),-arch $(arch))
+endif
+
+
 default: $(SOURCES) $(EXE)
 
 $(EXE): $(OBJECTS)
-	$(CC) $(LDFLAGS) $(LDARCH) $(OBJECTS) $(LIBRARIES) -o $@
+	$(LD) $(LDFLAGS) $(LDARCH) $(OBJECTS) $(LIBRARIES) -o $@
+	$(BUILD_FINALIZE)
 
-.cpp.o .m.o:
-	$(CC) -c $(CFLAGS) $(CARCH) $(foreach inc,$(INCLUDES),-I$(inc)) $< -o $@
+.cpp.o:
+	$(CC) -c $(CFLAGS) $(CARCH) $(foreach inc,$(INCLUDES),-I$(inc)) $(foreach def,$(DEF),-D$(def)) $< -o $@
+
+.m.o:
+	$(CC) -c $(CFLAGS) $(MAC_MFLAGS) $(CARCH) $(foreach inc,$(INCLUDES),-I$(inc)) $< -o $@
+
+objects: $(SOURCES) $(OBJECTS)
 
 clean:
 	rm -rf Sources/*.o Sources/*/*.o ../RaptorEngine/*/*.o "$(EXE)"
@@ -96,6 +126,7 @@ install:
 	mkdir -p "$(BINDIR)"
 	cp "$(EXE)" "$(BINDIR)/$(EXE_INSTALL)"
 	cp -p build/Debug/README.txt "$(GAMEDIR)/"
+	cp -p build/Debug/icon.bmp "$(GAMEDIR)/"
 	rsync -ax --exclude=".*" build/Debug/Fonts "$(GAMEDIR)/"
 	rsync -ax --exclude=".*" build/Debug/Textures "$(GAMEDIR)/"
 	rsync -ax --exclude=".*" build/Debug/Models "$(GAMEDIR)/"
@@ -107,6 +138,9 @@ install:
 	chmod ugo+x "$(BINDIR)/$(EXE_INSTALL)"
 	$(INSTALL_FINALIZE)
 
+uninstall:
+	rm -r "$(GAMEDIR)"
+
 play: $(EXE) install
 	cd "$(GAMEDIR)"; "$(BINDIR)/$(EXE_INSTALL)"
 
@@ -114,41 +148,26 @@ server-install:
 	mkdir -p "$(GAMEDIR)"
 	cp "$(EXE)" "$(GAMEDIR)/"
 
-
-# Old method of building with multiple/specific arch, no longer needed:
-
-$(EXE)_ppc: ppc
 ppc:
+	make objects ARCH="ppc"
+	make ARCH="ppc" EXE="$(EXE)_ppc" LIBDIR="/Volumes/G5/opt/local/lib"
+
+i32:
+	make objects ARCH="i386"
+	make ARCH="i386" EXE="$(EXE)_i32" LIBDIR="/Volumes/G5/opt/local/lib"
+
+i64:
+	make objects ARCH="x86_64" CC="/opt/local/bin/g++"
+	make ARCH="x86_64" EXE="$(EXE)_i64" CC="/opt/local/bin/g++"
+
+universal:
 	make clean
-	make ARCH=ppc
-	mv "$(EXE)" "$(EXE)_ppc"
-
-$(EXE)_i386: i386
-i386:
+	make i64 EXE="$(EXE)"
 	make clean
-	make ARCH=i386
-	mv "$(EXE)" "$(EXE)_i386"
-
-$(EXE)_x86_64: x86_64
-x86_64:
+	make ppc EXE="$(EXE)"
 	make clean
-	make ARCH=x86_64
-	mv "$(EXE)" "$(EXE)_x86_64"
+	make i32 EXE="$(EXE)"
+	make lipo
 
-$(EXE)_ppc64: ppc64
-ppc64:
-	make clean
-	make ARCH=ppc64
-	mv "$(EXE)" "$(EXE)_ppc64"
-
-universal: $(EXE)_ppc $(EXE)_i386
-	lipo -create -arch ppc "$(EXE)_ppc" -arch i386 "$(EXE)_i386" -output $(EXE)
-
-universal-64: $(EXE)_ppc $(EXE)_i386 $(EXE)_x86_64
-	lipo -create -arch ppc "$(EXE)_ppc" -arch i386 "$(EXE)_i386" -arch x86_64 "$(EXE)_x86_64" -output $(EXE)
-
-just-lipo:
-	lipo -create -arch ppc "$(EXE)_ppc" -arch i386 "$(EXE)_i386" -output $(EXE)
-
-just-lipo-64:
-	lipo -create -arch ppc "$(EXE)_ppc" -arch i386 "$(EXE)_i386" -arch x86_64 "$(EXE)_x86_64" -output $(EXE)
+lipo: $(EXE)_ppc $(EXE)_i32 $(EXE)_i64
+	lipo $(EXE)_ppc $(EXE)_i32 $(EXE)_i64 -create -output xwingrev

@@ -60,7 +60,7 @@ void XWingServer::Started( void )
 }
 
 
-bool XWingServer::ProcessPacket( Packet *packet )
+bool XWingServer::ProcessPacket( Packet *packet, ConnectedClient *from_client )
 {
 	packet->Rewind();
 	PacketType type = packet->Type();
@@ -77,7 +77,7 @@ bool XWingServer::ProcessPacket( Packet *packet )
 		return true;
 	}
 	
-	return RaptorServer::ProcessPacket( packet );
+	return RaptorServer::ProcessPacket( packet, from_client );
 }
 
 
@@ -1246,7 +1246,7 @@ void XWingServer::Update( double dt )
 						if( GameType == XWing::GameType::BATTLE_OF_YAVIN )
 						{
 							bool rebel = (ship->Team == XWing::Team::REBEL);
-							double minutes_remaining = RoundTimeRemaining() / 60.;
+							double minutes_remaining = round_time_remaining / 60.;
 							double closer = (rebel ? 0. : -3000.);
 							if( ship->PlayerID )
 							{
@@ -1670,7 +1670,7 @@ void XWingServer::Update( double dt )
 		if( remaining < CountdownSent )
 		{
 			CountdownSent = remaining;
-			if( remaining )
+			if( remaining >= 0 )
 			{
 				Packet message( Raptor::Packet::MESSAGE );
 				message.AddString( (std::string("Launching in ") + Num::ToString(remaining) + std::string("...")).c_str() );

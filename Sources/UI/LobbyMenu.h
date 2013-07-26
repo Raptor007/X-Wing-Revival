@@ -11,7 +11,7 @@ class LobbyMenuShipButton;
 class LobbyMenuConfiguration;
 class LobbyMenuConfigChangeButton;
 
-#include "platforms.h"
+#include "PlatformSpecific.h"
 
 #include "Layer.h"
 #include "Animation.h"

@@ -52,22 +52,18 @@ void XWingGame::SetDefaults( void )
 	Cfg.Settings[ "spectator_view" ] = "cinema2";
 	Cfg.Settings[ "view_cycle_time" ] = "7";
 	
+	Cfg.Settings[ "g_framebuffers" ] = "true";
 	Cfg.Settings[ "g_shader_enable" ] = "true";
 	Cfg.Settings[ "g_shader_file" ] = "model";
-	Cfg.Settings[ "g_framebuffers" ] = "true";
-	Cfg.Settings[ "g_dynamic_lights" ] = "1";
+	Cfg.Settings[ "g_dynamic_lights" ] = "4";
 	Cfg.Settings[ "g_bg" ] = "true";
-	Cfg.Settings[ "g_stars" ] = "true";
+	Cfg.Settings[ "g_stars" ] = "false";
 	Cfg.Settings[ "g_debris" ] = "true";
+	Cfg.Settings[ "g_debris_count" ] = "500";
 	Cfg.Settings[ "g_deathstar_detail" ] = "3";
 	Cfg.Settings[ "g_3d_cockpit" ] = "true";
 	Cfg.Settings[ "g_hq_cockpit" ] = "false";
-	
-	#if !( defined(_ppc_) || defined(__ppc__) )
-		Cfg.Settings[ "g_hq_ships" ] = "true";
-	#else
-		Cfg.Settings[ "g_hq_ships" ] = "false";
-	#endif
+	Cfg.Settings[ "g_hq_ships" ] = "true";
 	
 	Cfg.Settings[ "s_menu_music" ] = "true";
 	Cfg.Settings[ "s_game_music" ] = "true";
@@ -77,18 +73,24 @@ void XWingGame::SetDefaults( void )
 	
 	Cfg.Settings[ "joy_enable" ] = "true";
 	Cfg.Settings[ "joy_swap_xz" ] = "false";
-	Cfg.Settings[ "joy_smooth_x" ] = "false";
-	Cfg.Settings[ "joy_smooth_y" ] = "false";
-	Cfg.Settings[ "joy_smooth_z" ] = "false";
-	Cfg.Settings[ "joy_smooth_pedals" ] = "false";
+	Cfg.Settings[ "joy_smooth_x" ] = "0";
+	Cfg.Settings[ "joy_smooth_y" ] = "0";
+	Cfg.Settings[ "joy_smooth_z" ] = "0.5";
+	Cfg.Settings[ "joy_smooth_pedals" ] = "0";
 	
 	Cfg.Settings[ "mouse_enable" ] = "fullscreen";
 	Cfg.Settings[ "mouse_invert" ] = "true";
-	Cfg.Settings[ "mouse_smooth" ] = "false";
+	Cfg.Settings[ "mouse_smooth" ] = "0";
 	Cfg.Settings[ "mouse_look" ] = "false";
 	
 	Cfg.Settings[ "netrate" ] = "30";
 	Cfg.Settings[ "sv_netrate" ] = "30";
+
+	#ifdef APPLE_POWERPC
+		Cfg.Settings[ "g_dynamic_lights" ] = "1";
+		Cfg.Settings[ "g_debris_count" ] = "200";
+		Cfg.Settings[ "g_deathstar_detail" ] = "2";
+	#endif
 }
 
 
@@ -142,14 +144,10 @@ void XWingGame::Setup( int argc, char **argv )
 		Layers.Add( new Screensaver() );
 	}
 	
-	#if !( defined(_ppc_) || defined(__ppc__) )
-	{
-		// Generate all framebuffers for render-to-texture.
-		Res.GetFramebuffer( "health", 384, 512 );
-		Res.GetFramebuffer( "target", 384, 512 );
-		Res.GetFramebuffer( "intercept", 384, 256 );
-	}
-	#endif
+	// Generate all framebuffers for render-to-texture.
+	Res.GetFramebuffer( "health", 384, 512 );
+	Res.GetFramebuffer( "target", 384, 512 );
+	Res.GetFramebuffer( "intercept", 384, 256 );
 	
 	// Precache resources while the loading screen is still being shown.
 	Precache();
@@ -299,8 +297,9 @@ void XWingGame::Update( double dt )
 			
 			if( Cfg.SettingAsBool("mouse_smooth") )
 			{
-				yaw *= fabs(yaw);
-				pitch *= fabs(pitch);
+				double smooth = Cfg.SettingAsDouble("mouse_smooth");
+				yaw = pow( fabs(yaw), smooth + 1. ) * Num::Sign(yaw);
+				pitch = pow( fabs(pitch), smooth + 1. ) * Num::Sign(pitch);
 			}
 			
 			// Read mouse buttons.
@@ -336,7 +335,7 @@ void XWingGame::Update( double dt )
 				// Read pedals.
 				double z = joy_iter->second.Axis( 2, deadzone );
 				if( Cfg.SettingAsBool("joy_smooth_pedals") )
-					z *= fabs(z);
+					z = pow( fabs(z), Cfg.SettingAsDouble("joy_smooth_pedals") + 1. ) * Num::Sign(z);
 				
 				if( Cfg.SettingAsBool("joy_swap_xz") )
 					roll = z;
@@ -381,13 +380,13 @@ void XWingGame::Update( double dt )
 				// Read joystick's analog axes.
 				double x = joy_iter->second.Axis( 0, deadzone );
 				if( Cfg.SettingAsBool("joy_smooth_x") )
-					x *= fabs(x);
+					x = pow( fabs(x), Cfg.SettingAsDouble("joy_smooth_x") + 1. ) * Num::Sign(x);
 				double y = joy_iter->second.Axis( 1, deadzone );
 				if( Cfg.SettingAsBool("joy_smooth_y") )
-					y *= fabs(y);
+					y = pow( fabs(y), Cfg.SettingAsDouble("joy_smooth_y") + 1. ) * Num::Sign(y);
 				double z = joy_iter->second.Axis( 3, deadzone );
 				if( Cfg.SettingAsBool("joy_smooth_z") )
-					z *= fabs(z);
+					z = pow( fabs(z), Cfg.SettingAsDouble("joy_smooth_z") + 1. ) * Num::Sign(z);
 				
 				pitch = y;
 				throttle = joy_iter->second.AxisScaled( 2, 1., 0., 0., deadzone );
@@ -1203,9 +1202,9 @@ bool XWingGame::ProcessPacket( Packet *packet )
 			if( ship && (ship->ShipType == Ship::TYPE_EXHAUST_PORT) )
 				;
 			else if( shot_type == Shot::TYPE_TORPEDO )
-				Data.Effects.push_back( Effect( Res.GetAnimation("explosion.ani"), 5., Res.GetSound("explosion.wav"), 3., &pos, &motion_vec, (180. * Rand::Bool() ? 1. : -1.), 1. ) );
+				Data.Effects.push_back( Effect( Res.GetAnimation("explosion.ani"), 5., Res.GetSound("explosion.wav"), 2.5, &pos, &motion_vec, (180. * Rand::Bool() ? 1. : -1.), 1. ) );
 			else if( shot_type == Shot::TYPE_MISSILE )
-				Data.Effects.push_back( Effect( Res.GetAnimation("explosion.ani"), 4., Res.GetSound("explosion.wav"), 3., &pos, &motion_vec, (180. * Rand::Bool() ? 1. : -1.), 1. ) );
+				Data.Effects.push_back( Effect( Res.GetAnimation("explosion.ani"), 4., Res.GetSound("explosion.wav"), 2.5, &pos, &motion_vec, (180. * Rand::Bool() ? 1. : -1.), 1. ) );
 			else if( shot_type == Shot::TYPE_MINE )
 				Data.Effects.push_back( Effect( Res.GetAnimation("explosion.ani"), 20., Res.GetSound("explosion.wav"), 4., &pos, &motion_vec, (180. * Rand::Bool() ? 1. : -1.), 1. ) );
 		}
@@ -1222,14 +1221,12 @@ bool XWingGame::ProcessPacket( Packet *packet )
 		double z = packet->NextDouble();
 		
 		Turret *turret = NULL;
-		double old_health = 0.;
 		double dx = 0., dy = 0., dz = 0.;
 		
 		GameObject *turret_obj = Data.GetObject( turret_id );
 		if( turret_obj && (turret_obj->Type() == XWing::Object::TURRET) )
 		{
 			turret = (Turret*) turret_obj;
-			old_health = turret->Health;
 			dx = turret->MotionVector.X;
 			dy = turret->MotionVector.Y;
 			dz = turret->MotionVector.Z;
@@ -1249,9 +1246,9 @@ bool XWingGame::ProcessPacket( Packet *packet )
 			}
 			
 			if( shot_type == Shot::TYPE_TORPEDO )
-				Data.Effects.push_back( Effect( Res.GetAnimation("explosion.ani"), 5., Res.GetSound("explosion.wav"), 3., &pos, &motion_vec, (180. * Rand::Bool() ? 1. : -1.), 1. ) );
+				Data.Effects.push_back( Effect( Res.GetAnimation("explosion.ani"), 5., Res.GetSound("explosion.wav"), 2.5, &pos, &motion_vec, (180. * Rand::Bool() ? 1. : -1.), 1. ) );
 			else if( shot_type == Shot::TYPE_MISSILE )
-				Data.Effects.push_back( Effect( Res.GetAnimation("explosion.ani"), 4., Res.GetSound("explosion.wav"), 3., &pos, &motion_vec, (180. * Rand::Bool() ? 1. : -1.), 1. ) );
+				Data.Effects.push_back( Effect( Res.GetAnimation("explosion.ani"), 4., Res.GetSound("explosion.wav"), 2.5, &pos, &motion_vec, (180. * Rand::Bool() ? 1. : -1.), 1. ) );
 			else if( shot_type == Shot::TYPE_MINE )
 				Data.Effects.push_back( Effect( Res.GetAnimation("explosion.ani"), 20., Res.GetSound("explosion.wav"), 4., &pos, &motion_vec, (180. * Rand::Bool() ? 1. : -1.), 1. ) );
 		}
@@ -1273,9 +1270,9 @@ bool XWingGame::ProcessPacket( Packet *packet )
 			Vec3D motion_vec( dx, dy, dz );
 			
 			if( shot_type == Shot::TYPE_TORPEDO )
-				Data.Effects.push_back( Effect( Res.GetAnimation("explosion.ani"), 5., Res.GetSound("explosion.wav"), 3., &pos, &motion_vec, (180. * Rand::Bool() ? 1. : -1.), 1. ) );
+				Data.Effects.push_back( Effect( Res.GetAnimation("explosion.ani"), 5., Res.GetSound("explosion.wav"), 2.5, &pos, &motion_vec, (180. * Rand::Bool() ? 1. : -1.), 1. ) );
 			else if( shot_type == Shot::TYPE_MISSILE )
-				Data.Effects.push_back( Effect( Res.GetAnimation("explosion.ani"), 4., Res.GetSound("explosion.wav"), 3., &pos, &motion_vec, (180. * Rand::Bool() ? 1. : -1.), 1. ) );
+				Data.Effects.push_back( Effect( Res.GetAnimation("explosion.ani"), 4., Res.GetSound("explosion.wav"), 2.5, &pos, &motion_vec, (180. * Rand::Bool() ? 1. : -1.), 1. ) );
 			else if( shot_type == Shot::TYPE_MINE )
 				Data.Effects.push_back( Effect( Res.GetAnimation("explosion.ani"), 20., Res.GetSound("explosion.wav"), 4., &pos, &motion_vec, (180. * Rand::Bool() ? 1. : -1.), 1. ) );
 		}

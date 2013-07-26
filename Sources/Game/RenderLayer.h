@@ -6,10 +6,11 @@
 class RenderLayer;
 class Renderable;
 
-#include "platforms.h"
+#include "PlatformSpecific.h"
 
 #include "Layer.h"
 #include <stdint.h>
+#include "RaptorGL.h"
 #include "Animation.h"
 #include "Pos.h"
 #include "Vec.h"
@@ -28,13 +29,17 @@ class RenderLayer : public Layer
 {
 public:
 	Animation Background;
-	Vec3D Stars[ STAR_COUNT ];
+	GLdouble Stars[ STAR_COUNT * 3 ];
 	Pos3D Debris[ DEBRIS_COUNT ];
 	Font *BigFont, *SmallFont, *ScreenFont, *RadarDirectionFont;
 	TextBox *MessageInput;
 	
 	RenderLayer( void );
 	virtual ~RenderLayer();
+	
+	void SetWorldLights( void );
+	void ClearWorldLights( void );
+	void ClearDynamicLights( void );
 	
 	void Draw( void );
 	void DrawBackground( void );
