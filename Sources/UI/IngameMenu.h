@@ -6,6 +6,7 @@
 class IngameMenu;
 class IngameMenuResumeButton;
 class IngameMenuPrefsButton;
+class IngameMenuHelpButton;
 class IngameMenuLeaveButton;
 
 #include "PlatformSpecific.h"
@@ -20,11 +21,12 @@ class IngameMenu : public Layer
 {
 public:
 	Animation Background;
-	Font *TitleFont, *TitleFontSmall;
+	Font *TitleFont, *TitleFontBig, *TitleFontSmall;
 	Font *VersionFont;
 	Font *ButtonFont;
 	IngameMenuResumeButton *ResumeButton;
 	IngameMenuPrefsButton *PrefsButton;
+	IngameMenuHelpButton *HelpButton;
 	IngameMenuLeaveButton *LeaveButton;
 	
 	IngameMenu( void );
@@ -40,7 +42,8 @@ public:
 class IngameMenuResumeButton : public LabelledButton
 {
 public:
-	IngameMenuResumeButton( IngameMenu *menu, SDL_Rect *rect, Font *button_font, uint8_t align = Font::ALIGN_MIDDLE_LEFT );
+	IngameMenuResumeButton( SDL_Rect *rect, Font *button_font, uint8_t align = Font::ALIGN_MIDDLE_LEFT );
+	virtual ~IngameMenuResumeButton();
 	void Clicked( Uint8 button = SDL_BUTTON_LEFT );
 };
 
@@ -48,7 +51,17 @@ public:
 class IngameMenuPrefsButton : public LabelledButton
 {
 public:
-	IngameMenuPrefsButton( IngameMenu *menu, SDL_Rect *rect, Font *button_font, uint8_t align = Font::ALIGN_MIDDLE_LEFT );
+	IngameMenuPrefsButton( SDL_Rect *rect, Font *button_font, uint8_t align = Font::ALIGN_MIDDLE_LEFT );
+	virtual ~IngameMenuPrefsButton();
+	void Clicked( Uint8 button = SDL_BUTTON_LEFT );
+};
+
+
+class IngameMenuHelpButton : public LabelledButton
+{
+public:
+	IngameMenuHelpButton( SDL_Rect *rect, Font *button_font, uint8_t align = Font::ALIGN_MIDDLE_LEFT );
+	virtual ~IngameMenuHelpButton();
 	void Clicked( Uint8 button = SDL_BUTTON_LEFT );
 };
 
@@ -56,6 +69,7 @@ public:
 class IngameMenuLeaveButton : public LabelledButton
 {
 public:
-	IngameMenuLeaveButton( IngameMenu *menu, SDL_Rect *rect, Font *button_font, uint8_t align = Font::ALIGN_MIDDLE_LEFT );
+	IngameMenuLeaveButton( SDL_Rect *rect, Font *button_font, uint8_t align = Font::ALIGN_MIDDLE_LEFT );
+	virtual ~IngameMenuLeaveButton();
 	void Clicked( Uint8 button = SDL_BUTTON_LEFT );
 };

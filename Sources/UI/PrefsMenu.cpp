@@ -5,6 +5,7 @@
 #include "PrefsMenu.h"
 
 #include "Label.h"
+#include "GroupBox.h"
 #include "RaptorGame.h"
 #include "XWingDefs.h"
 #include "XWingGame.h"
@@ -22,9 +23,10 @@ PrefsMenu::PrefsMenu( void )
 	Blue = 1.f;
 	Alpha = 0.5f;
 	
-	TitleFont = Raptor::Game->Res.GetFont( "TimesNR.ttf", 30 );
-	ItemFont = Raptor::Game->Res.GetFont( "TimesNR.ttf", 18 );
-	ButtonFont = Raptor::Game->Res.GetFont( "TimesNR.ttf", 32 );
+	TitleFont = Raptor::Game->Res.GetFont( "Verdana.ttf", 30 );
+	LabelFont = Raptor::Game->Res.GetFont( "Verdana.ttf", 16 );
+	ItemFont = Raptor::Game->Res.GetFont( "Verdana.ttf", 17 );
+	ButtonFont = Raptor::Game->Res.GetFont( "Verdana.ttf", 30 );
 	
 	UpdateContents();
 	
@@ -49,317 +51,354 @@ void PrefsMenu::UpdateContents( void )
 	// Remove existing elements.
 	
 	Selected = NULL;
-	
-	for( int i = Elements.size() - 1; i >= 0; i -- )
-	{
-		try
-		{
-			Layer *element = Elements.at( i );
-			delete element;
-			Elements[ i ] = NULL;
-		}
-		catch( std::out_of_range &exception )
-		{
-			fprintf( stderr, "Layer::~Layer: std::out_of_range\n" );
-		}
-	}
-	
-	Elements.clear();
+	RemoveAllElements();
 	
 	
 	// Add new elements.
 	
-	SDL_Rect rect;
-	
-	rect.h = ItemFont ? ItemFont->GetHeight() : 18;
-	rect.x = 10;
-	rect.y = 60;
-	rect.w = 105;
-	AddElement( new PrefsMenuCheckBox( this, &rect, ItemFont, "Fullscreen:", "g_fullscreen" ) );
-	rect.x += rect.w + 5;
-	rect.w = 60;
-	AddElement( new PrefsMenuTextBox( this, &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, "g_res_fullscreen_x" ) );
-	rect.x += rect.w + 5;
-	rect.w = 15;
-	AddElement( new Label( this, &rect, "x", ItemFont, Font::ALIGN_MIDDLE_CENTER ) );
-	rect.x += rect.w + 5;
-	rect.w = 60;
-	AddElement( new PrefsMenuTextBox( this, &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, "g_res_fullscreen_y" ) );
-	rect.x = 10;
-	
-	rect.y += rect.h + 8;
-	rect.w = 108;
-	AddElement( new Label( this, &rect, "Anti-Aliasing:", ItemFont, Font::ALIGN_MIDDLE_LEFT ) );
-	rect.x += rect.w + 5;
-	PrefsMenuRadioButton *fsaa0 = new PrefsMenuRadioButton( this, &rect, ItemFont, "Off", "g_fsaa", "0" );
-	fsaa0->Rect.w = fsaa0->GetWidth();
-	AddElement( fsaa0 );
-	rect.x += fsaa0->Rect.w + 5;
-	PrefsMenuRadioButton *fsaa2 = new PrefsMenuRadioButton( this, &rect, ItemFont, "2x", "g_fsaa", "2" );
-	fsaa2->Rect.w = fsaa2->GetWidth();
-	AddElement( fsaa2 );
-	rect.x += fsaa2->Rect.w + 5;
-	PrefsMenuRadioButton *fsaa4 = new PrefsMenuRadioButton( this, &rect, ItemFont, "4x", "g_fsaa", "4" );
-	fsaa4->Rect.w = fsaa4->GetWidth();
-	AddElement( fsaa4 );
-	rect.x += fsaa4->Rect.w + 5;
-	PrefsMenuRadioButton *fsaa8 = new PrefsMenuRadioButton( this, &rect, ItemFont, "8x", "g_fsaa", "8" );
-	fsaa8->Rect.w = fsaa8->GetWidth();
-	AddElement( fsaa8 );
-	fsaa0->OtherButtons.push_back( fsaa2 );
-	fsaa0->OtherButtons.push_back( fsaa4 );
-	fsaa0->OtherButtons.push_back( fsaa8 );
-	fsaa2->OtherButtons.push_back( fsaa0 );
-	fsaa2->OtherButtons.push_back( fsaa4 );
-	fsaa2->OtherButtons.push_back( fsaa8 );
-	fsaa4->OtherButtons.push_back( fsaa0 );
-	fsaa4->OtherButtons.push_back( fsaa2 );
-	fsaa4->OtherButtons.push_back( fsaa8 );
-	fsaa8->OtherButtons.push_back( fsaa0 );
-	fsaa8->OtherButtons.push_back( fsaa2 );
-	fsaa8->OtherButtons.push_back( fsaa4 );
-	rect.x = 10;
-	rect.w = 300;
-	
-	rect.y += rect.h + 8;
-	rect.w = 160;
-	AddElement( new Label( this, &rect, "Anisotropic Filtering:", ItemFont, Font::ALIGN_MIDDLE_LEFT ) );
-	rect.x += rect.w + 5;
-	PrefsMenuRadioButton *af0 = new PrefsMenuRadioButton( this, &rect, ItemFont, "Off", "g_af", "1" );
-	af0->Rect.w = af0->GetWidth();
-	AddElement( af0 );
-	rect.x += af0->Rect.w + 5;
-	PrefsMenuRadioButton *af2 = new PrefsMenuRadioButton( this, &rect, ItemFont, "2x", "g_af", "2" );
-	af2->Rect.w = af2->GetWidth();
-	AddElement( af2 );
-	rect.x += af2->Rect.w + 5;
-	PrefsMenuRadioButton *af4 = new PrefsMenuRadioButton( this, &rect, ItemFont, "4x", "g_af", "4" );
-	af4->Rect.w = af4->GetWidth();
-	AddElement( af4 );
-	rect.x += af4->Rect.w + 5;
-	PrefsMenuRadioButton *af8 = new PrefsMenuRadioButton( this, &rect, ItemFont, "8x", "g_af", "8" );
-	af8->Rect.w = af8->GetWidth();
-	AddElement( af8 );
-	rect.x += af8->Rect.w + 5;
-	PrefsMenuRadioButton *af16 = new PrefsMenuRadioButton( this, &rect, ItemFont, "16x", "g_af", "16" );
-	af16->Rect.w = af16->GetWidth();
-	AddElement( af16 );
-	af0->OtherButtons.push_back( af2 );
-	af0->OtherButtons.push_back( af4 );
-	af0->OtherButtons.push_back( af8 );
-	af0->OtherButtons.push_back( af16 );
-	af2->OtherButtons.push_back( af0 );
-	af2->OtherButtons.push_back( af4 );
-	af2->OtherButtons.push_back( af8 );
-	af2->OtherButtons.push_back( af16 );
-	af4->OtherButtons.push_back( af0 );
-	af4->OtherButtons.push_back( af2 );
-	af4->OtherButtons.push_back( af8 );
-	af4->OtherButtons.push_back( af16 );
-	af8->OtherButtons.push_back( af0 );
-	af8->OtherButtons.push_back( af2 );
-	af8->OtherButtons.push_back( af4 );
-	af8->OtherButtons.push_back( af16 );
-	af16->OtherButtons.push_back( af0 );
-	af16->OtherButtons.push_back( af2 );
-	af16->OtherButtons.push_back( af4 );
-	af16->OtherButtons.push_back( af8 );
-	rect.x = 10;
-	rect.w = 300;
-	
-	rect.y += rect.h + 8;
-	AddElement( new PrefsMenuCheckBox( this, &rect, ItemFont, "Draw With Shaders", "g_shader_enable" ) );
-	
-	/*
-	rect.x += 20;
-	rect.y += rect.h + 8;
-	AddElement( new PrefsMenuCheckBox( this, &rect, ItemFont, "Lighting", "g_shader_file", "model", "model_simple" ) );
-	*/
-	
-	/*
-	rect.x += 20;
-	rect.y += rect.h + 8;
-	AddElement( new PrefsMenuCheckBox( this, &rect, ItemFont, "Dynamic Lights", "g_dynamic_lights", "1", "0" ) );
-	rect.x -= 40;
-	*/
-	
-	rect.x += 20;
-	rect.y += rect.h + 8;
-	rect.w = 210;
-	AddElement( new Label( this, &rect, "Dynamic Lights Per Object:", ItemFont, Font::ALIGN_MIDDLE_LEFT ) );
-	rect.x += rect.w + 5;
-	PrefsMenuRadioButton *dynamic0 = new PrefsMenuRadioButton( this, &rect, ItemFont, "Off", "g_dynamic_lights", "0" );
-	dynamic0->Rect.w = dynamic0->GetWidth();
-	AddElement( dynamic0 );
-	rect.x += dynamic0->Rect.w + 5;
-	PrefsMenuRadioButton *dynamic1 = new PrefsMenuRadioButton( this, &rect, ItemFont, "1", "g_dynamic_lights", "1" );
-	dynamic1->Rect.w = dynamic1->GetWidth();
-	AddElement( dynamic1 );
-	rect.x += dynamic1->Rect.w + 5;
-	PrefsMenuRadioButton *dynamic2 = new PrefsMenuRadioButton( this, &rect, ItemFont, "2", "g_dynamic_lights", "2" );
-	dynamic2->Rect.w = dynamic2->GetWidth();
-	AddElement( dynamic2 );
-	rect.x += dynamic2->Rect.w + 5;
-	PrefsMenuRadioButton *dynamic3 = new PrefsMenuRadioButton( this, &rect, ItemFont, "3", "g_dynamic_lights", "3" );
-	dynamic3->Rect.w = dynamic3->GetWidth();
-	AddElement( dynamic3 );
-	rect.x += dynamic3->Rect.w + 5;
-	PrefsMenuRadioButton *dynamic4 = new PrefsMenuRadioButton( this, &rect, ItemFont, "4", "g_dynamic_lights", "4" );
-	dynamic4->Rect.w = dynamic4->GetWidth();
-	AddElement( dynamic4 );
-	dynamic0->OtherButtons.push_back( dynamic1 );
-	dynamic0->OtherButtons.push_back( dynamic2 );
-	dynamic0->OtherButtons.push_back( dynamic3 );
-	dynamic0->OtherButtons.push_back( dynamic4 );
-	dynamic1->OtherButtons.push_back( dynamic0 );
-	dynamic1->OtherButtons.push_back( dynamic2 );
-	dynamic1->OtherButtons.push_back( dynamic3 );
-	dynamic1->OtherButtons.push_back( dynamic4 );
-	dynamic2->OtherButtons.push_back( dynamic0 );
-	dynamic2->OtherButtons.push_back( dynamic1 );
-	dynamic2->OtherButtons.push_back( dynamic3 );
-	dynamic2->OtherButtons.push_back( dynamic4 );
-	dynamic3->OtherButtons.push_back( dynamic0 );
-	dynamic3->OtherButtons.push_back( dynamic1 );
-	dynamic3->OtherButtons.push_back( dynamic2 );
-	dynamic3->OtherButtons.push_back( dynamic4 );
-	dynamic4->OtherButtons.push_back( dynamic0 );
-	dynamic4->OtherButtons.push_back( dynamic1 );
-	dynamic4->OtherButtons.push_back( dynamic2 );
-	dynamic4->OtherButtons.push_back( dynamic3 );
-	rect.x = 10;
-	rect.w = 300;
-	
-	rect.y += rect.h + 8;
-	AddElement( new PrefsMenuCheckBox( this, &rect, ItemFont, "High-Quality Ships", "g_hq_ships" ) );
-	
-	/*
-	rect.y += rect.h + 8;
-	AddElement( new PrefsMenuCheckBox( this, &rect, ItemFont, "3D Cockpit", "g_3d_cockpit" ) );
-	rect.y += rect.h + 8;
-	rect.x += 10;
-	AddElement( new PrefsMenuCheckBox( this, &rect, ItemFont, "High-Quality 3D Cockpit", "g_hq_cockpit" ) );
-	rect.x -= 10;
-	*/
-	
-	/*
-	rect.y += rect.h + 8;
-	AddElement( new Label( this, &rect, "Spectator View:", ItemFont, Font::ALIGN_MIDDLE_LEFT ) );
-	rect.x += 125;
-	PrefsMenuRadioButton *spectator_view_cockpit = new PrefsMenuRadioButton( this, &rect, ItemFont, "Cockpit", "spectator_view", "cockpit" );
-	spectator_view_cockpit->Rect.w = spectator_view_cockpit->GetWidth();
-	AddElement( spectator_view_cockpit );
-	rect.x += spectator_view_cockpit->Rect.w + 5;
-	PrefsMenuRadioButton *spectator_view_chase = new PrefsMenuRadioButton( this, &rect, ItemFont, "Chase", "spectator_view", "chase" );
-	spectator_view_chase->Rect.w = spectator_view_chase->GetWidth();
-	AddElement( spectator_view_chase );
-	rect.x += spectator_view_chase->Rect.w + 5;
-	PrefsMenuRadioButton *spectator_view_cinema = new PrefsMenuRadioButton( this, &rect, ItemFont, "Cinema", "spectator_view", "cinema" );
-	spectator_view_cinema->Rect.w = spectator_view_cinema->GetWidth();
-	AddElement( spectator_view_cinema );
-	rect.x += spectator_view_cinema->Rect.w + 5;
-	PrefsMenuRadioButton *spectator_view_cinema2 = new PrefsMenuRadioButton( this, &rect, ItemFont, "Cinema2", "spectator_view", "cinema2" );
-	spectator_view_cinema2->Rect.w = spectator_view_cinema2->GetWidth();
-	AddElement( spectator_view_cinema2 );
-	rect.x += spectator_view_cinema2->Rect.w + 5;
-	PrefsMenuRadioButton *spectator_view_cycle = new PrefsMenuRadioButton( this, &rect, ItemFont, "Cycle", "spectator_view", "cycle" );
-	spectator_view_cycle->Rect.w = spectator_view_cycle->GetWidth();
-	AddElement( spectator_view_cycle );
-	spectator_view_cockpit->OtherButtons.push_back( spectator_view_chase );
-	spectator_view_cockpit->OtherButtons.push_back( spectator_view_cinema );
-	spectator_view_cockpit->OtherButtons.push_back( spectator_view_cinema2 );
-	spectator_view_cockpit->OtherButtons.push_back( spectator_view_cycle );
-	spectator_view_chase->OtherButtons.push_back( spectator_view_cockpit );
-	spectator_view_chase->OtherButtons.push_back( spectator_view_cinema );
-	spectator_view_chase->OtherButtons.push_back( spectator_view_cinema2 );
-	spectator_view_chase->OtherButtons.push_back( spectator_view_cycle );
-	spectator_view_cinema->OtherButtons.push_back( spectator_view_cockpit );
-	spectator_view_cinema->OtherButtons.push_back( spectator_view_chase );
-	spectator_view_cinema->OtherButtons.push_back( spectator_view_cinema2 );
-	spectator_view_cinema->OtherButtons.push_back( spectator_view_cycle );
-	spectator_view_cinema2->OtherButtons.push_back( spectator_view_cockpit );
-	spectator_view_cinema2->OtherButtons.push_back( spectator_view_chase );
-	spectator_view_cinema2->OtherButtons.push_back( spectator_view_cinema );
-	spectator_view_cinema2->OtherButtons.push_back( spectator_view_cycle );
-	spectator_view_cycle->OtherButtons.push_back( spectator_view_cockpit );
-	spectator_view_cycle->OtherButtons.push_back( spectator_view_chase );
-	spectator_view_cycle->OtherButtons.push_back( spectator_view_cinema );
-	spectator_view_cycle->OtherButtons.push_back( spectator_view_cinema2 );
-	rect.x = 10;
-	rect.w = 300;
-	*/
-	
-	rect.y += rect.h + 8;
-	rect.w = 150;
-	AddElement( new Label( this, &rect, "Joystick Deadzone:", ItemFont, Font::ALIGN_MIDDLE_LEFT ) );
-	rect.x += rect.w + 5;
-	rect.w = 60;
-	AddElement( new PrefsMenuTextBox( this, &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, "joy_deadzone" ) );
-	rect.x = 10;
-	rect.w = 300;
-	
-	rect.y += rect.h + 8;
-	AddElement( new PrefsMenuCheckBox( this, &rect, ItemFont, "Swap Joystick Yaw/Roll (Classic Controls)", "joy_swap_xz" ) );
-	
-	rect.y += rect.h + 8;
-	rect.w = 190;
-	AddElement( new Label( this, &rect, "Joystick Twist Smoothing:", ItemFont, Font::ALIGN_MIDDLE_LEFT ) );
-	rect.x += rect.w + 5;
-	rect.w = 80;
-	PrefsMenuDropDown *joy_smooth_dropdown = new PrefsMenuDropDown( this, &rect, ItemFont, Font::ALIGN_MIDDLE_LEFT, 0, "joy_smooth_z" );
-	joy_smooth_dropdown->Items.push_back( ListBoxItem("0"," Off ") );
-	joy_smooth_dropdown->Items.push_back( ListBoxItem("0.5"," Low ") );
-	joy_smooth_dropdown->Items.push_back( ListBoxItem("1"," High ") );
-	joy_smooth_dropdown->Update();
-	AddElement( joy_smooth_dropdown );
-	rect.x = 10;
-	rect.w = 300;
-	
-	rect.y += rect.h + 8;
-	AddElement( new Label( this, &rect, "Fly With Mouse (If No Joystick):", ItemFont, Font::ALIGN_MIDDLE_LEFT ) );
-	rect.x += 250;
-	PrefsMenuRadioButton *mouse_enable_never = new PrefsMenuRadioButton( this, &rect, ItemFont, "Never", "mouse_enable", "false" );
-	mouse_enable_never->Rect.w = mouse_enable_never->GetWidth();
-	AddElement( mouse_enable_never );
-	rect.x += mouse_enable_never->Rect.w + 5;
-	PrefsMenuRadioButton *mouse_enable_fullscreen = new PrefsMenuRadioButton( this, &rect, ItemFont, "Fullscreen", "mouse_enable", "fullscreen" );
-	mouse_enable_fullscreen->Rect.w = mouse_enable_fullscreen->GetWidth();
-	AddElement( mouse_enable_fullscreen );
-	rect.x += mouse_enable_fullscreen->Rect.w + 5;
-	PrefsMenuRadioButton *mouse_enable_always = new PrefsMenuRadioButton( this, &rect, ItemFont, "Always", "mouse_enable", "true" );
-	mouse_enable_always->Rect.w = mouse_enable_always->GetWidth();
-	AddElement( mouse_enable_always );
-	mouse_enable_never->OtherButtons.push_back( mouse_enable_fullscreen );
-	mouse_enable_never->OtherButtons.push_back( mouse_enable_always );
-	mouse_enable_fullscreen->OtherButtons.push_back( mouse_enable_never );
-	mouse_enable_fullscreen->OtherButtons.push_back( mouse_enable_always );
-	mouse_enable_always->OtherButtons.push_back( mouse_enable_never );
-	mouse_enable_always->OtherButtons.push_back( mouse_enable_fullscreen );
-	rect.x = 10;
-	rect.w = 300;
-	
-	rect.y += rect.h + 8;
-	rect.x += 20;
-	AddElement( new PrefsMenuCheckBox( this, &rect, ItemFont, "Invert Mouse", "mouse_invert" ) );
-	rect.x -= 20;
-	
-	rect.y += rect.h + 8;
-	AddElement( new PrefsMenuCheckBox( this, &rect, ItemFont, "Menu Music", "s_menu_music" ) );
-	
-	rect.y += rect.h + 8;
-	AddElement( new PrefsMenuCheckBox( this, &rect, ItemFont, "Flight Music", "s_game_music" ) );
-	
-	rect.y += rect.h + 8;
-	AddElement( new PrefsMenuCheckBox( this, &rect, ItemFont, "Silly Sounds", "res_sound_dir", "Sounds/Silly", "Sounds" ) );
+	SDL_Rect group_rect, rect;
+	GroupBox *group = NULL;
 	
 	rect.w = 150;
 	rect.h = 50;
 	rect.y = Rect.h - rect.h - 10;
 	rect.x = Rect.w - rect.w - 10;
-	AddElement( new PrefsMenuDoneButton( this, &rect, "Done" ) );
+	AddElement( new PrefsMenuDoneButton( &rect, ButtonFont, "Done" ) );
 	
 	rect.x -= (rect.w + 10);
-	AddElement( new PrefsMenuDefaultsButton( this, &rect, "Defaults" ) );
+	AddElement( new PrefsMenuDefaultsButton( &rect, ButtonFont, "Defaults" ) );
+	
+	// --------------------------------------------------------------------------------------------------------------------
+	// Graphics
+	
+	group_rect.x = 10;
+	group_rect.y = 55;
+	group_rect.w = 305;
+	group_rect.h = 180;
+	group = new GroupBox( &group_rect, "Graphics", ItemFont );
+	AddElement( group );
+	rect.x = 10;
+	rect.y = 10 + group->TitleFont->GetAscent();
+	
+	rect.h = ItemFont ? ItemFont->GetHeight() : 18;
+	rect.w = 115;
+	group->AddElement( new PrefsMenuCheckBox( &rect, LabelFont, "Fullscreen:", "g_fullscreen" ) );
+	rect.x += rect.w + 5;
+	rect.w = 60;
+	group->AddElement( new PrefsMenuTextBox( &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, "g_res_fullscreen_x" ) );
+	rect.x += rect.w + 5;
+	rect.w = 10;
+	group->AddElement( new Label( &rect, "x", LabelFont, Font::ALIGN_MIDDLE_CENTER ) );
+	rect.x += rect.w + 5;
+	rect.w = 60;
+	group->AddElement( new PrefsMenuTextBox( &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, "g_res_fullscreen_y" ) );
+	
+	rect.y += rect.h + 8;
+	rect.x = 10;
+	rect.w = 80;
+	group->AddElement( new Label( &rect, "Filtering:", LabelFont, Font::ALIGN_MIDDLE_LEFT ) );
+	rect.x += rect.w + 5;
+	rect.w = 85;
+	PrefsMenuDropDown *fsaa_dropdown = new PrefsMenuDropDown( &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, 0, "g_fsaa" );
+	fsaa_dropdown->AddItem( "0", "No AA" );
+	fsaa_dropdown->AddItem( "2", "2xFSAA" );
+	fsaa_dropdown->AddItem( "4", "4xFSAA" );
+	fsaa_dropdown->AddItem( "8", "8xFSAA" );
+	fsaa_dropdown->AddItem( "16", "16xFSAA" );
+	fsaa_dropdown->Update();
+	group->AddElement( fsaa_dropdown );
+	rect.x += rect.w + 5;
+	rect.w = 85;
+	PrefsMenuDropDown *af_dropdown = new PrefsMenuDropDown( &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, 0, "g_af" );
+	af_dropdown->AddItem( "1", "No AF" );
+	af_dropdown->AddItem( "2", "2xAF" );
+	af_dropdown->AddItem( "4", "4xAF" );
+	af_dropdown->AddItem( "8", "8xAF" );
+	af_dropdown->AddItem( "16", "16xAF" );
+	af_dropdown->Update();
+	group->AddElement( af_dropdown );
+	
+	rect.y += rect.h + 8;
+	rect.x = 10;
+	rect.w = group_rect.w - 20;
+	group->AddElement( new PrefsMenuCheckBox( &rect, LabelFont, "Draw With Shaders", "g_shader_enable" ) );
+	
+	rect.y += rect.h + 8;
+	rect.w = 225;
+	group->AddElement( new Label( &rect, "Dynamic Lights Per Object:", LabelFont, Font::ALIGN_MIDDLE_LEFT ) );
+	rect.x += rect.w + 5;
+	rect.w = 50;
+	PrefsMenuDropDown *dynamic_lights_dropdown = new PrefsMenuDropDown( &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, 0, "g_dynamic_lights" );
+	dynamic_lights_dropdown->AddItem( "0", "Off" );
+	dynamic_lights_dropdown->AddItem( "1", "1" );
+	dynamic_lights_dropdown->AddItem( "2", "2" );
+	dynamic_lights_dropdown->AddItem( "3", "3" );
+	dynamic_lights_dropdown->AddItem( "4", "4" );
+	dynamic_lights_dropdown->Update();
+	group->AddElement( dynamic_lights_dropdown );
+	
+	rect.y += rect.h + 8;
+	rect.x = 10;
+	rect.w = group_rect.w - 20;
+	group->AddElement( new PrefsMenuCheckBox( &rect, LabelFont, "High-Quality Ships", "g_hq_ships" ) );
+	
+	// --------------------------------------------------------------------------------------------------------------------
+	// Sound
+	
+	group_rect.x += group_rect.w + 10;
+	group_rect.w = Rect.w - group_rect.x - 10;
+	group = new GroupBox( &group_rect, "Sound", ItemFont );
+	AddElement( group );
+	rect.x = 10;
+	rect.y = 10 + group->TitleFont->GetAscent();
+	
+	rect.h = ItemFont ? ItemFont->GetHeight() : 18;
+	rect.w = 70;
+	group->AddElement( new Label( &rect, "Volume:", LabelFont, Font::ALIGN_MIDDLE_LEFT ) );
+	rect.x += rect.w + 5;
+	rect.w = 100;
+	PrefsMenuDropDown *s_volume_dropdown = new PrefsMenuDropDown( &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, 0, "s_volume" );
+	s_volume_dropdown->AddItem( "0", "Off" );
+	s_volume_dropdown->AddItem( "0.125", "Very Quiet" );
+	s_volume_dropdown->AddItem( "0.25", "Quiet" );
+	s_volume_dropdown->AddItem( "0.5", "Medium" );
+	s_volume_dropdown->AddItem( "0.75", "Loud" );
+	s_volume_dropdown->AddItem( "1", "Loudest" );
+	s_volume_dropdown->Update();
+	group->AddElement( s_volume_dropdown );
+	
+	rect.y += rect.h + 8;
+	rect.x = 10;
+	rect.w = 70;
+	group->AddElement( new Label( &rect, "Effects:", LabelFont, Font::ALIGN_MIDDLE_LEFT ) );
+	rect.x += rect.w + 5;
+	rect.w = 100;
+	PrefsMenuDropDown *s_effect_volume_dropdown = new PrefsMenuDropDown( &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, 0, "s_effect_volume" );
+	s_effect_volume_dropdown->AddItem( "0", "Off" );
+	s_effect_volume_dropdown->AddItem( "0.125", "Very Quiet" );
+	s_effect_volume_dropdown->AddItem( "0.25", "Quiet" );
+	s_effect_volume_dropdown->AddItem( "0.5", "Medium" );
+	s_effect_volume_dropdown->AddItem( "0.75", "Loud" );
+	s_effect_volume_dropdown->AddItem( "1", "Loudest" );
+	s_effect_volume_dropdown->Update();
+	group->AddElement( s_effect_volume_dropdown );
+	
+	rect.x = 10;
+	rect.y += rect.h + 8;
+	rect.w = 70;
+	group->AddElement( new Label( &rect, "Music:", LabelFont, Font::ALIGN_MIDDLE_LEFT ) );
+	rect.x += rect.w + 5;
+	rect.w = 100;
+	PrefsMenuDropDown *s_music_volume_dropdown = new PrefsMenuDropDown( &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, 0, "s_music_volume" );
+	s_music_volume_dropdown->AddItem( "0", "Off" );
+	s_music_volume_dropdown->AddItem( "0.125", "Very Quiet" );
+	s_music_volume_dropdown->AddItem( "0.25", "Quiet" );
+	s_music_volume_dropdown->AddItem( "0.5", "Medium" );
+	s_music_volume_dropdown->AddItem( "0.75", "Loud" );
+	s_music_volume_dropdown->AddItem( "1", "Loudest" );
+	s_music_volume_dropdown->Update();
+	group->AddElement( s_music_volume_dropdown );
+	
+	rect.x = 10;
+	rect.y += rect.h + 8;
+	rect.w = group_rect.w - 20;
+	group->AddElement( new PrefsMenuCheckBox( &rect, LabelFont, "Menu Music", "s_menu_music" ) );
+	
+	rect.y += rect.h + 8;
+	group->AddElement( new PrefsMenuCheckBox( &rect, LabelFont, "Flight Music", "s_game_music" ) );
+	
+	// --------------------------------------------------------------------------------------------------------------------
+	// Joystick
+	
+	group_rect.x = 10;
+	group_rect.y += group_rect.h + 10;
+	group_rect.w = 195;
+	group_rect.h = 195;
+	group = new GroupBox( &group_rect, "Joystick", ItemFont );
+	AddElement( group );
+	rect.x = 10;
+	rect.y = 10 + group->TitleFont->GetAscent();
+	
+	rect.h = ItemFont ? ItemFont->GetHeight() : 18;
+	rect.w = 90;
+	group->AddElement( new Label( &rect, "Deadzone:", LabelFont, Font::ALIGN_MIDDLE_LEFT ) );
+	rect.x += rect.w + 5;
+	rect.w = 55;
+	PrefsMenuDropDown *joy_deadzone_dropdown = new PrefsMenuDropDown( &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, 0, "joy_deadzone" );
+	joy_deadzone_dropdown->AddItem( "0", "None" );
+	joy_deadzone_dropdown->AddItem( "0.01", "1%" );
+	joy_deadzone_dropdown->AddItem( "0.02", "2%" );
+	joy_deadzone_dropdown->AddItem( "0.03", "3%" );
+	joy_deadzone_dropdown->AddItem( "0.04", "4%" );
+	joy_deadzone_dropdown->AddItem( "0.05", "5%" );
+	joy_deadzone_dropdown->AddItem( "0.06", "6%" );
+	joy_deadzone_dropdown->AddItem( "0.07", "7%" );
+	joy_deadzone_dropdown->AddItem( "0.08", "8%" );
+	joy_deadzone_dropdown->AddItem( "0.09", "9%" );
+	joy_deadzone_dropdown->AddItem( "0.1", "10%" );
+	joy_deadzone_dropdown->AddItem( "0.11", "11%" );
+	joy_deadzone_dropdown->AddItem( "0.12", "12%" );
+	joy_deadzone_dropdown->AddItem( "0.13", "13%" );
+	joy_deadzone_dropdown->AddItem( "0.14", "14%" );
+	joy_deadzone_dropdown->AddItem( "0.15", "15%" );
+	joy_deadzone_dropdown->AddItem( "0.16", "16%" );
+	joy_deadzone_dropdown->AddItem( "0.17", "17%" );
+	joy_deadzone_dropdown->AddItem( "0.18", "18%" );
+	joy_deadzone_dropdown->AddItem( "0.19", "19%" );
+	joy_deadzone_dropdown->AddItem( "0.2", "20%" );
+	joy_deadzone_dropdown->Update();
+	group->AddElement( joy_deadzone_dropdown );
+	
+	rect.y += rect.h + 8;
+	rect.x = 10;
+	group->AddElement( new PrefsMenuCheckBox( &rect, LabelFont, "Swap Yaw/Roll", "joy_swap_xz" ) );
+	
+	rect.y += rect.h + 8;
+	rect.w = 80;
+	group->AddElement( new Label( &rect, "Smooth:", LabelFont, Font::ALIGN_MIDDLE_LEFT ) );
+	
+	rect.y += rect.h + 3;
+	rect.x = 20;
+	rect.w = 20;
+	group->AddElement( new Label( &rect, "X:", LabelFont, Font::ALIGN_MIDDLE_LEFT ) );
+	rect.x += rect.w + 5;
+	rect.w = 95;
+	PrefsMenuDropDown *joy_smooth_x_dropdown = new PrefsMenuDropDown( &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, 0, "joy_smooth_x" );
+	joy_smooth_x_dropdown->AddItem( "0", "Off" );
+	joy_smooth_x_dropdown->AddItem( "0.125", "Very Low" );
+	joy_smooth_x_dropdown->AddItem( "0.25", "Low" );
+	joy_smooth_x_dropdown->AddItem( "0.5", "Medium" );
+	joy_smooth_x_dropdown->AddItem( "0.75", "High" );
+	joy_smooth_x_dropdown->AddItem( "1", "Very High" );
+	joy_smooth_x_dropdown->Update();
+	group->AddElement( joy_smooth_x_dropdown );
+	
+	rect.y += rect.h + 3;
+	rect.x = 20;
+	rect.w = 20;
+	group->AddElement( new Label( &rect, "Y:", LabelFont, Font::ALIGN_MIDDLE_LEFT ) );
+	rect.x += rect.w + 5;
+	rect.w = 95;
+	PrefsMenuDropDown *joy_smooth_y_dropdown = new PrefsMenuDropDown( &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, 0, "joy_smooth_y" );
+	joy_smooth_y_dropdown->AddItem( "0", "Off" );
+	joy_smooth_y_dropdown->AddItem( "0.125", "Very Low" );
+	joy_smooth_y_dropdown->AddItem( "0.25", "Low" );
+	joy_smooth_y_dropdown->AddItem( "0.5", "Medium" );
+	joy_smooth_y_dropdown->AddItem( "0.75", "High" );
+	joy_smooth_y_dropdown->AddItem( "1", "Very High" );
+	joy_smooth_y_dropdown->Update();
+	group->AddElement( joy_smooth_y_dropdown );
+	
+	rect.y += rect.h + 3;
+	rect.x = 20;
+	rect.w = 55;
+	group->AddElement( new Label( &rect, "Twist:", LabelFont, Font::ALIGN_MIDDLE_LEFT ) );
+	rect.x += rect.w + 5;
+	rect.w = 95;
+	PrefsMenuDropDown *joy_smooth_z_dropdown = new PrefsMenuDropDown( &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, 0, "joy_smooth_z" );
+	joy_smooth_z_dropdown->AddItem( "0", "Off" );
+	joy_smooth_z_dropdown->AddItem( "0.125", "Very Low" );
+	joy_smooth_z_dropdown->AddItem( "0.25", "Low" );
+	joy_smooth_z_dropdown->AddItem( "0.5", "Medium" );
+	joy_smooth_z_dropdown->AddItem( "0.75", "High" );
+	joy_smooth_z_dropdown->AddItem( "1", "Very High" );
+	joy_smooth_z_dropdown->Update();
+	group->AddElement( joy_smooth_z_dropdown );
+	
+	// --------------------------------------------------------------------------------------------------------------------
+	// Controller
+	
+	group_rect.x += group_rect.w + 10;
+	group_rect.w = 195;
+	group_rect.h = 120;
+	group = new GroupBox( &group_rect, "Controller", ItemFont );
+	AddElement( group );
+	rect.x = 10;
+	rect.y = 10 + group->TitleFont->GetAscent();
+	
+	rect.w = 70;
+	group->AddElement( new Label( &rect, "Smooth:", LabelFont, Font::ALIGN_MIDDLE_LEFT ) );
+	rect.x += rect.w + 5;
+	rect.w = 95;
+	PrefsMenuDropDown *joy_smooth_thumbsticks_dropdown = new PrefsMenuDropDown( &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, 0, "joy_smooth_thumbsticks" );
+	joy_smooth_thumbsticks_dropdown->AddItem( "0", "Off" );
+	joy_smooth_thumbsticks_dropdown->AddItem( "0.125", "Very Low" );
+	joy_smooth_thumbsticks_dropdown->AddItem( "0.25", "Low" );
+	joy_smooth_thumbsticks_dropdown->AddItem( "0.5", "Medium" );
+	joy_smooth_thumbsticks_dropdown->AddItem( "0.75", "High" );
+	joy_smooth_thumbsticks_dropdown->AddItem( "1", "Very High" );
+	joy_smooth_thumbsticks_dropdown->Update();
+	group->AddElement( joy_smooth_thumbsticks_dropdown );
+	
+	rect.y += rect.h + 8;
+	rect.x = 10;
+	rect.w = 90;
+	group->AddElement( new Label( &rect, "Deadzone:", LabelFont, Font::ALIGN_MIDDLE_LEFT ) );
+	rect.x += rect.w + 5;
+	rect.w = 55;
+	PrefsMenuDropDown *joy_deadzone_thumbsticks_dropdown = new PrefsMenuDropDown( &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, 0, "joy_deadzone_thumbsticks" );
+	joy_deadzone_thumbsticks_dropdown->AddItem( "0", "None" );
+	joy_deadzone_thumbsticks_dropdown->AddItem( "0.01", "1%" );
+	joy_deadzone_thumbsticks_dropdown->AddItem( "0.02", "2%" );
+	joy_deadzone_thumbsticks_dropdown->AddItem( "0.03", "3%" );
+	joy_deadzone_thumbsticks_dropdown->AddItem( "0.04", "4%" );
+	joy_deadzone_thumbsticks_dropdown->AddItem( "0.05", "5%" );
+	joy_deadzone_thumbsticks_dropdown->AddItem( "0.06", "6%" );
+	joy_deadzone_thumbsticks_dropdown->AddItem( "0.07", "7%" );
+	joy_deadzone_thumbsticks_dropdown->AddItem( "0.08", "8%" );
+	joy_deadzone_thumbsticks_dropdown->AddItem( "0.09", "9%" );
+	joy_deadzone_thumbsticks_dropdown->AddItem( "0.1", "10%" );
+	joy_deadzone_thumbsticks_dropdown->AddItem( "0.11", "11%" );
+	joy_deadzone_thumbsticks_dropdown->AddItem( "0.12", "12%" );
+	joy_deadzone_thumbsticks_dropdown->AddItem( "0.13", "13%" );
+	joy_deadzone_thumbsticks_dropdown->AddItem( "0.14", "14%" );
+	joy_deadzone_thumbsticks_dropdown->AddItem( "0.15", "15%" );
+	joy_deadzone_thumbsticks_dropdown->AddItem( "0.16", "16%" );
+	joy_deadzone_thumbsticks_dropdown->AddItem( "0.17", "17%" );
+	joy_deadzone_thumbsticks_dropdown->AddItem( "0.18", "18%" );
+	joy_deadzone_thumbsticks_dropdown->AddItem( "0.19", "19%" );
+	joy_deadzone_thumbsticks_dropdown->AddItem( "0.2", "20%" );
+	joy_deadzone_thumbsticks_dropdown->Update();
+	group->AddElement( joy_deadzone_thumbsticks_dropdown );
+	
+	// --------------------------------------------------------------------------------------------------------------------
+	// Mouse
+	
+	group_rect.x += group_rect.w + 10;
+	group_rect.w = Rect.w - group_rect.x - 10;
+	group = new GroupBox( &group_rect, "Mouse", ItemFont );
+	AddElement( group );
+	rect.x = 10;
+	rect.y = 10 + group->TitleFont->GetAscent();
+	
+	rect.w = 185;
+	PrefsMenuDropDown *mouse_enable_dropdown = new PrefsMenuDropDown( &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, 0, "mouse_enable" );
+	mouse_enable_dropdown->AddItem( "false", "Never Fly By Mouse" );
+	mouse_enable_dropdown->AddItem( "fullscreen", "Fullscreen Only" );
+	mouse_enable_dropdown->AddItem( "true", "Anytime No Joystick" );
+	mouse_enable_dropdown->Update();
+	group->AddElement( mouse_enable_dropdown );
+	
+	rect.y += rect.h + 8;
+	rect.x = 10;
+	rect.w = group_rect.w - 20;
+	group->AddElement( new PrefsMenuCheckBox( &rect, LabelFont, "Invert", "mouse_invert" ) );
+	
+	rect.y += rect.h + 8;
+	rect.x = 10;
+	rect.w = 70;
+	group->AddElement( new Label( &rect, "Smooth:", LabelFont, Font::ALIGN_MIDDLE_LEFT ) );
+	rect.x += rect.w + 5;
+	rect.w = 95;
+	PrefsMenuDropDown *mouse_smooth_dropdown = new PrefsMenuDropDown( &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, 0, "mouse_smooth" );
+	mouse_smooth_dropdown->AddItem( "0", "Off" );
+	mouse_smooth_dropdown->AddItem( "0.125", "Very Low" );
+	mouse_smooth_dropdown->AddItem( "0.25", "Low" );
+	mouse_smooth_dropdown->AddItem( "0.5", "Medium" );
+	mouse_smooth_dropdown->AddItem( "0.75", "High" );
+	mouse_smooth_dropdown->AddItem( "1", "Very High" );
+	mouse_smooth_dropdown->Update();
+	group->AddElement( mouse_smooth_dropdown );
 }
 
 
@@ -392,11 +431,16 @@ bool PrefsMenu::KeyUp( SDLKey key )
 // ---------------------------------------------------------------------------
 
 
-PrefsMenuCheckBox::PrefsMenuCheckBox( Window *Container, SDL_Rect *rect, Font *font, std::string label, std::string variable, std::string true_str, std::string false_str ) : CheckBox( Container, rect, font, label, Raptor::Game->Cfg.SettingAsString( variable ) == true_str, Raptor::Game->Res.GetAnimation("box_unchecked.ani"), Raptor::Game->Res.GetAnimation("box_unchecked_mdown.ani"), NULL, Raptor::Game->Res.GetAnimation("box_checked.ani"), Raptor::Game->Res.GetAnimation("box_checked_mdown.ani"), NULL )
+PrefsMenuCheckBox::PrefsMenuCheckBox( SDL_Rect *rect, Font *font, std::string label, std::string variable, std::string true_str, std::string false_str ) : CheckBox( rect, font, label, Raptor::Game->Cfg.SettingAsString( variable ) == true_str, Raptor::Game->Res.GetAnimation("box_unchecked.ani"), Raptor::Game->Res.GetAnimation("box_unchecked_mdown.ani"), NULL, Raptor::Game->Res.GetAnimation("box_checked.ani"), Raptor::Game->Res.GetAnimation("box_checked_mdown.ani"), NULL )
 {
 	Variable = variable;
 	TrueStr = true_str;
 	FalseStr = false_str;
+}
+
+
+PrefsMenuCheckBox::~PrefsMenuCheckBox()
+{
 }
 
 
@@ -409,10 +453,15 @@ void PrefsMenuCheckBox::Changed( void )
 // ---------------------------------------------------------------------------
 
 
-PrefsMenuRadioButton::PrefsMenuRadioButton( Window *Container, SDL_Rect *rect, Font *font, std::string label, std::string variable, std::string true_str ) : CheckBox( Container, rect, font, label, Raptor::Game->Cfg.SettingAsString( variable ) == true_str, Raptor::Game->Res.GetAnimation("box_unchecked.ani"), Raptor::Game->Res.GetAnimation("box_unchecked_mdown.ani"), NULL, Raptor::Game->Res.GetAnimation("box_checked.ani"), Raptor::Game->Res.GetAnimation("box_checked_mdown.ani"), NULL )
+PrefsMenuRadioButton::PrefsMenuRadioButton( SDL_Rect *rect, Font *font, std::string label, std::string variable, std::string true_str ) : CheckBox( rect, font, label, Raptor::Game->Cfg.SettingAsString( variable ) == true_str, Raptor::Game->Res.GetAnimation("box_unchecked.ani"), Raptor::Game->Res.GetAnimation("box_unchecked_mdown.ani"), NULL, Raptor::Game->Res.GetAnimation("box_checked.ani"), Raptor::Game->Res.GetAnimation("box_checked_mdown.ani"), NULL )
 {
 	Variable = variable;
 	TrueStr = true_str;
+}
+
+
+PrefsMenuRadioButton::~PrefsMenuRadioButton()
+{
 }
 
 
@@ -442,11 +491,16 @@ void PrefsMenuRadioButton::Clicked( Uint8 button )
 // ---------------------------------------------------------------------------
 
 
-PrefsMenuTextBox::PrefsMenuTextBox( Window *Container, SDL_Rect *rect, Font *font, uint8_t align, std::string variable ) : TextBox( Container, rect, font, align, Raptor::Game->Cfg.SettingAsString( variable ) )
+PrefsMenuTextBox::PrefsMenuTextBox( SDL_Rect *rect, Font *font, uint8_t align, std::string variable ) : TextBox( rect, font, align, Raptor::Game->Cfg.SettingAsString( variable ) )
 {
 	Variable = variable;
 	LinkedListBox = NULL;
 	ReturnDeselects = true;
+}
+
+
+PrefsMenuTextBox::~PrefsMenuTextBox()
+{
 }
 
 
@@ -459,10 +513,15 @@ void PrefsMenuTextBox::Changed( void )
 // ---------------------------------------------------------------------------
 
 
-PrefsMenuListBox::PrefsMenuListBox( Window *Container, SDL_Rect *rect, Font *font, int scroll_bar_size, std::string variable, TextBox *linked_text_box ) : ListBox( Container, rect, font, scroll_bar_size )
+PrefsMenuListBox::PrefsMenuListBox( SDL_Rect *rect, Font *font, int scroll_bar_size, std::string variable, TextBox *linked_text_box ) : ListBox( rect, font, scroll_bar_size )
 {
 	Variable = variable;
 	LinkedTextBox = linked_text_box;
+}
+
+
+PrefsMenuListBox::~PrefsMenuListBox()
+{
 }
 
 
@@ -478,10 +537,20 @@ void PrefsMenuListBox::Changed( void )
 // ---------------------------------------------------------------------------
 
 
-PrefsMenuDropDown::PrefsMenuDropDown( Layer *container, SDL_Rect *rect, Font *font, uint8_t align, int scroll_bar_size, std::string variable ) : DropDown( container, rect, font, align, scroll_bar_size, Raptor::Game->Res.GetAnimation("button.ani"), Raptor::Game->Res.GetAnimation("button_mdown.ani") )
+PrefsMenuDropDown::PrefsMenuDropDown( SDL_Rect *rect, Font *font, uint8_t align, int scroll_bar_size, std::string variable ) : DropDown( rect, font, align, scroll_bar_size, NULL, NULL )
 {
+	Red = 0.f;
+	Green = 0.f;
+	Blue = 0.f;
+	Alpha = 0.75f;
+	
 	Variable = variable;
 	Value = Raptor::Game->Cfg.SettingAsString( Variable );
+}
+
+
+PrefsMenuDropDown::~PrefsMenuDropDown()
+{
 }
 
 
@@ -494,12 +563,17 @@ void PrefsMenuDropDown::Changed( void )
 // ---------------------------------------------------------------------------
 
 
-PrefsMenuDoneButton::PrefsMenuDoneButton( PrefsMenu *menu, SDL_Rect *rect, const char *label ) : LabelledButton( menu, rect, menu->ButtonFont, label, Font::ALIGN_MIDDLE_CENTER, Raptor::Game->Res.GetAnimation("button.ani"), Raptor::Game->Res.GetAnimation("button_mdown.ani") )
+PrefsMenuDoneButton::PrefsMenuDoneButton( SDL_Rect *rect, Font *button_font, const char *label ) : LabelledButton( rect, button_font, label, Font::ALIGN_MIDDLE_CENTER, Raptor::Game->Res.GetAnimation("button.ani"), Raptor::Game->Res.GetAnimation("button_mdown.ani") )
 {
 	Red = 1.f;
 	Green = 1.f;
 	Blue = 1.f;
 	Alpha = 0.75f;
+}
+
+
+PrefsMenuDoneButton::~PrefsMenuDoneButton()
+{
 }
 
 
@@ -565,12 +639,17 @@ void PrefsMenuDoneButton::Clicked( Uint8 button )
 // ---------------------------------------------------------------------------
 
 
-PrefsMenuDefaultsButton::PrefsMenuDefaultsButton( PrefsMenu *menu, SDL_Rect *rect, const char *label ) : LabelledButton( menu, rect, menu->ButtonFont, label, Font::ALIGN_MIDDLE_CENTER, Raptor::Game->Res.GetAnimation("button.ani"), Raptor::Game->Res.GetAnimation("button_mdown.ani") )
+PrefsMenuDefaultsButton::PrefsMenuDefaultsButton( SDL_Rect *rect, Font *button_font, const char *label ) : LabelledButton( rect, button_font, label, Font::ALIGN_MIDDLE_CENTER, Raptor::Game->Res.GetAnimation("button.ani"), Raptor::Game->Res.GetAnimation("button_mdown.ani") )
 {
 	Red = 1.f;
 	Green = 1.f;
 	Blue = 1.f;
 	Alpha = 0.75f;
+}
+
+
+PrefsMenuDefaultsButton::~PrefsMenuDefaultsButton()
+{
 }
 
 

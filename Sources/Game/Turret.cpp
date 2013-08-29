@@ -24,6 +24,11 @@ Turret::Turret( uint32_t id ) : GameObject( id, XWing::Object::TURRET )
 	Weapon = Shot::TYPE_TURBO_LASER_GREEN;
 	FiringMode = 2;
 	SingleShotDelay = 0.5;
+	MaxFiringDist = 1500.;
+	AimAhead = 1.f;
+	TargetDir.Copy(&Fwd);
+	TargetArc = 180.;
+	SafetyDistance = 0.;
 	
 	BodyShape = NULL;
 	GunShape = NULL;
@@ -115,7 +120,7 @@ Pos3D Turret::GunPos( void )
 {
 	GameObject gun;
 	gun.Copy( this );
-	gun.MoveAlong( &(this->Up), 0.022 * 150. );
+	gun.MoveAlong( &(this->Up), 0.022 * 175. );
 	gun.MoveAlong( &(this->Fwd), 0.022 * 50. );
 	gun.Pitch( GunPitch );
 	return gun;

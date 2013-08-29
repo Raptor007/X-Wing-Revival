@@ -33,7 +33,7 @@ public:
 	LobbyMenuShipButton *ShipButton;
 	ListBox *PlayerList, *MessageList;
 	TextBox *PlayerName, *MessageInput;
-	LobbyMenuConfiguration *GameType, *TDMKillLimit, *DMKillLimit, *AI, *Respawn, *Asteroids, *Permissions;
+	LobbyMenuConfiguration *GameType, *TDMKillLimit, *DMKillLimit, *AI, *Respawn, *Asteroids, *YavinTimeLimit, *YavinTurrets, *Permissions;
 	
 	LobbyMenu( void );
 	virtual ~LobbyMenu();
@@ -51,7 +51,8 @@ public:
 class LobbyMenuFlyButton : public LabelledButton
 {
 public:
-	LobbyMenuFlyButton( LobbyMenu *menu );
+	LobbyMenuFlyButton( void );
+	virtual ~LobbyMenuFlyButton();
 	void Clicked( Uint8 button = SDL_BUTTON_LEFT );
 };
 
@@ -59,7 +60,8 @@ public:
 class LobbyMenuLeaveButton : public LabelledButton
 {
 public:
-	LobbyMenuLeaveButton( LobbyMenu *menu );
+	LobbyMenuLeaveButton( void );
+	virtual ~LobbyMenuLeaveButton();
 	void Clicked( Uint8 button = SDL_BUTTON_LEFT );
 };
 
@@ -67,7 +69,8 @@ public:
 class LobbyMenuTeamButton : public LabelledButton
 {
 public:
-	LobbyMenuTeamButton( LobbyMenu *menu );
+	LobbyMenuTeamButton( void );
+	virtual ~LobbyMenuTeamButton();
 	void Clicked( Uint8 button = SDL_BUTTON_LEFT );
 };
 
@@ -75,7 +78,8 @@ public:
 class LobbyMenuShipButton : public LabelledButton
 {
 public:
-	LobbyMenuShipButton( LobbyMenu *menu );
+	LobbyMenuShipButton( void );
+	virtual ~LobbyMenuShipButton();
 	void Clicked( Uint8 button = SDL_BUTTON_LEFT );
 };
 
@@ -88,7 +92,8 @@ public:
 	LobbyMenuConfigChangeButton *ChangeButton;
 	bool ShowButton;
 	
-	LobbyMenuConfiguration( LobbyMenu *menu, std::string property, std::string desc, bool tiny = false );
+	LobbyMenuConfiguration( std::string property, std::string desc, bool tiny = false );
+	virtual ~LobbyMenuConfiguration();
 	void Update( void );
 };
 
@@ -96,6 +101,7 @@ public:
 class LobbyMenuConfigChangeButton : public LabelledButton
 {
 public:
-	LobbyMenuConfigChangeButton( LobbyMenuConfiguration *config, bool tiny = false );
+	LobbyMenuConfigChangeButton( bool tiny = false );
+	virtual ~LobbyMenuConfigChangeButton();
 	void Clicked( Uint8 button = SDL_BUTTON_LEFT );
 };

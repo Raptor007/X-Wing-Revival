@@ -55,7 +55,6 @@ public:
 		TYPE_TURBO_LASER_GREEN = 'TLGr',
 		TYPE_ION_CANNON = 'IonC',
 		TYPE_TORPEDO = 'Torp',
-		TYPE_MISSILE = 'Misl',
-		TYPE_MINE = 'Mine'
+		TYPE_MISSILE = 'Misl'
 	};
 };

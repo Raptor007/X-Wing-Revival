@@ -24,8 +24,10 @@ DeathStar::DeathStar( uint32_t id ) : GameObject( id, XWing::Object::DEATH_STAR 
 	Up.Set( 0., 0., 1. );
 	FixVectors();
 	
-	Ambient.Set( 0.1f, 0.1f, 0.1f, 1.f );
-	Diffuse.Set( 0.3f, 0.3f, 0.3f, 1.f );
+	Ambient.Set( 0.f, 0.f, 0.f, 1.f );
+	Diffuse.Set( 0.4f, 0.4f, 0.4f, 1.f );
+	BottomAmbient.Set( -0.35f, -0.35f, -0.35f, 1.f );
+	BottomDiffuse.Set( 0.4f, 0.4f, 0.4f, 1.f );
 }
 
 
@@ -36,24 +38,63 @@ DeathStar::~DeathStar()
 
 void DeathStar::ClientInit( void )
 {
-	Texture.BecomeInstance( Raptor::Game->Res.GetAnimation("deathstar.ani") );
+	DetailSide.BecomeInstance( Raptor::Game->Res.GetModel("deathstar_detail.obj") );
+	double w = DetailSide.GetWidth();
+	double l = DetailSide.GetLength();
+	if( w && l )
+	{
+		DetailSide.ScaleBy( TrenchDepth / w, DetailHeight, TextureSize / l );
+		DetailSide.CalculateNormals();
+	}
 	
-	DetailBottom.BecomeInstance( Raptor::Game->Res.GetModel("deathstar_detail.obj") );
-	double w = DetailBottom.GetWidth();
-	double l = DetailBottom.GetLength();
+	DetailBottom.BecomeInstance( Raptor::Game->Res.GetModel("deathstar_detail_bottom.obj") );
+	w = DetailBottom.GetWidth();
+	l = DetailBottom.GetLength();
 	if( w && l )
 	{
 		DetailBottom.ScaleBy( TextureSize / l, DetailHeight, TrenchWidth / w );
 		DetailBottom.CalculateNormals();
 	}
 	
-	DetailSide.BecomeInstance( Raptor::Game->Res.GetModel("deathstar_detail.obj") );
-	w = DetailSide.GetWidth();
-	l = DetailSide.GetLength();
-	if( w && l )
+	// Get the texture and colors for flat-side rendering.
+	int best_vertex_count = -1;
+	if( DetailSide.Materials.size() )
 	{
-		DetailSide.ScaleBy( TrenchDepth / w, DetailHeight, TextureSize / l );
-		DetailSide.CalculateNormals();
+		// Use the model's values if available.
+		for( std::map<std::string,ModelMaterial>::iterator mtl_iter = DetailSide.Materials.begin(); mtl_iter != DetailSide.Materials.end(); mtl_iter ++ )
+		{
+			// We want to match the most-used material of the model.
+			if( mtl_iter->second.Arrays.VertexCount > best_vertex_count )
+			{
+				Texture.BecomeInstance( &(mtl_iter->second.Texture) );
+				Ambient = mtl_iter->second.Ambient;
+				Diffuse = mtl_iter->second.Diffuse;
+				best_vertex_count = mtl_iter->second.Arrays.VertexCount;
+			}
+		}
+	}
+	if( best_vertex_count < 0 )
+	{
+		// If we couldn't look up the data from the model, use defaults.
+		Texture.BecomeInstance( Raptor::Game->Res.GetAnimation("deathstar.ani") );
+	}
+	
+	// Get the texture and colors for rendering the bottom.
+	if( DetailBottom.Materials.size() )
+	{
+		best_vertex_count = -1;
+		
+		// Use the model's values if available.
+		for( std::map<std::string,ModelMaterial>::iterator mtl_iter = DetailBottom.Materials.begin(); mtl_iter != DetailBottom.Materials.end(); mtl_iter ++ )
+		{
+			// We want to match the most-used material of the model.
+			if( mtl_iter->second.Arrays.VertexCount > best_vertex_count )
+			{
+				BottomAmbient = mtl_iter->second.Ambient;
+				BottomDiffuse = mtl_iter->second.Diffuse;
+				best_vertex_count = mtl_iter->second.Arrays.VertexCount;
+			}
+		}
 	}
 }
 
@@ -169,6 +210,8 @@ void DeathStar::Update( double dt )
 
 void DeathStar::Draw( void )
 {
+	bool use_shaders = Raptor::Game->ShaderMgr.Active();
+	
 	double cam_up = Raptor::Game->Cam.DistAlong(&Up,this);
 	double cam_right = Raptor::Game->Cam.DistAlong(&Right,this);
 	double cam_fwd = Raptor::Game->Cam.DistAlong(&Fwd,this);
@@ -180,8 +223,6 @@ void DeathStar::Draw( void )
 		texture_fwd_offset += 1.;
 	Pos3D center( this );
 	center.MoveAlong( &Fwd, cam_fwd );
-	
-	//double up_dropoff = sqrt( 14400000000. - trench_fwd * trench_fwd );
 	
 	int deathstar_detail = Raptor::Game->Cfg.SettingAsInt( "g_deathstar_detail", 3 );
 	if( deathstar_detail && ( Raptor::Game->Cam.Dist(&center) < Raptor::Game->Cfg.SettingAsDouble( "g_deathstar_detail_dist", 1000. ) ) )
@@ -227,12 +268,15 @@ void DeathStar::Draw( void )
 		detail_left.MoveAlong( &Fwd, TextureSize * sign );
 		detail_right.MoveAlong( &Fwd, TextureSize * sign );
 		
+		//double height_scale = 0.5 - sign * texture_fwd_offset;
+		double height_scale = 1.;
+		
 		if( cam_up >= -TrenchDepth )
-			DetailBottom.DrawAt( &detail_center, 1., 1., 0.5 - sign * texture_fwd_offset, 1. );
+			DetailBottom.DrawAt( &detail_center, 1., 1., height_scale, 1. );
 		if( (cam_up >= 0.) || (cam_right >= TrenchWidth / -2.) )
-			DetailSide.DrawAt( &detail_left, 1., 1., 0.5 - sign * texture_fwd_offset, 1. );
+			DetailSide.DrawAt( &detail_left, 1., 1., height_scale, 1. );
 		if( (cam_up >= 0.) || (cam_right <= TrenchWidth / 2.) )
-			DetailSide.DrawAt( &detail_right, 1., 1., 0.5 - sign * texture_fwd_offset, 1. );
+			DetailSide.DrawAt( &detail_right, 1., 1., height_scale, 1. );
 	}
 	
 	Pos3D slice[ 4 ];
@@ -245,7 +289,7 @@ void DeathStar::Draw( void )
 	slice[ 3 ].Copy( &(slice[ 1 ]) );
 	slice[ 3 ].MoveAlong( &Up, TrenchDepth * -1. );
 	
-	if( Raptor::Game->ShaderMgr.Active() )
+	if( use_shaders )
 	{
 		Raptor::Game->ShaderMgr.Set3f( "AmbientColor", Ambient.Red, Ambient.Green, Ambient.Blue );
 		Raptor::Game->ShaderMgr.Set3f( "DiffuseColor", Diffuse.Red, Diffuse.Green, Diffuse.Blue );
@@ -275,9 +319,9 @@ void DeathStar::Draw( void )
 			glVertex3d( slice[ 0 ].X + Fwd.X * trench_fwd - Right.X * trench_fwd, slice[ 0 ].Y + Fwd.Y * trench_fwd - Right.Y * trench_fwd, slice[ 0 ].Z + Fwd.Z * trench_fwd - Right.Z * trench_fwd );
 			glTexCoord2d( 0., texture_fwd_offset + textures_fwd );
 			glVertex3d( slice[ 0 ].X - Fwd.X * trench_fwd - Right.X * trench_fwd, slice[ 0 ].Y - Fwd.Y * trench_fwd - Right.Y * trench_fwd, slice[ 0 ].Z - Fwd.Z * trench_fwd - Right.Z * trench_fwd );
-			glTexCoord2d( textures_fwd, textures_fwd + texture_fwd_offset );
+			glTexCoord2d( textures_fwd / 2., textures_fwd + texture_fwd_offset );
 			glVertex3d( slice[ 0 ].X - Fwd.X * trench_fwd, slice[ 0 ].Y - Fwd.Y * trench_fwd, slice[ 0 ].Z - Fwd.Z * trench_fwd );
-			glTexCoord2d( textures_fwd, texture_fwd_offset );
+			glTexCoord2d( textures_fwd / 2., texture_fwd_offset );
 			glVertex3d( slice[ 0 ].X + Fwd.X * trench_fwd, slice[ 0 ].Y + Fwd.Y * trench_fwd, slice[ 0 ].Z + Fwd.Z * trench_fwd );
 			
 			// Surface Right
@@ -286,9 +330,9 @@ void DeathStar::Draw( void )
 			glVertex3d( slice[ 1 ].X + Fwd.X * trench_fwd, slice[ 1 ].Y + Fwd.Y * trench_fwd, slice[ 1 ].Z + Fwd.Z * trench_fwd );
 			glTexCoord2d( 0., texture_fwd_offset + textures_fwd );
 			glVertex3d( slice[ 1 ].X - Fwd.X * trench_fwd, slice[ 1 ].Y - Fwd.Y * trench_fwd, slice[ 1 ].Z - Fwd.Z * trench_fwd );
-			glTexCoord2d( textures_fwd, textures_fwd + texture_fwd_offset );
+			glTexCoord2d( textures_fwd / 2., textures_fwd + texture_fwd_offset );
 			glVertex3d( slice[ 1 ].X - Fwd.X * trench_fwd + Right.X * trench_fwd, slice[ 1 ].Y - Fwd.Y * trench_fwd + Right.Y * trench_fwd, slice[ 1 ].Z - Fwd.Z * trench_fwd + Right.Z * trench_fwd );
-			glTexCoord2d( textures_fwd, texture_fwd_offset );
+			glTexCoord2d( textures_fwd / 2., texture_fwd_offset );
 			glVertex3d( slice[ 1 ].X + Fwd.X * trench_fwd + Right.X * trench_fwd, slice[ 1 ].Y + Fwd.Y * trench_fwd + Right.Y * trench_fwd, slice[ 1 ].Z + Fwd.Z * trench_fwd + Right.Z * trench_fwd );
 		}
 		
@@ -318,6 +362,14 @@ void DeathStar::Draw( void )
 			glVertex3d( slice[ 3 ].X - Fwd.X * trench_fwd, slice[ 3 ].Y - Fwd.Y * trench_fwd, slice[ 3 ].Z - Fwd.Z * trench_fwd );
 			glTexCoord2d( texture_fwd_offset + textures_fwd, 0. );
 			glVertex3d( slice[ 1 ].X - Fwd.X * trench_fwd, slice[ 1 ].Y - Fwd.Y * trench_fwd, slice[ 1 ].Z - Fwd.Z * trench_fwd );
+		}
+	
+		if( use_shaders )
+		{
+			glEnd();
+			Raptor::Game->ShaderMgr.Set3f( "AmbientColor", BottomAmbient.Red, BottomAmbient.Green, BottomAmbient.Blue );
+			Raptor::Game->ShaderMgr.Set3f( "DiffuseColor", BottomDiffuse.Red, BottomDiffuse.Green, BottomDiffuse.Blue );
+			glBegin( GL_QUADS );
 		}
 		
 		if( cam_up >= -TrenchDepth )

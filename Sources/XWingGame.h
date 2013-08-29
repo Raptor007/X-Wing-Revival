@@ -15,6 +15,7 @@ class XWingGame : public RaptorGame
 public:
 	Layer *Overlay;
 	bool ReadKeyboard, ReadMouse;
+	Clock RoundTimer;
 	uint32_t ObservedShipID;
 	double LookYaw, LookPitch;
 	
@@ -24,6 +25,7 @@ public:
 	void SetDefaults( void );
 	void Setup( int argc, char **argv );
 	void Precache( void );
+	void AddScreensaverLayer( void );
 	
 	void Update( double dt );
 	bool HandleEvent( SDL_Event *event );

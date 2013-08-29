@@ -32,6 +32,11 @@ public:
 	int WeaponIndex;
 	int FiringMode;
 	double SingleShotDelay;
+	double MaxFiringDist;
+	float AimAhead;
+	Vec3D TargetDir;
+	double TargetArc;
+	double SafetyDistance;
 	
 	uint32_t Target;
 	

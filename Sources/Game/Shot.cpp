@@ -41,10 +41,6 @@ void Shot::SetType( uint32_t shot_type )
 			Anim.BecomeInstance( Raptor::Game->Res.GetAnimation("laser_green.ani") );
 		else if( ShotType == TYPE_TORPEDO )
 			Anim.BecomeInstance( Raptor::Game->Res.GetAnimation("torpedo.ani") );
-		/*
-		else if( shot_type == TYPE_MINE )
-			Shape.BecomeInstance( Raptor::Game->Res.GetModel("mine.obj") );
-		*/
 		else
 			Anim.BecomeInstance( Raptor::Game->Res.GetAnimation("laser_unknown.ani") );
 	}
@@ -66,11 +62,11 @@ double Shot::Damage( void ) const
 double Shot::Speed( void ) const
 {
 	if( ShotType == TYPE_TURBO_LASER_GREEN )
-		return 450.;
+		return 500.;
 	else if( ShotType == TYPE_TORPEDO )
-		return 300.;
-	else if( ShotType == TYPE_MISSILE )
 		return 400.;
+	else if( ShotType == TYPE_MISSILE )
+		return 450.;
 	return 600.;
 }
 
@@ -88,16 +84,21 @@ double Shot::TurnRate( void ) const
 
 Color Shot::LightColor( void ) const
 {
-	if( ShotType == TYPE_LASER_RED )
-		return Color( 20., 0., 0. );
-	else if( ShotType == TYPE_LASER_GREEN )
-		return Color( 0., 10., 0. );
-	else if( ShotType == TYPE_TURBO_LASER_GREEN )
-		return Color( 0., 15., 0. );
-	else if( ShotType == TYPE_TORPEDO )
-		return Color( 18., 12., 6. );
+	// Return the color of the dynamic light for this shot.
+	// We store the radius in the "alpha" variable.
 	
-	return Color( 12., 12., 12. );
+	if( ShotType == TYPE_LASER_RED )
+		return Color( 0.85f, 0.f, 0.f, 15.f );
+	else if( ShotType == TYPE_LASER_GREEN )
+		return Color( 0.f, 0.4f, 0.f, 15.f );
+	else if( ShotType == TYPE_TURBO_LASER_GREEN )
+		return Color( 0.f, 0.4f, 0.f, 15.f );
+	else if( ShotType == TYPE_TORPEDO )
+		return Color( 1.f, 0.7f, 0.4f, 15.f );
+	else if( ShotType == TYPE_MISSILE )
+		return Color( 0.9f, 0.2f, 0.1f, 15.f );
+	
+	return Color( 1.f, 1.f, 1.f, 15.f );
 }
 
 
@@ -163,7 +164,7 @@ bool Shot::WillCollide( const GameObject *other, double dt ) const
 	if( other->Type() == XWing::Object::SHOT )
 	{
 		Shot *shot = (Shot*) other;
-		if( (shot->FiredFrom != FiredFrom) && ((shot->ShotType == TYPE_TORPEDO) || (ShotType == TYPE_TORPEDO) || (shot->ShotType == TYPE_MISSILE) || (ShotType == TYPE_MISSILE) || (shot->ShotType == TYPE_MINE) || (ShotType == TYPE_MINE)) )
+		if( (shot->FiredFrom != FiredFrom) && ((shot->ShotType == TYPE_TORPEDO) || (ShotType == TYPE_TORPEDO) || (shot->ShotType == TYPE_MISSILE) || (ShotType == TYPE_MISSILE)) )
 		{
 			double dist = Math3D::MinimumDistance( this, &(this->MotionVector), other, &(other->MotionVector), dt );
 			if( dist <= 1. )

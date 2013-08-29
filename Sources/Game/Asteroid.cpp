@@ -42,7 +42,7 @@ void Asteroid::ClientInit( void )
 		Shape = NULL;
 	
 	// Get the texture and colors for sphere rendering.
-	int best_vertex_count = 0;
+	int best_vertex_count = -1;
 	if( Shape && Shape->Materials.size() )
 	{
 		// Use the model's values if available.
@@ -58,12 +58,12 @@ void Asteroid::ClientInit( void )
 			}
 		}
 	}
-	if( ! best_vertex_count )
+	if( best_vertex_count < 0 )
 	{
 		// If we couldn't look up the data from the model, use these defaults.
 		Texture.BecomeInstance( Raptor::Game->Res.GetAnimation("dirt.ani") );
-		Ambient.Set( 0.1f, 0.1f, 0.1f, 1.f );
-		Diffuse.Set( 0.4f, 0.4f, 0.4f, 1.f );
+		Ambient.Set( 0.f, 0.f, 0.f, 1.f );
+		Diffuse.Set( 0.5f, 0.5f, 0.5f, 1.f );
 	}
 }
 

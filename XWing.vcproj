@@ -12,6 +12,9 @@
 		<Platform
 			Name="Win32"
 		/>
+		<Platform
+			Name="x64"
+		/>
 	</Platforms>
 	<ToolFiles>
 	</ToolFiles>
@@ -52,7 +55,7 @@
 				RuntimeLibrary="3"
 				EnableFunctionLevelLinking="true"
 				EnableEnhancedInstructionSet="2"
-				FloatingPointModel="2"
+				FloatingPointModel="0"
 				OpenMP="true"
 				UsePrecompiledHeader="0"
 				WarningLevel="1"
@@ -69,10 +72,11 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="OpenGL32.lib GLU32.lib GLEW32.lib SDL.lib SDLmain.lib SDL_net.lib SDL_image.lib SDL_ttf.lib SDL_mixer.lib"
+				AdditionalDependencies="OpenGL32.lib GLU32.lib GLEW32s.lib GLEW32mxs.lib SDL.lib SDLmain.lib SDL_net.lib SDL_image.lib SDL_ttf.lib SDL_mixer.lib vcompd.lib"
 				LinkIncremental="2"
-				AdditionalLibraryDirectories="&quot;Y:\Documents\Frameworks\SDL-1.2.14\lib&quot;;&quot;Y:\Documents\Frameworks\SDL_image-1.2.10\lib&quot;;&quot;Y:\Documents\Frameworks\SDL_mixer-1.2.11\lib&quot;;&quot;Y:\Documents\Frameworks\SDL_net-1.2.7\lib&quot;;&quot;Y:\Documents\Frameworks\SDL_ttf-2.0.9\lib&quot;;&quot;Y:\Documents\Frameworks\GLUT&quot;"
-				IgnoreDefaultLibraryNames="msvcrt.lib"
+				AdditionalLibraryDirectories="&quot;Y:\Documents\Frameworks\lib&quot;"
+				IgnoreDefaultLibraryNames="LIBCMT;msvcrt.lib"
+				DelayLoadDLLs="SDL.dll;SDL_net.dll;SDL_image.dll;SDL_ttf.dll;SDL_mixer.dll"
 				GenerateDebugInformation="true"
 				AssemblyDebug="1"
 				GenerateMapFile="true"
@@ -82,6 +86,97 @@
 				LargeAddressAware="2"
 				LinkTimeCodeGeneration="0"
 				TargetMachine="1"
+			/>
+			<Tool
+				Name="VCALinkTool"
+			/>
+			<Tool
+				Name="VCManifestTool"
+			/>
+			<Tool
+				Name="VCXDCMakeTool"
+			/>
+			<Tool
+				Name="VCBscMakeTool"
+			/>
+			<Tool
+				Name="VCFxCopTool"
+			/>
+			<Tool
+				Name="VCAppVerifierTool"
+			/>
+			<Tool
+				Name="VCPostBuildEventTool"
+			/>
+		</Configuration>
+		<Configuration
+			Name="Debug|x64"
+			OutputDirectory="build\$(ConfigurationName)"
+			IntermediateDirectory="build\XWing.build\$(ConfigurationName)\Win64"
+			ConfigurationType="1"
+			CharacterSet="1"
+			>
+			<Tool
+				Name="VCPreBuildEventTool"
+			/>
+			<Tool
+				Name="VCCustomBuildTool"
+			/>
+			<Tool
+				Name="VCXMLDataGeneratorTool"
+			/>
+			<Tool
+				Name="VCWebServiceProxyGeneratorTool"
+			/>
+			<Tool
+				Name="VCMIDLTool"
+				TargetEnvironment="3"
+			/>
+			<Tool
+				Name="VCCLCompilerTool"
+				Optimization="0"
+				InlineFunctionExpansion="0"
+				EnableIntrinsicFunctions="false"
+				FavorSizeOrSpeed="0"
+				WholeProgramOptimization="false"
+				AdditionalIncludeDirectories="Sources;Sources\UI;Sources\Game;..\RaptorEngine\Core;..\RaptorEngine\Graphics;..\RaptorEngine\Input;..\RaptorEngine\Libs;..\RaptorEngine\Net;..\RaptorEngine\Sound;..\RaptorEngine\UI;..\RaptorEngine\Game"
+				PreprocessorDefinitions="WIN32;_DEBUG;_WINDOWS"
+				MinimalRebuild="true"
+				BasicRuntimeChecks="3"
+				RuntimeLibrary="3"
+				EnableFunctionLevelLinking="true"
+				FloatingPointModel="0"
+				OpenMP="true"
+				UsePrecompiledHeader="0"
+				WarningLevel="1"
+				DebugInformationFormat="3"
+			/>
+			<Tool
+				Name="VCManagedResourceCompilerTool"
+			/>
+			<Tool
+				Name="VCResourceCompilerTool"
+			/>
+			<Tool
+				Name="VCPreLinkEventTool"
+			/>
+			<Tool
+				Name="VCLinkerTool"
+				AdditionalDependencies="OpenGL32.lib GLU32.lib GLEW32s.lib GLEW32mxs.lib SDL.lib SDLmain.lib SDL_net.lib SDL_image.lib SDL_ttf.lib SDL_mixer.lib vcompd.lib"
+				OutputFile="$(OutDir)\$(ProjectName) x64.exe"
+				LinkIncremental="2"
+				AdditionalLibraryDirectories="&quot;Y:\Documents\Frameworks\lib64&quot;"
+				IgnoreDefaultLibraryNames="LIBCMT;msvcrt.lib"
+				DelayLoadDLLs="SDL.dll;SDL_net.dll;SDL_image.dll;SDL_ttf.dll;SDL_mixer.dll"
+				GenerateDebugInformation="true"
+				AssemblyDebug="1"
+				GenerateMapFile="true"
+				MapFileName="$(TargetDir)$(TargetName).map"
+				MapExports="true"
+				SubSystem="2"
+				LargeAddressAware="2"
+				LinkTimeCodeGeneration="0"
+				TargetMachine="17"
 			/>
 			<Tool
 				Name="VCALinkTool"
@@ -140,7 +235,7 @@
 				RuntimeLibrary="2"
 				EnableFunctionLevelLinking="true"
 				EnableEnhancedInstructionSet="2"
-				FloatingPointModel="2"
+				FloatingPointModel="0"
 				OpenMP="true"
 				UsePrecompiledHeader="0"
 				WarningLevel="1"
@@ -157,9 +252,11 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="OpenGL32.lib GLU32.lib GLEW32.lib SDL.lib SDLmain.lib SDL_net.lib SDL_image.lib SDL_ttf.lib SDL_mixer.lib"
+				AdditionalDependencies="OpenGL32.lib GLU32.lib GLEW32s.lib GLEW32mxs.lib SDL.lib SDLmain.lib SDL_net.lib SDL_image.lib SDL_ttf.lib SDL_mixer.lib vcomp.lib"
 				LinkIncremental="1"
-				AdditionalLibraryDirectories="&quot;Y:\Documents\Frameworks\SDL-1.2.14\lib&quot;;&quot;Y:\Documents\Frameworks\SDL_image-1.2.10\lib&quot;;&quot;Y:\Documents\Frameworks\SDL_mixer-1.2.11\lib&quot;;&quot;Y:\Documents\Frameworks\SDL_net-1.2.7\lib&quot;;&quot;Y:\Documents\Frameworks\SDL_ttf-2.0.9\lib&quot;;&quot;Y:\Documents\Frameworks\GLUT&quot;"
+				AdditionalLibraryDirectories="&quot;Y:\Documents\Frameworks\lib&quot;"
+				IgnoreDefaultLibraryNames="LIBCMT"
+				DelayLoadDLLs="SDL.dll;SDL_net.dll;SDL_image.dll;SDL_ttf.dll;SDL_mixer.dll"
 				GenerateDebugInformation="true"
 				GenerateMapFile="true"
 				MapFileName="$(TargetDir)$(TargetName).map"
@@ -170,6 +267,97 @@
 				EnableCOMDATFolding="2"
 				LinkTimeCodeGeneration="1"
 				TargetMachine="1"
+			/>
+			<Tool
+				Name="VCALinkTool"
+			/>
+			<Tool
+				Name="VCManifestTool"
+			/>
+			<Tool
+				Name="VCXDCMakeTool"
+			/>
+			<Tool
+				Name="VCBscMakeTool"
+			/>
+			<Tool
+				Name="VCFxCopTool"
+			/>
+			<Tool
+				Name="VCAppVerifierTool"
+			/>
+			<Tool
+				Name="VCPostBuildEventTool"
+			/>
+		</Configuration>
+		<Configuration
+			Name="Release|x64"
+			OutputDirectory="build\$(ConfigurationName)"
+			IntermediateDirectory="build\XWing.build\$(ConfigurationName)\Win64"
+			ConfigurationType="1"
+			CharacterSet="1"
+			WholeProgramOptimization="1"
+			>
+			<Tool
+				Name="VCPreBuildEventTool"
+			/>
+			<Tool
+				Name="VCCustomBuildTool"
+			/>
+			<Tool
+				Name="VCXMLDataGeneratorTool"
+			/>
+			<Tool
+				Name="VCWebServiceProxyGeneratorTool"
+			/>
+			<Tool
+				Name="VCMIDLTool"
+				TargetEnvironment="3"
+			/>
+			<Tool
+				Name="VCCLCompilerTool"
+				Optimization="2"
+				InlineFunctionExpansion="2"
+				EnableIntrinsicFunctions="true"
+				FavorSizeOrSpeed="1"
+				WholeProgramOptimization="true"
+				AdditionalIncludeDirectories="Sources;Sources\UI;Sources\Game;..\RaptorEngine\Core;..\RaptorEngine\Graphics;..\RaptorEngine\Input;..\RaptorEngine\Libs;..\RaptorEngine\Net;..\RaptorEngine\Sound;..\RaptorEngine\UI;..\RaptorEngine\Game"
+				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS"
+				RuntimeLibrary="2"
+				EnableFunctionLevelLinking="true"
+				FloatingPointModel="0"
+				OpenMP="true"
+				UsePrecompiledHeader="0"
+				WarningLevel="1"
+				DebugInformationFormat="3"
+			/>
+			<Tool
+				Name="VCManagedResourceCompilerTool"
+			/>
+			<Tool
+				Name="VCResourceCompilerTool"
+			/>
+			<Tool
+				Name="VCPreLinkEventTool"
+			/>
+			<Tool
+				Name="VCLinkerTool"
+				AdditionalDependencies="OpenGL32.lib GLU32.lib GLEW32s.lib GLEW32mxs.lib SDL.lib SDLmain.lib SDL_net.lib SDL_image.lib SDL_ttf.lib SDL_mixer.lib vcomp.lib"
+				OutputFile="$(OutDir)\$(ProjectName) x64.exe"
+				LinkIncremental="1"
+				AdditionalLibraryDirectories="&quot;Y:\Documents\Frameworks\lib64&quot;"
+				IgnoreDefaultLibraryNames="LIBCMT"
+				DelayLoadDLLs="SDL.dll;SDL_net.dll;SDL_image.dll;SDL_ttf.dll;SDL_mixer.dll"
+				GenerateDebugInformation="true"
+				GenerateMapFile="true"
+				MapFileName="$(TargetDir)$(TargetName).map"
+				MapExports="true"
+				SubSystem="2"
+				LargeAddressAware="2"
+				OptimizeReferences="2"
+				EnableCOMDATFolding="2"
+				LinkTimeCodeGeneration="1"
+				TargetMachine="17"
 			/>
 			<Tool
 				Name="VCALinkTool"
@@ -227,10 +415,6 @@
 					RelativePath="..\RaptorEngine\Core\RaptorServer.h"
 					>
 				</File>
-				<File
-					RelativePath="..\RaptorEngine\Core\SDLMain.h"
-					>
-				</File>
 			</Filter>
 			<Filter
 				Name="UI"
@@ -284,6 +468,14 @@
 					>
 				</File>
 				<File
+					RelativePath="..\RaptorEngine\UI\GroupBox.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\RaptorEngine\UI\GroupBox.h"
+					>
+				</File>
+				<File
 					RelativePath="..\RaptorEngine\UI\Label.cpp"
 					>
 				</File>
@@ -332,6 +524,14 @@
 					>
 				</File>
 				<File
+					RelativePath="..\RaptorEngine\UI\Notification.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\RaptorEngine\UI\Notification.h"
+					>
+				</File>
+				<File
 					RelativePath="..\RaptorEngine\UI\Screensaver.cpp"
 					>
 				</File>
@@ -345,6 +545,14 @@
 				</File>
 				<File
 					RelativePath="..\RaptorEngine\UI\TextBox.h"
+					>
+				</File>
+				<File
+					RelativePath="..\RaptorEngine\UI\TextFileViewer.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\RaptorEngine\UI\TextFileViewer.h"
 					>
 				</File>
 				<File

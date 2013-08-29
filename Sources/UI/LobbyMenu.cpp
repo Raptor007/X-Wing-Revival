@@ -18,27 +18,27 @@ LobbyMenu::LobbyMenu( void )
 	
 	Background.BecomeInstance( Raptor::Game->Res.GetAnimation("bg_lobby.ani") );
 	
-	bool tiny = (Raptor::Game->Gfx.H < 600) || (Raptor::Game->Gfx.W < 800);
-	TitleFont = Raptor::Game->Res.GetFont( "TimesNR.ttf", tiny ? 24 : 30 );
+	bool tiny = (Rect.h < 720) || (Rect.w < 800);
+	TitleFont = Raptor::Game->Res.GetFont( "Verdana.ttf", tiny ? 24 : 30 );
 	
-	AddElement( LeaveButton = new LobbyMenuLeaveButton( this ) );
-	AddElement( FlyButton = new LobbyMenuFlyButton( this ) );
-	AddElement( TeamButton = new LobbyMenuTeamButton( this ) );
-	AddElement( ShipButton = new LobbyMenuShipButton( this ) );
+	AddElement( LeaveButton = new LobbyMenuLeaveButton() );
+	AddElement( FlyButton = new LobbyMenuFlyButton() );
+	AddElement( TeamButton = new LobbyMenuTeamButton() );
+	AddElement( ShipButton = new LobbyMenuShipButton() );
 	
-	AddElement( PlayerList = new ListBox( this, NULL, Raptor::Game->Res.GetFont( "TimesNR.ttf", tiny ? 15 : 24 ), 16 ) );
+	AddElement( PlayerList = new ListBox( NULL, Raptor::Game->Res.GetFont( "Verdana.ttf", tiny ? 13 : 19 ), 16 ) );
 	PlayerList->SelectedRed = PlayerList->TextRed;
 	PlayerList->SelectedGreen = PlayerList->TextGreen;
 	PlayerList->SelectedBlue = PlayerList->TextBlue;
 	PlayerList->SelectedAlpha = PlayerList->TextAlpha;
 	
-	AddElement( MessageList = new ListBox( this, NULL, Raptor::Game->Res.GetFont( "TimesNR.ttf", tiny ? 15 : 17 ), 16 ) );
+	AddElement( MessageList = new ListBox( NULL, Raptor::Game->Res.GetFont( "Verdana.ttf", tiny ? 12 : 16 ), 16 ) );
 	MessageList->SelectedRed = MessageList->TextRed;
 	MessageList->SelectedGreen = MessageList->TextGreen;
 	MessageList->SelectedBlue = MessageList->TextBlue;
 	MessageList->SelectedAlpha = MessageList->TextAlpha;
 	
-	AddElement( PlayerName = new TextBox( this, NULL, Raptor::Game->Res.GetFont( "TimesNR.ttf", tiny ? 15 : 24 ), Font::ALIGN_MIDDLE_LEFT ) );
+	AddElement( PlayerName = new TextBox( NULL, Raptor::Game->Res.GetFont( "Verdana.ttf", tiny ? 13 : 19 ), Font::ALIGN_MIDDLE_LEFT ) );
 	PlayerName->ReturnDeselects = false;
 	PlayerName->EscDeselects = true;
 	PlayerName->PassReturn = true;
@@ -48,7 +48,7 @@ LobbyMenu::LobbyMenu( void )
 	PlayerName->SelectedBlue = 0.f;
 	PlayerName->SelectedAlpha = 1.f;
 	
-	AddElement( MessageInput = new TextBox( this, NULL, Raptor::Game->Res.GetFont( "TimesNR.ttf", tiny ? 15 : 17 ), Font::ALIGN_TOP_LEFT ) );
+	AddElement( MessageInput = new TextBox( NULL, Raptor::Game->Res.GetFont( "Verdana.ttf", tiny ? 12 : 16 ), Font::ALIGN_TOP_LEFT ) );
 	MessageInput->ReturnDeselects = false;
 	MessageInput->EscDeselects = false;
 	MessageInput->PassReturn = true;
@@ -70,15 +70,15 @@ LobbyMenu::LobbyMenu( void )
 	MessageInput->SelectedBlue = MessageInput->Blue;
 	MessageInput->SelectedAlpha = MessageInput->Alpha;
 	
-	AddElement( GameType = new LobbyMenuConfiguration( this, "gametype", "Game Type", tiny ) );
-	AddElement( TDMKillLimit = new LobbyMenuConfiguration( this, "tdm_kill_limit", "Team Kill Limit", tiny ) );
-	AddElement( DMKillLimit = new LobbyMenuConfiguration( this, "dm_kill_limit", "Kill Limit", tiny ) );
-	AddElement( AI = new LobbyMenuConfiguration( this, "ai_waves", "AI Ships", tiny ) );
-	AddElement( Respawn = new LobbyMenuConfiguration( this, "respawn", "Respawn", tiny ) );
-	AddElement( Asteroids = new LobbyMenuConfiguration( this, "asteroids", "Asteroids", tiny ) );
-	AddElement( Permissions = new LobbyMenuConfiguration( this, "permissions", "Game Settings", tiny ) );
-	
-	UpdateRects();
+	AddElement( GameType = new LobbyMenuConfiguration( "gametype", "Game Type", tiny ) );
+	AddElement( TDMKillLimit = new LobbyMenuConfiguration( "tdm_kill_limit", "Team Kill Limit", tiny ) );
+	AddElement( DMKillLimit = new LobbyMenuConfiguration( "dm_kill_limit", "Kill Limit", tiny ) );
+	AddElement( AI = new LobbyMenuConfiguration( "ai_waves", "AI Ships", tiny ) );
+	AddElement( Respawn = new LobbyMenuConfiguration( "respawn", "Respawn", tiny ) );
+	AddElement( Asteroids = new LobbyMenuConfiguration( "asteroids", "Asteroids", tiny ) );
+	AddElement( YavinTimeLimit = new LobbyMenuConfiguration( "yavin_time_limit", "Time Limit", tiny ) );
+	AddElement( YavinTurrets = new LobbyMenuConfiguration( "yavin_turrets", "Surface Turrets", tiny ) );
+	AddElement( Permissions = new LobbyMenuConfiguration( "permissions", "Game Settings", tiny ) );
 }
 
 
@@ -93,6 +93,8 @@ void LobbyMenu::UpdateRects( void )
 	Rect.w = 0;
 	Rect.w = Raptor::Game->Gfx.W;
 	Rect.h = Raptor::Game->Gfx.H;
+	
+	bool tiny = (Rect.h < 720) || (Rect.w < 800);
 	
 	LeaveButton->Rect.h = LeaveButton->LabelFont->GetHeight() + 4;
 	FlyButton->Rect.h = LeaveButton->Rect.h;
@@ -130,6 +132,10 @@ void LobbyMenu::UpdateRects( void )
 	{
 		bool ffa = ( Raptor::Game->Data.Properties["gametype"].find("ffa_") == 0 );
 		if( (player->Properties["team"] == "Spectator") || ((! ffa) && (player->Properties["team"] == "")) )
+			ShipButton->Enabled = false;
+		
+		// FIXME: Remove this when there are more Empire ships to choose from.
+		if( (! ffa) && (player->Properties["team"] == "Empire") )
 			ShipButton->Enabled = false;
 	}
 	
@@ -184,7 +190,7 @@ void LobbyMenu::UpdateRects( void )
 	LobbyMenuConfiguration *prev = Permissions;
 	
 	GameType->Rect.x = prev->Rect.x;
-	GameType->Rect.y = prev->Rect.y + prev->Rect.h + 10;
+	GameType->Rect.y = prev->Rect.y + prev->Rect.h + (tiny ? 5 : 10);
 	GameType->Rect.w = prev->Rect.w;
 	GameType->Update();
 	prev = GameType;
@@ -192,25 +198,34 @@ void LobbyMenu::UpdateRects( void )
 	if( Asteroids->Enabled )
 	{
 		Asteroids->Rect.x = prev->Rect.x;
-		Asteroids->Rect.y = prev->Rect.y + prev->Rect.h + 10;
+		Asteroids->Rect.y = prev->Rect.y + prev->Rect.h + (tiny ? 5 : 10);
 		Asteroids->Rect.w = prev->Rect.w;
 		Asteroids->Update();
 		prev = Asteroids;
 	}
 	
-	if( AI->Enabled )
+	if( YavinTimeLimit->Enabled )
 	{
-		AI->Rect.x = prev->Rect.x;
-		AI->Rect.y = prev->Rect.y + prev->Rect.h + 10;
-		AI->Rect.w = prev->Rect.w;
-		AI->Update();
-		prev = AI;
+		YavinTimeLimit->Rect.x = prev->Rect.x;
+		YavinTimeLimit->Rect.y = prev->Rect.y + prev->Rect.h + (tiny ? 5 : 10);
+		YavinTimeLimit->Rect.w = prev->Rect.w;
+		YavinTimeLimit->Update();
+		prev = YavinTimeLimit;
+	}
+	
+	if( YavinTurrets->Enabled )
+	{
+		YavinTurrets->Rect.x = prev->Rect.x;
+		YavinTurrets->Rect.y = prev->Rect.y + prev->Rect.h + (tiny ? 5 : 10);
+		YavinTurrets->Rect.w = prev->Rect.w;
+		YavinTurrets->Update();
+		prev = YavinTurrets;
 	}
 	
 	if( TDMKillLimit->Enabled )
 	{
 		TDMKillLimit->Rect.x = prev->Rect.x;
-		TDMKillLimit->Rect.y = prev->Rect.y + prev->Rect.h + 10;
+		TDMKillLimit->Rect.y = prev->Rect.y + prev->Rect.h + (tiny ? 5 : 10);
 		TDMKillLimit->Rect.w = prev->Rect.w;
 		TDMKillLimit->Update();
 		prev = TDMKillLimit;
@@ -219,21 +234,30 @@ void LobbyMenu::UpdateRects( void )
 	if( DMKillLimit->Enabled )
 	{
 		DMKillLimit->Rect.x = prev->Rect.x;
-		DMKillLimit->Rect.y = prev->Rect.y + prev->Rect.h + 10;
+		DMKillLimit->Rect.y = prev->Rect.y + prev->Rect.h + (tiny ? 5 : 10);
 		DMKillLimit->Rect.w = prev->Rect.w;
 		DMKillLimit->Update();
 		prev = DMKillLimit;
 	}
 	
+	if( AI->Enabled )
+	{
+		AI->Rect.x = prev->Rect.x;
+		AI->Rect.y = prev->Rect.y + prev->Rect.h + (tiny ? 5 : 10);
+		AI->Rect.w = prev->Rect.w;
+		AI->Update();
+		prev = AI;
+	}
+	
 	if( Respawn->Enabled )
 	{
 		Respawn->Rect.x = prev->Rect.x;
-		Respawn->Rect.y = prev->Rect.y + prev->Rect.h + 10;
+		Respawn->Rect.y = prev->Rect.y + prev->Rect.h + (tiny ? 5 : 10);
 		Respawn->Rect.w = prev->Rect.w;
 		Respawn->Update();
 		prev = Respawn;
 	}
-
+	
 	if( prev->Rect.y + prev->Rect.h >= MessageList->Rect.y )
 	{
 		MessageList->Rect.w = PlayerList->Rect.w;
@@ -406,6 +430,25 @@ void LobbyMenu::UpdateInfoBoxes( void )
 	else
 		Asteroids->Value->LabelText = "Not Worth Playing";
 	
+	int yavin_time_limit = atoi( Raptor::Game->Data.Properties["yavin_time_limit"].c_str() );
+	YavinTimeLimit->Value->LabelText = Num::ToString(yavin_time_limit);
+	
+	int yavin_turrets = atoi( Raptor::Game->Data.Properties["yavin_turrets"].c_str() );
+	if( yavin_turrets <= 0 )
+		YavinTurrets->Value->LabelText = "None";
+	else if( yavin_turrets <= 60 )
+		YavinTurrets->Value->LabelText = "Minimal";
+	else if( yavin_turrets <= 90 )
+		YavinTurrets->Value->LabelText = "Reduced";
+	else if( yavin_turrets <= 120 )
+		YavinTurrets->Value->LabelText = "Normal";
+	else if( yavin_turrets <= 150 )
+		YavinTurrets->Value->LabelText = "Extra";
+	else if( yavin_turrets <= 180 )
+		YavinTurrets->Value->LabelText = "Plentiful";
+	else
+		YavinTurrets->Value->LabelText = "Way Too Many";
+	
 	std::string permissions = Raptor::Game->Data.Properties["permissions"];
 	if( permissions == "all" )
 		Permissions->Value->LabelText = "Anyone Can Change";
@@ -429,6 +472,8 @@ void LobbyMenu::UpdateInfoBoxes( void )
 	AI->ShowButton = (admin || permissions_all) && (! flying);
 	Respawn->ShowButton = (admin || permissions_all) && (! flying);
 	Asteroids->ShowButton = (admin || permissions_all) && (! flying);
+	YavinTimeLimit->ShowButton = (admin || permissions_all) && (! flying);
+	YavinTurrets->ShowButton = (admin || permissions_all) && (! flying);
 	Permissions->ShowButton = admin;
 	
 	// Hide "Respawn" unless it's Team Elimination or Yavin.
@@ -470,17 +515,29 @@ void LobbyMenu::UpdateInfoBoxes( void )
 		DMKillLimit->Enabled = true;
 	}
 	
-	// Hide "Asteroids" if Battle of Yavin.
+	// Hide "Asteroids" if Battle of Yavin and show "Time Limit" and "Surface Turrets" instead.
 	if( gametype == "yavin" )
 	{
 		Asteroids->ShowButton = false;
 		Asteroids->Visible = false;
 		Asteroids->Enabled = false;
+		
+		YavinTimeLimit->Visible = true;
+		YavinTimeLimit->Enabled = true;
+		YavinTurrets->Visible = true;
+		YavinTurrets->Enabled = true;
 	}
 	else
 	{
 		Asteroids->Visible = true;
 		Asteroids->Enabled = true;
+		
+		YavinTimeLimit->ShowButton = false;
+		YavinTimeLimit->Visible = false;
+		YavinTimeLimit->Enabled = false;
+		YavinTurrets->ShowButton = false;
+		YavinTurrets->Visible = false;
+		YavinTurrets->Enabled = false;
 	}
 }
 
@@ -571,13 +628,18 @@ bool LobbyMenu::KeyDown( SDLKey key )
 // ---------------------------------------------------------------------------
 
 
-LobbyMenuFlyButton::LobbyMenuFlyButton( LobbyMenu *menu )
-: LabelledButton( menu, NULL, Raptor::Game->Res.GetFont( "TimesNR.ttf", 48 ), "Fly", Font::ALIGN_MIDDLE_CENTER, Raptor::Game->Res.GetAnimation("button.ani"), Raptor::Game->Res.GetAnimation("button_mdown.ani") )
+LobbyMenuFlyButton::LobbyMenuFlyButton( void )
+: LabelledButton( NULL, Raptor::Game->Res.GetFont( "Verdana.ttf", 32 ), "Fly", Font::ALIGN_MIDDLE_CENTER, Raptor::Game->Res.GetAnimation("button.ani"), Raptor::Game->Res.GetAnimation("button_mdown.ani") )
 {
 	Red = 1.f;
 	Green = 1.f;
 	Blue = 1.f;
 	Alpha = 0.75f;
+}
+
+
+LobbyMenuFlyButton::~LobbyMenuFlyButton()
+{
 }
 
 
@@ -597,13 +659,18 @@ void LobbyMenuFlyButton::Clicked( Uint8 button )
 // ---------------------------------------------------------------------------
 
 
-LobbyMenuLeaveButton::LobbyMenuLeaveButton( LobbyMenu *menu )
-: LabelledButton( menu, NULL, Raptor::Game->Res.GetFont( "TimesNR.ttf", 48 ), "Leave", Font::ALIGN_MIDDLE_CENTER, Raptor::Game->Res.GetAnimation("button.ani"), Raptor::Game->Res.GetAnimation("button_mdown.ani") )
+LobbyMenuLeaveButton::LobbyMenuLeaveButton( void )
+: LabelledButton( NULL, Raptor::Game->Res.GetFont( "Verdana.ttf", 32 ), "Leave", Font::ALIGN_MIDDLE_CENTER, Raptor::Game->Res.GetAnimation("button.ani"), Raptor::Game->Res.GetAnimation("button_mdown.ani") )
 {
 	Red = 1.f;
 	Green = 1.f;
 	Blue = 1.f;
 	Alpha = 0.75f;
+}
+
+
+LobbyMenuLeaveButton::~LobbyMenuLeaveButton()
+{
 }
 
 
@@ -619,13 +686,18 @@ void LobbyMenuLeaveButton::Clicked( Uint8 button )
 // ---------------------------------------------------------------------------
 
 
-LobbyMenuTeamButton::LobbyMenuTeamButton( LobbyMenu *menu )
-: LabelledButton( menu, NULL, Raptor::Game->Res.GetFont( "TimesNR.ttf", 18 ), "Change Team", Font::ALIGN_MIDDLE_CENTER, Raptor::Game->Res.GetAnimation("button.ani"), Raptor::Game->Res.GetAnimation("button_mdown.ani") )
+LobbyMenuTeamButton::LobbyMenuTeamButton( void )
+: LabelledButton( NULL, Raptor::Game->Res.GetFont( "Verdana.ttf", 17 ), "Change Team", Font::ALIGN_MIDDLE_CENTER, Raptor::Game->Res.GetAnimation("button.ani"), Raptor::Game->Res.GetAnimation("button_mdown.ani") )
 {
 	Red = 1.f;
 	Green = 1.f;
 	Blue = 1.f;
 	Alpha = 1.f;
+}
+
+
+LobbyMenuTeamButton::~LobbyMenuTeamButton()
+{
 }
 
 
@@ -680,13 +752,18 @@ void LobbyMenuTeamButton::Clicked( Uint8 button )
 // ---------------------------------------------------------------------------
 
 
-LobbyMenuShipButton::LobbyMenuShipButton( LobbyMenu *menu )
-: LabelledButton( menu, NULL, Raptor::Game->Res.GetFont( "TimesNR.ttf", 18 ), "Change Ship", Font::ALIGN_MIDDLE_CENTER, Raptor::Game->Res.GetAnimation("button.ani"), Raptor::Game->Res.GetAnimation("button_mdown.ani") )
+LobbyMenuShipButton::LobbyMenuShipButton( void )
+: LabelledButton( NULL, Raptor::Game->Res.GetFont( "Verdana.ttf", 17 ), "Change Ship", Font::ALIGN_MIDDLE_CENTER, Raptor::Game->Res.GetAnimation("button.ani"), Raptor::Game->Res.GetAnimation("button_mdown.ani") )
 {
 	Red = 1.f;
 	Green = 1.f;
 	Blue = 1.f;
 	Alpha = 1.f;
+}
+
+
+LobbyMenuShipButton::~LobbyMenuShipButton()
+{
 }
 
 
@@ -744,18 +821,18 @@ void LobbyMenuShipButton::Clicked( Uint8 button )
 // ---------------------------------------------------------------------------
 
 
-LobbyMenuConfiguration::LobbyMenuConfiguration( LobbyMenu *menu, std::string property, std::string desc, bool tiny )
-: Layer( menu )
+LobbyMenuConfiguration::LobbyMenuConfiguration( std::string property, std::string desc, bool tiny )
+: Layer()
 {
 	Property = property;
 	
-	AddElement( TitleShadow = new Label( this, &Rect, desc, Raptor::Game->Res.GetFont( "TimesNR.ttf", tiny ? 12 : 18 ), Font::ALIGN_TOP_CENTER ) );
-	AddElement( Title = new Label( this, &Rect, desc, TitleShadow->LabelFont, TitleShadow->LabelAlign ) );
+	AddElement( TitleShadow = new Label( &Rect, desc, Raptor::Game->Res.GetFont( "Verdana.ttf", tiny ? 12 : 17 ), Font::ALIGN_TOP_CENTER ) );
+	AddElement( Title = new Label( &Rect, desc, TitleShadow->LabelFont, TitleShadow->LabelAlign ) );
 	
-	AddElement( ValueShadow = new Label( this, &Rect, "", Raptor::Game->Res.GetFont( "TimesNR.ttf", tiny ? 14 : 24 ), Font::ALIGN_TOP_CENTER ) );
-	AddElement( Value = new Label( this, &Rect, "", ValueShadow->LabelFont, ValueShadow->LabelAlign ) );
+	AddElement( ValueShadow = new Label( &Rect, "", Raptor::Game->Res.GetFont( "Verdana.ttf", tiny ? 17 : 20 ), Font::ALIGN_TOP_CENTER ) );
+	AddElement( Value = new Label( &Rect, "", ValueShadow->LabelFont, ValueShadow->LabelAlign ) );
 	
-	AddElement( ChangeButton = new LobbyMenuConfigChangeButton( this, tiny ) );
+	AddElement( ChangeButton = new LobbyMenuConfigChangeButton( tiny ) );
 	ShowButton = false;
 	
 	TitleShadow->Red = 0.f;
@@ -772,8 +849,15 @@ LobbyMenuConfiguration::LobbyMenuConfiguration( LobbyMenu *menu, std::string pro
 }
 
 
+LobbyMenuConfiguration::~LobbyMenuConfiguration()
+{
+}
+
+
 void LobbyMenuConfiguration::Update( void )
 {
+	bool tiny = (Raptor::Game->Gfx.H < 720);
+	
 	Title->Rect.w = Rect.w;
 	Title->Rect.h = Title->LabelFont->GetHeight();
 	Title->Rect.x = 0;
@@ -788,7 +872,7 @@ void LobbyMenuConfiguration::Update( void )
 	Value->Rect.w = Rect.w;
 	Value->Rect.h = Title->LabelFont->GetHeight();
 	Value->Rect.x = 0;
-	Value->Rect.y = Title->Rect.y + Title->Rect.h + 1;
+	Value->Rect.y = Title->Rect.y + Title->Rect.h + (tiny ? -2 : 1);
 	
 	ValueShadow->LabelText = Value->LabelText;
 	ValueShadow->Rect.w = Value->Rect.w;
@@ -797,21 +881,26 @@ void LobbyMenuConfiguration::Update( void )
 	ValueShadow->Rect.y = Value->Rect.y + 2;
 	
 	ChangeButton->Rect.w = (ShowButton && Enabled) ? 100 : 0;
-	ChangeButton->Rect.h = (ShowButton && Enabled) ? ChangeButton->LabelFont->GetHeight() + 4 : 0;
+	ChangeButton->Rect.h = (ShowButton && Enabled) ? (ChangeButton->LabelFont->GetHeight() + (tiny ? 2 : 4)) : 0;
 	ChangeButton->Rect.x = (Rect.w - ChangeButton->Rect.w) / 2;
-	ChangeButton->Rect.y = Value->Rect.y + Value->Rect.h + 7;
+	ChangeButton->Rect.y = Value->Rect.y + Value->Rect.h + (tiny ? 4 : 7);
 	ChangeButton->Enabled = (ShowButton && Enabled);
 	ChangeButton->Visible = (ShowButton && Enabled);
 	
-	Rect.h = ChangeButton->Rect.y + ChangeButton->LabelFont->GetHeight() + 4;
+	Rect.h = ChangeButton->Rect.y + ChangeButton->LabelFont->GetHeight() + (tiny ? 2 : 4);
 }
 
 
 // ---------------------------------------------------------------------------
 
 
-LobbyMenuConfigChangeButton::LobbyMenuConfigChangeButton( LobbyMenuConfiguration *config, bool tiny )
-: LabelledButton( config, NULL, Raptor::Game->Res.GetFont( "TimesNR.ttf", tiny ? 12 : 16 ), "Change", Font::ALIGN_MIDDLE_CENTER, Raptor::Game->Res.GetAnimation("button.ani"), Raptor::Game->Res.GetAnimation("button_mdown.ani") )
+LobbyMenuConfigChangeButton::LobbyMenuConfigChangeButton( bool tiny )
+: LabelledButton( NULL, Raptor::Game->Res.GetFont( "Verdana.ttf", tiny ? 11 : 15 ), "Change", Font::ALIGN_MIDDLE_CENTER, Raptor::Game->Res.GetAnimation("button.ani"), Raptor::Game->Res.GetAnimation("button_mdown.ani") )
+{
+}
+
+
+LobbyMenuConfigChangeButton::~LobbyMenuConfigChangeButton()
 {
 }
 
@@ -899,6 +988,26 @@ void LobbyMenuConfigChangeButton::Clicked( Uint8 button )
 		}
 		
 		value = Num::ToString( new_asteroids );
+	}
+	
+	else if( config->Property == "yavin_time_limit" )
+	{
+		if( value == "7" )
+			value = go_prev ? "30" : "15";
+		else if( value == "15" )
+			value = go_prev ? "7" : "30";
+		else
+			value = go_prev ? "15" : "7";
+	}
+	
+	else if( config->Property == "yavin_turrets" )
+	{
+		int new_yavin_turrets = atoi( value.c_str() ) + (go_prev ? -30 : 30);
+		if( new_yavin_turrets < 60 )
+			new_yavin_turrets = 210;
+		else if( new_yavin_turrets > 210 )
+			new_yavin_turrets = 60;
+		value = Num::ToString( new_yavin_turrets );
 	}
 	
 	else if( config->Property == "permissions" )

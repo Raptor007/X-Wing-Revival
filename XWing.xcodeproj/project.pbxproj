@@ -87,6 +87,9 @@
 		2CC248EE15AEDF3A00CFD425 /* File.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2CC248EC15AEDF3A00CFD425 /* File.cpp */; };
 		2CC2490415AEDF5200CFD425 /* ShaderManager.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2CC2490215AEDF5200CFD425 /* ShaderManager.cpp */; };
 		2CD3416616CED3BB006306EA /* Turret.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2CD3416416CED3BB006306EA /* Turret.cpp */; };
+		2CD9284917CBDD2400DE56D7 /* GroupBox.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2CD9284717CBDD2400DE56D7 /* GroupBox.cpp */; };
+		2CDD18A617A972DC007C5B1E /* Notification.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2CDD18A417A972DC007C5B1E /* Notification.cpp */; };
+		2CE6712717CF41A10065E367 /* TextFileViewer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2CE6712517CF41A10065E367 /* TextFileViewer.cpp */; };
 		2CEAD88C17A2DE39001FCB6F /* Main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2CEAD88B17A2DE39001FCB6F /* Main.cpp */; };
 		2CEAD8CE17A3117B001FCB6F /* FirstLoadScreen.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2CEAD8CA17A3117B001FCB6F /* FirstLoadScreen.cpp */; };
 		2CEAD8D217A31198001FCB6F /* WaitScreen.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2CEAD8D017A31198001FCB6F /* WaitScreen.cpp */; };
@@ -262,6 +265,12 @@
 		2CC2490315AEDF5200CFD425 /* ShaderManager.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ShaderManager.h; sourceTree = "<group>"; };
 		2CD3416416CED3BB006306EA /* Turret.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Turret.cpp; sourceTree = "<group>"; };
 		2CD3416516CED3BB006306EA /* Turret.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Turret.h; sourceTree = "<group>"; };
+		2CD9284717CBDD2400DE56D7 /* GroupBox.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = GroupBox.cpp; sourceTree = "<group>"; };
+		2CD9284817CBDD2400DE56D7 /* GroupBox.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = GroupBox.h; sourceTree = "<group>"; };
+		2CDD18A417A972DC007C5B1E /* Notification.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Notification.cpp; sourceTree = "<group>"; };
+		2CDD18A517A972DC007C5B1E /* Notification.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Notification.h; sourceTree = "<group>"; };
+		2CE6712517CF41A10065E367 /* TextFileViewer.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = TextFileViewer.cpp; sourceTree = "<group>"; };
+		2CE6712617CF41A10065E367 /* TextFileViewer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = TextFileViewer.h; sourceTree = "<group>"; };
 		2CEAD80817A1ABB7001FCB6F /* RaptorGL.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = RaptorGL.h; sourceTree = "<group>"; };
 		2CEAD88A17A2DE28001FCB6F /* PlatformSpecific.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PlatformSpecific.h; sourceTree = "<group>"; };
 		2CEAD88B17A2DE39001FCB6F /* Main.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Main.cpp; sourceTree = "<group>"; };
@@ -584,14 +593,20 @@
 				2C3C4DC913528D38002F71CC /* ListBox.cpp */,
 				2C45DEEB179339760047BE82 /* DropDown.h */,
 				2C45DEEA179339760047BE82 /* DropDown.cpp */,
+				2CD9284817CBDD2400DE56D7 /* GroupBox.h */,
+				2CD9284717CBDD2400DE56D7 /* GroupBox.cpp */,
 				2C3C4DBE13528D38002F71CC /* ClientConsole.h */,
 				2C3C4DBD13528D38002F71CC /* ClientConsole.cpp */,
 				2C35B9A4155B155A00A65482 /* MessageOverlay.h */,
 				2C35B9A3155B155A00A65482 /* MessageOverlay.cpp */,
 				2CEAD8D117A31198001FCB6F /* WaitScreen.h */,
 				2CEAD8D017A31198001FCB6F /* WaitScreen.cpp */,
+				2CDD18A517A972DC007C5B1E /* Notification.h */,
+				2CDD18A417A972DC007C5B1E /* Notification.cpp */,
 				2CEAD8CB17A3117B001FCB6F /* FirstLoadScreen.h */,
 				2CEAD8CA17A3117B001FCB6F /* FirstLoadScreen.cpp */,
+				2CE6712617CF41A10065E367 /* TextFileViewer.h */,
+				2CE6712517CF41A10065E367 /* TextFileViewer.cpp */,
 				2C9A435D16AF465D007E5304 /* Screensaver.h */,
 				2C9A435C16AF465D007E5304 /* Screensaver.cpp */,
 			);
@@ -753,6 +768,9 @@
 				2CEAD88C17A2DE39001FCB6F /* Main.cpp in Sources */,
 				2CEAD8CE17A3117B001FCB6F /* FirstLoadScreen.cpp in Sources */,
 				2CEAD8D217A31198001FCB6F /* WaitScreen.cpp in Sources */,
+				2CDD18A617A972DC007C5B1E /* Notification.cpp in Sources */,
+				2CD9284917CBDD2400DE56D7 /* GroupBox.cpp in Sources */,
+				2CE6712717CF41A10065E367 /* TextFileViewer.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -819,13 +837,15 @@
 					i386,
 					x86_64,
 				);
+				COPY_PHASE_STRIP = NO;
 				ENABLE_OPENMP_SUPPORT = YES;
 				FRAMEWORK_SEARCH_PATHS = (
 					/Library/Frameworks,
 					"$(FRAMEWORK_SEARCH_PATHS)",
 				);
+				GCC_ENABLE_FIX_AND_CONTINUE = YES;
 				GCC_MODEL_TUNING = G5;
-				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_OPTIMIZATION_LEVEL = g;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = NO;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES;
 				GCC_WARN_MISSING_PARENTHESES = YES;
@@ -849,6 +869,7 @@
 				OTHER_LDFLAGS = "";
 				PREBINDING = NO;
 				SDKROOT = /Developer/SDKs/MacOSX10.4u.sdk;
+				STRIP_INSTALLED_PRODUCT = NO;
 				USER_HEADER_SEARCH_PATHS = "../RaptorEngine/** Sources/**";
 			};
 			name = Debug;

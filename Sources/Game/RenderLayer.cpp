@@ -41,8 +41,8 @@ RenderLayer::RenderLayer( void )
 	else
 		Background.BecomeInstance( Raptor::Game->Res.GetAnimation("stars.ani") );
 	
-	BigFont = Raptor::Game->Res.GetFont( "TimesNR.ttf", 24 );
-	SmallFont = Raptor::Game->Res.GetFont( "TimesNR.ttf", 16 );
+	BigFont = Raptor::Game->Res.GetFont( "Verdana.ttf", 21 );
+	SmallFont = Raptor::Game->Res.GetFont( "Verdana.ttf", 15 );
 	RadarDirectionFont = Raptor::Game->Res.GetFont( "ProFont.ttf", 22 );
 	ScreenFont = Raptor::Game->Res.GetFont( "ProFont.ttf", 48 );
 	
@@ -53,9 +53,9 @@ RenderLayer::RenderLayer( void )
 		Debris[ i ].SetPos( Rand::Double( -DEBRIS_DIST, DEBRIS_DIST ), Rand::Double( -DEBRIS_DIST, DEBRIS_DIST ), Rand::Double( -DEBRIS_DIST, DEBRIS_DIST ) );
 	
 	if( ! Raptor::Game->Cfg.SettingAsBool("screensaver") )
-		AddElement( new MessageOverlay( this, Raptor::Game->Res.GetFont( "TimesNR.ttf", 16 ) ) );
+		AddElement( new MessageOverlay( Raptor::Game->Res.GetFont( "AgencyFB.ttf", 21 ) ) );
 	
-	AddElement( MessageInput = new TextBox( this, NULL, Raptor::Game->Res.GetFont( "TimesNR.ttf", 17 ), Font::ALIGN_TOP_LEFT ) );
+	AddElement( MessageInput = new TextBox( NULL, Raptor::Game->Res.GetFont( "SegoeUI.ttf", 16 ), Font::ALIGN_TOP_LEFT ) );
 	MessageInput->ReturnDeselects = false;
 	MessageInput->PassReturn = true;
 	MessageInput->EscDeselects = false;
@@ -93,42 +93,50 @@ void RenderLayer::SetWorldLights( void )
 	
 	if( Raptor::Game->Data.Properties["bg"] == "nebula" )
 	{
-		Raptor::Game->ShaderMgr.Set3f( "AmbientLight", 0.9, 0.9, 0.9 );
-		vec.Set( 0.9, -0.3, 0.2 );
+		Raptor::Game->ShaderMgr.Set3f( "AmbientLight", 0.75, 0.75, 0.75 );
+		vec.Set( 0.897, -0.389, 0.208 );
 		vec.ScaleTo( 1. );
 		Raptor::Game->ShaderMgr.Set3f( "DirectionalLight0Dir", vec.X, vec.Y, vec.Z );
 		Raptor::Game->ShaderMgr.Set3f( "DirectionalLight0Color", 1.3, 1.3, 1.29 );
-		vec.Set( -0.7, 0.7, -0.2 );
+		Raptor::Game->ShaderMgr.Set1f( "DirectionalLight0WrapAround", 0.5 );
+		vec.Set( -0.748, 0.66, -0.07 );
 		vec.ScaleTo( 1. );
 		Raptor::Game->ShaderMgr.Set3f( "DirectionalLight1Dir", vec.X, vec.Y, vec.Z );
 		Raptor::Game->ShaderMgr.Set3f( "DirectionalLight1Color", 0.6, 0.1, 0.1 );
-		vec.Set( 0.4, -0.8, -0.1 );
+		Raptor::Game->ShaderMgr.Set1f( "DirectionalLight1WrapAround", 1.0 );
+		vec.Set( 0.555, -0.832, -0.023 );
 		vec.ScaleTo( 1. );
 		Raptor::Game->ShaderMgr.Set3f( "DirectionalLight2Dir", vec.X, vec.Y, vec.Z );
 		Raptor::Game->ShaderMgr.Set3f( "DirectionalLight2Color", 0.1, 0.05, 0.5 );
-		vec.Set( -0.1, 0., 0.995 );
+		Raptor::Game->ShaderMgr.Set1f( "DirectionalLight2WrapAround", 0.5 );
+		vec.Set( -0.421, -0.396, -0.821 );
 		vec.ScaleTo( 1. );
 		Raptor::Game->ShaderMgr.Set3f( "DirectionalLight3Dir", vec.X, vec.Y, vec.Z );
-		Raptor::Game->ShaderMgr.Set3f( "DirectionalLight3Color", 0.1, 0.1, 0.1 );
+		Raptor::Game->ShaderMgr.Set3f( "DirectionalLight3Color", 0.01, 0.1, 0.05 );
+		Raptor::Game->ShaderMgr.Set1f( "DirectionalLight3WrapAround", 0.125 );
 	}
 	else
 	{
-		Raptor::Game->ShaderMgr.Set3f( "AmbientLight", 0.8, 0.8, 0.8 );
-		vec.Set( -0.1, 0., 0.995 );
+		Raptor::Game->ShaderMgr.Set3f( "AmbientLight", 0.7, 0.7, 0.7 );
+		vec.Set( -0.6, 0., 0.8 );
 		Raptor::Game->ShaderMgr.Set3f( "DirectionalLight0Dir", vec.X, vec.Y, vec.Z );
-		Raptor::Game->ShaderMgr.Set3f( "DirectionalLight0Color", 1., 1., 1. );
-		vec.Set( 0., 0.7, 0.7 );
+		Raptor::Game->ShaderMgr.Set3f( "DirectionalLight0Color", 0.85, 0.85, 0.85 );
+		Raptor::Game->ShaderMgr.Set1f( "DirectionalLight0WrapAround", 0. );
+		vec.Set( 0.15, 0.57, 0.8 );
 		vec.ScaleTo( 1. );
 		Raptor::Game->ShaderMgr.Set3f( "DirectionalLight1Dir", vec.X, vec.Y, vec.Z );
-		Raptor::Game->ShaderMgr.Set3f( "DirectionalLight1Color", 0.333, 0.333, 0.333 );
-		vec.Set( 0., -0.7, 0.7 );
+		Raptor::Game->ShaderMgr.Set3f( "DirectionalLight1Color", 0.8, 0.85, 0.8 );
+		Raptor::Game->ShaderMgr.Set1f( "DirectionalLight1WrapAround", 0.125 );
+		vec.Set( -0.01, -0.86, 0.51 );
 		vec.ScaleTo( 1. );
 		Raptor::Game->ShaderMgr.Set3f( "DirectionalLight2Dir", vec.X, vec.Y, vec.Z );
-		Raptor::Game->ShaderMgr.Set3f( "DirectionalLight2Color", 0.333, 0.333, 0.333 );
-		vec.Set( 0.1, 0., 0.995 );
+		Raptor::Game->ShaderMgr.Set3f( "DirectionalLight2Color", 0.2, 0.29, 0.41 );
+		Raptor::Game->ShaderMgr.Set1f( "DirectionalLight2WrapAround", 0.25 );
+		vec.Set( 0.2, 0., 0.98 );
 		vec.ScaleTo( 1. );
 		Raptor::Game->ShaderMgr.Set3f( "DirectionalLight3Dir", vec.X, vec.Y, vec.Z );
-		Raptor::Game->ShaderMgr.Set3f( "DirectionalLight3Color", 0.125, 0.125, 0.125 );
+		Raptor::Game->ShaderMgr.Set3f( "DirectionalLight3Color", 0.25, 0.125, 0.2 );
+		Raptor::Game->ShaderMgr.Set1f( "DirectionalLight3WrapAround", 0.125 );
 	}
 }
 
@@ -138,12 +146,16 @@ void RenderLayer::ClearWorldLights( void )
 	Raptor::Game->ShaderMgr.Set3f( "AmbientLight", 1.0, 1.0, 1.0 );
 	Raptor::Game->ShaderMgr.Set3f( "DirectionalLight0Dir", 0., 0., 0. );
 	Raptor::Game->ShaderMgr.Set3f( "DirectionalLight0Color", 0., 0., 0. );
+	Raptor::Game->ShaderMgr.Set1f( "DirectionalLight0WrapAround", 0. );
 	Raptor::Game->ShaderMgr.Set3f( "DirectionalLight1Dir", 0., 0., 0. );
 	Raptor::Game->ShaderMgr.Set3f( "DirectionalLight1Color", 0., 0., 0. );
+	Raptor::Game->ShaderMgr.Set1f( "DirectionalLight1WrapAround", 0. );
 	Raptor::Game->ShaderMgr.Set3f( "DirectionalLight2Dir", 0., 0., 0. );
 	Raptor::Game->ShaderMgr.Set3f( "DirectionalLight2Color", 0., 0., 0. );
+	Raptor::Game->ShaderMgr.Set1f( "DirectionalLight2WrapAround", 0. );
 	Raptor::Game->ShaderMgr.Set3f( "DirectionalLight3Dir", 0., 0., 0. );
 	Raptor::Game->ShaderMgr.Set3f( "DirectionalLight3Color", 0., 0., 0. );
+	Raptor::Game->ShaderMgr.Set1f( "DirectionalLight3WrapAround", 0. );
 }
 
 
@@ -151,12 +163,16 @@ void RenderLayer::ClearDynamicLights( void )
 {
 	Raptor::Game->ShaderMgr.Set3f( "PointLight0Pos", 0., 0., 0. );
 	Raptor::Game->ShaderMgr.Set3f( "PointLight0Color", 0., 0., 0. );
+	Raptor::Game->ShaderMgr.Set1f( "PointLight0Radius", 0. );
 	Raptor::Game->ShaderMgr.Set3f( "PointLight1Pos", 0., 0., 0. );
 	Raptor::Game->ShaderMgr.Set3f( "PointLight1Color", 0., 0., 0. );
+	Raptor::Game->ShaderMgr.Set1f( "PointLight1Radius", 0. );
 	Raptor::Game->ShaderMgr.Set3f( "PointLight2Pos", 0., 0., 0. );
 	Raptor::Game->ShaderMgr.Set3f( "PointLight2Color", 0., 0., 0. );
+	Raptor::Game->ShaderMgr.Set1f( "PointLight2Radius", 0. );
 	Raptor::Game->ShaderMgr.Set3f( "PointLight3Pos", 0., 0., 0. );
 	Raptor::Game->ShaderMgr.Set3f( "PointLight3Color", 0., 0., 0. );
+	Raptor::Game->ShaderMgr.Set1f( "PointLight3Radius", 0. );
 }
 
 
@@ -317,7 +333,7 @@ void RenderLayer::Draw( void )
 	
 	
 	Player *observed_player = NULL;
-	Vec3D cam_motion_vec( 0., 0., 0. );
+	
 	
 	if( observed_ship )
 	{
@@ -433,8 +449,6 @@ void RenderLayer::Draw( void )
 			
 			Raptor::Game->Cam.MoveAlong( &(Raptor::Game->Cam.Fwd), -30. - observed_ship->Shape.GetTriagonal() );
 		}
-		
-		cam_motion_vec = observed_ship->MotionVector;
 	}
 	else
 		((XWingGame*)( Raptor::Game ))->ObservedShipID = 0;
@@ -769,6 +783,9 @@ void RenderLayer::Draw( void )
 				}
 				
 				
+				glLineWidth( 2.f );
+				
+				
 				// Draw the pointy bits.
 				
 				intercept_framebuffer->Setup2D( -1., -1., 1., 1. );
@@ -1044,6 +1061,8 @@ void RenderLayer::Draw( void )
 						Color dynamic_light_color = nearest_shot->LightColor();
 						snprintf( uniform_name, 128, "PointLight%iColor", i );
 						Raptor::Game->ShaderMgr.Set3f( uniform_name, dynamic_light_color.Red, dynamic_light_color.Green, dynamic_light_color.Blue );
+						snprintf( uniform_name, 128, "PointLight%iRadius", i );
+						Raptor::Game->ShaderMgr.Set1f( uniform_name, dynamic_light_color.Alpha );
 						
 						used_lights.insert( nearest_shot );
 					}
@@ -1052,7 +1071,7 @@ void RenderLayer::Draw( void )
 				}
 			}
 			
-			double cockpit_scale = 0.125;
+			double cockpit_scale = std::max<double>( 0.022, Raptor::Game->Gfx.ZNear * 0.125 );
 			double cockpit_fwd = 0.;
 			double cockpit_up = 0.;
 			double cockpit_right = 0.;
@@ -1181,6 +1200,9 @@ void RenderLayer::Draw( void )
 					snprintf( uniform_name, 128, "PointLight%iColor", i );
 					Raptor::Game->ShaderMgr.Set3f( uniform_name, dynamic_light_color.Red, dynamic_light_color.Green, dynamic_light_color.Blue );
 					
+					snprintf( uniform_name, 128, "PointLight%iRadius", i );
+					Raptor::Game->ShaderMgr.Set1f( uniform_name, dynamic_light_color.Alpha );
+					
 					used_lights.insert( nearest_shot );
 				}
 				else
@@ -1284,17 +1306,17 @@ void RenderLayer::Draw( void )
 			
 			glDisable( GL_DEPTH_TEST );
 			
-			Raptor::Game->Gfx.DrawLine3D( pos.X - right.X + up.X, pos.Y - right.Y + up.Y, pos.Z - right.Z + up.Z, pos.X - right.X / 2. + up.X, pos.Y - right.Y / 2. + up.Y, pos.Z - right.Z / 2. + up.Z, 1.f, 1.f, 1.f, 1.f );
-			Raptor::Game->Gfx.DrawLine3D( pos.X - right.X + up.X, pos.Y - right.Y + up.Y, pos.Z - right.Z + up.Z, pos.X - right.X + up.X / 2., pos.Y - right.Y + up.Y / 2., pos.Z - right.Z + up.Z / 2., 1.f, 1.f, 1.f, 1.f );
+			Raptor::Game->Gfx.DrawLine3D( pos.X - right.X + up.X, pos.Y - right.Y + up.Y, pos.Z - right.Z + up.Z, pos.X - right.X / 2. + up.X, pos.Y - right.Y / 2. + up.Y, pos.Z - right.Z / 2. + up.Z, 1.f, 1.f, 1.f, 1.f, 1.f );
+			Raptor::Game->Gfx.DrawLine3D( pos.X - right.X + up.X, pos.Y - right.Y + up.Y, pos.Z - right.Z + up.Z, pos.X - right.X + up.X / 2., pos.Y - right.Y + up.Y / 2., pos.Z - right.Z + up.Z / 2., 1.f, 1.f, 1.f, 1.f, 1.f );
 			
-			Raptor::Game->Gfx.DrawLine3D( pos.X + right.X + up.X, pos.Y + right.Y + up.Y, pos.Z + right.Z + up.Z, pos.X + right.X / 2. + up.X, pos.Y + right.Y / 2. + up.Y, pos.Z + right.Z / 2. + up.Z, 1.f, 1.f, 1.f, 1.f );
-			Raptor::Game->Gfx.DrawLine3D( pos.X + right.X + up.X, pos.Y + right.Y + up.Y, pos.Z + right.Z + up.Z, pos.X + right.X + up.X / 2., pos.Y + right.Y + up.Y / 2., pos.Z + right.Z + up.Z / 2., 1.f, 1.f, 1.f, 1.f );
+			Raptor::Game->Gfx.DrawLine3D( pos.X + right.X + up.X, pos.Y + right.Y + up.Y, pos.Z + right.Z + up.Z, pos.X + right.X / 2. + up.X, pos.Y + right.Y / 2. + up.Y, pos.Z + right.Z / 2. + up.Z, 1.f, 1.f, 1.f, 1.f, 1.f );
+			Raptor::Game->Gfx.DrawLine3D( pos.X + right.X + up.X, pos.Y + right.Y + up.Y, pos.Z + right.Z + up.Z, pos.X + right.X + up.X / 2., pos.Y + right.Y + up.Y / 2., pos.Z + right.Z + up.Z / 2., 1.f, 1.f, 1.f, 1.f, 1.f );
 			
-			Raptor::Game->Gfx.DrawLine3D( pos.X + right.X - up.X, pos.Y + right.Y - up.Y, pos.Z + right.Z - up.Z, pos.X + right.X / 2. - up.X, pos.Y + right.Y / 2. - up.Y, pos.Z + right.Z / 2. - up.Z, 1.f, 1.f, 1.f, 1.f );
-			Raptor::Game->Gfx.DrawLine3D( pos.X + right.X - up.X, pos.Y + right.Y - up.Y, pos.Z + right.Z - up.Z, pos.X + right.X - up.X / 2., pos.Y + right.Y - up.Y / 2., pos.Z + right.Z - up.Z / 2., 1.f, 1.f, 1.f, 1.f );
+			Raptor::Game->Gfx.DrawLine3D( pos.X + right.X - up.X, pos.Y + right.Y - up.Y, pos.Z + right.Z - up.Z, pos.X + right.X / 2. - up.X, pos.Y + right.Y / 2. - up.Y, pos.Z + right.Z / 2. - up.Z, 1.f, 1.f, 1.f, 1.f, 1.f );
+			Raptor::Game->Gfx.DrawLine3D( pos.X + right.X - up.X, pos.Y + right.Y - up.Y, pos.Z + right.Z - up.Z, pos.X + right.X - up.X / 2., pos.Y + right.Y - up.Y / 2., pos.Z + right.Z - up.Z / 2., 1.f, 1.f, 1.f, 1.f, 1.f );
 			
-			Raptor::Game->Gfx.DrawLine3D( pos.X - right.X - up.X, pos.Y - right.Y - up.Y, pos.Z - right.Z - up.Z, pos.X - right.X / 2. - up.X, pos.Y - right.Y / 2. - up.Y, pos.Z - right.Z / 2. - up.Z, 1.f, 1.f, 1.f, 1.f );
-			Raptor::Game->Gfx.DrawLine3D( pos.X - right.X - up.X, pos.Y - right.Y - up.Y, pos.Z - right.Z - up.Z, pos.X - right.X - up.X / 2., pos.Y - right.Y - up.Y / 2., pos.Z - right.Z - up.Z / 2., 1.f, 1.f, 1.f, 1.f );
+			Raptor::Game->Gfx.DrawLine3D( pos.X - right.X - up.X, pos.Y - right.Y - up.Y, pos.Z - right.Z - up.Z, pos.X - right.X / 2. - up.X, pos.Y - right.Y / 2. - up.Y, pos.Z - right.Z / 2. - up.Z, 1.f, 1.f, 1.f, 1.f, 1.f );
+			Raptor::Game->Gfx.DrawLine3D( pos.X - right.X - up.X, pos.Y - right.Y - up.Y, pos.Z - right.Z - up.Z, pos.X - right.X - up.X / 2., pos.Y - right.Y - up.Y / 2., pos.Z - right.Z - up.Z / 2., 1.f, 1.f, 1.f, 1.f, 1.f );
 			
 			glEnable( GL_DEPTH_TEST );
 		}
@@ -1323,6 +1345,8 @@ void RenderLayer::Draw( void )
 			Vec2D relative_weapon_vec;
 			Pos3D weapon_pos;
 			
+			// Draw lines for all selected weapon ports.
+			glLineWidth( Raptor::Game->Cfg.SettingAsDouble("g_crosshair_thickness",1.5) );
 			glBegin( GL_LINES );
 				glVertex3d( crosshair_pos.X - right.X + up.X, crosshair_pos.Y - right.Y + up.Y, crosshair_pos.Z - right.Z + up.Z );
 				glVertex3d( crosshair_pos.X - right.X / 2. + up.X, crosshair_pos.Y - right.Y / 2. + up.Y, crosshair_pos.Z - right.Z / 2. + up.Z );
@@ -1356,9 +1380,30 @@ void RenderLayer::Draw( void )
 					weapon_pos.MoveAlong( &right, relative_weapon_vec.X * 0.1 );
 					weapon_pos.MoveAlong( &up, relative_weapon_vec.Y * 0.1 );
 					glVertex3d( weapon_pos.X, weapon_pos.Y, weapon_pos.Z );
+					
+					//delete shot_iter->second;
 				}
 			glEnd();
 			
+			// Draw little dots for all selected weapon ports.
+			glPointSize( 1.f );
+			glBegin( GL_POINTS );
+				for( std::map<int,Shot*>::iterator shot_iter = all_weapons.begin(); shot_iter != all_weapons.end(); shot_iter ++ )
+				{
+					weapon_vec.Set( shot_iter->second->X - observed_ship->X, shot_iter->second->Y - observed_ship->Y, shot_iter->second->Z - observed_ship->Z );
+					relative_weapon_vec.Set( weapon_vec.Dot(&(observed_ship->Right)), weapon_vec.Dot(&(observed_ship->Up)) );
+					relative_weapon_vec.ScaleTo( 1. );
+					weapon_pos.Copy( &crosshair_pos );
+					
+					weapon_pos.MoveAlong( &right, relative_weapon_vec.X * 0.18 );
+					weapon_pos.MoveAlong( &up, relative_weapon_vec.Y * 0.18 );
+					glVertex3d( weapon_pos.X, weapon_pos.Y, weapon_pos.Z );
+					
+					delete shot_iter->second;
+				}
+			glEnd();
+			
+			// Draw big dots for the next shots to fire.
 			glPointSize( 4.f );
 			glBegin( GL_POINTS );
 				std::map<int,Shot*> next_weapons = observed_ship->NextShots();
@@ -1372,6 +1417,8 @@ void RenderLayer::Draw( void )
 					weapon_pos.MoveAlong( &right, relative_weapon_vec.X * 0.18 );
 					weapon_pos.MoveAlong( &up, relative_weapon_vec.Y * 0.18 );
 					glVertex3d( weapon_pos.X, weapon_pos.Y, weapon_pos.Z );
+					
+					delete shot_iter->second;
 				}
 			glEnd();
 			
@@ -1390,68 +1437,66 @@ void RenderLayer::Draw( void )
 			// Draw the 2D cockpit.
 			Raptor::Game->Gfx.Setup2D();
 			Raptor::Game->Gfx.DrawRect2D( Rect.w / 2 - Rect.h, 0, Rect.w / 2 + Rect.h, Rect.h, cockpit_2d->CurrentFrame(), 1.f, 1.f, 1.f, 1.f );
+			
+			// When drawing the 2D cockpit, use the target hologram.
+			need_target_holo = true;
 		}
 		
 		
 		// Here we'll draw target info, unless it's done via cockpit screens.
 		
-		if( target )
+		if( target && need_target_holo )
 		{
-			if( need_target_holo || ! cockpit_3d )
+			// Show old-style targetting display.
+			
+			Vec3D vec_to_target( target->X - observed_ship->X, target->Y - observed_ship->Y, target->Z - observed_ship->Z );
+			vec_to_target.ScaleTo( 1. );
+			Camera cam_to_target( Raptor::Game->Cam );
+			cam_to_target.Fwd.Copy( &vec_to_target );
+			cam_to_target.Up.Copy( &(target->Up) );
+			cam_to_target.FixVectors();
+			cam_to_target.SetPos( target->X, target->Y, target->Z );
+			cam_to_target.MoveAlong( &(cam_to_target.Fwd), -1.3 );
+			cam_to_target.Fwd.RotateAround( &(cam_to_target.Right), 25. );
+			cam_to_target.FixVectors();
+			
+			Raptor::Game->Gfx.Setup3D( &(cam_to_target) );
+			
+			if( use_shaders )
+				Raptor::Game->ShaderMgr.ResumeShaders();
+			
+			if( dynamic_lights && Raptor::Game->ShaderMgr.Active() )
+				ClearDynamicLights();
+			
+			target->Shape.DrawAt( target, 0.3 / target->Shape.GetTriagonal() );
+			
+			if( use_shaders )
+				Raptor::Game->ShaderMgr.StopShaders();
+			
+			Raptor::Game->Gfx.Setup2D();
+			
+			std::string target_name = target->Name;
+			Player *target_player = Raptor::Game->Data.GetPlayer( target->PlayerID );
+			if( target_player )
+				target_name = target_player->Name;
+			
+			float red = 1.f, green = 1.f, blue = 1.f;
+			
+			if( observed_ship->Team && (target->Team == observed_ship->Team) )
 			{
-				// Show old-style targetting display.
-				
-				Vec3D vec_to_target( target->X - observed_ship->X, target->Y - observed_ship->Y, target->Z - observed_ship->Z );
-				vec_to_target.ScaleTo( 1. );
-				Camera cam_to_target( Raptor::Game->Cam );
-				cam_to_target.Fwd.Copy( &vec_to_target );
-				cam_to_target.Up.Copy( &(target->Up) );
-				cam_to_target.FixVectors();
-				cam_to_target.SetPos( target->X, target->Y, target->Z );
-				cam_to_target.MoveAlong( &(cam_to_target.Fwd), -1.3 );
-				cam_to_target.Fwd.RotateAround( &(cam_to_target.Right), 25. );
-				cam_to_target.FixVectors();
-				
-				Raptor::Game->Gfx.Setup3D( &(cam_to_target) );
-				
-				if( use_shaders )
-					Raptor::Game->ShaderMgr.ResumeShaders();
-				
-				if( dynamic_lights && Raptor::Game->ShaderMgr.Active() )
-				{
-					ClearDynamicLights();
-				}
-				
-				target->Shape.DrawAt( target, 0.3 / target->Shape.GetTriagonal() );
-				
-				if( use_shaders )
-					Raptor::Game->ShaderMgr.StopShaders();
-				
-				Raptor::Game->Gfx.Setup2D();
-				
-				std::string target_name = target->Name;
-				Player *target_player = Raptor::Game->Data.GetPlayer( target->PlayerID );
-				if( target_player )
-					target_name = target_player->Name;
-				
-				float red = 1.f, green = 1.f, blue = 1.f;
-				
-				if( observed_ship->Team && (target->Team == observed_ship->Team) )
-				{
-					red = 0.f;
-					green = 1.f;
-					blue = 0.f;
-				}
-				else
-				{
-					red = 1.f;
-					green = 0.f;
-					blue = 0.f;
-				}
-				
-				BigFont->DrawText( target_name, Rect.w / 2 + 2, Rect.h - 8, Font::ALIGN_BOTTOM_CENTER, 0.f, 0.f, 0.f, 0.8f );
-				BigFont->DrawText( target_name, Rect.w / 2, Rect.h - 10, Font::ALIGN_BOTTOM_CENTER, red, green, blue, 1.f );
+				red = 0.f;
+				green = 1.f;
+				blue = 0.f;
 			}
+			else
+			{
+				red = 1.f;
+				green = 0.f;
+				blue = 0.f;
+			}
+			
+			BigFont->DrawText( target_name, Rect.w / 2 + 2, Rect.h - 8, Font::ALIGN_BOTTOM_CENTER, 0.f, 0.f, 0.f, 0.8f );
+			BigFont->DrawText( target_name, Rect.w / 2, Rect.h - 10, Font::ALIGN_BOTTOM_CENTER, red, green, blue, 1.f );
 		}
 		
 		
@@ -1465,8 +1510,8 @@ void RenderLayer::Draw( void )
 		Raptor::Game->Gfx.Setup2D( -1., 1. );
 		Raptor::Game->Gfx.DrawCircle2D( -1.233, -0.9, 0.1, 32, 0, 0.f, 0.f, 0.f, 0.75f );
 		Raptor::Game->Gfx.DrawCircle2D( 1.233, -0.9, 0.1, 32, 0, 0.f, 0.f, 0.f, 0.75f );
-		Raptor::Game->Gfx.DrawCircleOutline2D( -1.233, -0.9, 0.1, 32, 0.f, 0.f, 1.f, 0.75f );
-		Raptor::Game->Gfx.DrawCircleOutline2D( 1.233, -0.9, 0.1, 32, 0.f, 0.f, 1.f, 0.75f );
+		Raptor::Game->Gfx.DrawCircleOutline2D( -1.233, -0.9, 0.1, 32, 1.f, 0.f, 0.f, 1.f, 0.75f );
+		Raptor::Game->Gfx.DrawCircleOutline2D( 1.233, -0.9, 0.1, 32, 1.f, 0.f, 0.f, 1.f, 0.75f );
 		
 		Pos3D *radar_ref = (Pos3D*) &(Raptor::Game->Cam);
 		
@@ -1578,7 +1623,7 @@ void RenderLayer::Draw( void )
 				blue = 0.5f;
 			}
 			
-			Raptor::Game->Gfx.DrawBox2D( x - 0.01, y - 0.01, x + 0.01, y + 0.01, 1.f, 1.f, 1.f, 1.f );
+			Raptor::Game->Gfx.DrawBox2D( x - 0.01, y - 0.01, x + 0.01, y + 0.01, 1.f, 1.f, 1.f, 1.f, 1.f );
 			Raptor::Game->Gfx.DrawCircle2D( x, y, radius, 6, 0, red, green, blue, 1.f );
 		}
 	}
@@ -1608,50 +1653,6 @@ void RenderLayer::Draw( void )
 		DrawScores();
 	
 	
-	// Add any flyby sounds.
-	
-	for( std::map<uint32_t,GameObject*>::iterator obj_iter = Raptor::Game->Data.GameObjects.begin(); obj_iter != Raptor::Game->Data.GameObjects.end(); obj_iter ++ )
-	{
-		// Don't add flyby sounds for the ship we're watching.
-		if( observed_ship && (obj_iter->first == observed_ship->ID) )
-			continue;
-		
-		// Don't add two sounds for the same object flying by.
-		if( Raptor::Game->Snd.ObjectPans.find( obj_iter->first ) != Raptor::Game->Snd.ObjectPans.end() )
-			continue;
-		
-		// Calculate the object's motion relative to the camera's.
-		Vec3D relative_motion = obj_iter->second->MotionVector;
-		relative_motion -= cam_motion_vec;
-		
-		// Check for ship flybys.
-		if( (obj_iter->second->Type() == XWing::Object::SHIP) && (Raptor::Game->Cam.Dist( obj_iter->second ) < 67.) && (obj_iter->second->MotionVector.Length() >= 20.) )
-		{
-			Ship *ship = (Ship*) obj_iter->second;
-			
-			// Dead ships tell no tales.
-			if( ship->Health <= 0. )
-				continue;
-			
-			// Different sounds for different speeds and ships.
-			if( ship->ShipType == Ship::TYPE_TIE_FIGHTER )
-			{
-				if( relative_motion.Length() >= 250. )
-					Raptor::Game->Snd.PlayFromObject( Raptor::Game->Res.GetSound("tie_fast.wav"), obj_iter->first, 10. );
-				else if( relative_motion.Length() >= 25. )
-					Raptor::Game->Snd.PlayFromObject( Raptor::Game->Res.GetSound("tie_slow.wav"), obj_iter->first, 5. );
-			}
-			else if( (ship->ShipType == Ship::TYPE_XWING) || (ship->ShipType == Ship::TYPE_YWING) )
-			{
-				if( relative_motion.Length() >= 200. )
-					Raptor::Game->Snd.PlayFromObject( Raptor::Game->Res.GetSound("xwing_fast.wav"), obj_iter->first, 10. );
-				else if( relative_motion.Length() >= 20. )
-					Raptor::Game->Snd.PlayFromObject( Raptor::Game->Res.GetSound("xwing_slow.wav"), obj_iter->first, 5. );
-			}
-		}
-	}
-	
-	
 	glPopMatrix();
 }
 
@@ -1670,11 +1671,9 @@ void RenderLayer::DrawBackground( void )
 
 void RenderLayer::DrawStars( void )
 {
-	// Don't draw if g_stars=false.
-	if( ! Raptor::Game->Cfg.SettingAsBool( "g_stars", false ) )
+	int star_count = std::min<int>( STAR_COUNT, Raptor::Game->Cfg.SettingAsInt( "g_stars", 0 ) );
+	if( ! star_count )
 		return;
-	
-	int star_count = std::min<int>( STAR_COUNT, Raptor::Game->Cfg.SettingAsInt( "g_stars_count", STAR_COUNT ) );
 	
 	glColor4f( 1.f, 1.f, 1.f, 1.f );
 	glPointSize( 0.5f );
@@ -1701,11 +1700,7 @@ void RenderLayer::DrawStars( void )
 
 void RenderLayer::DrawDebris( void )
 {
-	// Don't draw if g_debris=false.
-	if( ! Raptor::Game->Cfg.SettingAsBool( "g_debris", true ) )
-		return;
-	
-	int debris_count = std::min<int>( DEBRIS_COUNT, Raptor::Game->Cfg.SettingAsInt( "g_debris_count", DEBRIS_COUNT ) );
+	int debris_count = std::min<int>( DEBRIS_COUNT, Raptor::Game->Cfg.SettingAsInt( "g_debris", 500 ) );
 	
 	for( int i = 0; i < debris_count; i ++ )
 	{
@@ -1733,6 +1728,18 @@ void RenderLayer::DrawScores( void )
 			scores[ atoi( player_iter->second->Properties["kills"].c_str() ) ].push_back( player_iter->second );
 	}
 	
+	double remaining_secs = ((XWingGame*)( Raptor::Game ))->RoundTimer.RemainingSeconds();
+	if( remaining_secs > 0. )
+	{
+		int minutes = remaining_secs / 60.;
+		int seconds = Num::FPart( remaining_secs / 60. ) * 60.;
+		char time_string[ 32 ] = "";
+		snprintf( time_string, 32, "%i:%02i", minutes, seconds );
+		
+		BigFont->DrawText( std::string(time_string), Raptor::Game->Gfx.W / 2 + 2, 62, Font::ALIGN_MIDDLE_CENTER, 0.f, 0.f, 0.f, 0.8f );
+		BigFont->DrawText( std::string(time_string), Raptor::Game->Gfx.W / 2, 60, Font::ALIGN_MIDDLE_CENTER, 1.f, 1.f, 1.f, 1.f );
+	}
+	
 	int y = 100;
 	
 	bool ffa = ( Raptor::Game->Data.Properties["gametype"].find("ffa_") == 0 );
@@ -1755,8 +1762,8 @@ void RenderLayer::DrawScores( void )
 		}
 		
 		y += BigFont->GetHeight() - 8;
-		Raptor::Game->Gfx.DrawLine2D( Raptor::Game->Gfx.W / 2 - 298, y + 2, Raptor::Game->Gfx.W / 2 + 302, y + 2, 0.f, 0.f, 0.f, 0.8f );
-		Raptor::Game->Gfx.DrawLine2D( Raptor::Game->Gfx.W / 2 - 300, y, Raptor::Game->Gfx.W / 2 + 300, y, 1.f, 1.f, 1.f, 1.f );
+		Raptor::Game->Gfx.DrawLine2D( Raptor::Game->Gfx.W / 2 - 298, y + 2, Raptor::Game->Gfx.W / 2 + 302, y + 2, 1.f, 0.f, 0.f, 0.f, 0.8f );
+		Raptor::Game->Gfx.DrawLine2D( Raptor::Game->Gfx.W / 2 - 300, y, Raptor::Game->Gfx.W / 2 + 300, y, 1.f, 1.f, 1.f, 1.f, 1.f );
 		y += 16;
 	}
 	
@@ -1813,7 +1820,7 @@ void RenderLayer::DrawScores( void )
 			std::string str = (*player_iter)->Name;
 			if( (*player_iter)->Properties["assigned_team"] != "" )
 				str += std::string(" [") + (*player_iter)->Properties["assigned_team"] + std::string("]");
-
+			
 			BigFont->DrawText( str, Raptor::Game->Gfx.W / 2 - 298, y + 2, Font::ALIGN_MIDDLE_LEFT, 0.f, 0.f, 0.f, 0.8f );
 			BigFont->DrawText( str, Raptor::Game->Gfx.W / 2 - 300, y, Font::ALIGN_MIDDLE_LEFT, red, green, blue, 1.f );
 			BigFont->DrawText( Num::ToString(score_iter->first), Raptor::Game->Gfx.W / 2 + 202, y + 2, Font::ALIGN_MIDDLE_RIGHT, 0.f, 0.f, 0.f, 0.8f );
@@ -1821,7 +1828,7 @@ void RenderLayer::DrawScores( void )
 			BigFont->DrawText( (*player_iter)->Properties["deaths"], Raptor::Game->Gfx.W / 2 + 302, y + 2, Font::ALIGN_MIDDLE_RIGHT, 0.f, 0.f, 0.f, 0.8f );
 			BigFont->DrawText( (*player_iter)->Properties["deaths"], Raptor::Game->Gfx.W / 2 + 300, y, Font::ALIGN_MIDDLE_RIGHT, red, green, blue, 1.f );
 			
-			y += BigFont->GetHeight();
+			y += BigFont->GetLineSkip();
 		}
 	}
 	
@@ -1883,6 +1890,8 @@ bool RenderLayer::KeyDown( SDLKey key )
 		Raptor::Game->Mouse.ShowCursor = true;
 		((XWingGame*)( Raptor::Game ))->ReadMouse = false;
 		Raptor::Game->Layers.Add( new IngameMenu() );
+		
+		return true;
 	}
 	
 	return false;

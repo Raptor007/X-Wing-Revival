@@ -29,6 +29,7 @@ namespace XWing
 			LOBBY = 'Loby',
 			FLY = 'Fly ',
 			ROUND_ENDED = 'Fin ',
+			TIME_REMAINING = 'Time',
 			EXPLOSION = 'Boom',
 			SHOT_HIT_SHIP = 'HitS',
 			SHOT_HIT_TURRET = 'HitT',

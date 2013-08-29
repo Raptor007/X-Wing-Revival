@@ -6,6 +6,7 @@
 class MainMenu;
 class MainMenuPlayButton;
 class MainMenuPrefsButton;
+class MainMenuHelpButton;
 class MainMenuQuitButton;
 
 #include "PlatformSpecific.h"
@@ -19,13 +20,15 @@ class MainMenuQuitButton;
 class MainMenu : public Layer
 {
 public:
-	Animation Background;
-	Font *TitleFont, *TitleFontSmall;
+	Animation Background, Fog;
+	Font *TitleFont, *TitleFontBig, *TitleFontSmall;
 	Font *VersionFont;
 	Font *ButtonFont;
 	MainMenuPlayButton *PlayButton;
 	MainMenuPrefsButton *PrefsButton;
+	MainMenuHelpButton *HelpButton;
 	MainMenuQuitButton *QuitButton;
+	double FogTime;
 	
 	MainMenu( void );
 	virtual ~MainMenu();
@@ -33,14 +36,15 @@ public:
 	void UpdateRects( void );
 	void Draw( void );
 	void DrawElements( void );
-	bool HandleEvent( SDL_Event *event, bool already_handled = false );
+	bool HandleEvent( SDL_Event *event );
 };
 
 
 class MainMenuPlayButton : public LabelledButton
 {
 public:
-	MainMenuPlayButton( MainMenu *menu, SDL_Rect *rect, Font *button_font, uint8_t align = Font::ALIGN_MIDDLE_LEFT );
+	MainMenuPlayButton( SDL_Rect *rect, Font *button_font, uint8_t align = Font::ALIGN_MIDDLE_LEFT );
+	virtual ~MainMenuPlayButton();
 	void Clicked( Uint8 button = SDL_BUTTON_LEFT );
 };
 
@@ -48,7 +52,17 @@ public:
 class MainMenuPrefsButton : public LabelledButton
 {
 public:
-	MainMenuPrefsButton( MainMenu *menu, SDL_Rect *rect, Font *button_font, uint8_t align = Font::ALIGN_MIDDLE_LEFT );
+	MainMenuPrefsButton( SDL_Rect *rect, Font *button_font, uint8_t align = Font::ALIGN_MIDDLE_LEFT );
+	virtual ~MainMenuPrefsButton();
+	void Clicked( Uint8 button = SDL_BUTTON_LEFT );
+};
+
+
+class MainMenuHelpButton : public LabelledButton
+{
+public:
+	MainMenuHelpButton( SDL_Rect *rect, Font *button_font, uint8_t align = Font::ALIGN_MIDDLE_LEFT );
+	virtual ~MainMenuHelpButton();
 	void Clicked( Uint8 button = SDL_BUTTON_LEFT );
 };
 
@@ -56,6 +70,7 @@ public:
 class MainMenuQuitButton : public LabelledButton
 {
 public:
-	MainMenuQuitButton( MainMenu *menu, SDL_Rect *rect, Font *button_font, uint8_t align = Font::ALIGN_MIDDLE_LEFT );
+	MainMenuQuitButton( SDL_Rect *rect, Font *button_font, uint8_t align = Font::ALIGN_MIDDLE_LEFT );
+	virtual ~MainMenuQuitButton();
 	void Clicked( Uint8 button = SDL_BUTTON_LEFT );
 };

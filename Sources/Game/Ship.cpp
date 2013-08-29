@@ -287,18 +287,18 @@ double Ship::Radius( void ) const
 	else if( ShipType == TYPE_EXHAUST_PORT )
 		return 0.5;
 	
-	return 5.;
+	return 4.5;
 }
 
 
 double Ship::MaxSpeed( void ) const
 {
 	if( ShipType == TYPE_XWING )
-		return 135.;
+		return 150.;
 	else if( ShipType == TYPE_YWING )
-		return 110.;
+		return 125.;
 	else if( ShipType == TYPE_TIE_FIGHTER )
-		return 165.;
+		return 180.;
 	else if( ShipType == TYPE_ISD2 )
 		return 10.;
 	else if( ShipType == TYPE_EXHAUST_PORT )
@@ -783,12 +783,17 @@ void Ship::ReadFromUpdatePacketFromClient( Packet *packet, int8_t precision )
 		return;
 	}
 	
+	uint32_t prev_selected_weapon = SelectedWeapon;
+	
 	GameObject::ReadFromUpdatePacketFromClient( packet, precision );
 	Firing = packet->NextUChar();
 	SetShieldPos( packet->NextUChar() );
 	Target = packet->NextUInt();
 	SelectedWeapon = packet->NextUInt();
 	FiringMode = packet->NextUChar();
+	
+	if( SelectedWeapon != prev_selected_weapon )
+		WeaponIndex = 0;
 }
 
 

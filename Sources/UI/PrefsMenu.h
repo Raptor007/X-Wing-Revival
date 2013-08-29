@@ -28,7 +28,7 @@ class PrefsMenuDefaultsButton;
 class PrefsMenu : public Window
 {
 public:
-	Font *TitleFont, *ItemFont, *ButtonFont;
+	Font *LabelFont, *TitleFont, *ItemFont, *ButtonFont;
 	int PrevFullscreenX, PrevFullscreenY, PrevFSAA, PrevAF;
 	bool PrevFullscreen;
 	std::string PrevShaderFile, PrevSoundDir, PrevMusicDir;
@@ -47,7 +47,8 @@ class PrefsMenuCheckBox : public CheckBox
 public:
 	std::string Variable, TrueStr, FalseStr;
 	
-	PrefsMenuCheckBox( Window *wind, SDL_Rect *rect, Font *font, std::string label, std::string variable, std::string true_str = "true", std::string false_str = "false" );
+	PrefsMenuCheckBox( SDL_Rect *rect, Font *font, std::string label, std::string variable, std::string true_str = "true", std::string false_str = "false" );
+	virtual ~PrefsMenuCheckBox();
 	void Changed( void );
 };
 
@@ -58,7 +59,8 @@ public:
 	std::string Variable, TrueStr;
 	std::list<PrefsMenuRadioButton*> OtherButtons;
 	
-	PrefsMenuRadioButton( Window *wind, SDL_Rect *rect, Font *font, std::string label, std::string variable, std::string true_str );
+	PrefsMenuRadioButton( SDL_Rect *rect, Font *font, std::string label, std::string variable, std::string true_str );
+	virtual ~PrefsMenuRadioButton();
 	int GetWidth( void );
 	void Clicked( Uint8 button = SDL_BUTTON_LEFT );
 };
@@ -70,7 +72,8 @@ public:
 	std::string Variable;
 	ListBox *LinkedListBox;
 	
-	PrefsMenuTextBox( Window *wind, SDL_Rect *rect, Font *font, uint8_t align, std::string variable );
+	PrefsMenuTextBox( SDL_Rect *rect, Font *font, uint8_t align, std::string variable );
+	virtual ~PrefsMenuTextBox();
 	void Changed( void );
 };
 
@@ -81,7 +84,8 @@ public:
 	std::string Variable;
 	TextBox *LinkedTextBox;
 	
-	PrefsMenuListBox( Window *wind, SDL_Rect *rect, Font *font, int scroll_bar_size, std::string variable, TextBox *linked_text_box );
+	PrefsMenuListBox( SDL_Rect *rect, Font *font, int scroll_bar_size, std::string variable, TextBox *linked_text_box );
+	virtual ~PrefsMenuListBox();
 	void Changed( void );
 };
 
@@ -91,7 +95,8 @@ class PrefsMenuDropDown : public DropDown
 public:
 	std::string Variable;
 	
-	PrefsMenuDropDown( Layer *container, SDL_Rect *rect, Font *font, uint8_t align, int scroll_bar_size, std::string variable );
+	PrefsMenuDropDown( SDL_Rect *rect, Font *font, uint8_t align, int scroll_bar_size, std::string variable );
+	virtual ~PrefsMenuDropDown();
 	void Changed( void );
 };
 
@@ -99,7 +104,8 @@ public:
 class PrefsMenuDoneButton : public LabelledButton
 {
 public:
-	PrefsMenuDoneButton( PrefsMenu *menu, SDL_Rect *rect, const char *label );
+	PrefsMenuDoneButton( SDL_Rect *rect, Font *button_font, const char *label );
+	virtual ~PrefsMenuDoneButton();
 	void Clicked( Uint8 button = SDL_BUTTON_LEFT );
 };
 
@@ -107,6 +113,7 @@ public:
 class PrefsMenuDefaultsButton : public LabelledButton
 {
 public:
-	PrefsMenuDefaultsButton( PrefsMenu *menu, SDL_Rect *rect, const char *label );
+	PrefsMenuDefaultsButton( SDL_Rect *rect, Font *button_font, const char *label );
+	virtual ~PrefsMenuDefaultsButton();
 	void Clicked( Uint8 button = SDL_BUTTON_LEFT );
 };

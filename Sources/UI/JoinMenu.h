@@ -26,7 +26,7 @@ class JoinMenuBackButton;
 class JoinMenu : public Window
 {
 public:
-	Font *TitleFont, *ItemFont, *ButtonFont;
+	Font *TitleFont, *LabelFont, *ItemFont, *ButtonFont;
 	JoinMenuListBox *ServerList;
 	NetUDP ServerFinder;
 	
@@ -44,7 +44,8 @@ public:
 	std::string Variable;
 	ListBox *LinkedListBox;
 	
-	JoinMenuTextBox( Window *wind, SDL_Rect *rect, Font *font, uint8_t align, std::string variable, ListBox *linked_list_box = NULL );
+	JoinMenuTextBox( SDL_Rect *rect, Font *font, uint8_t align, std::string variable, ListBox *linked_list_box = NULL );
+	virtual ~JoinMenuTextBox();
 	void Changed( void );
 };
 
@@ -55,7 +56,8 @@ public:
 	std::string Variable;
 	TextBox *LinkedTextBox;
 	
-	JoinMenuListBox( Window *wind, SDL_Rect *rect, Font *font, int scroll_bar_size, std::string variable, TextBox *linked_text_box = NULL );
+	JoinMenuListBox( SDL_Rect *rect, Font *font, int scroll_bar_size, std::string variable, TextBox *linked_text_box = NULL );
+	virtual ~JoinMenuListBox();
 	void Changed( void );
 };
 
@@ -63,7 +65,8 @@ public:
 class JoinMenuGoButton : public LabelledButton
 {
 public:
-	JoinMenuGoButton( JoinMenu *menu, SDL_Rect *rect, const char *label );
+	JoinMenuGoButton( SDL_Rect *rect, Font *button_font );
+	virtual ~JoinMenuGoButton();
 	void Clicked( Uint8 button = SDL_BUTTON_LEFT );
 };
 
@@ -71,7 +74,8 @@ public:
 class JoinMenuHostButton : public LabelledButton
 {
 public:
-	JoinMenuHostButton( JoinMenu *menu, SDL_Rect *rect, const char *label );
+	JoinMenuHostButton( SDL_Rect *rect, Font *button_font );
+	virtual ~JoinMenuHostButton();
 	void Clicked( Uint8 button = SDL_BUTTON_LEFT );
 };
 
@@ -79,6 +83,7 @@ public:
 class JoinMenuBackButton : public LabelledButton
 {
 public:
-	JoinMenuBackButton( JoinMenu *menu, SDL_Rect *rect, const char *label );
+	JoinMenuBackButton( SDL_Rect *rect, Font *button_font );
+	virtual ~JoinMenuBackButton();
 	void Clicked( Uint8 button = SDL_BUTTON_LEFT );
 };

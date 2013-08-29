@@ -4,6 +4,7 @@
 
 #include "XWingGame.h"
 
+#include <cstddef>
 #include <cmath>
 #include "XWingDefs.h"
 #include "XWingServer.h"
@@ -22,6 +23,7 @@
 #include "Turret.h"
 #include "DeathStar.h"
 #include "DeathStarBox.h"
+#include "Notification.h"
 
 
 XWingGame::XWingGame( std::string version ) : RaptorGame( "X-Wing Revival", version )
@@ -57,30 +59,35 @@ void XWingGame::SetDefaults( void )
 	Cfg.Settings[ "g_shader_file" ] = "model";
 	Cfg.Settings[ "g_dynamic_lights" ] = "4";
 	Cfg.Settings[ "g_bg" ] = "true";
-	Cfg.Settings[ "g_stars" ] = "false";
-	Cfg.Settings[ "g_debris" ] = "true";
-	Cfg.Settings[ "g_debris_count" ] = "500";
+	Cfg.Settings[ "g_stars" ] = "0";
+	Cfg.Settings[ "g_debris" ] = "500";
 	Cfg.Settings[ "g_deathstar_detail" ] = "3";
 	Cfg.Settings[ "g_3d_cockpit" ] = "true";
 	Cfg.Settings[ "g_hq_cockpit" ] = "false";
 	Cfg.Settings[ "g_hq_ships" ] = "true";
+	Cfg.Settings[ "g_crosshair_thickness" ] = "1.5";
 	
 	Cfg.Settings[ "s_menu_music" ] = "true";
 	Cfg.Settings[ "s_game_music" ] = "true";
 	Cfg.Settings[ "s_volume" ] = "0.5";
 	Cfg.Settings[ "s_effect_volume" ] = "0.5";
-	Cfg.Settings[ "s_music_volume" ] = "1.0";
+	Cfg.Settings[ "s_music_volume" ] = "1";
 	
 	Cfg.Settings[ "joy_enable" ] = "true";
 	Cfg.Settings[ "joy_swap_xz" ] = "false";
-	Cfg.Settings[ "joy_smooth_x" ] = "0";
-	Cfg.Settings[ "joy_smooth_y" ] = "0";
+	Cfg.Settings[ "joy_deadzone" ] = "0.03";
+	Cfg.Settings[ "joy_deadzone_thumbsticks" ] = "0.1";
+	Cfg.Settings[ "joy_deadzone_triggers" ] = "0.02";
+	Cfg.Settings[ "joy_smooth_x" ] = "0.125";
+	Cfg.Settings[ "joy_smooth_y" ] = "0.125";
 	Cfg.Settings[ "joy_smooth_z" ] = "0.5";
 	Cfg.Settings[ "joy_smooth_pedals" ] = "0";
+	Cfg.Settings[ "joy_smooth_thumbsticks" ] = "1";
+	Cfg.Settings[ "joy_smooth_triggers" ] = "0.75";
 	
 	Cfg.Settings[ "mouse_enable" ] = "fullscreen";
 	Cfg.Settings[ "mouse_invert" ] = "true";
-	Cfg.Settings[ "mouse_smooth" ] = "0";
+	Cfg.Settings[ "mouse_smooth" ] = "0.25";
 	Cfg.Settings[ "mouse_look" ] = "false";
 	
 	Cfg.Settings[ "netrate" ] = "30";
@@ -88,7 +95,7 @@ void XWingGame::SetDefaults( void )
 
 	#ifdef APPLE_POWERPC
 		Cfg.Settings[ "g_dynamic_lights" ] = "1";
-		Cfg.Settings[ "g_debris_count" ] = "200";
+		Cfg.Settings[ "g_debris" ] = "200";
 		Cfg.Settings[ "g_deathstar_detail" ] = "2";
 	#endif
 }
@@ -115,6 +122,16 @@ void XWingGame::Setup( int argc, char **argv )
 	// Set music to shuffle.
 	Snd.ShuffleMusic = true;
 	
+	// Show a loading screen while precaching resources.
+	Gfx.Clear( 0.f, 0.f, 0.f );
+	FirstLoadScreen *load_screen = new FirstLoadScreen();
+	Layers.Add( load_screen );
+	Layers.Draw();
+	Gfx.SwapBuffers();
+	Layers.Remove( load_screen );
+	load_screen = NULL;
+	SDL_Delay( 1 );
+	
 	// If enabled, play the menu music.
 	if( Cfg.SettingAsBool("s_menu_music") )
 		Snd.PlayMusicSubdir( "Menu" );
@@ -124,15 +141,6 @@ void XWingGame::Setup( int argc, char **argv )
 	// Start playing music while we load other resources.
 	Snd.Update();
 	
-	// Show a loading screen while precaching resources.
-	Gfx.Clear( 0.f, 0.f, 0.f );
-	FirstLoadScreen *load_screen = new FirstLoadScreen();
-	Layers.Add( load_screen );
-	Layers.Draw();
-	Gfx.SwapBuffers();
-	Layers.Remove( load_screen );
-	load_screen = NULL;
-	
 	if( ! screensaver )
 	{
 		// Add the main menu to the now-empty Layers stack.
@@ -141,7 +149,7 @@ void XWingGame::Setup( int argc, char **argv )
 	else
 	{
 		// Add an input handler to quit the screensaver when necessary.
-		Layers.Add( new Screensaver() );
+		AddScreensaverLayer();
 	}
 	
 	// Generate all framebuffers for render-to-texture.
@@ -190,6 +198,11 @@ void XWingGame::Precache( void )
 		
 		Res.GetAnimation("torpedo.ani");
 		Res.GetAnimation("deathstar.ani");
+
+		if( Cfg.SettingAsBool("g_hq_ships") )
+			Res.GetModel("y-wing_hq.obj");
+		else
+			Res.GetModel("y-wing.obj");
 		
 		if( Cfg.SettingAsBool("g_3d_cockpit") )
 		{
@@ -197,11 +210,13 @@ void XWingGame::Precache( void )
 			{
 				Res.GetModel("x-wing_cockpit_hq.obj");
 				Res.GetModel("tie-fighter_cockpit_hq.obj");
+				Res.GetModel("y-wing_cockpit_hq.obj");
 			}
 			else
 			{
 				Res.GetModel("x-wing_cockpit.obj");
 				Res.GetModel("tie-fighter_cockpit.obj");
+				Res.GetModel("y-wing_cockpit.obj");
 			}
 		}
 		else
@@ -210,19 +225,20 @@ void XWingGame::Precache( void )
 			Res.GetAnimation("cockpit_tie.ani");
 		}
 		
-		Res.GetModel("y-wing_hq.obj");
-		Res.GetModel("y-wing_cockpit_hq.obj");
 		Res.GetModel("turret_body.obj");
 		Res.GetModel("turret_gun.obj");
+		Res.GetModel("deathstar_detail.obj");
+		Res.GetModel("deathstar_detail_bottom.obj");
 		Res.GetModel("deathstar_box.obj");
 		Res.GetModel("deathstar_exhaust_port.obj");
-		Res.GetModel("deathstar_detail.obj");
 		Res.GetModel("isd2.obj");
 		
 		Res.GetSound("beep.wav");
 		Res.GetSound("laser_red.wav");
 		Res.GetSound("laser_green.wav");
 		Res.GetSound("turbolaser_green.wav");
+		Res.GetSound("torpedo.wav");
+		Res.GetSound("torpedo_enter.wav");
 		Res.GetSound("explosion.wav");
 		Res.GetSound("damage_hull.wav");
 		Res.GetSound("damage_shield.wav");
@@ -247,6 +263,15 @@ void XWingGame::Precache( void )
 		Res.GetSound("deathstar_30sec.wav");
 		Res.GetSound("deathstar_0sec.wav");
 	}
+}
+
+
+void XWingGame::AddScreensaverLayer( void )
+{
+	Screensaver *screensaver_layer = new Screensaver();
+	screensaver_layer->IgnoreKeys.insert( SDLK_LEFTBRACKET );
+	screensaver_layer->IgnoreKeys.insert( SDLK_RIGHTBRACKET );
+	Layers.Add( screensaver_layer );
 }
 
 
@@ -295,12 +320,9 @@ void XWingGame::Update( double dt )
 			if( ! Cfg.SettingAsBool("mouse_invert",true) )
 				pitch *= -1.;
 			
-			if( Cfg.SettingAsBool("mouse_smooth") )
-			{
-				double smooth = Cfg.SettingAsDouble("mouse_smooth");
-				yaw = pow( fabs(yaw), smooth + 1. ) * Num::Sign(yaw);
-				pitch = pow( fabs(pitch), smooth + 1. ) * Num::Sign(pitch);
-			}
+			double smooth = Cfg.SettingAsDouble("mouse_smooth");
+			yaw = fabs(pow( fabs(yaw), smooth + 1. )) * Num::Sign(yaw);
+			pitch = fabs(pow( fabs(pitch), smooth + 1. )) * Num::Sign(pitch);
 			
 			// Read mouse buttons.
 			if( Mouse.ButtonDown( SDL_BUTTON_LEFT ) )
@@ -334,8 +356,7 @@ void XWingGame::Update( double dt )
 				
 				// Read pedals.
 				double z = joy_iter->second.Axis( 2, deadzone );
-				if( Cfg.SettingAsBool("joy_smooth_pedals") )
-					z = pow( fabs(z), Cfg.SettingAsDouble("joy_smooth_pedals") + 1. ) * Num::Sign(z);
+				z = fabs(pow( fabs(z), Cfg.SettingAsDouble("joy_smooth_pedals") + 1. )) * Num::Sign(z);
 				
 				if( Cfg.SettingAsBool("joy_swap_xz") )
 					roll = z;
@@ -345,17 +366,23 @@ void XWingGame::Update( double dt )
 			else if( Str::FindInsensitive( joy_iter->second.Name, "Xbox" ) >= 0 )
 			{
 				stick = true;
+				double deadzone_thumbsticks = Cfg.SettingAsDouble( "joy_deadzone_thumbsticks", 0.1 );
+				double deadzone_triggers = Cfg.SettingAsDouble( "joy_deadzone_triggers", 0.02 );
 				
-				// Read controller's analog axes.
-				roll = -1. * joy_iter->second.Axis( 2, 0.01 );
-				pitch = joy_iter->second.Axis( 1, 0.1 );
-				pitch *= fabs(pitch);
-				yaw = joy_iter->second.Axis( 0, 0.1 );
-				yaw *= fabs(yaw);
-				LookYaw = joy_iter->second.Axis( 4, 0.1 );
-				LookYaw *= 180. * fabs(LookYaw);
-				LookPitch = joy_iter->second.Axis( 3, 0.1 );
-				LookPitch *= -90. * LookPitch;
+				// Read controller's triggers for roll.
+				roll = -1. * joy_iter->second.Axis( 2, deadzone_triggers );
+				roll = fabs(pow( fabs(roll), Cfg.SettingAsDouble("joy_smooth_triggers") + 1. )) * Num::Sign(roll);
+				
+				// Read controller's thumbsticks.
+				double smooth = Cfg.SettingAsDouble( "joy_smooth_thumbsticks", 1. );
+				pitch = joy_iter->second.Axis( 1, deadzone_thumbsticks );
+				pitch = fabs(pow( fabs(pitch), smooth + 1. )) * Num::Sign(pitch);
+				yaw = joy_iter->second.Axis( 0, deadzone_thumbsticks );
+				yaw = fabs(pow( fabs(yaw), smooth + 1. )) * Num::Sign(yaw);
+				LookYaw = joy_iter->second.Axis( 4, deadzone_thumbsticks );
+				LookYaw = 180. * fabs(pow( fabs(LookYaw), smooth + 1. )) * Num::Sign(LookYaw);
+				LookPitch = joy_iter->second.Axis( 3, deadzone_thumbsticks );
+				LookPitch = -90. * fabs(pow( fabs(LookPitch), smooth + 1. )) * Num::Sign(LookPitch);
 				
 				// Read controller's buttons.
 				if( joy_iter->second.ButtonDown( 0 ) ) // A
@@ -379,14 +406,11 @@ void XWingGame::Update( double dt )
 				
 				// Read joystick's analog axes.
 				double x = joy_iter->second.Axis( 0, deadzone );
-				if( Cfg.SettingAsBool("joy_smooth_x") )
-					x = pow( fabs(x), Cfg.SettingAsDouble("joy_smooth_x") + 1. ) * Num::Sign(x);
+				x = fabs(pow( fabs(x), Cfg.SettingAsDouble("joy_smooth_x") + 1. )) * Num::Sign(x);
 				double y = joy_iter->second.Axis( 1, deadzone );
-				if( Cfg.SettingAsBool("joy_smooth_y") )
-					y = pow( fabs(y), Cfg.SettingAsDouble("joy_smooth_y") + 1. ) * Num::Sign(y);
+				y = fabs(pow( fabs(y), Cfg.SettingAsDouble("joy_smooth_y") + 1. )) * Num::Sign(y);
 				double z = joy_iter->second.Axis( 3, deadzone );
-				if( Cfg.SettingAsBool("joy_smooth_z") )
-					z = pow( fabs(z), Cfg.SettingAsDouble("joy_smooth_z") + 1. ) * Num::Sign(z);
+				z = fabs(pow( fabs(z), Cfg.SettingAsDouble("joy_smooth_z") + 1. )) * Num::Sign(z);
 				
 				pitch = y;
 				throttle = joy_iter->second.AxisScaled( 2, 1., 0., 0., deadzone );
@@ -511,7 +535,7 @@ void XWingGame::Update( double dt )
 	
 	// Build a list of all ships, because we'll refer to it often.
 	std::list<Ship*> ships;
-	for( std::map<uint32_t,GameObject*>::iterator obj_iter = Raptor::Game->Data.GameObjects.begin(); obj_iter != Raptor::Game->Data.GameObjects.end(); obj_iter ++ )
+	for( std::map<uint32_t,GameObject*>::iterator obj_iter = Data.GameObjects.begin(); obj_iter != Data.GameObjects.end(); obj_iter ++ )
 	{
 		if( obj_iter->second->Type() == XWing::Object::SHIP )
 			ships.push_back( (Ship*) obj_iter->second );
@@ -716,6 +740,99 @@ void XWingGame::Update( double dt )
 	// Now update all objects.
 	
 	RaptorGame::Update( dt );
+	
+	
+	Ship *observed_ship = my_ship;
+	if( ! observed_ship )
+		observed_ship = (Ship*) Data.GetObject( ObservedShipID );
+	
+	
+	if( State >= XWing::State::FLYING )
+	{
+		// Add any flyby sounds.
+		
+		for( std::map<uint32_t,GameObject*>::iterator obj_iter = Data.GameObjects.begin(); obj_iter != Data.GameObjects.end(); obj_iter ++ )
+		{
+			// Don't add flyby sounds for the ship we're watching.
+			if( observed_ship && (obj_iter->first == observed_ship->ID) )
+				continue;
+			
+			// Don't add two sounds for the same object flying by.
+			if( Snd.ObjectPans.find( obj_iter->first ) != Snd.ObjectPans.end() )
+				continue;
+			
+			// Calculate the object's motion relative to the camera's.
+			Vec3D relative_motion = obj_iter->second->MotionVector;
+			if( observed_ship )
+				relative_motion -= observed_ship->MotionVector;
+			
+			// Check for ship flybys.
+			if( (obj_iter->second->Type() == XWing::Object::SHIP) && (Cam.Dist( obj_iter->second ) < 67.) && (obj_iter->second->MotionVector.Length() >= 20.) )
+			{
+				Ship *ship = (Ship*) obj_iter->second;
+				
+				// Dead ships tell no tales.
+				if( ship->Health <= 0. )
+					continue;
+				
+				// Different sounds for different speeds and ships.
+				if( ship->ShipType == Ship::TYPE_TIE_FIGHTER )
+				{
+					if( relative_motion.Length() >= 250. )
+						Snd.PlayFromObject( Res.GetSound("tie_fast.wav"), obj_iter->first, 4. );
+					else if( relative_motion.Length() >= 25. )
+						Snd.PlayFromObject( Res.GetSound("tie_slow.wav"), obj_iter->first, 5. );
+				}
+				else if( (ship->ShipType == Ship::TYPE_XWING) || (ship->ShipType == Ship::TYPE_YWING) )
+				{
+					if( relative_motion.Length() >= 200. )
+						Snd.PlayFromObject( Res.GetSound("xwing_fast.wav"), obj_iter->first, 4. );
+					else if( relative_motion.Length() >= 20. )
+						Snd.PlayFromObject( Res.GetSound("xwing_slow.wav"), obj_iter->first, 5. );
+				}
+			}
+		}
+	}
+	
+	
+	if( (State == XWing::State::FLYING) && Cfg.SettingAsBool("s_imuse") )
+	{
+		// Update music according to the action.
+		
+		if( observed_ship && (Data.Properties["gametype"] == "yavin") )
+		{
+			// Find the important elements of the Battle of Yavin scenario.
+			
+			DeathStar *deathstar = NULL;
+			Ship *exhaust_port = NULL;
+			
+			for( std::map<uint32_t,GameObject*>::iterator obj_iter = Data.GameObjects.begin(); obj_iter != Data.GameObjects.end(); obj_iter ++ )
+			{
+				if( obj_iter->second->Type() == XWing::Object::SHIP )
+				{
+					Ship *this_ship = (Ship*) obj_iter->second;
+					if( this_ship->ShipType == Ship::TYPE_EXHAUST_PORT )
+						exhaust_port = this_ship;
+				}
+				else if( obj_iter->second->Type() == XWing::Object::DEATH_STAR )
+					deathstar = (DeathStar*) obj_iter->second;
+				
+				if( deathstar && exhaust_port )
+					break;
+			}
+			
+			// Change music for trench running.
+			
+			if( Snd.MusicSubdir.compare( 0, 6, "Stream/" ) != 0 )
+				Snd.StopMusic();
+			if( deathstar && (observed_ship->DistAlong( &(deathstar->Up), deathstar ) < 0.) )
+				Snd.PlayMusicSubdirNext( "Stream/Trench" );
+			else if( observed_ship->Health <= 0. )
+				Snd.PlayMusicSubdirNext( "Stream/Death" );
+			else
+				Snd.PlayMusicSubdirNext( "Stream/Combat" );
+		}
+	}
 }
 
 
@@ -911,7 +1028,7 @@ bool XWingGame::HandleEvent( SDL_Event *event )
 		
 		// Build a list of all ships, because we'll refer to it often.
 		std::list<Ship*> ships;
-		for( std::map<uint32_t,GameObject*>::iterator obj_iter = Raptor::Game->Data.GameObjects.begin(); obj_iter != Raptor::Game->Data.GameObjects.end(); obj_iter ++ )
+		for( std::map<uint32_t,GameObject*>::iterator obj_iter = Data.GameObjects.begin(); obj_iter != Data.GameObjects.end(); obj_iter ++ )
 		{
 			if( obj_iter->second->Type() == XWing::Object::SHIP )
 				ships.push_back( (Ship*) obj_iter->second );
@@ -1119,14 +1236,14 @@ bool XWingGame::ProcessPacket( Packet *packet )
 		{
 			Pos3D pos( x, y, z );
 			Vec3D motion_vec( dx, dy, dz );
-			Data.Effects.push_back( Effect( Res.GetAnimation("explosion.ani"), size, Res.GetSound("explosion.wav"), loudness, &pos, &motion_vec, (180. * Rand::Bool() ? 1. : -1.), 1. ) );
+			Data.Effects.push_back( Effect( Res.GetAnimation("explosion.ani"), size, Res.GetSound("explosion.wav"), loudness, &pos, &motion_vec, Rand::Bool() ? 360. : -360., 1. ) );
 			for( int i = 0; i < 20; i ++ )
 			{
 				Vec3D rand( Rand::Double(-size,size), Rand::Double(-size,size), Rand::Double(-size,size) );
 				rand.ScaleBy( 0.5 );
 				pos.SetPos( x + rand.X, y + rand.Y, z + rand.Z );
 				motion_vec.Set( dx + rand.X * abs(rand.X), dy + rand.Y * abs(rand.Y), dz + rand.Z * abs(rand.Z) );
-				Data.Effects.push_back( Effect( Res.GetAnimation("explosion.ani"), size * Rand::Double(0.1,0.5), NULL, 0., &pos, &motion_vec, (180. * Rand::Bool() ? 1. : -1.), Rand::Double(0.5, 2.) ) );
+				Data.Effects.push_back( Effect( Res.GetAnimation("explosion.ani"), size * Rand::Double(0.1,0.5), NULL, 0., &pos, &motion_vec, Rand::Bool() ? 360. : -360., Rand::Double(0.5, 2.) ) );
 			}
 		}
 		
@@ -1202,11 +1319,9 @@ bool XWingGame::ProcessPacket( Packet *packet )
 			if( ship && (ship->ShipType == Ship::TYPE_EXHAUST_PORT) )
 				;
 			else if( shot_type == Shot::TYPE_TORPEDO )
-				Data.Effects.push_back( Effect( Res.GetAnimation("explosion.ani"), 5., Res.GetSound("explosion.wav"), 2.5, &pos, &motion_vec, (180. * Rand::Bool() ? 1. : -1.), 1. ) );
+				Data.Effects.push_back( Effect( Res.GetAnimation("explosion.ani"), 5., Res.GetSound("explosion.wav"), 2.5, &pos, &motion_vec, Rand::Bool() ? 360. : -360., 1. ) );
 			else if( shot_type == Shot::TYPE_MISSILE )
-				Data.Effects.push_back( Effect( Res.GetAnimation("explosion.ani"), 4., Res.GetSound("explosion.wav"), 2.5, &pos, &motion_vec, (180. * Rand::Bool() ? 1. : -1.), 1. ) );
-			else if( shot_type == Shot::TYPE_MINE )
-				Data.Effects.push_back( Effect( Res.GetAnimation("explosion.ani"), 20., Res.GetSound("explosion.wav"), 4., &pos, &motion_vec, (180. * Rand::Bool() ? 1. : -1.), 1. ) );
+				Data.Effects.push_back( Effect( Res.GetAnimation("explosion.ani"), 4., Res.GetSound("explosion.wav"), 2.5, &pos, &motion_vec, Rand::Bool() ? 360. : -360., 1. ) );
 		}
 		
 		return true;
@@ -1246,11 +1361,9 @@ bool XWingGame::ProcessPacket( Packet *packet )
 			}
 			
 			if( shot_type == Shot::TYPE_TORPEDO )
-				Data.Effects.push_back( Effect( Res.GetAnimation("explosion.ani"), 5., Res.GetSound("explosion.wav"), 2.5, &pos, &motion_vec, (180. * Rand::Bool() ? 1. : -1.), 1. ) );
+				Data.Effects.push_back( Effect( Res.GetAnimation("explosion.ani"), 5., Res.GetSound("explosion.wav"), 2.5, &pos, &motion_vec, Rand::Bool() ? 360. : -360., 1. ) );
 			else if( shot_type == Shot::TYPE_MISSILE )
-				Data.Effects.push_back( Effect( Res.GetAnimation("explosion.ani"), 4., Res.GetSound("explosion.wav"), 2.5, &pos, &motion_vec, (180. * Rand::Bool() ? 1. : -1.), 1. ) );
-			else if( shot_type == Shot::TYPE_MINE )
-				Data.Effects.push_back( Effect( Res.GetAnimation("explosion.ani"), 20., Res.GetSound("explosion.wav"), 4., &pos, &motion_vec, (180. * Rand::Bool() ? 1. : -1.), 1. ) );
+				Data.Effects.push_back( Effect( Res.GetAnimation("explosion.ani"), 4., Res.GetSound("explosion.wav"), 2.5, &pos, &motion_vec, Rand::Bool() ? 360. : -360., 1. ) );
 		}
 		
 		return true;
@@ -1270,11 +1383,9 @@ bool XWingGame::ProcessPacket( Packet *packet )
 			Vec3D motion_vec( dx, dy, dz );
 			
 			if( shot_type == Shot::TYPE_TORPEDO )
-				Data.Effects.push_back( Effect( Res.GetAnimation("explosion.ani"), 5., Res.GetSound("explosion.wav"), 2.5, &pos, &motion_vec, (180. * Rand::Bool() ? 1. : -1.), 1. ) );
+				Data.Effects.push_back( Effect( Res.GetAnimation("explosion.ani"), 5., Res.GetSound("explosion.wav"), 2.5, &pos, &motion_vec, Rand::Bool() ? 360. : -360., 1. ) );
 			else if( shot_type == Shot::TYPE_MISSILE )
-				Data.Effects.push_back( Effect( Res.GetAnimation("explosion.ani"), 4., Res.GetSound("explosion.wav"), 2.5, &pos, &motion_vec, (180. * Rand::Bool() ? 1. : -1.), 1. ) );
-			else if( shot_type == Shot::TYPE_MINE )
-				Data.Effects.push_back( Effect( Res.GetAnimation("explosion.ani"), 20., Res.GetSound("explosion.wav"), 4., &pos, &motion_vec, (180. * Rand::Bool() ? 1. : -1.), 1. ) );
+				Data.Effects.push_back( Effect( Res.GetAnimation("explosion.ani"), 4., Res.GetSound("explosion.wav"), 2.5, &pos, &motion_vec, Rand::Bool() ? 360. : -360., 1. ) );
 		}
 		
 		return true;
@@ -1284,13 +1395,24 @@ bool XWingGame::ProcessPacket( Packet *packet )
 		uint32_t ship_id = packet->NextUInt();
 		uint32_t weapon = packet->NextUInt();
 		int8_t ammo = packet->NextChar();
+		uint8_t weapon_index = packet->NextUChar();
 		
 		GameObject *obj = Data.GetObject( ship_id );
 		if( obj && (obj->Type() == XWing::Object::SHIP) )
 		{
 			Ship *ship = (Ship*) obj;
 			ship->Ammo[ weapon ] = ammo;
+			
+			if( ship->PlayerID != PlayerID )
+				ship->SelectedWeapon = weapon;
+			
+			if( ship->SelectedWeapon == weapon )
+				ship->WeaponIndex = weapon_index;
 		}
+	}
+	else if( type == XWing::Packet::TIME_REMAINING )
+	{
+		RoundTimer.Reset( packet->NextFloat() );
 	}
 	else if( type == XWing::Packet::ROUND_ENDED )
 	{
@@ -1369,9 +1491,9 @@ void XWingGame::AddedObject( GameObject *obj )
 			else if( shot->ShotType == Shot::TYPE_LASER_GREEN )
 				Snd.PlayAt( Res.GetSound("laser_green.wav"), obj->X, obj->Y, obj->Z );
 			else if( shot->ShotType == Shot::TYPE_TURBO_LASER_GREEN )
-				Snd.PlayAt( Res.GetSound("turbolaser_green.wav"), obj->X, obj->Y, obj->Z, 1.25 );
+				Snd.PlayAt( Res.GetSound("turbolaser_green.wav"), obj->X, obj->Y, obj->Z, 1.5 );
 			else if( shot->ShotType == Shot::TYPE_TORPEDO )
-				Snd.PlayAt( Res.GetSound("torpedo.wav"), obj->X, obj->Y, obj->Z );
+				Snd.PlayAt( Res.GetSound("torpedo.wav"), obj->X, obj->Y, obj->Z, 0.75 );
 		}
 	}
 }
@@ -1391,12 +1513,18 @@ void XWingGame::Disconnected( void )
 		Overlay = NULL;
 		Layers.RemoveAll();
 		Layers.Add( new MainMenu() );
+		Layers.Add( new Notification( "Disconnected from server." ) );
 	}
 	
-	if( Overlay )
+	else if( State >= Raptor::State::CONNECTING )
 	{
-		Layers.Remove( Overlay );
-		Overlay = NULL;
+		if( Overlay )
+		{
+			Layers.Remove( Overlay );
+			Overlay = NULL;
+		}
+		
+		Layers.Add( new Notification( std::string("Failed to connect to ") + Net.Host + std::string(":") + Num::ToString(Net.Port) + std::string(".") ) );
 	}
 }
 
@@ -1409,7 +1537,7 @@ void XWingGame::Connecting( void )
 		Overlay = NULL;
 	}
 	
-	Overlay = new WaitScreen( "Connecting..." );
+	Overlay = new WaitScreen( std::string("Connecting to ") + Net.Host + std::string(":") + Num::ToString(Net.Port) + std::string("...") );
 	Layers.Add( Overlay );
 	Draw();
 }
@@ -1477,8 +1605,10 @@ void XWingGame::BeginFlying( void )
 		Layers.Add( new RenderLayer() );
 		
 		if( Cfg.SettingAsBool("screensaver") )
+		{
 			// Add an input handler to quit the screensaver when necessary.
-			Layers.Add( new Screensaver() );
+			AddScreensaverLayer();
+		}
 		
 		Mouse.ShowCursor = false;
 	}

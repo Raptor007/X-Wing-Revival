@@ -1,9 +1,10 @@
 # User can override these variables as needed:
 CC = g++
-LD = $(CC)
-CFLAGS = -O3 -ffast-math -msse3 -Wall -Wno-multichar
-LDFLAGS =
+LD := $(CC)
+CFLAGS = -O3 -fstrict-aliasing -ftree-vectorize -msse3 -fomit-frame-pointer -Wall -Wno-multichar
+LDFLAGS = -O3 -fstrict-aliasing -ftree-vectorize -msse3 -fomit-frame-pointer -Wall
 ARCH =
+MTUNE = native
 INC = /opt/local/include /opt/local/include/SDL
 LIBDIR = /usr/lib64
 LIB = libSDLmain.a libSDL_net.so libSDL_mixer.so libSDL_ttf.so libSDL_image.so libSDL.so libGLEW.a libGLU.so libGL.so
@@ -36,6 +37,9 @@ ifndef ARCH
 ARCH = ppc i386
 endif
 
+# Unless overridden by user, don't use mtune=native because gcc 4.0 doesn't understand it.
+MTUNE =
+
 # Use MacPorts lib directory.
 LIBDIR = /opt/local/lib
 
@@ -47,29 +51,36 @@ CFLAGS += -mmacosx-version-min=10.4
 LDFLAGS += -mmacosx-version-min=10.4
 
 ifeq (,$(findstring x86_64,$(ARCH)))
-# When building without x86_64 target, use the 10.4 Tiger universal SDK.
+# When building without x86_64 target, use the 10.4 Tiger universal SDK and ppc/i386 MacPorts libs.
 CFLAGS += -isysroot /Developer/SDKs/MacOSX10.4u.sdk
 LDFLAGS += -isysroot /Developer/SDKs/MacOSX10.4u.sdk
+LIBDIR = /Developer/SDKs/MacOSX10.4u.sdk/opt/local/lib
 endif
 
 KERNEL_VERSION = $(shell uname -r)
 ifneq (8.11.0,$(KERNEL_VERSION))
+# When building on 10.5+, disable stack protector because 10.4 doesn't have those symbols.
+CFLAGS += -fno-stack-protector
+LDFLAGS += -fno-stack-protector
 ifneq (x86_64,$(ARCH))
 # When building on 10.5+ with any non-x86_64 target, use Apple gcc 4.0.
 CC = /Developer/usr/bin/g++-4.0
-CFLAGS += -fno-stack-protector
-LDFLAGS += -fno-stack-protector
+LD = /Developer/usr/bin/g++-4.0
 endif
+else
+# When building on 10.4, specify gcc 4.0.
+CC = g++-4.0
+LD = g++-4.0
 endif
 
 # Override LIB specified above for Linux.
 LIB =
 
-ifneq (g++-4.0,$(findstring g++-4.0,$(CC))$(findstring /Volumes,$(LIBDIR)))
-# When using the system's version of GCC or another drive's libraries, statically-link as many libraries as possible.
+ifndef FRAMEWORKS_INSTEAD_OF_LIBS
+# By default, statically-link as many libraries as possible from MacPorts.
 LIB += libSDL_net.a libSDL_ttf.a libSDL_image.a libSDL_mixer.a libSDL.a libSDLmain.a
 else
-# When building for 10.4 Tiger on a newer system without compatible libs, use SDLMain.m and Frameworks instead.
+# When building for 10.4 Tiger on a newer system without compatible libs, we might need to use t.m and Frameworks instead.
 SOURCES += ../RaptorEngine/Core/SDLMain.m
 MAC_FRAMEWORKS += GLEW SDL_net SDL_ttf SDL_image SDL_mixer SDL mikmod smpeg
 endif
@@ -98,10 +109,22 @@ endif
 endif
 
 
+ifeq (,$(findstring g++-4.0,$(CC)))
+# When not using gcc 4.0, use link-time optimization.
+CFLAGS += -flto
+LDFLAGS += -flto
+endif
+
 ifdef ARCH
-# Add compiler/linker flags for arch.
+# Add compiler/linker flags for arch as CARCH/LDARCH so they don't get overridden by CFLAGS/LDFLAGS.
 CARCH = $(foreach arch,$(ARCH),-arch $(arch))
 LDARCH = $(foreach arch,$(ARCH),-arch $(arch))
+endif
+
+ifdef MTUNE
+# Add mtune to CARCH/LDARCH so they don't get overridden by CFLAGS/LDFLAGS.
+CARCH += -mtune=$(MTUNE)
+LDARCH += -mtune=$(MTUNE)
 endif
 
 
@@ -112,10 +135,10 @@ $(EXE): $(OBJECTS)
 	$(BUILD_FINALIZE)
 
 .cpp.o:
-	$(CC) -c $(CFLAGS) $(CARCH) $(foreach inc,$(INCLUDES),-I$(inc)) $(foreach def,$(DEF),-D$(def)) $< -o $@
+	$(CC) -c $(CARCH) $(CFLAGS) $(foreach inc,$(INCLUDES),-I$(inc)) $(foreach def,$(DEF),-D$(def)) $< -o $@
 
 .m.o:
-	$(CC) -c $(CFLAGS) $(MAC_MFLAGS) $(CARCH) $(foreach inc,$(INCLUDES),-I$(inc)) $< -o $@
+	$(CC) -c $(CARCH) $(CFLAGS) $(MAC_MFLAGS) $(foreach inc,$(INCLUDES),-I$(inc)) $< -o $@
 
 objects: $(SOURCES) $(OBJECTS)
 
@@ -135,6 +158,7 @@ install:
 	rsync -ax --exclude=".*" build/Debug/Music "$(GAMEDIR)/"
 	rsync -ax --exclude=".*" build/Debug/Screensaver "$(GAMEDIR)/"
 	rsync -ax --exclude=".*" build/Debug/Tools "$(GAMEDIR)/"
+	rsync -ax --exclude=".*" build/Debug/Docs "$(GAMEDIR)/"
 	chmod ugo+x "$(BINDIR)/$(EXE_INSTALL)"
 	$(INSTALL_FINALIZE)
 
@@ -149,16 +173,16 @@ server-install:
 	cp "$(EXE)" "$(GAMEDIR)/"
 
 ppc:
-	make objects ARCH="ppc"
-	make ARCH="ppc" EXE="$(EXE)_ppc" LIBDIR="/Volumes/G5/opt/local/lib"
+	make objects ARCH="ppc" MTUNE="G5"
+	make ARCH="ppc" EXE="$(EXE)_ppc" MTUNE="G5"
 
 i32:
-	make objects ARCH="i386"
-	make ARCH="i386" EXE="$(EXE)_i32" LIBDIR="/Volumes/G5/opt/local/lib"
+	make objects ARCH="i386" MTUNE="nocona"
+	make ARCH="i386" EXE="$(EXE)_i32" MTUNE="nocona"
 
 i64:
-	make objects ARCH="x86_64" CC="/opt/local/bin/g++"
-	make ARCH="x86_64" EXE="$(EXE)_i64" CC="/opt/local/bin/g++"
+	make objects ARCH="x86_64" CC="/opt/local/bin/g++" MTUNE="core2"
+	make ARCH="x86_64" EXE="$(EXE)_i64" CC="/opt/local/bin/g++" MTUNE="core2"
 
 universal:
 	make clean
@@ -170,4 +194,4 @@ universal:
 	make lipo
 
 lipo: $(EXE)_ppc $(EXE)_i32 $(EXE)_i64
-	lipo $(EXE)_ppc $(EXE)_i32 $(EXE)_i64 -create -output xwingrev
+	lipo $(EXE)_ppc $(EXE)_i32 $(EXE)_i64 -create -output $(EXE)

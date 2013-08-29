@@ -4,6 +4,7 @@
 
 #include "XWingServer.h"
 
+#include <cstddef>
 #include <cmath>
 #include <stdint.h>
 #include <list>
@@ -49,7 +50,7 @@ void XWingServer::Started( void )
 	Data.Properties["dm_kill_limit"] = "10";
 	Data.Properties["tdm_kill_limit"] = "20";
 	Data.Properties["yavin_time_limit"] = "15";
-	Data.Properties["yavin_turrets"] = "140";
+	Data.Properties["yavin_turrets"] = "120";
 	Data.Properties["asteroids"] = "32";
 	Data.Properties["permissions"] = "all";
 	Alerts.clear();
@@ -119,6 +120,9 @@ void XWingServer::Update( double dt )
 		std::list<uint32_t> add_object_ids;
 		std::list<uint32_t> remove_object_ids;
 		
+		// Gather info important to the update.
+		double round_time_remaining = RoundTimeRemaining();
+		
 		
 		// Build a list of all ships.
 		
@@ -135,9 +139,6 @@ void XWingServer::Update( double dt )
 			else if( obj_iter->second->Type() == XWing::Object::DEATH_STAR )
 				deathstar = (DeathStar*) obj_iter->second;
 		}
-		
-		
-		double round_time_remaining = RoundTimeRemaining();
 		
 		
 		// Deal with collisions.
@@ -746,7 +747,7 @@ void XWingServer::Update( double dt )
 					Shot *shot = (Shot*) collision_iter->first;
 					remove_object_ids.push_back( shot->ID );
 					
-					if( (shot->ShotType == Shot::TYPE_TORPEDO) || (shot->ShotType == Shot::TYPE_MISSILE) || (shot->ShotType == Shot::TYPE_MINE) )
+					if( (shot->ShotType == Shot::TYPE_TORPEDO) || (shot->ShotType == Shot::TYPE_MISSILE) )
 					{
 						Packet shot_hit( XWing::Packet::SHOT_HIT_HAZARD );
 						shot_hit.AddUInt( shot->ShotType );
@@ -761,7 +762,7 @@ void XWingServer::Update( double dt )
 					Shot *shot = (Shot*) collision_iter->second;
 					remove_object_ids.push_back( shot->ID );
 					
-					if( (shot->ShotType == Shot::TYPE_TORPEDO) || (shot->ShotType == Shot::TYPE_MISSILE) || (shot->ShotType == Shot::TYPE_MINE) )
+					if( (shot->ShotType == Shot::TYPE_TORPEDO) || (shot->ShotType == Shot::TYPE_MISSILE) )
 					{
 						Packet shot_hit( XWing::Packet::SHOT_HIT_HAZARD );
 						shot_hit.AddUInt( shot->ShotType );
@@ -1082,11 +1083,11 @@ void XWingServer::Update( double dt )
 				{
 					if( Waypoints[ 0 ].size() )
 					{
+						// See if we have a "trench_runners" server property.
 						std::map<std::string,std::string>::iterator trench_runners = Data.Properties.find("trench_runners");
 						if( (trench_runners == Data.Properties.end()) || (Str::FindInsensitive( trench_runners->second, "default" ) >= 0) )
 						{
-							// Select trench runners based on count-down. 
-							
+							// The default behavior is to select trench runners based on count-down (Y-Wings always run the trench). 
 							if( ship->ShipType == Ship::TYPE_YWING )
 								waypoint_list = &(Waypoints[ 0 ]);
 							else if( (round_time_remaining <= 5. * 60. - 2.) && (ship->ID % 4 >= 1) )
@@ -1098,8 +1099,7 @@ void XWingServer::Update( double dt )
 						}
 						else
 						{
-							// Debug mode.
-							
+							// If server property "trench_runners" is set, force certain trench runners.
 							if( (Str::FindInsensitive( trench_runners->second, "rebel" ) >= 0) && (ship->Team == XWing::Team::REBEL) )
 								waypoint_list = &(Waypoints[ 0 ]);
 							if( (Str::FindInsensitive( trench_runners->second, "empire" ) >= 0) && (ship->Team == XWing::Team::EMPIRE) )
@@ -1116,6 +1116,7 @@ void XWingServer::Update( double dt )
 						
 						if( waypoint_list )
 						{
+							// X-Wings and Y-Wings should follow slightly different paths so they don't collide.
 							if( (ship->ShipType == Ship::TYPE_XWING) && (Waypoints[ 1 ].size()) )
 								waypoint_list = &(Waypoints[ 1 ]);
 							else if( (ship->ShipType == Ship::TYPE_YWING) && (Waypoints[ 2 ].size()) )
@@ -1216,6 +1217,7 @@ void XWingServer::Update( double dt )
 					
 					if( ship->Firing && (ship->FiringClocks[ ship->SelectedWeapon ].ElapsedSeconds() >= ship->ShotDelay()) )
 					{
+						uint8_t prev_weapon_index = ship->WeaponIndex;
 						GameObject *target = Data.GetObject( ship->Target );
 						std::map<int,Shot*> shots = ship->NextShots( target );
 						ship->JustFired();
@@ -1226,14 +1228,18 @@ void XWingServer::Update( double dt )
 							add_object_ids.push_back( shot_id );
 						}
 						
-						if( shots.size() && (ship->Ammo[ ship->SelectedWeapon ] >= 0) )
+						if( shots.size() && ((ship->Ammo[ ship->SelectedWeapon ] >= 0) || (ship->PlayerID && (ship->WeaponIndex != prev_weapon_index))) )
 						{
-							// Send updated ammo count to everyone.
+							// Send updated ammo count and weapon index to everyone.
 							Packet ammo_update( XWing::Packet::AMMO_UPDATE );
 							ammo_update.AddUInt( ship->ID );
 							ammo_update.AddUInt( ship->SelectedWeapon );
 							ammo_update.AddChar( ship->Ammo[ ship->SelectedWeapon ] );
-							Net.SendAll( &ammo_update );
+							ammo_update.AddUChar( ship->WeaponIndex );
+							if( ship->Ammo[ ship->SelectedWeapon ] >= 0 )
+								Net.SendAll( &ammo_update );
+							else
+								Net.SendToPlayer( &ammo_update, ship->PlayerID );
 						}
 					}
 				}
@@ -1298,23 +1304,52 @@ void XWingServer::Update( double dt )
 					}
 					else
 					{
-						double nearest = 0.;
-						
 						// If the turret isn't attached, pick a target.
+						
+						// Set initial values very far away; any ships closer than this are worth considering.
+						double nearest_enemy = 100000.;
+						double nearest_friendly = nearest_enemy;
+						Ship *friendly = NULL;
+						
 						for( std::map<uint32_t,Ship*>::iterator target_iter = ships.begin(); target_iter != ships.end(); target_iter ++ )
 						{
+							// Don't target itself or its parent ship.
 							if( (target_iter->first == turret->ID) || (target_iter->first == turret->ParentID) )
 								continue;
-							if( turret->Team && (target_iter->second->Team == turret->Team) )
-								continue;
+							
+							// If the turret has a forced target direction, consider ships within that arc only.
+							if( turret->TargetArc < 180. )
+							{
+								Vec3D vec_to_target( target_iter->second->X - turret->X, target_iter->second->Y - turret->Y, target_iter->second->Z - turret->Z );
+								if( turret->TargetDir.AngleBetween( vec_to_target ) > turret->TargetArc )
+									continue;
+							}
 							
 							double dist = turret->Dist(target_iter->second);
 							
-							if( (! target) || (dist < nearest) )
+							if( turret->Team && (target_iter->second->Team == turret->Team) )
 							{
-								target = target_iter->second;
-								nearest = dist;
+								// Keep track of the nearest friendly.
+								if( dist < nearest_friendly )
+								{
+									friendly = target_iter->second;
+									nearest_friendly = dist;
+								}
 							}
+							else if( dist < nearest_enemy )
+							{
+								// Target the nearest enemy.
+								target = target_iter->second;
+								nearest_enemy = dist;
+							}
+						}
+						
+						// Deactivate when there's a friendly coming towards us, chasing close behind an enemy.
+						if( target && friendly && turret->SafetyDistance )
+						{
+							Vec3D vec_to_friendly( friendly->X - turret->X, friendly->Y - turret->Y, friendly->Z - turret->Z );
+							if( (friendly->MotionVector.Dot(&vec_to_friendly) < 0.) && ( (nearest_friendly < turret->SafetyDistance) || ((nearest_enemy < nearest_friendly) && (nearest_friendly - nearest_enemy < turret->SafetyDistance)) ) )
+								target = NULL;
 						}
 					}
 					
@@ -1330,9 +1365,9 @@ void XWingServer::Update( double dt )
 						shot_vec -= target->MotionVector;
 						double time_to_target = dist_to_target / shot_vec.Length();
 						Vec3D vec_to_intercept = vec_to_target;
-						vec_to_intercept.X += target->MotionVector.X * time_to_target;
-						vec_to_intercept.Y += target->MotionVector.Y * time_to_target;
-						vec_to_intercept.Z += target->MotionVector.Z * time_to_target;
+						vec_to_intercept.X += target->MotionVector.X * time_to_target * turret->AimAhead;
+						vec_to_intercept.Y += target->MotionVector.Y * time_to_target * turret->AimAhead;
+						vec_to_intercept.Z += target->MotionVector.Z * time_to_target * turret->AimAhead;
 						vec_to_target.ScaleTo( 1. );
 						vec_to_intercept.ScaleTo( 1. );
 						double i_dot_fwd = vec_to_intercept.Dot( &(gun.Fwd) );
@@ -1344,11 +1379,18 @@ void XWingServer::Update( double dt )
 						
 						if( i_dot_fwd > 0. )
 						{
-							turret->Firing = (t_dot_up > -0.01) && (dist_to_target < 1500.);
+							turret->Firing = (dist_to_target < turret->MaxFiringDist) && ((i_dot_up > -0.01) || (t_dot_up > -0.01));
 							turret->SetYaw( (fabs(i_dot_right) >= 0.25) ? Num::Sign(i_dot_right) : (i_dot_right*4.) );
 						}
 						else
 							turret->SetYaw( Num::Sign(i_dot_right) );
+					}
+					else
+					{
+						// No target, so stop moving and shooting.
+						turret->SetYaw( 0. );
+						turret->SetPitch( 0. );
+						turret->Firing = false;
 					}
 					
 					if( turret->Firing && (turret->FiringClock.ElapsedSeconds() >= turret->ShotDelay()) )
@@ -1717,6 +1759,7 @@ void XWingServer::BeginFlying( void )
 		PlayersTakeEmptyShips = false;
 		bool ffa = false;
 		KillLimit = 0;
+		TimeLimit = 0;
 		Alerts.clear();
 		Waypoints.clear();
 		Squadrons.clear();
@@ -1770,11 +1813,6 @@ void XWingServer::BeginFlying( void )
 			AIFlock = true;
 		else
 			AIFlock = false;
-		
-		RoundTimer.Reset();
-		TeamScores[ XWing::Team::REBEL ] = 0;
-		TeamScores[ XWing::Team::EMPIRE ] = 0;
-		ShipScores.clear();
 		
 		// Clear all objects and tell the clients to do likewise.
 		Data.ClearObjects();
@@ -1901,24 +1939,55 @@ void XWingServer::BeginFlying( void )
 				turret->Team = XWing::Team::EMPIRE;
 				turret->Copy( box );
 				turret->MoveAlong( &(box->Up), box->H / 2. );
-				turret->Health = 75.;
+				turret->Health = 100.;
 				turret->MinGunPitch = -5.;
 				Data.AddObject( turret );
 			}
 			
-			// Trench turrets.
-			for( double fwd = 2550.; fwd < 12500.1; fwd += 900. )
+			// Trench bottom turrets.
+			for( double fwd = 2550.; fwd < 14300.1; fwd += 900. )
 			{
 				Turret *turret = new Turret();
 				turret->Copy( deathstar );
 				turret->Team = XWing::Team::EMPIRE;
-				turret->Health = 40.;
+				turret->Health = 75.;
 				turret->SingleShotDelay = Rand::Double( 1., 2. );
 				turret->FiringMode = 1;
+				turret->AimAhead = 2.25f;
+				turret->MaxFiringDist = 6000.;
+				turret->SafetyDistance = 1500.;
+				turret->Fwd.Set( -1., 0., 0. );
+				turret->TargetDir.Set( -1., 0., 0. );
+				turret->TargetArc = 30.;
 				turret->MaxGunPitch = 30.;
 				turret->PitchGun( 10. );
 				turret->MoveAlong( &(deathstar->Fwd), fwd );
 				turret->MoveAlong( &(deathstar->Up), -deathstar->TrenchDepth );
+				turret->MoveAlong( &(deathstar->Right), deathstar->TrenchWidth * Rand::Double( -0.2, 0.2 ) );
+				Data.AddObject( turret );
+			}
+			
+			// Trench side turrets.
+			for( double fwd = 2800.; fwd < 14500.1; fwd += 900. )
+			{
+				Turret *turret = new Turret();
+				turret->Copy( deathstar );
+				turret->Team = XWing::Team::EMPIRE;
+				turret->Health = 75.;
+				turret->SingleShotDelay = Rand::Double( 1.5, 2.5 );
+				turret->FiringMode = 1;
+				turret->AimAhead = 2.f;
+				turret->MaxFiringDist = 6000.;
+				turret->SafetyDistance = 1500.;
+				turret->Fwd.Set( -1., 0., 0. );
+				turret->TargetDir.Set( -1., 0., 0. );
+				turret->TargetArc = 30.;
+				turret->MaxGunPitch = 20.;
+				turret->PitchGun( 5. );
+				turret->Up.Set( 0., Rand::Bool() ? 1. : -1., 0. );
+				turret->MoveAlong( &(deathstar->Fwd), fwd );
+				turret->MoveAlong( &(deathstar->Up), deathstar->TrenchDepth * Rand::Double( -0.3, -0.7 ) );
+				turret->MoveAlong( &(turret->Up), deathstar->TrenchWidth / -2. );
 				Data.AddObject( turret );
 			}
 			
@@ -1939,7 +2008,7 @@ void XWingServer::BeginFlying( void )
 				if( box_type == 0 )
 				{
 					// Across the bottom.
-					box->H = (deathstar->TrenchDepth - 20.) * Rand::Double( 0.2, 0.5 );
+					box->H = (deathstar->TrenchDepth - 20.) * Rand::Double( 0.2, 0.45 );
 					box->W = deathstar->TrenchWidth;
 					box->L = box->H / 2.;
 					box->MoveAlong( &(deathstar->Up), box->H / 2. - deathstar->TrenchDepth );
@@ -1956,7 +2025,7 @@ void XWingServer::BeginFlying( void )
 				else if( box_type == 1 )
 				{
 					// Across the top.
-					box->H = (deathstar->TrenchDepth - 20.) * Rand::Double( 0.2, 0.5 );
+					box->H = (deathstar->TrenchDepth - 20.) * Rand::Double( 0.2, 0.45 );
 					box->W = deathstar->TrenchWidth;
 					box->L = box->H / 2.;
 					box->MoveAlong( &(deathstar->Up), box->H / -2. );
@@ -2243,6 +2312,14 @@ void XWingServer::BeginFlying( void )
 				ShipScores[ ship->ID ] = 0;
 			}
 		}
+		
+		
+		// Start the round timer and clear the scores.
+		
+		RoundTimer.Reset();
+		TeamScores[ XWing::Team::REBEL ] = 0;
+		TeamScores[ XWing::Team::EMPIRE ] = 0;
+		ShipScores.clear();
 	}
 	else
 	{
@@ -2385,6 +2462,10 @@ void XWingServer::SendScores( void )
 	info.AddString( "team_score_empire" );
 	info.AddString( Data.Properties[ "team_score_empire" ] );
 	Net.SendAll( &info );
+	
+	Packet time_remaining( XWing::Packet::TIME_REMAINING );
+	time_remaining.AddFloat( TimeLimit ? RoundTimeRemaining() : 0 );
+	Net.SendAll( &time_remaining );
 }
 
 

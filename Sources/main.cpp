@@ -8,7 +8,13 @@
 #include "ServerConsole.h"
 
 
-#define VERSION "devbuild"
+#define VERSION "0.1 Alpha"
+
+
+#ifdef WIN32
+// Avoid conflicts between 32-bit and 64-bit by using two different DLL directories.
+BOOL SetDllDirectoryResult = SetDllDirectory( (sizeof(void*) == 8) ? L"Bin64" : L"Bin32" );
+#endif
 
 
 int main( int argc, char **argv )

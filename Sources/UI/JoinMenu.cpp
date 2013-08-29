@@ -31,9 +31,10 @@ JoinMenu::JoinMenu( void )
 	Blue = 1.0f;
 	Alpha = 0.5f;
 	
-	TitleFont = Raptor::Game->Res.GetFont( "TimesNR.ttf", 30 );
-	ItemFont = Raptor::Game->Res.GetFont( "TimesNR.ttf", 18 );
-	ButtonFont = Raptor::Game->Res.GetFont( "TimesNR.ttf", 32 );
+	TitleFont = Raptor::Game->Res.GetFont( "Verdana.ttf", 30 );
+	LabelFont = Raptor::Game->Res.GetFont( "Verdana.ttf", 16 );
+	ItemFont = Raptor::Game->Res.GetFont( "Verdana.ttf", 17 );
+	ButtonFont = Raptor::Game->Res.GetFont( "Verdana.ttf", 30 );
 	
 	SDL_Rect rect;
 	
@@ -41,22 +42,22 @@ JoinMenu::JoinMenu( void )
 	rect.h = ItemFont->GetHeight();
 	rect.x = 10;
 	rect.w = Rect.w - rect.x * 2;
-	AddElement( new Label( this, &rect, "Your Pilot Name:", ItemFont, Font::ALIGN_MIDDLE_LEFT ) );
+	AddElement( new Label( &rect, "Your Pilot Name:", LabelFont, Font::ALIGN_MIDDLE_LEFT ) );
 	rect.y += rect.h + 4;
-	AddElement( new JoinMenuTextBox( this, &rect, ItemFont, Font::ALIGN_MIDDLE_LEFT, "name" ) );
+	AddElement( new JoinMenuTextBox( &rect, ItemFont, Font::ALIGN_MIDDLE_LEFT, "name" ) );
 	
 	rect.y += rect.h + 16;
-	AddElement( new Label( this, &rect, "LAN Games:", ItemFont, Font::ALIGN_MIDDLE_LEFT ) );
+	AddElement( new Label( &rect, "LAN Games:", LabelFont, Font::ALIGN_MIDDLE_LEFT ) );
 	rect.y += rect.h + 4;
-	rect.h = ItemFont->GetHeight() * 8;
-	ServerList = new JoinMenuListBox( this, &rect, ItemFont, 20, "host_address" );
+	rect.h = ItemFont->GetLineSkip() * 8;
+	ServerList = new JoinMenuListBox( &rect, ItemFont, 20, "host_address" );
 	AddElement( ServerList );
 	
 	rect.y += rect.h + 16;
 	rect.h = ItemFont->GetHeight();
-	AddElement( new Label( this, &rect, "Connect to IP Address:", ItemFont, Font::ALIGN_MIDDLE_LEFT ) );
+	AddElement( new Label( &rect, "Connect to IP Address:", LabelFont, Font::ALIGN_MIDDLE_LEFT ) );
 	rect.y += rect.h + 4;
-	JoinMenuTextBox *server_text = new JoinMenuTextBox( this, &rect, ItemFont, Font::ALIGN_MIDDLE_LEFT, "host_address", ServerList );
+	JoinMenuTextBox *server_text = new JoinMenuTextBox( &rect, ItemFont, Font::ALIGN_MIDDLE_LEFT, "host_address", ServerList );
 	ServerList->LinkedTextBox = server_text;
 	server_text->Changed();
 	AddElement( server_text );
@@ -65,13 +66,13 @@ JoinMenu::JoinMenu( void )
 	rect.h = 50;
 	rect.y = Rect.h - rect.h - 10;
 	rect.x = 10;
-	AddElement( new JoinMenuBackButton( this, &rect, "Back" ) );
+	AddElement( new JoinMenuBackButton( &rect, ButtonFont ) );
 	
 	rect.x = (Rect.w - rect.w) / 2;
-	AddElement( new JoinMenuHostButton( this, &rect, "Host" ) );
+	AddElement( new JoinMenuHostButton( &rect, ButtonFont ) );
 	
 	rect.x = Rect.w - rect.w - 10;
-	AddElement( new JoinMenuGoButton( this, &rect, "Join" ) );
+	AddElement( new JoinMenuGoButton( &rect, ButtonFont ) );
 	
 	ServerFinder.Initialize();
 	ServerFinder.StartListening( 7000 );
@@ -215,11 +216,16 @@ bool JoinMenu::KeyUp( SDLKey key )
 // ---------------------------------------------------------------------------
 
 
-JoinMenuTextBox::JoinMenuTextBox( Window *Container, SDL_Rect *rect, Font *font, uint8_t align, std::string variable, ListBox *linked_list_box ) : TextBox( Container, rect, font, align, Raptor::Game->Cfg.Settings[ variable ] )
+JoinMenuTextBox::JoinMenuTextBox( SDL_Rect *rect, Font *font, uint8_t align, std::string variable, ListBox *linked_list_box ) : TextBox( rect, font, align, Raptor::Game->Cfg.Settings[ variable ] )
 {
 	Variable = variable;
 	LinkedListBox = linked_list_box;
 	ReturnDeselects = true;
+}
+
+
+JoinMenuTextBox::~JoinMenuTextBox()
+{
 }
 
 
@@ -232,10 +238,15 @@ void JoinMenuTextBox::Changed( void )
 // ---------------------------------------------------------------------------
 
 
-JoinMenuListBox::JoinMenuListBox( Window *Container, SDL_Rect *rect, Font *font, int scroll_bar_size, std::string variable, TextBox *linked_text_box ) : ListBox( Container, rect, font, scroll_bar_size )
+JoinMenuListBox::JoinMenuListBox( SDL_Rect *rect, Font *font, int scroll_bar_size, std::string variable, TextBox *linked_text_box ) : ListBox( rect, font, scroll_bar_size )
 {
 	Variable = variable;
 	LinkedTextBox = linked_text_box;
+}
+
+
+JoinMenuListBox::~JoinMenuListBox()
+{
 }
 
 
@@ -251,12 +262,17 @@ void JoinMenuListBox::Changed( void )
 // ---------------------------------------------------------------------------
 
 
-JoinMenuGoButton::JoinMenuGoButton( JoinMenu *menu, SDL_Rect *rect, const char *label ) : LabelledButton( menu, rect, menu->ButtonFont, label, Font::ALIGN_MIDDLE_CENTER, Raptor::Game->Res.GetAnimation("button.ani"), Raptor::Game->Res.GetAnimation("button_mdown.ani") )
+JoinMenuGoButton::JoinMenuGoButton( SDL_Rect *rect, Font *button_font ) : LabelledButton( rect, button_font, "Join", Font::ALIGN_MIDDLE_CENTER, Raptor::Game->Res.GetAnimation("button.ani"), Raptor::Game->Res.GetAnimation("button_mdown.ani") )
 {
 	Red = 1.f;
 	Green = 1.f;
 	Blue = 1.f;
 	Alpha = 0.75f;
+}
+
+
+JoinMenuGoButton::~JoinMenuGoButton()
+{
 }
 
 
@@ -285,12 +301,17 @@ void JoinMenuGoButton::Clicked( Uint8 button )
 // ---------------------------------------------------------------------------
 
 
-JoinMenuHostButton::JoinMenuHostButton( JoinMenu *menu, SDL_Rect *rect, const char *label ) : LabelledButton( menu, rect, menu->ButtonFont, label, Font::ALIGN_MIDDLE_CENTER, Raptor::Game->Res.GetAnimation("button.ani"), Raptor::Game->Res.GetAnimation("button_mdown.ani") )
+JoinMenuHostButton::JoinMenuHostButton( SDL_Rect *rect, Font *button_font ) : LabelledButton( rect, button_font, "Host", Font::ALIGN_MIDDLE_CENTER, Raptor::Game->Res.GetAnimation("button.ani"), Raptor::Game->Res.GetAnimation("button_mdown.ani") )
 {
 	Red = 1.f;
 	Green = 1.f;
 	Blue = 1.f;
 	Alpha = 0.75f;
+}
+
+
+JoinMenuHostButton::~JoinMenuHostButton()
+{
 }
 
 
@@ -311,12 +332,17 @@ void JoinMenuHostButton::Clicked( Uint8 button )
 // ---------------------------------------------------------------------------
 
 
-JoinMenuBackButton::JoinMenuBackButton( JoinMenu *menu, SDL_Rect *rect, const char *label ) : LabelledButton( menu, rect, menu->ButtonFont, label, Font::ALIGN_MIDDLE_CENTER, Raptor::Game->Res.GetAnimation("button.ani"), Raptor::Game->Res.GetAnimation("button_mdown.ani") )
+JoinMenuBackButton::JoinMenuBackButton( SDL_Rect *rect, Font *button_font ) : LabelledButton( rect, button_font, "Back", Font::ALIGN_MIDDLE_CENTER, Raptor::Game->Res.GetAnimation("button.ani"), Raptor::Game->Res.GetAnimation("button_mdown.ani") )
 {
 	Red = 1.f;
 	Green = 1.f;
 	Blue = 1.f;
 	Alpha = 0.75f;
+}
+
+
+JoinMenuBackButton::~JoinMenuBackButton()
+{
 }
 
 
