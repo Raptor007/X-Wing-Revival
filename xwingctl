@@ -1,0 +1,114 @@
+#!/bin/bash
+
+LABEL='xwr'
+USERNAME='xwingrev'
+GAMEPATH='/srv/xwingrev'
+SERVICE='xwingrev'
+PARAMS='-dedicated'
+FIRST_CMD='netrate 20; maxfps 60'
+
+ME=`whoami`
+as_user()
+{
+  if [ $ME == $USERNAME ]
+  then
+    bash -c "$1"
+  else
+    su - $USERNAME -c "$1"
+  fi
+}
+
+xw_start()
+{
+  if pgrep -u $USERNAME -f $SERVICE > /dev/null
+  then
+    echo "$SERVICE is already running!"
+  else
+    echo "Starting $SERVICE..."
+    as_user "cd $GAMEPATH && screen -S $LABEL -dm /bin/sh -c './$SERVICE $PARAMS >>server.log 2>>server.log'"
+    sleep 0.5
+    if pgrep -u $USERNAME -f $SERVICE > /dev/null
+    then
+      echo "$SERVICE is now running."
+      
+      if [ ! -z "$FIRST_CMD" ]
+      then
+        xw_command "$FIRST_CMD"
+      fi
+      
+    else
+      echo "Error! Could not start $SERVICE!"
+    fi
+  fi
+}
+
+xw_stop()
+{
+  if pgrep -u $USERNAME -f $SERVICE > /dev/null
+  then
+    echo "Stopping $SERVICE..."
+    as_user "screen -p 0 -S $LABEL -X eval 'stuff \"quit\"\015'"
+    sleep 0.5
+  else
+    echo "$SERVICE was not running."
+  fi
+  if pgrep -u $USERNAME -f $SERVICE > /dev/null
+  then
+    killall -KILL $SERVICE
+    echo "$SERVICE killed."
+  else
+    echo "$SERVICE is stopped."
+  fi
+}
+
+xw_command()
+{
+  command="$1";
+  if pgrep -u $USERNAME -f $SERVICE > /dev/null
+  then
+    pre_log_len=`wc -l "$GAMEPATH/server.log" | awk '{print $1}'`
+    echo "$SERVICE executing command: $command"
+    as_user "screen -p 0 -S $LABEL -X eval 'stuff \"${command//;/\\015}\"\015'"
+    sleep 0.1 # assumes that the command will run and print to the log file in less than .1 seconds
+    # print output
+    tail -n $[`wc -l "$GAMEPATH/server.log" | awk '{print $1}'`-$pre_log_len] "$GAMEPATH/server.log"
+  fi
+}
+
+#Start-Stop here
+case "$1" in
+  start)
+    xw_start
+    ;;
+  stop)
+    xw_stop
+    ;;
+  restart)
+    xw_stop
+    xw_start
+    ;;
+  status)
+    if pgrep -u $USERNAME -f $SERVICE > /dev/null
+    then
+      echo "$SERVICE is running."
+    else
+      echo "$SERVICE is not running."
+    fi
+    ;;
+  command)
+    if [ $# -gt 1 ]
+    then
+      shift
+      xw_command "$*"
+    else
+      echo "Must specify server command."
+    fi
+    ;;
+
+  *)
+  echo "Usage: $0 {start|stop|restart|status|command \"server command\"}"
+  exit 1
+  ;;
+esac
+
+exit 0
