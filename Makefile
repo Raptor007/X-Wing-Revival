@@ -23,7 +23,7 @@ LDARCH =
 INCLUDES = Sources Sources/Game Sources/UI $(wildcard ../RaptorEngine/*) $(INC)
 LIBRARIES = $(foreach lib,$(LIB),$(LIBDIR)/$(lib))
 SOURCES = $(wildcard Sources/*.cpp) $(wildcard Sources/*/*.cpp) $(wildcard ../RaptorEngine/*/*.cpp)
-OBJECTS = $(patsubst %.cpp,%.o,$(patsubst %.m,%.o,$(SOURCES)))
+HEADERS = $(wildcard Sources/*.h) $(wildcard Sources/*/*.h) $(wildcard ../RaptorEngine/*/*.h)
 EXE_INSTALL = $(EXE)
 BINDIR = $(GAMEDIR)
 
@@ -80,7 +80,7 @@ ifndef FRAMEWORKS_INSTEAD_OF_LIBS
 # By default, statically-link as many libraries as possible from MacPorts.
 LIB += libSDL_net.a libSDL_ttf.a libSDL_image.a libSDL_mixer.a libSDL.a libSDLmain.a
 else
-# When building for 10.4 Tiger on a newer system without compatible libs, we might need to use t.m and Frameworks instead.
+# When building for 10.4 Tiger on a newer system without compatible libs, we might need to use SDLMain.m and Frameworks instead.
 SOURCES += ../RaptorEngine/Core/SDLMain.m
 MAC_FRAMEWORKS += GLEW SDL_net SDL_ttf SDL_image SDL_mixer SDL mikmod smpeg
 endif
@@ -109,6 +109,17 @@ endif
 endif
 
 
+# Generate an object build directory based on the target architecture(s).
+NULL :=
+SPACE := $(NULL) $(NULL)
+ifdef ARCH
+ARCHDIR = arch-$(subst $(SPACE),-,$(ARCH))/
+else
+ARCHDIR = arch-native/
+endif
+OBJECTS = $(patsubst Sources/%.cpp,build/$(ARCHDIR)XWing/%.o,$(patsubst ../RaptorEngine/%.cpp,build/$(ARCHDIR)RaptorEngine/%.o,$(patsubst ../RaptorEngine/%.m,build/$(ARCHDIR)RaptorEngine/%.om,$(SOURCES))))
+OBJDIRS = $(dir $(OBJECTS))
+
 ifeq (,$(findstring g++-4.0,$(CC)))
 # When not using gcc 4.0, use link-time optimization.
 CFLAGS += -flto
@@ -128,22 +139,29 @@ LDARCH += -mtune=$(MTUNE)
 endif
 
 
-default: $(SOURCES) $(EXE)
+default: $(SOURCES) $(HEADERS) $(EXE)
 
 $(EXE): $(OBJECTS)
 	$(LD) $(LDFLAGS) $(LDARCH) $(OBJECTS) $(LIBRARIES) -o $@
 	$(BUILD_FINALIZE)
 
-.cpp.o:
+build/$(ARCHDIR)XWing/%.o: Sources/%.cpp $(HEADERS) $(foreach objdir,$(OBJDIRS),$(objdir).dir)
 	$(CC) -c $(CARCH) $(CFLAGS) $(foreach inc,$(INCLUDES),-I$(inc)) $(foreach def,$(DEF),-D$(def)) $< -o $@
 
-.m.o:
+build/$(ARCHDIR)RaptorEngine/%.o: ../RaptorEngine/%.cpp $(HEADERS) $(foreach objdir,$(OBJDIRS),$(objdir).dir)
+	$(CC) -c $(CARCH) $(CFLAGS) $(foreach inc,$(INCLUDES),-I$(inc)) $(foreach def,$(DEF),-D$(def)) $< -o $@
+
+build/$(ARCHDIR)RaptorEngine/%.om: ../RaptorEngine/%.m $(HEADERS) $(foreach objdir,$(OBJDIRS),$(objdir).dir)
 	$(CC) -c $(CARCH) $(CFLAGS) $(MAC_MFLAGS) $(foreach inc,$(INCLUDES),-I$(inc)) $< -o $@
 
-objects: $(SOURCES) $(OBJECTS)
+build/%/.dir:
+	mkdir -p $(dir $@)
+	touch $@
+
+objects: $(SOURCES) $(HEADERS) $(OBJECTS)
 
 clean:
-	rm -rf Sources/*.o Sources/*/*.o ../RaptorEngine/*/*.o "$(EXE)"
+	rm -rf build/arch-* "$(EXE)" "$(EXE)"_*
 
 install:
 	mkdir -p "$(BINDIR)"
@@ -171,6 +189,8 @@ play: $(EXE) install
 server-install:
 	mkdir -p "$(GAMEDIR)"
 	cp "$(EXE)" "$(GAMEDIR)/"
+	cp xwingctl "$(GAMEDIR)/"
+	-ln -s "$(GAMEDIR)/xwingctl" /usr/local/bin/xwingctl
 
 ppc:
 	make objects ARCH="ppc" MTUNE="G5"
@@ -185,13 +205,10 @@ i64:
 	make ARCH="x86_64" EXE="$(EXE)_i64" CC="/opt/local/bin/g++" MTUNE="core2"
 
 universal:
-	make clean
 	make i64 EXE="$(EXE)"
-	make clean
 	make ppc EXE="$(EXE)"
-	make clean
 	make i32 EXE="$(EXE)"
-	make lipo
+	make lipo EXE="$(EXE)"
 
 lipo: $(EXE)_ppc $(EXE)_i32 $(EXE)_i64
 	lipo $(EXE)_ppc $(EXE)_i32 $(EXE)_i64 -create -output $(EXE)
