@@ -16,8 +16,11 @@
 #include "Math3D.h"
 #include "MessageOverlay.h"
 #include "IngameMenu.h"
-#include "Ship.h"
 #include "DeathStarBox.h"
+
+#ifdef WIN32
+#include "SaitekX52Pro.h"
+#endif
 
 
 enum
@@ -242,6 +245,7 @@ void RenderLayer::Draw( void )
 	// Determine which ship we're observing.
 	
 	Ship *observed_ship = NULL;
+	Ship *player_ship = NULL;
 	GameObject *target_obj = NULL;
 	Ship *target = NULL;
 	int view = VIEW_CINEMA;
@@ -253,11 +257,17 @@ void RenderLayer::Draw( void )
 	{
 		if( (*ship_iter)->PlayerID == Raptor::Game->PlayerID )
 		{
-			observed_ship = *ship_iter;
-			view = VIEW_COCKPIT;
+			// Only observe this if the ship is alive or recently dead.
+			if( ((*ship_iter)->Health > 0.) || ((*ship_iter)->DeathClock.ElapsedSeconds() < 6.) )
+			{
+				observed_ship = *ship_iter;
+				view = VIEW_COCKPIT;
+			}
 			break;
 		}
 	}
+	
+	player_ship = observed_ship;
 	
 	
 	if( ! observed_ship )
@@ -270,6 +280,10 @@ void RenderLayer::Draw( void )
 		{
 			// Don't spectate the Death Star exhaust port.
 			if( (*ship_iter)->ShipType == Ship::TYPE_EXHAUST_PORT )
+				continue;
+			
+			// Don't observe long-dead ships.
+			if( ((*ship_iter)->Health <= 0.) && ((*ship_iter)->DeathClock.ElapsedSeconds() >= 6.) )
 				continue;
 			
 			observed_ship = *ship_iter;
@@ -653,7 +667,7 @@ void RenderLayer::Draw( void )
 					
 					std::string target_name = "";
 					std::string target_status = "";
-
+					
 					red = 1.f;
 					green = 1.f;
 					blue = 0.f;
@@ -913,6 +927,13 @@ void RenderLayer::Draw( void )
 		if( changed_framebuffer )
 			Raptor::Game->Gfx.SelectDefaultFramebuffer();
 	}
+	
+	
+	// Update Saitek LEDs based on player state.
+	
+	#ifdef WIN32
+	UpdateSaitek( observed_ship, (observed_ship == player_ship), view );
+	#endif
 	
 	
 	// Set up 3D rendering for the scene.
@@ -1835,6 +1856,83 @@ void RenderLayer::DrawScores( void )
 	
 	glPopMatrix();
 }
+
+
+#ifdef WIN32
+void RenderLayer::UpdateSaitek( const Ship *ship, bool is_player, int view )
+{
+	if( ! Raptor::Game->Cfg.SettingAsBool("saitek_enable") )
+		return;
+	
+	if( ship && (ship->Health > 0.) )
+	{
+		Raptor::Game->Saitek.SetX52ProLED( SaitekX52ProLED::Fire, true );
+		
+		Raptor::Game->Saitek.SetX52ProLED( SaitekX52ProLED::Hat2Green, true );
+		Raptor::Game->Saitek.SetX52ProLED( SaitekX52ProLED::AGreen, true );
+		Raptor::Game->Saitek.SetX52ProLED( SaitekX52ProLED::BGreen, true );
+		if( ship->SelectedWeapon == Shot::TYPE_TORPEDO )
+		{
+			Raptor::Game->Saitek.SetX52ProLED( SaitekX52ProLED::Hat2Red, true );
+			Raptor::Game->Saitek.SetX52ProLED( SaitekX52ProLED::ARed, true );
+			Raptor::Game->Saitek.SetX52ProLED( SaitekX52ProLED::BRed, true );
+		}
+		else
+		{
+			Raptor::Game->Saitek.SetX52ProLED( SaitekX52ProLED::Hat2Red, false );
+			Raptor::Game->Saitek.SetX52ProLED( SaitekX52ProLED::ARed, false );
+			Raptor::Game->Saitek.SetX52ProLED( SaitekX52ProLED::BRed, false );
+		}
+		
+		Raptor::Game->Saitek.SetX52ProLED( SaitekX52ProLED::T1Green, true );
+		Raptor::Game->Saitek.SetX52ProLED( SaitekX52ProLED::T3Green, true );
+		Raptor::Game->Saitek.SetX52ProLED( SaitekX52ProLED::T5Green, true );
+		
+		Raptor::Game->Saitek.SetX52ProLED( SaitekX52ProLED::EGreen, true );
+		Raptor::Game->Saitek.SetX52ProLED( SaitekX52ProLED::DGreen, true );
+		Raptor::Game->Saitek.SetX52ProLED( SaitekX52ProLED::ClutchGreen, true );
+		
+		Raptor::Game->Saitek.SetX52ProLED( SaitekX52ProLED::Throttle, true );
+		
+		
+		char text_buffer[ 32 ] = "";
+		memset( text_buffer, 0, 32 );
+		snprintf( text_buffer, 32, "Throttle: %3i%%", (int)( ship->GetThrottle() * 100. + 0.5 ) );
+		Raptor::Game->Saitek.SetX52ProMFD( 0, text_buffer );
+		
+		
+		if( Raptor::Game->Cfg.SettingAsBool( "g_framebuffers", true ) )
+		{
+			Framebuffer *fb = Raptor::Game->Res.GetFramebuffer( "fip", 512, 512 );
+			if( fb && fb->Select() )
+			{
+				fb->Setup2D( 0, 512, 512, 0 );
+				glColor4f( 1.f, 1.f, 1.f, 1.f );
+				
+				Raptor::Game->Gfx.Clear();
+				Raptor::Game->Gfx.DrawRect2D( 70, 0, 250, 240, Raptor::Game->Res.GetTexture("*target") );
+				Raptor::Game->Saitek.SetFIPImage( NULL, 0 );
+				
+				Raptor::Game->Gfx.Clear();
+				Raptor::Game->Gfx.DrawRect2D( 0, 0, 320, 240, Raptor::Game->Res.GetTexture("*intercept") );
+				Raptor::Game->Saitek.SetFIPImage( NULL, 1 );
+				
+				Raptor::Game->Gfx.SelectDefaultFramebuffer();
+			}
+		}
+	}
+	else
+	{
+		for( int i = 0; i < 20; i ++ )
+			Raptor::Game->Saitek.SetX52ProLED( i, false );
+		
+		for( int i = 0; i < 3; i ++ )
+			Raptor::Game->Saitek.SetX52ProMFD( i, "" );
+		
+		Raptor::Game->Saitek.ClearFIPImage();
+	}
+}
+#endif
 
 
 bool RenderLayer::KeyDown( SDLKey key )

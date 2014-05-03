@@ -22,15 +22,19 @@ public:
 	Model Shape;
 	std::string Name;
 	bool CanRespawn;
+	uint8_t Group;
 	
 	bool SpecialUpdate;
 	
 	double Health;
 	Clock HitClock;
 	Clock DeathClock;
+	std::map<std::string,double> Subsystems;
 	
 	double ShieldF, ShieldR;
 	uint8_t ShieldPos;
+	
+	double CollisionPotential;
 	
 	bool Firing;
 	uint32_t SelectedWeapon;
@@ -48,12 +52,13 @@ public:
 	void SetType( uint32_t ship_type );
 	void Reset( void );
 	void SetHealth( double health );
-	void AddDamage( double front, double rear );
+	void AddDamage( double front, double rear, const char *subsystem = NULL );
 	void Explode( double dt );
 	
 	void SetRoll( double roll );
 	void SetPitch( double pitch );
 	void SetYaw( double yaw );
+	double GetThrottle( void ) const;
 	void SetThrottle( double throttle, double dt );
 	void SetShieldPos( uint8_t pos );
 	
@@ -67,6 +72,7 @@ public:
 	double MaxShield( void ) const;
 	double ShieldRechargeDelay( void ) const;
 	double ShieldRechargeRate( void ) const;
+	double PiecesDangerousTime( void ) const;
 	bool PlayersCanFly( void ) const;
 	
 	std::map<int,Shot*> NextShots( GameObject *target = NULL ) const;
@@ -81,6 +87,7 @@ public:
 	bool ServerShouldUpdateOthers( void ) const;
 	bool CanCollideWithOwnType( void ) const;
 	bool CanCollideWithOtherTypes( void ) const;
+	bool ComplexCollisionDetection( void ) const;
 	
 	void AddToInitPacket( Packet *packet, int8_t precision = 0 );
 	void ReadFromInitPacket( Packet *packet, int8_t precision = 0 );
@@ -89,7 +96,7 @@ public:
 	void AddToUpdatePacketFromClient( Packet *packet, int8_t precision = 0 );
 	void ReadFromUpdatePacketFromClient( Packet *packet, int8_t precision = 0 );
 	
-	bool WillCollide( const GameObject *other, double dt ) const;
+	bool WillCollide( const GameObject *other, double dt, std::string *this_object = NULL, std::string *other_object = NULL ) const;
 	void Update( double dt );
 	
 	void Draw( void );
@@ -100,6 +107,7 @@ public:
 		TYPE_YWING = 'Y/W ',
 		TYPE_TIE_FIGHTER = 'T/F ',
 		TYPE_ISD2 = 'ISD2',
+		TYPE_CORVETTE = 'CRV ',
 		TYPE_EXHAUST_PORT = 'Hole'
 	};
 	

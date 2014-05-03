@@ -75,7 +75,7 @@ public:
 	void AddToUpdatePacketFromClient( Packet *packet, int8_t precision = 0 );
 	void ReadFromUpdatePacketFromClient( Packet *packet, int8_t precision = 0 );
 	
-	bool WillCollide( const GameObject *other, double dt ) const;
+	bool WillCollide( const GameObject *other, double dt, std::string *this_object = NULL, std::string *other_object = NULL ) const;
 	void Update( double dt );
 	
 	void Draw( void );

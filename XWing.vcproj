@@ -48,7 +48,7 @@
 				EnableIntrinsicFunctions="false"
 				FavorSizeOrSpeed="0"
 				WholeProgramOptimization="false"
-				AdditionalIncludeDirectories="Sources;Sources\UI;Sources\Game;..\RaptorEngine\Core;..\RaptorEngine\Graphics;..\RaptorEngine\Input;..\RaptorEngine\Libs;..\RaptorEngine\Net;..\RaptorEngine\Sound;..\RaptorEngine\UI;..\RaptorEngine\Game"
+				AdditionalIncludeDirectories="Sources;Sources\UI;Sources\Game;..\RaptorEngine\Core;..\RaptorEngine\Graphics;..\RaptorEngine\Input;..\RaptorEngine\Libs;..\RaptorEngine\Net;..\RaptorEngine\Sound;..\RaptorEngine\UI;..\RaptorEngine\Game;..\RaptorEngine\Saitek"
 				PreprocessorDefinitions="WIN32;_DEBUG;_WINDOWS"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
@@ -139,7 +139,7 @@
 				EnableIntrinsicFunctions="false"
 				FavorSizeOrSpeed="0"
 				WholeProgramOptimization="false"
-				AdditionalIncludeDirectories="Sources;Sources\UI;Sources\Game;..\RaptorEngine\Core;..\RaptorEngine\Graphics;..\RaptorEngine\Input;..\RaptorEngine\Libs;..\RaptorEngine\Net;..\RaptorEngine\Sound;..\RaptorEngine\UI;..\RaptorEngine\Game"
+				AdditionalIncludeDirectories="Sources;Sources\UI;Sources\Game;..\RaptorEngine\Core;..\RaptorEngine\Graphics;..\RaptorEngine\Input;..\RaptorEngine\Libs;..\RaptorEngine\Net;..\RaptorEngine\Sound;..\RaptorEngine\UI;..\RaptorEngine\Game;..\RaptorEngine\Saitek"
 				PreprocessorDefinitions="WIN32;_DEBUG;_WINDOWS"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
@@ -230,7 +230,7 @@
 				EnableIntrinsicFunctions="true"
 				FavorSizeOrSpeed="1"
 				WholeProgramOptimization="true"
-				AdditionalIncludeDirectories="Sources;Sources\UI;Sources\Game;..\RaptorEngine\Core;..\RaptorEngine\Graphics;..\RaptorEngine\Input;..\RaptorEngine\Libs;..\RaptorEngine\Net;..\RaptorEngine\Sound;..\RaptorEngine\UI;..\RaptorEngine\Game"
+				AdditionalIncludeDirectories="Sources;Sources\UI;Sources\Game;..\RaptorEngine\Core;..\RaptorEngine\Graphics;..\RaptorEngine\Input;..\RaptorEngine\Libs;..\RaptorEngine\Net;..\RaptorEngine\Sound;..\RaptorEngine\UI;..\RaptorEngine\Game;..\RaptorEngine\Saitek"
 				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS"
 				RuntimeLibrary="2"
 				EnableFunctionLevelLinking="true"
@@ -321,7 +321,7 @@
 				EnableIntrinsicFunctions="true"
 				FavorSizeOrSpeed="1"
 				WholeProgramOptimization="true"
-				AdditionalIncludeDirectories="Sources;Sources\UI;Sources\Game;..\RaptorEngine\Core;..\RaptorEngine\Graphics;..\RaptorEngine\Input;..\RaptorEngine\Libs;..\RaptorEngine\Net;..\RaptorEngine\Sound;..\RaptorEngine\UI;..\RaptorEngine\Game"
+				AdditionalIncludeDirectories="Sources;Sources\UI;Sources\Game;..\RaptorEngine\Core;..\RaptorEngine\Graphics;..\RaptorEngine\Input;..\RaptorEngine\Libs;..\RaptorEngine\Net;..\RaptorEngine\Sound;..\RaptorEngine\UI;..\RaptorEngine\Game;..\RaptorEngine\Saitek"
 				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS"
 				RuntimeLibrary="2"
 				EnableFunctionLevelLinking="true"
@@ -925,6 +925,54 @@
 				</File>
 				<File
 					RelativePath="..\RaptorEngine\Game\Player.h"
+					>
+				</File>
+			</Filter>
+			<Filter
+				Name="Saitek"
+				>
+				<File
+					RelativePath="..\RaptorEngine\Saitek\DirectOutput.h"
+					>
+				</File>
+				<File
+					RelativePath="..\RaptorEngine\Saitek\DirectOutputImpl.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\RaptorEngine\Saitek\DirectOutputImpl.h"
+					>
+				</File>
+				<File
+					RelativePath="..\RaptorEngine\Saitek\SaitekDevice.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\RaptorEngine\Saitek\SaitekDevice.h"
+					>
+				</File>
+				<File
+					RelativePath="..\RaptorEngine\Saitek\SaitekFIP.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\RaptorEngine\Saitek\SaitekFIP.h"
+					>
+				</File>
+				<File
+					RelativePath="..\RaptorEngine\Saitek\SaitekManager.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\RaptorEngine\Saitek\SaitekManager.h"
+					>
+				</File>
+				<File
+					RelativePath="..\RaptorEngine\Saitek\SaitekX52Pro.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\RaptorEngine\Saitek\SaitekX52Pro.h"
 					>
 				</File>
 			</Filter>

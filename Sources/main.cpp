@@ -8,7 +8,7 @@
 #include "ServerConsole.h"
 
 
-#define VERSION "0.1 Alpha"
+#define VERSION "0.1.1 Alpha"
 
 
 #ifdef WIN32

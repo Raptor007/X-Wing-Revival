@@ -285,7 +285,7 @@ void Turret::ReadFromUpdatePacketFromClient( Packet *packet, int8_t precision )
 }
 
 
-bool Turret::WillCollide( const GameObject *other, double dt ) const
+bool Turret::WillCollide( const GameObject *other, double dt, std::string *this_object, std::string *other_object ) const
 {
 	// Can't collide with the ship we're attached to.
 	if( other->ID == ParentID )
@@ -316,7 +316,7 @@ bool Turret::WillCollide( const GameObject *other, double dt ) const
 			return false;
 		
 		// Don't let turrets hit capitol ships.
-		if( ship->ShipType == Ship::TYPE_ISD2 )
+		if( ship->ComplexCollisionDetection() )
 			return false;
 		
 		double dist = Math3D::MinimumDistance( this, &(this->MotionVector), other, &(other->MotionVector), dt );
@@ -327,7 +327,7 @@ bool Turret::WillCollide( const GameObject *other, double dt ) const
 	
 	// Let the Death Star determine whether collisions with ships occur.
 	else if( other->Type() == XWing::Object::DEATH_STAR )
-		return other->WillCollide( this, dt );
+		return other->WillCollide( this, dt, other_object, this_object );
 	
 	return false;
 }

@@ -109,6 +109,7 @@ void XWingGame::Setup( int argc, char **argv )
 		screensaver = true;
 		Cfg.Settings[ "s_menu_music" ] = "false";
 		Cfg.Settings[ "s_game_music" ] = "false";
+		Cfg.Settings[ "saitek_enable" ] = "false";
 		Cfg.Settings[ "spectator_view" ] = "cinema2";
 	}
 	
@@ -232,6 +233,7 @@ void XWingGame::Precache( void )
 		Res.GetModel("deathstar_box.obj");
 		Res.GetModel("deathstar_exhaust_port.obj");
 		Res.GetModel("isd2.obj");
+		Res.GetModel("corvette.obj");
 		
 		Res.GetSound("beep.wav");
 		Res.GetSound("laser_red.wav");
@@ -352,16 +354,20 @@ void XWingGame::Update( double dt )
 		{
 			if( Str::FindInsensitive( joy_iter->second.Name, "Pedal" ) >= 0 )
 			{
-				pedals = true;
-				
-				// Read pedals.
-				double z = joy_iter->second.Axis( 2, deadzone );
-				z = fabs(pow( fabs(z), Cfg.SettingAsDouble("joy_smooth_pedals") + 1. )) * Num::Sign(z);
-				
-				if( Cfg.SettingAsBool("joy_swap_xz") )
-					roll = z;
-				else
-					yaw = z;
+				// Make sure the pedals have analog data.
+				if( joy_iter->second.HasAxis(2) )
+				{
+					pedals = true;
+					
+					// Read pedals.
+					double z = joy_iter->second.Axis( 2, deadzone );
+					z = fabs(pow( fabs(z), Cfg.SettingAsDouble("joy_smooth_pedals") + 1. )) * Num::Sign(z);
+					
+					if( Cfg.SettingAsBool("joy_swap_xz") )
+						roll = z;
+					else
+						yaw = z;
+				}
 			}
 			else if( Str::FindInsensitive( joy_iter->second.Name, "Xbox" ) >= 0 )
 			{
@@ -402,30 +408,34 @@ void XWingGame::Update( double dt )
 			}
 			else
 			{
-				stick = true;
-				
-				// Read joystick's analog axes.
-				double x = joy_iter->second.Axis( 0, deadzone );
-				x = fabs(pow( fabs(x), Cfg.SettingAsDouble("joy_smooth_x") + 1. )) * Num::Sign(x);
-				double y = joy_iter->second.Axis( 1, deadzone );
-				y = fabs(pow( fabs(y), Cfg.SettingAsDouble("joy_smooth_y") + 1. )) * Num::Sign(y);
-				double z = joy_iter->second.Axis( 3, deadzone );
-				z = fabs(pow( fabs(z), Cfg.SettingAsDouble("joy_smooth_z") + 1. )) * Num::Sign(z);
-				
-				pitch = y;
-				throttle = joy_iter->second.AxisScaled( 2, 1., 0., 0., deadzone );
-				
-				if( Cfg.SettingAsBool("joy_swap_xz") )
+				// Only real analog data if this is an analog stick (not a button pad).
+				if( joy_iter->second.HasAxis(0) || joy_iter->second.HasAxis(1) || joy_iter->second.HasAxis(3) )
 				{
-					yaw = x;
-					if( ! pedals )
-						roll = z;
-				}
-				else
-				{
-					roll = x;
-					if( ! pedals )
-						yaw = z;
+					stick = true;
+					
+					// Read joystick's analog axes.
+					double x = joy_iter->second.Axis( 0, deadzone );
+					x = fabs(pow( fabs(x), Cfg.SettingAsDouble("joy_smooth_x") + 1. )) * Num::Sign(x);
+					double y = joy_iter->second.Axis( 1, deadzone );
+					y = fabs(pow( fabs(y), Cfg.SettingAsDouble("joy_smooth_y") + 1. )) * Num::Sign(y);
+					double z = joy_iter->second.Axis( 3, deadzone );
+					z = fabs(pow( fabs(z), Cfg.SettingAsDouble("joy_smooth_z") + 1. )) * Num::Sign(z);
+					
+					pitch = y;
+					throttle = joy_iter->second.AxisScaled( 2, 1., 0., 0., deadzone );
+					
+					if( Cfg.SettingAsBool("joy_swap_xz") )
+					{
+						yaw = x;
+						if( ! pedals )
+							roll = z;
+					}
+					else
+					{
+						roll = x;
+						if( ! pedals )
+							yaw = z;
+					}
 				}
 				
 				// Read joystick's buttons.
@@ -795,42 +805,69 @@ void XWingGame::Update( double dt )
 	}
 	
 	
-	if( (State == XWing::State::FLYING) && Cfg.SettingAsBool("s_imuse") )
+	if( State == XWing::State::FLYING )
 	{
-		// Update music according to the action.
-		
-		if( observed_ship && (Data.Properties["gametype"] == "yavin") )
+		if( Cfg.SettingAsBool("s_imuse") )
 		{
-			// Find the important elements of the Battle of Yavin scenario.
+			// iMUSE enabled: Update music according to the action.
 			
-			DeathStar *deathstar = NULL;
-			Ship *exhaust_port = NULL;
+			if( Snd.MusicSubdir.compare( 0, 6, "iMUSE/" ) != 0 )
+				Snd.StopMusic();
+			bool found_music = false;
 			
-			for( std::map<uint32_t,GameObject*>::iterator obj_iter = Data.GameObjects.begin(); obj_iter != Data.GameObjects.end(); obj_iter ++ )
+			if( observed_ship && (observed_ship->Health <= 0.) )
 			{
-				if( obj_iter->second->Type() == XWing::Object::SHIP )
-				{
-					Ship *this_ship = (Ship*) obj_iter->second;
-					if( this_ship->ShipType == Ship::TYPE_EXHAUST_PORT )
-						exhaust_port = this_ship;
-				}
-				else if( obj_iter->second->Type() == XWing::Object::DEATH_STAR )
-					deathstar = (DeathStar*) obj_iter->second;
-				
-				if( deathstar && exhaust_port )
-					break;
+				Snd.PlayMusicSubdirNext( "iMUSE/Death" );
+				found_music = true;
 			}
 			
-			// Change music for trench running.
+			if( (! found_music) && observed_ship && (Data.Properties["gametype"] == "yavin") )
+			{
+				// Find the important elements of the Battle of Yavin scenario.
+				
+				DeathStar *deathstar = NULL;
+				Ship *exhaust_port = NULL;
+				
+				for( std::map<uint32_t,GameObject*>::iterator obj_iter = Data.GameObjects.begin(); obj_iter != Data.GameObjects.end(); obj_iter ++ )
+				{
+					if( obj_iter->second->Type() == XWing::Object::SHIP )
+					{
+						Ship *this_ship = (Ship*) obj_iter->second;
+						if( this_ship->ShipType == Ship::TYPE_EXHAUST_PORT )
+							exhaust_port = this_ship;
+					}
+					else if( obj_iter->second->Type() == XWing::Object::DEATH_STAR )
+						deathstar = (DeathStar*) obj_iter->second;
+					
+					if( deathstar && exhaust_port )
+						break;
+				}
+				
+				// Change music for trench running.
+				
+				if( deathstar && (observed_ship->DistAlong( &(deathstar->Up), deathstar ) < 0.) )
+				{
+					if( observed_ship->Dist(exhaust_port) <= 5000. )
+						Snd.PlayMusicSubdirNext( "iMUSE/TrenchNear" );
+					else
+						Snd.PlayMusicSubdirNext( "iMUSE/Trench" );
+					
+					found_music = true;
+				}
+			}
 			
-			if( Snd.MusicSubdir.compare( 0, 6, "Stream/" ) != 0 )
+			if( ! found_music )
+				Snd.PlayMusicSubdirNext( "iMUSE/Combat" );
+		}
+		else
+		{
+			// iMUSE disabled.
+			
+			if( Snd.MusicSubdir.compare( 0, 7, "iMUSE/" ) == 0 )
+			{
 				Snd.StopMusic();
-			if( deathstar && (observed_ship->DistAlong( &(deathstar->Up), deathstar ) < 0.) )
-				Snd.PlayMusicSubdirNext( "Stream/Trench" );
-			else if( observed_ship->Health <= 0. )
-				Snd.PlayMusicSubdirNext( "Stream/Death" );
-			else
-				Snd.PlayMusicSubdirNext( "Stream/Combat" );
+				Snd.PlayMusicSubdir( "Flight" );
+			}
 		}
 	}
 }
@@ -1255,6 +1292,10 @@ bool XWingGame::ProcessPacket( Packet *packet )
 		double health = packet->NextFloat();
 		double shield_f = packet->NextFloat();
 		double shield_r = packet->NextFloat();
+		char *subsystem = packet->NextString();
+		double subsystem_health = 0.;
+		if( strlen(subsystem) )
+			subsystem_health = packet->NextFloat();
 		uint32_t shot_type = packet->NextUInt();
 		double x = packet->NextDouble();
 		double y = packet->NextDouble();
@@ -1278,6 +1319,8 @@ bool XWingGame::ProcessPacket( Packet *packet )
 			ship->SetHealth( health );
 			ship->ShieldF = shield_f;
 			ship->ShieldR = shield_r;
+			if( strlen(subsystem) )
+				ship->Subsystems[ subsystem ] = subsystem_health;
 		}
 		
 		if( State >= XWing::State::FLYING )
@@ -1423,14 +1466,8 @@ bool XWingGame::ProcessPacket( Packet *packet )
 		{
 			std::string music_name = "Defeat.mp3";
 			
-			if( (game_type == XWing::GameType::TEAM_ELIMINATION) || (game_type == XWing::GameType::TEAM_DEATHMATCH) || (game_type == XWing::GameType::BATTLE_OF_YAVIN) )
-			{
-				if( victor == XWing::Team::REBEL )
-					music_name = "Rebel Victory.mp3";
-				else if( victor == XWing::Team::EMPIRE )
-					music_name = "Empire Victory.mp3";
-			}
-			else if( (game_type == XWing::GameType::FFA_ELIMINATION) || (game_type == XWing::GameType::FFA_DEATHMATCH) )
+			// Victory checking is by player ID for FFA gametypes.
+			if( (game_type == XWing::GameType::FFA_ELIMINATION) || (game_type == XWing::GameType::FFA_DEATHMATCH) )
 			{
 				if( victor == PlayerID )
 					music_name = "Victory.mp3";
@@ -1442,8 +1479,14 @@ bool XWingGame::ProcessPacket( Packet *packet )
 						music_name = "Victory.mp3";
 				}
 			}
+			// Usually assume it was a team game.
 			else
-				music_name = "Victory.mp3";
+			{
+				if( victor == XWing::Team::REBEL )
+					music_name = "Rebel Victory.mp3";
+				else if( victor == XWing::Team::EMPIRE )
+					music_name = "Empire Victory.mp3";
+			}
 			
 			Mix_Music *music = Res.GetMusic(music_name);
 			if( music && Cfg.SettingAsBool("s_game_music") )
@@ -1490,6 +1533,8 @@ void XWingGame::AddedObject( GameObject *obj )
 				Snd.PlayAt( Res.GetSound("laser_red.wav"), obj->X, obj->Y, obj->Z );
 			else if( shot->ShotType == Shot::TYPE_LASER_GREEN )
 				Snd.PlayAt( Res.GetSound("laser_green.wav"), obj->X, obj->Y, obj->Z );
+			else if( shot->ShotType == Shot::TYPE_TURBO_LASER_RED )
+				Snd.PlayAt( Res.GetSound("laser_red.wav"), obj->X, obj->Y, obj->Z, 1.5 );
 			else if( shot->ShotType == Shot::TYPE_TURBO_LASER_GREEN )
 				Snd.PlayAt( Res.GetSound("turbolaser_green.wav"), obj->X, obj->Y, obj->Z, 1.5 );
 			else if( shot->ShotType == Shot::TYPE_TORPEDO )

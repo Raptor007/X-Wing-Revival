@@ -158,7 +158,7 @@ void DeathStar::ReadFromUpdatePacketFromServer( Packet *packet, int8_t precision
 }
 
 
-bool DeathStar::WillCollide( const GameObject *other, double dt ) const
+bool DeathStar::WillCollide( const GameObject *other, double dt, std::string *this_object, std::string *other_object ) const
 {
 	if( other->Type() == XWing::Object::SHOT )
 	{
@@ -187,6 +187,44 @@ bool DeathStar::WillCollide( const GameObject *other, double dt ) const
 		// Don't destroy the exhaust port.
 		if( ship->ShipType == Ship::TYPE_EXHAUST_PORT )
 			return false;
+		
+		// Use per-vertex checking for capital ship near Death Star.
+		if( ship->ComplexCollisionDetection() )
+		{
+			if( ship->DistAlong(&Up,this) > ship->Shape.PrecalculatedMaxRadius() )
+				return false;
+			
+			ModelArrays array_inst;
+			for( std::map<std::string,ModelObject>::const_iterator obj_iter = ship->Shape.Objects.begin(); obj_iter != ship->Shape.Objects.end(); obj_iter ++ )
+			{
+				// Don't detect collisions with destroyed subsystems.
+				std::map<std::string,double>::const_iterator subsystem_iter = ship->Subsystems.find( obj_iter->first );
+				if( (subsystem_iter != ship->Subsystems.end()) && (subsystem_iter->second <= 0.) )
+					continue;
+				
+				for( std::map<std::string,ModelArrays>::const_iterator array_iter = obj_iter->second.Arrays.begin(); array_iter != obj_iter->second.Arrays.end(); array_iter ++ )
+				{
+					array_inst.BecomeInstance( &(array_iter->second), false );
+					array_inst.MakeWorldSpace( ship );
+					for( int i = 0; i < array_inst.VertexCount; i ++ )
+					{
+						Pos3D vertex( array_inst.WorldSpaceVertexArray[ i*3 ], array_inst.WorldSpaceVertexArray[ i*3 + 1 ], array_inst.WorldSpaceVertexArray[ i*3 + 2 ] );
+						double bottom = 0.;
+						/*
+						if( fabs( vertex.DistAlong(&Right,this) ) < TrenchWidth / 2. )
+							bottom -= TrenchDepth;
+						*/
+						if( vertex.DistAlong(&Up,this) <= bottom )
+						{
+							if( other_object )
+								*other_object = obj_iter->first;
+							return true;
+						}
+					}
+				}
+			}
+			return false;
+		}
 		
 		// Adjust for the trench depth.
 		double bottom = 0.;

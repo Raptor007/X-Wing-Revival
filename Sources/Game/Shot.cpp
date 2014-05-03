@@ -30,13 +30,15 @@ Shot::~Shot()
 void Shot::SetType( uint32_t shot_type )
 {
 	ShotType = shot_type;
-
+	
 	if( Data == &(Raptor::Game->Data) )
 	{
 		if( ShotType == TYPE_LASER_RED )
 			Anim.BecomeInstance( Raptor::Game->Res.GetAnimation("laser_red.ani") );
 		else if( ShotType == TYPE_LASER_GREEN )
 			Anim.BecomeInstance( Raptor::Game->Res.GetAnimation("laser_green.ani") );
+		else if( ShotType == TYPE_TURBO_LASER_RED )
+			Anim.BecomeInstance( Raptor::Game->Res.GetAnimation("laser_red.ani") );
 		else if( ShotType == TYPE_TURBO_LASER_GREEN )
 			Anim.BecomeInstance( Raptor::Game->Res.GetAnimation("laser_green.ani") );
 		else if( ShotType == TYPE_TORPEDO )
@@ -51,10 +53,13 @@ double Shot::Damage( void ) const
 {
 	if( ShotType == TYPE_TURBO_LASER_GREEN )
 		return 35.;
+	else if( ShotType == TYPE_TURBO_LASER_RED )
+		return 34.;
 	else if( ShotType == TYPE_TORPEDO )
 		return 150.;
 	else if( ShotType == TYPE_MISSILE )
 		return 100.;
+	
 	return 30.;
 }
 
@@ -63,10 +68,13 @@ double Shot::Speed( void ) const
 {
 	if( ShotType == TYPE_TURBO_LASER_GREEN )
 		return 500.;
+	else if( ShotType == TYPE_TURBO_LASER_RED )
+		return 500.;
 	else if( ShotType == TYPE_TORPEDO )
 		return 400.;
 	else if( ShotType == TYPE_MISSILE )
 		return 450.;
+	
 	return 600.;
 }
 
@@ -91,6 +99,8 @@ Color Shot::LightColor( void ) const
 		return Color( 0.85f, 0.f, 0.f, 15.f );
 	else if( ShotType == TYPE_LASER_GREEN )
 		return Color( 0.f, 0.4f, 0.f, 15.f );
+	else if( ShotType == TYPE_TURBO_LASER_RED )
+		return Color( 0.85f, 0.f, 0.f, 15.f );
 	else if( ShotType == TYPE_TURBO_LASER_GREEN )
 		return Color( 0.f, 0.4f, 0.f, 15.f );
 	else if( ShotType == TYPE_TORPEDO )
@@ -159,7 +169,7 @@ void Shot::ReadFromUpdatePacket( Packet *packet, int8_t precision )
 }
 
 
-bool Shot::WillCollide( const GameObject *other, double dt ) const
+bool Shot::WillCollide( const GameObject *other, double dt, std::string *this_object, std::string *other_object ) const
 {
 	if( other->Type() == XWing::Object::SHOT )
 	{
@@ -175,7 +185,7 @@ bool Shot::WillCollide( const GameObject *other, double dt ) const
 	}
 	
 	// Let other objects determine whether collisions with shots occur.
-	return other->WillCollide( this, dt );
+	return other->WillCollide( this, dt, other_object, this_object );
 }
 
 

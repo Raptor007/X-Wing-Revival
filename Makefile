@@ -10,12 +10,16 @@ LIBDIR = /usr/lib64
 LIB = libSDLmain.a libSDL_net.so libSDL_mixer.so libSDL_ttf.so libSDL_image.so libSDL.so libGLEW.a libGLU.so libGL.so
 DEF =
 EXE = xwingrev
+VERSION = 0.1.1
 GAMEDIR = /Games/X-Wing Revival
+SERVERDIR = /srv/xwingrev
+SERVERUSER = xwingrev
 BUILD_FINALIZE =
 INSTALL_FINALIZE =
+MAC_APP = X-Wing Revival
 MAC_FRAMEWORKS = OpenGL Cocoa AudioUnit AudioToolbox IOKit Carbon
 MAC_MFLAGS = -fobjc-direct-dispatch
-MAC_APP = X-Wing Revival
+MAC_INSTALL_NAME_TOOL = /opt/local/bin/install_name_tool
 
 
 CARCH =
@@ -95,8 +99,8 @@ LIBRARIES := $(patsubst %.so,%.a,$(LIBRARIES))
 LIBRARIES += $(foreach framework,$(MAC_FRAMEWORKS),-framework $(framework))
 
 # Fix dynamic library paths.
-BUILD_FINALIZE += install_name_tool -change "@loader_path/Frameworks/mikmod.framework/Versions/A/mikmod" "@executable_path/../Frameworks/mikmod.framework/Versions/A/mikmod" "$(EXE)";
-BUILD_FINALIZE += install_name_tool -change "@loader_path/Frameworks/smpeg.framework/Versions/A/smpeg" "@executable_path/../Frameworks/smpeg.framework/Versions/A/smpeg" "$(EXE)";
+BUILD_FINALIZE += $(MAC_INSTALL_NAME_TOOL) -change "@loader_path/Frameworks/mikmod.framework/Versions/A/mikmod" "@executable_path/../Frameworks/mikmod.framework/Versions/A/mikmod" "$(EXE)";
+BUILD_FINALIZE += $(MAC_INSTALL_NAME_TOOL) -change "@loader_path/Frameworks/smpeg.framework/Versions/A/smpeg" "@executable_path/../Frameworks/smpeg.framework/Versions/A/smpeg" "$(EXE)";
 
 ifdef MAC_APP
 # Create application package.
@@ -120,7 +124,7 @@ endif
 OBJECTS = $(patsubst Sources/%.cpp,build/$(ARCHDIR)XWing/%.o,$(patsubst ../RaptorEngine/%.cpp,build/$(ARCHDIR)RaptorEngine/%.o,$(patsubst ../RaptorEngine/%.m,build/$(ARCHDIR)RaptorEngine/%.om,$(SOURCES))))
 OBJDIRS = $(dir $(OBJECTS))
 
-ifeq (,$(findstring g++-4.0,$(CC)))
+ifeq (,$(findstring -4.0,$(CC)))
 # When not using gcc 4.0, use link-time optimization.
 CFLAGS += -flto
 LDFLAGS += -flto
@@ -143,7 +147,7 @@ default: $(SOURCES) $(HEADERS) $(EXE)
 
 $(EXE): $(OBJECTS)
 	$(LD) $(LDFLAGS) $(LDARCH) $(OBJECTS) $(LIBRARIES) -o $@
-	$(BUILD_FINALIZE)
+	-$(BUILD_FINALIZE)
 
 build/$(ARCHDIR)XWing/%.o: Sources/%.cpp $(HEADERS) $(foreach objdir,$(OBJDIRS),$(objdir).dir)
 	$(CC) -c $(CARCH) $(CFLAGS) $(foreach inc,$(INCLUDES),-I$(inc)) $(foreach def,$(DEF),-D$(def)) $< -o $@
@@ -183,14 +187,17 @@ install:
 uninstall:
 	rm -r "$(GAMEDIR)"
 
-play: $(EXE) install
+play:
 	cd "$(GAMEDIR)"; "$(BINDIR)/$(EXE_INSTALL)"
 
 server-install:
-	mkdir -p "$(GAMEDIR)"
-	cp "$(EXE)" "$(GAMEDIR)/"
-	cp xwingctl "$(GAMEDIR)/"
-	-ln -s "$(GAMEDIR)/xwingctl" /usr/local/bin/xwingctl
+	mkdir -p "$(SERVERDIR)"
+	cp "$(EXE)" "$(SERVERDIR)/$(EXE)-$(VERSION)"
+	cp xwingctl "$(SERVERDIR)/"
+	cd "$(SERVERDIR)" && ln -sf "$(EXE)-$(VERSION)" "$(EXE)"
+	-chown -R $(SERVERUSER):wheel "$(SERVERDIR)"
+	-chmod 775 "$(SERVERDIR)/$(EXE)-$(VERSION)"
+	-ln -sf "$(SERVERDIR)/xwingctl" /usr/local/bin/xwingctl
 
 ppc:
 	make objects ARCH="ppc" MTUNE="G5"
@@ -205,9 +212,9 @@ i64:
 	make ARCH="x86_64" EXE="$(EXE)_i64" CC="/opt/local/bin/g++" MTUNE="core2"
 
 universal:
-	make i64 EXE="$(EXE)"
 	make ppc EXE="$(EXE)"
 	make i32 EXE="$(EXE)"
+	make i64 EXE="$(EXE)"
 	make lipo EXE="$(EXE)"
 
 lipo: $(EXE)_ppc $(EXE)_i32 $(EXE)_i64

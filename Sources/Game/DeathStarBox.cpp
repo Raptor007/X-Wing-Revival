@@ -80,7 +80,7 @@ void DeathStarBox::ReadFromInitPacket( Packet *packet, int8_t precision )
 }
 
 
-bool DeathStarBox::WillCollide( const GameObject *other, double dt ) const
+bool DeathStarBox::WillCollide( const GameObject *other, double dt, std::string *this_object, std::string *other_object ) const
 {
 	if( other->Type() == XWing::Object::SHOT )
 	{
@@ -97,6 +97,10 @@ bool DeathStarBox::WillCollide( const GameObject *other, double dt ) const
 		
 		// Don't destroy the exhaust port.
 		if( ship->ShipType == Ship::TYPE_EXHAUST_PORT )
+			return false;
+		
+		// Don't worry about capital ship hitting these.
+		if( ship->ComplexCollisionDetection() )
 			return false;
 		
 		if( (fabs(other->DistAlong(&Fwd,this)) <= L/2. + ship->Radius()) && (fabs(other->DistAlong(&Up,this)) <= H/2. + ship->Radius()) && (fabs(other->DistAlong(&Right,this)) <= W/2. + ship->Radius()) )

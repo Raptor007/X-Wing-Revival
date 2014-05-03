@@ -24,6 +24,7 @@ LobbyMenu::LobbyMenu( void )
 	AddElement( LeaveButton = new LobbyMenuLeaveButton() );
 	AddElement( FlyButton = new LobbyMenuFlyButton() );
 	AddElement( TeamButton = new LobbyMenuTeamButton() );
+	AddElement( GroupButton = new LobbyMenuGroupButton() );
 	AddElement( ShipButton = new LobbyMenuShipButton() );
 	
 	AddElement( PlayerList = new ListBox( NULL, Raptor::Game->Res.GetFont( "Verdana.ttf", tiny ? 13 : 19 ), 16 ) );
@@ -78,7 +79,8 @@ LobbyMenu::LobbyMenu( void )
 	AddElement( Asteroids = new LobbyMenuConfiguration( "asteroids", "Asteroids", tiny ) );
 	AddElement( YavinTimeLimit = new LobbyMenuConfiguration( "yavin_time_limit", "Time Limit", tiny ) );
 	AddElement( YavinTurrets = new LobbyMenuConfiguration( "yavin_turrets", "Surface Turrets", tiny ) );
-	AddElement( Permissions = new LobbyMenuConfiguration( "permissions", "Game Settings", tiny ) );
+	AddElement( HuntTimeLimit = new LobbyMenuConfiguration( "hunt_time_limit", "Time Limit", tiny ) );
+	AddElement( Permissions = new LobbyMenuConfiguration( "permissions", "Game Admins", tiny ) );
 }
 
 
@@ -121,22 +123,52 @@ void LobbyMenu::UpdateRects( void )
 	TeamButton->Rect.w = 140;
 	TeamButton->Rect.h = TeamButton->LabelFont->GetHeight() + 6;
 	
-	ShipButton->Rect.x = TeamButton->Rect.x + TeamButton->Rect.w + 10;
-	ShipButton->Rect.y = TeamButton->Rect.y;
-	ShipButton->Rect.w = TeamButton->Rect.w;
-	ShipButton->Rect.h = TeamButton->Rect.h;
+	GroupButton->Rect.x = TeamButton->Rect.x + TeamButton->Rect.w + 10;
+	GroupButton->Rect.y = TeamButton->Rect.y;
+	GroupButton->Rect.w = TeamButton->Rect.w;
+	GroupButton->Rect.h = TeamButton->Rect.h;
 	
+	ShipButton->Rect.x = GroupButton->Rect.x + GroupButton->Rect.w + 10;
+	ShipButton->Rect.y = GroupButton->Rect.y;
+	ShipButton->Rect.w = GroupButton->Rect.w;
+	ShipButton->Rect.h = GroupButton->Rect.h;
+	
+	GroupButton->Enabled = true;
 	ShipButton->Enabled = true;
 	Player *player = Raptor::Game->Data.GetPlayer( Raptor::Game->PlayerID );
 	if( player )
 	{
 		bool ffa = ( Raptor::Game->Data.Properties["gametype"].find("ffa_") == 0 );
 		if( (player->Properties["team"] == "Spectator") || ((! ffa) && (player->Properties["team"] == "")) )
+		{
+			GroupButton->Enabled = false;
 			ShipButton->Enabled = false;
+		}
+		else if( ffa )
+			GroupButton->Enabled = false;
 		
 		// FIXME: Remove this when there are more Empire ships to choose from.
 		if( (! ffa) && (player->Properties["team"] == "Empire") )
 			ShipButton->Enabled = false;
+	}
+	
+	if( GroupButton->Enabled )
+	{
+		GroupButton->Alpha = TeamButton->Alpha;
+		GroupButton->AlphaNormal = TeamButton->AlphaNormal;
+		GroupButton->RedOver = TeamButton->RedOver;
+		GroupButton->BlueOver = TeamButton->BlueOver;
+		GroupButton->GreenOver = TeamButton->GreenOver;
+		GroupButton->AlphaOver = TeamButton->AlphaOver;
+	}
+	else
+	{
+		GroupButton->Alpha = 0.5f;
+		GroupButton->AlphaNormal = 0.5f;
+		GroupButton->RedOver = TeamButton->RedNormal;
+		GroupButton->BlueOver = TeamButton->BlueNormal;
+		GroupButton->GreenOver = TeamButton->GreenNormal;
+		GroupButton->AlphaOver = 0.5f;
 	}
 	
 	if( ShipButton->Enabled )
@@ -222,6 +254,15 @@ void LobbyMenu::UpdateRects( void )
 		prev = YavinTurrets;
 	}
 	
+	if( HuntTimeLimit->Enabled )
+	{
+		HuntTimeLimit->Rect.x = prev->Rect.x;
+		HuntTimeLimit->Rect.y = prev->Rect.y + prev->Rect.h + (tiny ? 5 : 10);
+		HuntTimeLimit->Rect.w = prev->Rect.w;
+		HuntTimeLimit->Update();
+		prev = HuntTimeLimit;
+	}
+	
 	if( TDMKillLimit->Enabled )
 	{
 		TDMKillLimit->Rect.x = prev->Rect.x;
@@ -296,10 +337,13 @@ void LobbyMenu::UpdatePlayerList( void )
 		std::string display_name = player_iter->second->Name;
 		
 		std::string team = player_iter->second->Properties["team"];
+		int group = ffa ? 0 : atoi( player_iter->second->Properties["group"].c_str() );
 		if( (! ffa) || (team == "Spectator") )
 		{
 			if( team.empty() )
 				display_name += " [Auto-Team]";
+			else if( group )
+				display_name += " [" + team + " group " + Num::ToString(group) + "]";
 			else
 				display_name += " [" + team + "]";
 		}
@@ -349,6 +393,10 @@ void LobbyMenu::UpdateInfoBoxes( void )
 		GameType->Value->LabelText = "FFA Deathmatch";
 	else if( gametype == "yavin" )
 		GameType->Value->LabelText = "Battle of Yavin";
+	else if( gametype == "isd2_hunt" )
+		GameType->Value->LabelText = "Star Destroyer Hunt";
+	else if( gametype == "crv_hunt" )
+		GameType->Value->LabelText = "Rebel Corvette Hunt";
 	else
 		GameType->Value->LabelText = gametype;
 	
@@ -449,11 +497,14 @@ void LobbyMenu::UpdateInfoBoxes( void )
 	else
 		YavinTurrets->Value->LabelText = "Way Too Many";
 	
+	int hunt_time_limit = atoi( Raptor::Game->Data.Properties["hunt_time_limit"].c_str() );
+	HuntTimeLimit->Value->LabelText = Num::ToString(hunt_time_limit);
+	
 	std::string permissions = Raptor::Game->Data.Properties["permissions"];
 	if( permissions == "all" )
-		Permissions->Value->LabelText = "Anyone Can Change";
+		Permissions->Value->LabelText = "All Players";
 	else
-		Permissions->Value->LabelText = "Only Host Can Change";
+		Permissions->Value->LabelText = "Only Host";
 	
 	// Determine player permissions.
 	Player *player = Raptor::Game->Data.GetPlayer( Raptor::Game->PlayerID );
@@ -474,10 +525,11 @@ void LobbyMenu::UpdateInfoBoxes( void )
 	Asteroids->ShowButton = (admin || permissions_all) && (! flying);
 	YavinTimeLimit->ShowButton = (admin || permissions_all) && (! flying);
 	YavinTurrets->ShowButton = (admin || permissions_all) && (! flying);
+	HuntTimeLimit->ShowButton = (admin || permissions_all) && (! flying);
 	Permissions->ShowButton = admin;
 	
 	// Hide "Respawn" unless it's Team Elimination or Yavin.
-	if( (gametype != "team_elim") && (gametype != "yavin") )
+	if( (gametype != "team_elim") && (gametype != "yavin") && (gametype != "isd2_hunt") && (gametype != "crv_hunt") )
 	{
 		Respawn->ShowButton = false;
 		Respawn->Visible = false;
@@ -538,6 +590,19 @@ void LobbyMenu::UpdateInfoBoxes( void )
 		YavinTurrets->ShowButton = false;
 		YavinTurrets->Visible = false;
 		YavinTurrets->Enabled = false;
+	}
+	
+	// Show "Hunt Time Limit" for any hunt modes.
+	if( gametype == "isd2_hunt" || gametype == "crv_hunt" )
+	{
+		HuntTimeLimit->Visible = true;
+		HuntTimeLimit->Enabled = true;
+	}
+	else
+	{
+		HuntTimeLimit->ShowButton = false;
+		HuntTimeLimit->Visible = false;
+		HuntTimeLimit->Enabled = false;
 	}
 }
 
@@ -752,6 +817,65 @@ void LobbyMenuTeamButton::Clicked( Uint8 button )
 // ---------------------------------------------------------------------------
 
 
+LobbyMenuGroupButton::LobbyMenuGroupButton( void )
+: LabelledButton( NULL, Raptor::Game->Res.GetFont( "Verdana.ttf", 17 ), "Change Group", Font::ALIGN_MIDDLE_CENTER, Raptor::Game->Res.GetAnimation("button.ani"), Raptor::Game->Res.GetAnimation("button_mdown.ani") )
+{
+	Red = 1.f;
+	Green = 1.f;
+	Blue = 1.f;
+	Alpha = 1.f;
+}
+
+
+LobbyMenuGroupButton::~LobbyMenuGroupButton()
+{
+}
+
+
+void LobbyMenuGroupButton::Clicked( Uint8 button )
+{
+	Player *player = Raptor::Game->Data.GetPlayer( Raptor::Game->PlayerID );
+	if( ! player )
+		return;
+	
+	std::string team = player->Properties["team"];
+	
+	if( team != "Spectator" )
+	{
+		bool ffa = ( Raptor::Game->Data.Properties["gametype"].find("ffa_") == 0 );
+		int group = atoi( player->Properties["group"].c_str() );
+		
+		if( ffa )
+		{
+			team = "";
+			group = 0;
+		}
+		else
+		{
+			bool go_prev = ((button == SDL_BUTTON_RIGHT) || (button == SDL_BUTTON_WHEELUP));
+			group += go_prev ? -1 : 1;
+			
+			if( group < 0 )
+				group = 4;
+			else if( group > 4 )
+				group = 0;
+		}
+		
+		Packet player_properties = Packet( Raptor::Packet::PLAYER_PROPERTIES );
+		player_properties.AddUShort( Raptor::Game->PlayerID );
+		player_properties.AddUInt( 2 );
+		player_properties.AddString( "team" );
+		player_properties.AddString( team );
+		player_properties.AddString( "group" );
+		player_properties.AddString( Num::ToString(group).c_str() );
+		Raptor::Game->Net.Send( &player_properties );
+	}
+}
+
+
+// ---------------------------------------------------------------------------
+
+
 LobbyMenuShipButton::LobbyMenuShipButton( void )
 : LabelledButton( NULL, Raptor::Game->Res.GetFont( "Verdana.ttf", 17 ), "Change Ship", Font::ALIGN_MIDDLE_CENTER, Raptor::Game->Res.GetAnimation("button.ani"), Raptor::Game->Res.GetAnimation("button_mdown.ani") )
 {
@@ -925,9 +1049,13 @@ void LobbyMenuConfigChangeButton::Clicked( Uint8 button )
 		else if( value == "ffa_elim" )
 			value = go_prev ? "team_dm" : "ffa_dm";
 		else if( value == "ffa_dm" )
-			value = go_prev ? "ffa_elim" : "yavin";
+			value = go_prev ? "ffa_elim" : "isd2_hunt";
+		else if( value == "isd2_hunt" )
+			value = go_prev ? "ffa_dm" : "crv_hunt";
+		else if( value == "crv_hunt" )
+			value = go_prev ? "isd2_hunt" : "yavin";
 		else
-			value = go_prev ? "ffa_dm" : "team_elim";
+			value = go_prev ? "crv_hunt" : "team_elim";
 	}
 	
 	else if( (config->Property == "tdm_kill_limit") || (config->Property == "dm_kill_limit") )
@@ -1008,6 +1136,16 @@ void LobbyMenuConfigChangeButton::Clicked( Uint8 button )
 		else if( new_yavin_turrets > 210 )
 			new_yavin_turrets = 60;
 		value = Num::ToString( new_yavin_turrets );
+	}
+	
+	else if( config->Property == "hunt_time_limit" )
+	{
+		int new_hunt_time_limit = atoi( value.c_str() ) + (go_prev ? -5 : 5);
+		if( new_hunt_time_limit > 30 )
+			new_hunt_time_limit = 0;
+		else if( new_hunt_time_limit < 0 )
+			new_hunt_time_limit = 30;
+		value = Num::ToString( new_hunt_time_limit );
 	}
 	
 	else if( config->Property == "permissions" )

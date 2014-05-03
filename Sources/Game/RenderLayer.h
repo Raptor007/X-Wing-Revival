@@ -16,6 +16,7 @@ class Renderable;
 #include "Vec.h"
 #include "Font.h"
 #include "TextBox.h"
+#include "Ship.h"
 #include "Shot.h"
 #include "Effect.h"
 
@@ -46,6 +47,10 @@ public:
 	void DrawStars( void );
 	void DrawDebris( void );
 	void DrawScores( void );
+	
+	#ifdef WIN32
+	void UpdateSaitek( const Ship *player_ship, bool is_player, int view );
+	#endif
 	
 	bool KeyDown( SDLKey key );
 };

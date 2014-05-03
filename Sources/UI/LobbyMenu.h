@@ -7,6 +7,7 @@ class LobbyMenu;
 class LobbyMenuFlyButton;
 class LobbyMenuLeaveButton;
 class LobbyMenuTeamButton;
+class LobbyMenuGroupButton;
 class LobbyMenuShipButton;
 class LobbyMenuConfiguration;
 class LobbyMenuConfigChangeButton;
@@ -30,10 +31,11 @@ public:
 	LobbyMenuFlyButton *FlyButton;
 	LobbyMenuLeaveButton *LeaveButton;
 	LobbyMenuTeamButton *TeamButton;
+	LobbyMenuGroupButton *GroupButton;
 	LobbyMenuShipButton *ShipButton;
 	ListBox *PlayerList, *MessageList;
 	TextBox *PlayerName, *MessageInput;
-	LobbyMenuConfiguration *GameType, *TDMKillLimit, *DMKillLimit, *AI, *Respawn, *Asteroids, *YavinTimeLimit, *YavinTurrets, *Permissions;
+	LobbyMenuConfiguration *GameType, *TDMKillLimit, *DMKillLimit, *AI, *Respawn, *Asteroids, *YavinTimeLimit, *YavinTurrets, *HuntTimeLimit, *Permissions;
 	
 	LobbyMenu( void );
 	virtual ~LobbyMenu();
@@ -71,6 +73,15 @@ class LobbyMenuTeamButton : public LabelledButton
 public:
 	LobbyMenuTeamButton( void );
 	virtual ~LobbyMenuTeamButton();
+	void Clicked( Uint8 button = SDL_BUTTON_LEFT );
+};
+
+
+class LobbyMenuGroupButton : public LabelledButton
+{
+public:
+	LobbyMenuGroupButton( void );
+	virtual ~LobbyMenuGroupButton();
 	void Clicked( Uint8 button = SDL_BUTTON_LEFT );
 };
 

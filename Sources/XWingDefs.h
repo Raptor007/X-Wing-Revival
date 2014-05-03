@@ -71,7 +71,9 @@ namespace XWing
 			FFA_ELIMINATION = 'FFA ',
 			TEAM_DEATHMATCH = 'TDM ',
 			FFA_DEATHMATCH = 'DM  ',
-			BATTLE_OF_YAVIN = 'Yavn'
+			BATTLE_OF_YAVIN = 'Yavn',
+			ISD2_HUNT = 'SD H',
+			CORVETTE_HUNT = 'CrvH'
 		};
 	}
 }

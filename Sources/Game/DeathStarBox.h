@@ -36,7 +36,7 @@ public:
 	void AddToInitPacket( Packet *packet, int8_t precision = 0 );
 	void ReadFromInitPacket( Packet *packet, int8_t precision = 0 );
 	
-	bool WillCollide( const GameObject *other, double dt ) const;
+	bool WillCollide( const GameObject *other, double dt, std::string *this_object = NULL, std::string *other_object = NULL ) const;
 	void Update( double dt );
 	
 	void Draw( void );
