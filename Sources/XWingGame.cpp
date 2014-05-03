@@ -753,7 +753,7 @@ void XWingGame::Update( double dt )
 	
 	
 	Ship *observed_ship = my_ship;
-	if( ! observed_ship )
+	if( (! observed_ship) || ((observed_ship->Health <= 0.) && (observed_ship->DeathClock.ElapsedSeconds() >= 6.)) )
 		observed_ship = (Ship*) Data.GetObject( ObservedShipID );
 	
 	
