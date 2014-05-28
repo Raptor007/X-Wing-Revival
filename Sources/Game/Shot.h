@@ -28,8 +28,10 @@ public:
 	void SetType( uint32_t shot_type );
 	
 	double Damage( void ) const;
+	double AsteroidDamage( void ) const;
 	double Speed( void ) const;
 	double TurnRate( void ) const;
+	double MaxLifetime( void ) const;
 	Color LightColor( void ) const;
 	
 	bool PlayerShouldUpdateServer( void ) const;

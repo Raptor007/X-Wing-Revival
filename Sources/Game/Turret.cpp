@@ -16,6 +16,8 @@
 Turret::Turret( uint32_t id ) : GameObject( id, XWing::Object::TURRET )
 {
 	ParentID = 0;
+	RelativeUp.Set( 0., 1., 0. );
+	ParentControl = false;
 	Team = XWing::Team::NONE;
 	
 	MinGunPitch = 0.;
@@ -27,7 +29,7 @@ Turret::Turret( uint32_t id ) : GameObject( id, XWing::Object::TURRET )
 	MaxFiringDist = 1500.;
 	AimAhead = 1.f;
 	TargetDir.Copy(&Fwd);
-	TargetArc = 180.;
+	TargetArc = 360.;
 	SafetyDistance = 0.;
 	
 	BodyShape = NULL;
@@ -54,22 +56,36 @@ void Turret::ClientInit( void )
 }
 
 
-void Turret::Attach( GameObject *parent, Vec3D *offset )
+void Turret::Attach( const GameObject *parent, const Vec3D *offset, const Vec3D *relative_up, bool parent_control )
 {
 	if( offset )
 		Offset.Copy( offset );
-	else
-		Offset.Set( 0., 0., 0. );
+	if( relative_up )
+		RelativeUp.Copy( relative_up );
+	
+	ParentControl = parent_control;
 	
 	if( parent )
 	{
 		ParentID = parent->ID;
-		Copy( parent );
-		GunPitch = 0.;
-		MotionVector.Copy( &(parent->MotionVector) );
+		UpdatePos( parent );
 	}
 	else
 		ParentID = 0;
+}
+
+
+void Turret::UpdatePos( const GameObject *parent )
+{
+	X = parent->X;
+	Y = parent->Y;
+	Z = parent->Z;
+	MoveAlong( &(parent->Fwd), Offset.X );
+	MoveAlong( &(parent->Up), Offset.Y );
+	MoveAlong( &(parent->Right), Offset.Z );
+	MotionVector.Copy( &(parent->MotionVector) );
+	Up = (parent->Fwd * RelativeUp.X) + (parent->Up * RelativeUp.Y) + (parent->Right * RelativeUp.Z);
+	FixVectorsKeepUp();
 }
 
 
@@ -224,7 +240,23 @@ void Turret::AddToInitPacket( Packet *packet, int8_t precision )
 	GameObject::AddToInitPacket( packet, precision );
 	packet->AddUInt( Team );
 	packet->AddUInt( ParentID );
-	packet->AddFloat( GunPitch );
+	if( ParentID )
+	{
+		packet->AddFloat( Offset.X );
+		packet->AddFloat( Offset.Y );
+		packet->AddFloat( Offset.Z );
+		packet->AddFloat( RelativeUp.X );
+		packet->AddFloat( RelativeUp.Y );
+		packet->AddFloat( RelativeUp.Z );
+	}
+	
+	// Compress GunPitch in range (-180,180) to int16.
+	double unit_gun_pitch = GunPitch / 180.;
+	while( unit_gun_pitch > 1. )
+		unit_gun_pitch -= 2.;
+	while( unit_gun_pitch < -1. )
+		unit_gun_pitch += 2.;
+	packet->AddShort( Num::UnitFloatTo16(unit_gun_pitch) );
 }
 
 
@@ -233,7 +265,19 @@ void Turret::ReadFromInitPacket( Packet *packet, int8_t precision )
 	GameObject::ReadFromInitPacket( packet, precision );
 	Team = packet->NextUInt();
 	ParentID = packet->NextUInt();
-	GunPitch = packet->NextFloat();
+	if( ParentID )
+	{
+		Offset.X = packet->NextFloat();
+		Offset.Y = packet->NextFloat();
+		Offset.Z = packet->NextFloat();
+		RelativeUp.X = packet->NextFloat();
+		RelativeUp.Y = packet->NextFloat();
+		RelativeUp.Z = packet->NextFloat();
+	}
+	
+	// Extact GunPitch in range (-180,180) from int16.
+	int16_t compressed_gun_pitch = packet->NextShort();
+	GunPitch = Num::UnitFloatFrom16(compressed_gun_pitch) * 180.;
 }
 
 
@@ -264,6 +308,13 @@ void Turret::ReadFromUpdatePacketFromServer( Packet *packet, int8_t precision )
 	
 	SetHealth( packet->NextFloat() );
 	Target = packet->NextUInt();
+	
+	if( ParentID && Data )
+	{
+		GameObject *parent = Data->GetObject( ParentID );
+		if( parent )
+			UpdatePos( parent );
+	}
 }
 
 
@@ -335,13 +386,13 @@ bool Turret::WillCollide( const GameObject *other, double dt, std::string *this_
 
 void Turret::Update( double dt )
 {
-	// FIXME: This should not use Raptor::Game because it might be on the server!
-	GameObject *parent = Raptor::Game->Data.GetObject( ParentID );
+	GameObject *parent = Data ? Data->GetObject( ParentID ) : NULL;
 	if( parent )
 	{
 		if( parent->Type() == XWing::Object::SHIP )
 		{
 			Ship *parent_ship = (Ship*) parent;
+			Team = parent_ship->Team;
 			if( parent_ship->Health <= 0. )
 				parent = NULL;
 		}
@@ -367,15 +418,7 @@ void Turret::Update( double dt )
 	GameObject::Update( dt );
 	
 	if( parent )
-	{
-		X = parent->X;
-		Y = parent->Y;
-		Z = parent->Z;
-		MoveAlong( &(parent->Fwd), Offset.Z );
-		MoveAlong( &(parent->Up), Offset.Y );
-		MoveAlong( &(parent->Right), Offset.X );
-		MotionVector.Copy( &(parent->MotionVector) );
-	}
+		UpdatePos( parent );
 }
 
 

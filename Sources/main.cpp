@@ -7,8 +7,13 @@
 
 #include "ServerConsole.h"
 
+#if defined(__APPLE__) && (__GNUC__ >= 4) && ((__GNUC__ > 4) || (__GNUC_MINOR__ > 0))
+#include <libproc.h>
+#include <unistd.h>
+#endif
 
-#define VERSION "0.1.1 Alpha"
+
+#define VERSION "0.1.2 Alpha"
 
 
 #ifdef WIN32
@@ -19,6 +24,37 @@ BOOL SetDllDirectoryResult = SetDllDirectory( (sizeof(void*) == 8) ? L"Bin64" : 
 
 int main( int argc, char **argv )
 {
+	#if defined(__APPLE__) && defined(PROC_PIDPATHINFO_MAXSIZE)
+		// Fix the working directory for Mac OS X Intel64.
+		char exe_path[ PROC_PIDPATHINFO_MAXSIZE ] = "";
+		pid_t pid = getpid();
+		if( proc_pidpath( pid, exe_path, sizeof(exe_path) ) > 0 )
+		{
+			char *real_path = realpath( exe_path, NULL );
+			std::string path;
+			if( real_path )
+			{
+				path = real_path;
+				free( real_path );
+				real_path = NULL;
+			}
+			else
+				path = exe_path;
+			
+			size_t index = path.rfind( ".app/Contents/MacOS/" );
+			if( index != std::string::npos )
+			{
+				path = path.substr( 0, index );
+				index = path.rfind( "/" );
+				if( index != std::string::npos )
+				{
+					path = path.substr( 0, index );
+					chdir( path.c_str() );
+				}
+			}
+		}
+	#endif
+	
 	bool dedicated = false;
 	if( (argc >= 2) && (strcmp( argv[ 1 ], "-dedicated" ) == 0) )
 		dedicated = true;
@@ -28,6 +64,7 @@ int main( int argc, char **argv )
 		if( (argc >= 2) && (strcmp( argv[ 1 ], "-terminal" ) == 0) )
 			terminal = true;
 		
+		// Create a Windows command-prompt-style console window.
 		if( (terminal || dedicated) && AllocConsole() )
 		{
 			freopen( "CONIN$", "rt", stdin );

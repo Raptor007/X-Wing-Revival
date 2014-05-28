@@ -64,6 +64,21 @@ double Shot::Damage( void ) const
 }
 
 
+double Shot::AsteroidDamage( void ) const
+{
+	if( ShotType == TYPE_TURBO_LASER_GREEN )
+		return 250.;
+	else if( ShotType == TYPE_TURBO_LASER_RED )
+		return 200.;
+	else if( ShotType == TYPE_TORPEDO )
+		return 150.;
+	else if( ShotType == TYPE_MISSILE )
+		return 100.;
+	
+	return 0.;
+}
+
+
 double Shot::Speed( void ) const
 {
 	if( ShotType == TYPE_TURBO_LASER_GREEN )
@@ -87,6 +102,15 @@ double Shot::TurnRate( void ) const
 		return 120.;
 	
 	return 0.;
+}
+
+
+double Shot::MaxLifetime( void ) const
+{
+	if( ShotType == TYPE_TORPEDO )
+		return 8.;
+	
+	return 4.;
 }
 
 

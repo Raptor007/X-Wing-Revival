@@ -14,6 +14,8 @@ class LobbyMenuConfigChangeButton;
 
 #include "PlatformSpecific.h"
 
+#include <map>
+#include <vector>
 #include "Layer.h"
 #include "Animation.h"
 #include "Font.h"
@@ -35,7 +37,8 @@ public:
 	LobbyMenuShipButton *ShipButton;
 	ListBox *PlayerList, *MessageList;
 	TextBox *PlayerName, *MessageInput;
-	LobbyMenuConfiguration *GameType, *TDMKillLimit, *DMKillLimit, *AI, *Respawn, *Asteroids, *YavinTimeLimit, *YavinTurrets, *HuntTimeLimit, *Permissions;
+	std::map<std::string,LobbyMenuConfiguration*> Configs;
+	std::vector<LobbyMenuConfiguration*> ConfigOrder;
 	
 	LobbyMenu( void );
 	virtual ~LobbyMenu();
@@ -103,7 +106,7 @@ public:
 	LobbyMenuConfigChangeButton *ChangeButton;
 	bool ShowButton;
 	
-	LobbyMenuConfiguration( std::string property, std::string desc, bool tiny = false );
+	LobbyMenuConfiguration( std::string property, std::string desc, int label_size, int value_size );
 	virtual ~LobbyMenuConfiguration();
 	void Update( void );
 };
@@ -112,7 +115,7 @@ public:
 class LobbyMenuConfigChangeButton : public LabelledButton
 {
 public:
-	LobbyMenuConfigChangeButton( bool tiny = false );
+	LobbyMenuConfigChangeButton( Font *font, uint8_t align );
 	virtual ~LobbyMenuConfigChangeButton();
 	void Clicked( Uint8 button = SDL_BUTTON_LEFT );
 };

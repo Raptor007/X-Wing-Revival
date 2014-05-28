@@ -191,7 +191,7 @@ bool DeathStar::WillCollide( const GameObject *other, double dt, std::string *th
 		// Use per-vertex checking for capital ship near Death Star.
 		if( ship->ComplexCollisionDetection() )
 		{
-			if( ship->DistAlong(&Up,this) > ship->Shape.PrecalculatedMaxRadius() )
+			if( ship->DistAlong(&Up,this) > ship->Shape.MaxRadius )
 				return false;
 			
 			ModelArrays array_inst;

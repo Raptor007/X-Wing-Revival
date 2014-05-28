@@ -9,6 +9,7 @@ class XWingServerAlert;
 #include "PlatformSpecific.h"
 
 #include "RaptorServer.h"
+#include "Ship.h"
 
 
 class XWingServer : public RaptorServer
@@ -19,7 +20,9 @@ public:
 	int TimeLimit;
 	bool PlayersTakeEmptyShips;
 	bool Respawn;
+	double RespawnDelay;
 	bool AIFlock;
+	uint32_t DefendingTeam;
 	std::map<double,XWingServerAlert> Alerts;
 	std::map< uint8_t, std::vector<Pos3D> > Waypoints;
 	std::map< std::string, std::set<uint32_t> > Squadrons;
@@ -47,8 +50,10 @@ public:
 	void ToggleCountdown( void );
 	void BeginFlying( void );
 	void SendScores( void );
-
+	
 	double RoundTimeRemaining( void );
+	
+	Ship *SpawnShip( uint32_t ship_type, uint32_t team );
 };
 
 

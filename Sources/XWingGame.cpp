@@ -72,6 +72,7 @@ void XWingGame::SetDefaults( void )
 	Cfg.Settings[ "s_volume" ] = "0.5";
 	Cfg.Settings[ "s_effect_volume" ] = "0.5";
 	Cfg.Settings[ "s_music_volume" ] = "1";
+	Cfg.Settings[ "s_imuse" ] = "false";
 	
 	Cfg.Settings[ "joy_enable" ] = "true";
 	Cfg.Settings[ "joy_swap_xz" ] = "false";
@@ -157,6 +158,7 @@ void XWingGame::Setup( int argc, char **argv )
 	Res.GetFramebuffer( "health", 384, 512 );
 	Res.GetFramebuffer( "target", 384, 512 );
 	Res.GetFramebuffer( "intercept", 384, 256 );
+	Res.GetFramebuffer( "throttle", 32, 256 );
 	
 	// Precache resources while the loading screen is still being shown.
 	Precache();
@@ -192,6 +194,7 @@ void XWingGame::Precache( void )
 		Res.GetAnimation("special/health.ani");
 		Res.GetAnimation("special/target.ani");
 		Res.GetAnimation("special/intercept.ani");
+		Res.GetAnimation("special/throttle.ani");
 		
 		Res.GetAnimation("shields_c.ani");
 		Res.GetAnimation("shields_f.ani");
@@ -234,6 +237,8 @@ void XWingGame::Precache( void )
 		Res.GetModel("deathstar_exhaust_port.obj");
 		Res.GetModel("isd2.obj");
 		Res.GetModel("corvette.obj");
+		Res.GetModel("nebulon-b.obj");
+		Res.GetModel("calamari-cruiser.obj");
 		
 		Res.GetSound("beep.wav");
 		Res.GetSound("laser_red.wav");
@@ -300,6 +305,7 @@ void XWingGame::Update( double dt )
 	bool target_nearest_attacker = false;
 	bool target_newest = false;
 	bool target_nearest_incoming = false;
+	bool target_nothing = false;
 	
 	double mouse_x_percent = Mouse.X * 2. / Gfx.W - 1.;
 	double mouse_y_percent = Mouse.Y * 2. / Gfx.H - 1.;
@@ -406,10 +412,25 @@ void XWingGame::Update( double dt )
 				if( joy_iter->second.HatDir( 0, SDL_HAT_DOWN ) )
 					target_nearest_enemy = true;
 			}
+			else if( Str::FindInsensitive( joy_iter->second.Name, "F16 MFD" ) >= 0 )
+			{
+				if( joy_iter->second.ButtonDown( 0 ) ) // Top #1
+					target_crosshair = true;
+				if( joy_iter->second.ButtonDown( 15 ) ) // Left #5
+					target_nothing = true;
+				if( joy_iter->second.ButtonDown( 12 ) ) // Bottom #3
+					target_nearest_enemy = true;
+				if( joy_iter->second.ButtonDown( 11 ) ) // Bottom #4
+					target_nearest_attacker = true;
+				if( joy_iter->second.ButtonDown( 10 ) ) // Bottom #5
+					target_nearest_incoming = true;
+				if( joy_iter->second.ButtonDown( 4 ) ) // Top #5
+					target_newest = true;
+			}
 			else
 			{
 				// Only real analog data if this is an analog stick (not a button pad).
-				if( joy_iter->second.HasAxis(0) || joy_iter->second.HasAxis(1) || joy_iter->second.HasAxis(3) )
+				if( joy_iter->second.HasAxis(0) || joy_iter->second.HasAxis(1) || joy_iter->second.HasAxis(2) || joy_iter->second.HasAxis(3) )
 				{
 					stick = true;
 					
@@ -504,6 +525,7 @@ void XWingGame::Update( double dt )
 			roll += shift ? -1. : -0.5;
 		if( Keys.KeyDown(SDLK_f) )
 			roll += shift ? 1. : 0.5;
+		
 		if( Keys.KeyDown(SDLK_BACKSPACE) )
 			throttle = 1.;
 		else if( Keys.KeyDown(SDLK_RIGHTBRACKET) )
@@ -516,6 +538,11 @@ void XWingGame::Update( double dt )
 			throttle -= FrameTime / 2.;
 		else if( Keys.KeyDown(SDLK_EQUALS) )
 			throttle += FrameTime / 2.;
+		else if( Keys.KeyDown(SDLK_a) )
+			throttle += FrameTime / 2.;
+		else if( Keys.KeyDown(SDLK_z) )
+			throttle -= FrameTime / 2.;
+		
 		if( Keys.KeyDown(SDLK_SPACE) )
 			firing = true;
 		if( Keys.KeyDown(SDLK_KP7) || Keys.KeyDown(SDLK_KP8) || Keys.KeyDown(SDLK_KP9) )
@@ -531,6 +558,7 @@ void XWingGame::Update( double dt )
 			LookPitch = 0.;
 			LookYaw = 0.;
 		}
+		
 		if( Keys.KeyDown(SDLK_LCTRL) )
 			target_crosshair = true;
 		if( Keys.KeyDown(SDLK_e) )
@@ -541,6 +569,8 @@ void XWingGame::Update( double dt )
 			target_newest = true;
 		if( Keys.KeyDown(SDLK_i) )
 			target_nearest_incoming = true;
+		if( Keys.KeyDown(SDLK_q) )
+			target_nothing = true;
 	}
 	
 	// Build a list of all ships, because we'll refer to it often.
@@ -712,6 +742,15 @@ void XWingGame::Update( double dt )
 					beep = true;
 				}
 			}
+			else if( target_nothing )
+			{
+				if( my_ship->Target )
+				{
+					// Note: This clears the current target if no match was found.
+					my_ship->Target = 0;
+					beep = true;
+				}
+			}
 			
 			
 			// If we did anything that calls for a beep, play the sound now.
@@ -752,9 +791,9 @@ void XWingGame::Update( double dt )
 	RaptorGame::Update( dt );
 	
 	
-	Ship *observed_ship = my_ship;
-	if( (! observed_ship) || ((observed_ship->Health <= 0.) && (observed_ship->DeathClock.ElapsedSeconds() >= 6.)) )
-		observed_ship = (Ship*) Data.GetObject( ObservedShipID );
+	Ship *observed_ship = (Ship*) Data.GetObject( ObservedShipID );
+	if( ! observed_ship )
+		observed_ship = my_ship;
 	
 	
 	if( State >= XWing::State::FLYING )
@@ -863,7 +902,7 @@ void XWingGame::Update( double dt )
 		{
 			// iMUSE disabled.
 			
-			if( Snd.MusicSubdir.compare( 0, 7, "iMUSE/" ) == 0 )
+			if( Snd.MusicSubdir.compare( 0, 6, "iMUSE/" ) == 0 )
 			{
 				Snd.StopMusic();
 				Snd.PlayMusicSubdir( "Flight" );
@@ -882,7 +921,7 @@ bool XWingGame::HandleEvent( SDL_Event *event )
 	
 	bool joy = false, joy_hat = false, key = false, mouse = false;
 	int button = 0, joy_num = 0, hat_dir = 0;
-	bool joy_xbox = false;
+	bool joy_xbox = false, joy_mfd = false;
 	if( event->type == SDL_JOYBUTTONDOWN )
 	{
 		if( Cfg.SettingAsBool("joy_enable") )
@@ -891,6 +930,7 @@ bool XWingGame::HandleEvent( SDL_Event *event )
 			joy_num = event->jbutton.which;
 			button = event->jbutton.button;
 			joy_xbox = (Str::FindInsensitive( Joy.Joysticks[ joy_num ].Name, "Xbox" ) >= 0);
+			joy_mfd = (Str::FindInsensitive( Joy.Joysticks[ joy_num ].Name, "F16 MFD" ) >= 0);
 		}
 	}
 	else if( event->type == SDL_JOYHATMOTION )
@@ -937,7 +977,7 @@ bool XWingGame::HandleEvent( SDL_Event *event )
 		
 		if( joy )
 		{
-			if( ! joy_xbox )
+			if( !( joy_xbox || joy_mfd ) )
 			{
 				// Joystick Button
 				
@@ -980,9 +1020,11 @@ bool XWingGame::HandleEvent( SDL_Event *event )
 				else
 					handled = false;
 			}
-			else
+			else if( joy_xbox )
 			{
 				// Xbox Button
+				
+				handled = true;
 				
 				if( button == 1 ) // B
 					firing_mode_next = true;
@@ -992,6 +1034,33 @@ bool XWingGame::HandleEvent( SDL_Event *event )
 					shield_shunt = true;
 				else if( button == 7 ) // Start
 					shield_shunt = true;
+				else
+					handled = false;
+			}
+			else
+			{
+				// MFD Button
+				
+				handled = true;
+				
+				if( button == 19 ) // Left #1
+					target_prev = true;
+				else if( button == 18 ) // Left #2
+					target_next = true;
+				else if( button == 17 ) // Left #3
+					target_prev_friendly = true;
+				else if( button == 16 ) // Left #4
+					target_next_friendly = true;
+				else if( button == 14 ) // Bottom #1
+					target_prev_enemy = true;
+				else if( button == 13 ) // Bottom #2
+					target_next_enemy = true;
+				else if( button == 5 ) // Right #1
+					shield_shunt = true;
+				else if( button == 8 ) // Right #4
+					weapon_next = true;
+				else if( button == 9 ) // Right #5
+					firing_mode_next = true;
 				else
 					handled = false;
 			}
@@ -1194,6 +1263,10 @@ bool XWingGame::HandleEvent( SDL_Event *event )
 				if( (*ship_iter)->ShipType == Ship::TYPE_EXHAUST_PORT )
 					continue;
 				
+				// Don't observe long-dead ships.
+				if( ((*ship_iter)->Health <= 0.) && ((*ship_iter)->DeathClock.ElapsedSeconds() >= 6.) )
+					continue;
+				
 				Ship *prev_ship = observed_ship;
 				observed_ship = *ship_iter;
 				
@@ -1248,17 +1321,7 @@ bool XWingGame::ProcessPacket( Packet *packet )
 	packet->Rewind();
 	PacketType type = packet->Type();
 	
-	if( type == XWing::Packet::LOBBY )
-	{
-		ChangeState( XWing::State::LOBBY );
-		return true;
-	}
-	else if( type == XWing::Packet::FLY )
-	{
-		ChangeState( XWing::State::FLYING );
-		return true;
-	}
-	else if( type == XWing::Packet::EXPLOSION )
+	if( type == XWing::Packet::EXPLOSION )
 	{
 		double x = packet->NextDouble();
 		double y = packet->NextDouble();
@@ -1452,10 +1515,76 @@ bool XWingGame::ProcessPacket( Packet *packet )
 			if( ship->SelectedWeapon == weapon )
 				ship->WeaponIndex = weapon_index;
 		}
+		
+		return true;
+	}
+	else if( type == XWing::Packet::MISC_HIT_SHIP )
+	{
+		uint32_t ship_id = packet->NextUInt();
+		double health = packet->NextFloat();
+		double shield_f = packet->NextFloat();
+		double shield_r = packet->NextFloat();
+		char *subsystem = packet->NextString();
+		double subsystem_health = 0.;
+		if( strlen(subsystem) )
+			subsystem_health = packet->NextFloat();
+		double x = packet->NextDouble();
+		double y = packet->NextDouble();
+		double z = packet->NextDouble();
+		
+		Ship *ship = NULL;
+		double old_health = 0.;
+		double old_shields = 0.;
+		
+		GameObject *ship_obj = Data.GetObject( ship_id );
+		if( ship_obj && (ship_obj->Type() == XWing::Object::SHIP) )
+		{
+			ship = (Ship*) ship_obj;
+			old_health = ship->Health;
+			old_shields = ship->ShieldF + ship->ShieldR;
+			ship->HitClock.Reset();
+			ship->SetHealth( health );
+			ship->ShieldF = shield_f;
+			ship->ShieldR = shield_r;
+			if( strlen(subsystem) )
+				ship->Subsystems[ subsystem ] = subsystem_health;
+		}
+		
+		if( State >= XWing::State::FLYING )
+		{
+			if( ship )
+			{
+				Mix_Chunk *sound = NULL;
+				double loudness = 1.;
+				if( ship->ID == ObservedShipID )
+				{
+					if( ship->Health < old_health )
+						sound = Res.GetSound("damage_hull.wav");
+					else if( ship->ShieldF + ship->ShieldR < old_shields )
+						sound = Res.GetSound("damage_shield.wav");
+					loudness = 2.;
+				}
+				if( sound )
+					Snd.PlayAt( sound, x, y, z, loudness );
+			}
+		}
+		
+		return true;
 	}
 	else if( type == XWing::Packet::TIME_REMAINING )
 	{
 		RoundTimer.Reset( packet->NextFloat() );
+		return true;
+	}
+	else if( type == XWing::Packet::LOBBY )
+	{
+		ChangeState( XWing::State::LOBBY );
+		return true;
+	}
+	else if( type == XWing::Packet::FLY )
+	{
+		ChangeState( XWing::State::FLYING );
+		return true;
 	}
 	else if( type == XWing::Packet::ROUND_ENDED )
 	{
@@ -1497,6 +1626,7 @@ bool XWingGame::ProcessPacket( Packet *packet )
 		}
 		
 		ChangeState( XWing::State::ROUND_ENDED );
+		
 		return true;
 	}
 	

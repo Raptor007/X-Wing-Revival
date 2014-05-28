@@ -30,6 +30,7 @@ class RenderLayer : public Layer
 {
 public:
 	Animation Background;
+	std::string BackgroundName;
 	GLdouble Stars[ STAR_COUNT * 3 ];
 	Pos3D Debris[ DEBRIS_COUNT ];
 	Font *BigFont, *SmallFont, *ScreenFont, *RadarDirectionFont;
@@ -38,6 +39,7 @@ public:
 	RenderLayer( void );
 	virtual ~RenderLayer();
 	
+	void SetBackground( void );
 	void SetWorldLights( void );
 	void ClearWorldLights( void );
 	void ClearDynamicLights( void );

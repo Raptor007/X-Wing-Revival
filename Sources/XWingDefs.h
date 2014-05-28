@@ -34,6 +34,7 @@ namespace XWing
 			SHOT_HIT_SHIP = 'HitS',
 			SHOT_HIT_TURRET = 'HitT',
 			SHOT_HIT_HAZARD = 'HitH',
+			MISC_HIT_SHIP = '?Hit',
 			AMMO_UPDATE = 'Ammo'
 		};
 	}
@@ -72,8 +73,8 @@ namespace XWing
 			TEAM_DEATHMATCH = 'TDM ',
 			FFA_DEATHMATCH = 'DM  ',
 			BATTLE_OF_YAVIN = 'Yavn',
-			ISD2_HUNT = 'SD H',
-			CORVETTE_HUNT = 'CrvH'
+			CAPITAL_SHIP_HUNT = 'Hunt',
+			DEFEND_DESTROY = 'DeDe'
 		};
 	}
 }

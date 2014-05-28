@@ -23,6 +23,7 @@ public:
 	std::string Name;
 	bool CanRespawn;
 	uint8_t Group;
+	bool IsMissionObjective;
 	
 	bool SpecialUpdate;
 	
@@ -108,6 +109,8 @@ public:
 		TYPE_TIE_FIGHTER = 'T/F ',
 		TYPE_ISD2 = 'ISD2',
 		TYPE_CORVETTE = 'CRV ',
+		TYPE_NEBULON_B = 'FRG ',
+		TYPE_CALAMARI_CRUISER = 'CRS ',
 		TYPE_EXHAUST_PORT = 'Hole'
 	};
 	

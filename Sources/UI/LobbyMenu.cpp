@@ -27,6 +27,16 @@ LobbyMenu::LobbyMenu( void )
 	AddElement( GroupButton = new LobbyMenuGroupButton() );
 	AddElement( ShipButton = new LobbyMenuShipButton() );
 	
+	AddElement( PlayerName = new TextBox( NULL, Raptor::Game->Res.GetFont( "Verdana.ttf", tiny ? 13 : 19 ), Font::ALIGN_MIDDLE_LEFT ) );
+	PlayerName->ReturnDeselects = false;
+	PlayerName->EscDeselects = true;
+	PlayerName->PassReturn = true;
+	PlayerName->PassEsc = true;
+	PlayerName->SelectedRed = 1.f;
+	PlayerName->SelectedGreen = 1.f;
+	PlayerName->SelectedBlue = 0.f;
+	PlayerName->SelectedAlpha = 1.f;
+	
 	AddElement( PlayerList = new ListBox( NULL, Raptor::Game->Res.GetFont( "Verdana.ttf", tiny ? 13 : 19 ), 16 ) );
 	PlayerList->SelectedRed = PlayerList->TextRed;
 	PlayerList->SelectedGreen = PlayerList->TextGreen;
@@ -38,16 +48,6 @@ LobbyMenu::LobbyMenu( void )
 	MessageList->SelectedGreen = MessageList->TextGreen;
 	MessageList->SelectedBlue = MessageList->TextBlue;
 	MessageList->SelectedAlpha = MessageList->TextAlpha;
-	
-	AddElement( PlayerName = new TextBox( NULL, Raptor::Game->Res.GetFont( "Verdana.ttf", tiny ? 13 : 19 ), Font::ALIGN_MIDDLE_LEFT ) );
-	PlayerName->ReturnDeselects = false;
-	PlayerName->EscDeselects = true;
-	PlayerName->PassReturn = true;
-	PlayerName->PassEsc = true;
-	PlayerName->SelectedRed = 1.f;
-	PlayerName->SelectedGreen = 1.f;
-	PlayerName->SelectedBlue = 0.f;
-	PlayerName->SelectedAlpha = 1.f;
 	
 	AddElement( MessageInput = new TextBox( NULL, Raptor::Game->Res.GetFont( "Verdana.ttf", tiny ? 12 : 16 ), Font::ALIGN_TOP_LEFT ) );
 	MessageInput->ReturnDeselects = false;
@@ -71,16 +71,34 @@ LobbyMenu::LobbyMenu( void )
 	MessageInput->SelectedBlue = MessageInput->Blue;
 	MessageInput->SelectedAlpha = MessageInput->Alpha;
 	
-	AddElement( GameType = new LobbyMenuConfiguration( "gametype", "Game Type", tiny ) );
-	AddElement( TDMKillLimit = new LobbyMenuConfiguration( "tdm_kill_limit", "Team Kill Limit", tiny ) );
-	AddElement( DMKillLimit = new LobbyMenuConfiguration( "dm_kill_limit", "Kill Limit", tiny ) );
-	AddElement( AI = new LobbyMenuConfiguration( "ai_waves", "AI Ships", tiny ) );
-	AddElement( Respawn = new LobbyMenuConfiguration( "respawn", "Respawn", tiny ) );
-	AddElement( Asteroids = new LobbyMenuConfiguration( "asteroids", "Asteroids", tiny ) );
-	AddElement( YavinTimeLimit = new LobbyMenuConfiguration( "yavin_time_limit", "Time Limit", tiny ) );
-	AddElement( YavinTurrets = new LobbyMenuConfiguration( "yavin_turrets", "Surface Turrets", tiny ) );
-	AddElement( HuntTimeLimit = new LobbyMenuConfiguration( "hunt_time_limit", "Time Limit", tiny ) );
-	AddElement( Permissions = new LobbyMenuConfiguration( "permissions", "Game Admins", tiny ) );
+	int label_size = tiny ? 12 : 17;
+	int value_size = tiny ? 16 : 22;
+	ConfigOrder.push_back( new LobbyMenuConfiguration( "permissions", "", 0, tiny ? 14 : 17 ) );
+	ConfigOrder.push_back( NULL );
+	ConfigOrder.push_back( new LobbyMenuConfiguration( "gametype", "Game Type", tiny ? 12 : 17, tiny ? 22 : 27 ) );
+	ConfigOrder.push_back( NULL );
+	ConfigOrder.push_back( new LobbyMenuConfiguration( "defending_team", "Defending Team", label_size, value_size ) );
+	ConfigOrder.push_back( new LobbyMenuConfiguration( "rebel_ship", "Rebel Capital Ship", label_size, value_size ) );
+	ConfigOrder.push_back( new LobbyMenuConfiguration( "empire_ship", "Empire Capital Ship", label_size, value_size ) );
+	ConfigOrder.push_back( new LobbyMenuConfiguration( "tdm_kill_limit", "Team Kill Limit", label_size, value_size ) );
+	ConfigOrder.push_back( new LobbyMenuConfiguration( "dm_kill_limit", "Kill Limit", label_size, value_size ) );
+	ConfigOrder.push_back( new LobbyMenuConfiguration( "hunt_time_limit", "Time Limit", label_size, value_size ) );
+	ConfigOrder.push_back( new LobbyMenuConfiguration( "yavin_time_limit", "Time Limit", label_size, value_size ) );
+	ConfigOrder.push_back( NULL );
+	ConfigOrder.push_back( new LobbyMenuConfiguration( "ai_waves", "AI Ships", label_size, value_size ) );
+	ConfigOrder.push_back( new LobbyMenuConfiguration( "yavin_turrets", "Surface Turrets", label_size, value_size ) );
+	ConfigOrder.push_back( new LobbyMenuConfiguration( "asteroids", "Asteroids", label_size, value_size ) );
+	ConfigOrder.push_back( new LobbyMenuConfiguration( "bg", "Environment", label_size, value_size ) );
+	ConfigOrder.push_back( new LobbyMenuConfiguration( "respawn", "Respawn", label_size, value_size ) );
+	
+	for( std::vector<LobbyMenuConfiguration*>::iterator config_iter = ConfigOrder.begin(); config_iter != ConfigOrder.end(); config_iter ++ )
+	{
+		if( *config_iter )
+		{
+			AddElement( *config_iter );
+			Configs[ (*config_iter)->Property ] = *config_iter;
+		}
+	}
 }
 
 
@@ -215,91 +233,33 @@ void LobbyMenu::UpdateRects( void )
 		MessageList->Rect.y = PlayerList->Rect.y + PlayerList->Rect.h + MessageList->Rect.x;
 	}
 	
-	Permissions->Rect.x = PlayerList->Rect.x + PlayerList->Rect.w + 10;
-	Permissions->Rect.y = PlayerName->Rect.y;
-	Permissions->Rect.w = PlayerList->Rect.w;
-	Permissions->Update();
-	LobbyMenuConfiguration *prev = Permissions;
+	LobbyMenuConfiguration *prev = NULL;
+	double x = PlayerList->Rect.x + PlayerList->Rect.w + 10;
+	double y = PlayerName->Rect.y + TitleFont->PointSize;
+	double w = PlayerList->Rect.w;
 	
-	GameType->Rect.x = prev->Rect.x;
-	GameType->Rect.y = prev->Rect.y + prev->Rect.h + (tiny ? 5 : 10);
-	GameType->Rect.w = prev->Rect.w;
-	GameType->Update();
-	prev = GameType;
-	
-	if( Asteroids->Enabled )
+	for( std::vector<LobbyMenuConfiguration*>::iterator config_iter = ConfigOrder.begin(); config_iter != ConfigOrder.end(); config_iter ++ )
 	{
-		Asteroids->Rect.x = prev->Rect.x;
-		Asteroids->Rect.y = prev->Rect.y + prev->Rect.h + (tiny ? 5 : 10);
-		Asteroids->Rect.w = prev->Rect.w;
-		Asteroids->Update();
-		prev = Asteroids;
+		if( *config_iter )
+		{
+			if( (*config_iter)->Enabled )
+			{
+				(*config_iter)->Rect.x = x;
+				(*config_iter)->Rect.y = y;
+				(*config_iter)->Rect.w = w;
+				(*config_iter)->Update();
+				y += (*config_iter)->Rect.h + (tiny ? 0 : 1);
+				prev = *config_iter;
+			}
+		}
+		else if( prev )
+		{
+			y += (tiny ? 4 : 16);
+			prev = NULL;
+		}
 	}
 	
-	if( YavinTimeLimit->Enabled )
-	{
-		YavinTimeLimit->Rect.x = prev->Rect.x;
-		YavinTimeLimit->Rect.y = prev->Rect.y + prev->Rect.h + (tiny ? 5 : 10);
-		YavinTimeLimit->Rect.w = prev->Rect.w;
-		YavinTimeLimit->Update();
-		prev = YavinTimeLimit;
-	}
-	
-	if( YavinTurrets->Enabled )
-	{
-		YavinTurrets->Rect.x = prev->Rect.x;
-		YavinTurrets->Rect.y = prev->Rect.y + prev->Rect.h + (tiny ? 5 : 10);
-		YavinTurrets->Rect.w = prev->Rect.w;
-		YavinTurrets->Update();
-		prev = YavinTurrets;
-	}
-	
-	if( HuntTimeLimit->Enabled )
-	{
-		HuntTimeLimit->Rect.x = prev->Rect.x;
-		HuntTimeLimit->Rect.y = prev->Rect.y + prev->Rect.h + (tiny ? 5 : 10);
-		HuntTimeLimit->Rect.w = prev->Rect.w;
-		HuntTimeLimit->Update();
-		prev = HuntTimeLimit;
-	}
-	
-	if( TDMKillLimit->Enabled )
-	{
-		TDMKillLimit->Rect.x = prev->Rect.x;
-		TDMKillLimit->Rect.y = prev->Rect.y + prev->Rect.h + (tiny ? 5 : 10);
-		TDMKillLimit->Rect.w = prev->Rect.w;
-		TDMKillLimit->Update();
-		prev = TDMKillLimit;
-	}
-	
-	if( DMKillLimit->Enabled )
-	{
-		DMKillLimit->Rect.x = prev->Rect.x;
-		DMKillLimit->Rect.y = prev->Rect.y + prev->Rect.h + (tiny ? 5 : 10);
-		DMKillLimit->Rect.w = prev->Rect.w;
-		DMKillLimit->Update();
-		prev = DMKillLimit;
-	}
-	
-	if( AI->Enabled )
-	{
-		AI->Rect.x = prev->Rect.x;
-		AI->Rect.y = prev->Rect.y + prev->Rect.h + (tiny ? 5 : 10);
-		AI->Rect.w = prev->Rect.w;
-		AI->Update();
-		prev = AI;
-	}
-	
-	if( Respawn->Enabled )
-	{
-		Respawn->Rect.x = prev->Rect.x;
-		Respawn->Rect.y = prev->Rect.y + prev->Rect.h + (tiny ? 5 : 10);
-		Respawn->Rect.w = prev->Rect.w;
-		Respawn->Update();
-		prev = Respawn;
-	}
-	
-	if( prev->Rect.y + prev->Rect.h >= MessageList->Rect.y )
+	if( y >= MessageList->Rect.y )
 	{
 		MessageList->Rect.w = PlayerList->Rect.w;
 		MessageInput->Rect.w = MessageList->Rect.w;
@@ -373,7 +333,8 @@ void LobbyMenu::UpdateMessageList( void )
 		for( size_t i = 0; i < msg_count; i ++ )
 			MessageList->AddItem( Num::ToString((int)i), Raptor::Game->Msg.Messages.at(i)->Text );
 		
-		MessageList->Select( prev_selected );
+		if( ! prev_selected.empty() )
+			MessageList->Select( prev_selected );
 		
 		MessageList->Scroll = MessageList->MaxScroll();
 	}
@@ -382,129 +343,169 @@ void LobbyMenu::UpdateMessageList( void )
 
 void LobbyMenu::UpdateInfoBoxes( void )
 {
+	std::string permissions = Raptor::Game->Data.Properties["permissions"];
+	if( permissions == "all" )
+		Configs["permissions"]->Value->LabelText = "Anyone Can Change";
+	else
+		Configs["permissions"]->Value->LabelText = "Only Host May Change";
+	
 	std::string gametype = Raptor::Game->Data.Properties["gametype"];
 	if( gametype == "team_elim" )
-		GameType->Value->LabelText = "Team Elimination";
+		Configs["gametype"]->Value->LabelText = "Team Elimination";
 	else if( gametype == "ffa_elim" )
-		GameType->Value->LabelText = "FFA Elimination";
+		Configs["gametype"]->Value->LabelText = "FFA Elimination";
 	else if( gametype == "team_dm" )
-		GameType->Value->LabelText = "Team Deathmatch";
+		Configs["gametype"]->Value->LabelText = "Team Deathmatch";
 	else if( gametype == "ffa_dm" )
-		GameType->Value->LabelText = "FFA Deathmatch";
+		Configs["gametype"]->Value->LabelText = "FFA Deathmatch";
 	else if( gametype == "yavin" )
-		GameType->Value->LabelText = "Battle of Yavin";
-	else if( gametype == "isd2_hunt" )
-		GameType->Value->LabelText = "Star Destroyer Hunt";
-	else if( gametype == "crv_hunt" )
-		GameType->Value->LabelText = "Rebel Corvette Hunt";
+		Configs["gametype"]->Value->LabelText = "Battle of Yavin";
+	else if( gametype == "hunt" )
+		Configs["gametype"]->Value->LabelText = "Capital Ship Hunt";
+	else if( gametype == "def_des" )
+		Configs["gametype"]->Value->LabelText = "Defend/Destroy";
 	else
-		GameType->Value->LabelText = gametype;
+		Configs["gametype"]->Value->LabelText = gametype;
 	
 	int tdm_kill_limit = atoi( Raptor::Game->Data.Properties["tdm_kill_limit"].c_str() );
-	TDMKillLimit->Value->LabelText = Num::ToString(tdm_kill_limit);
+	Configs["tdm_kill_limit"]->Value->LabelText = tdm_kill_limit ? Num::ToString(tdm_kill_limit) : "Unlimited";
 	
 	int dm_kill_limit = atoi( Raptor::Game->Data.Properties["dm_kill_limit"].c_str() );
-	DMKillLimit->Value->LabelText = Num::ToString(dm_kill_limit);
+	Configs["dm_kill_limit"]->Value->LabelText = dm_kill_limit ? Num::ToString(dm_kill_limit) : "Unlimited";
 	
 	int ai_waves = atoi( Raptor::Game->Data.Properties["ai_waves"].c_str() );
 	if( ai_waves <= 0 )
-		AI->Value->LabelText = "None";
+		Configs["ai_waves"]->Value->LabelText = "None";
 	else if( ai_waves == 1 )
-		AI->Value->LabelText = "Very Few";
+		Configs["ai_waves"]->Value->LabelText = "Very Few";
 	else if( ai_waves == 2 )
-		AI->Value->LabelText = "Few";
+		Configs["ai_waves"]->Value->LabelText = "Few";
 	else if( ai_waves == 3 )
-		AI->Value->LabelText = "Some";
+		Configs["ai_waves"]->Value->LabelText = "Some";
 	else if( ai_waves == 4 )
-		AI->Value->LabelText = "Many";
+		Configs["ai_waves"]->Value->LabelText = "Many";
 	else if( ai_waves == 5 )
-		AI->Value->LabelText = "Very Many";
+		Configs["ai_waves"]->Value->LabelText = "Very Many";
 	else if( ai_waves == 6 )
-		AI->Value->LabelText = "Holy Crap, Tons of Them!";
+		Configs["ai_waves"]->Value->LabelText = "Holy Crap, Tons of Them!";
 	else if( ai_waves == 7 )
-		AI->Value->LabelText = "Borderline Ridiculous";
+		Configs["ai_waves"]->Value->LabelText = "Borderline Ridiculous";
 	else if( ai_waves == 8 )
-		AI->Value->LabelText = "Undoubtedly Ridiculous";
+		Configs["ai_waves"]->Value->LabelText = "Undoubtedly Ridiculous";
 	else if( ai_waves == 9 )
-		AI->Value->LabelText = "Beyond Ridiculous";
+		Configs["ai_waves"]->Value->LabelText = "Beyond Ridiculous";
 	else
-		AI->Value->LabelText = "The Whole Friggin' Empire";
+		Configs["ai_waves"]->Value->LabelText = "The Whole Friggin' Empire";
 	
 	std::string respawn = Raptor::Game->Data.Properties["respawn"];
 	if( gametype == "team_elim" )
 	{
-		Respawn->Title->LabelText = "Dead Players";
-		Respawn->TitleShadow->LabelText = "Dead Players";
+		Configs["respawn"]->Title->LabelText = "Dead Players";
+		Configs["respawn"]->TitleShadow->LabelText = "Dead Players";
 		
 		if( respawn == "true" )
-			Respawn->Value->LabelText = "Control AI Ships";
+			Configs["respawn"]->Value->LabelText = "Control AI Ships";
 		else if( respawn == "false" )
-			Respawn->Value->LabelText = "Observe Only";
+			Configs["respawn"]->Value->LabelText = "Observe Only";
 		else
-			Respawn->Value->LabelText = respawn;
+			Configs["respawn"]->Value->LabelText = respawn;
 	}
 	else
 	{
-		Respawn->Title->LabelText = "Respawn";
-		Respawn->TitleShadow->LabelText = "Respawn";
+		Configs["respawn"]->Title->LabelText = "Respawn";
+		Configs["respawn"]->TitleShadow->LabelText = "Respawn";
 		
 		if( respawn == "true" )
-			Respawn->Value->LabelText = "Yes";
+			Configs["respawn"]->Value->LabelText = "Yes";
 		else if( respawn == "false" )
-			Respawn->Value->LabelText = "No";
+			Configs["respawn"]->Value->LabelText = "No";
 		else
-			Respawn->Value->LabelText = respawn;
+			Configs["respawn"]->Value->LabelText = respawn;
 	}
 	
 	int asteroids = atoi( Raptor::Game->Data.Properties["asteroids"].c_str() );
 	if( asteroids <= 0 )
-		Asteroids->Value->LabelText = "None";
+		Configs["asteroids"]->Value->LabelText = "None";
 	else if( asteroids <= 16 )
-		Asteroids->Value->LabelText = "Very Few";
+		Configs["asteroids"]->Value->LabelText = "Very Few";
 	else if( asteroids <= 32 )
-		Asteroids->Value->LabelText = "Few";
+		Configs["asteroids"]->Value->LabelText = "Few";
 	else if( asteroids <= 64 )
-		Asteroids->Value->LabelText = "Some";
+		Configs["asteroids"]->Value->LabelText = "Some";
 	else if( asteroids <= 128 )
-		Asteroids->Value->LabelText = "Many";
+		Configs["asteroids"]->Value->LabelText = "Many";
 	else if( asteroids <= 256 )
-		Asteroids->Value->LabelText = "Very Many";
+		Configs["asteroids"]->Value->LabelText = "Very Many";
 	else if( asteroids <= 512 )
-		Asteroids->Value->LabelText = "Uncomfortably Many";
+		Configs["asteroids"]->Value->LabelText = "Uncomfortably Many";
 	else if( asteroids <= 1024 )
-		Asteroids->Value->LabelText = "Insanely Many";
+		Configs["asteroids"]->Value->LabelText = "Insanely Many";
 	else if( asteroids <= 2048 )
-		Asteroids->Value->LabelText = "Hardly Worth Playing";
+		Configs["asteroids"]->Value->LabelText = "Hardly Worth Playing";
 	else
-		Asteroids->Value->LabelText = "Not Worth Playing";
+		Configs["asteroids"]->Value->LabelText = "Not Worth Playing";
 	
 	int yavin_time_limit = atoi( Raptor::Game->Data.Properties["yavin_time_limit"].c_str() );
-	YavinTimeLimit->Value->LabelText = Num::ToString(yavin_time_limit);
+	Configs["yavin_time_limit"]->Value->LabelText = yavin_time_limit ? (Num::ToString(yavin_time_limit) + std::string(" min")) : "Unlimited";
 	
 	int yavin_turrets = atoi( Raptor::Game->Data.Properties["yavin_turrets"].c_str() );
 	if( yavin_turrets <= 0 )
-		YavinTurrets->Value->LabelText = "None";
+		Configs["yavin_turrets"]->Value->LabelText = "None";
 	else if( yavin_turrets <= 60 )
-		YavinTurrets->Value->LabelText = "Minimal";
+		Configs["yavin_turrets"]->Value->LabelText = "Minimal";
 	else if( yavin_turrets <= 90 )
-		YavinTurrets->Value->LabelText = "Reduced";
+		Configs["yavin_turrets"]->Value->LabelText = "Reduced";
 	else if( yavin_turrets <= 120 )
-		YavinTurrets->Value->LabelText = "Normal";
+		Configs["yavin_turrets"]->Value->LabelText = "Normal";
 	else if( yavin_turrets <= 150 )
-		YavinTurrets->Value->LabelText = "Extra";
+		Configs["yavin_turrets"]->Value->LabelText = "Extra";
 	else if( yavin_turrets <= 180 )
-		YavinTurrets->Value->LabelText = "Plentiful";
+		Configs["yavin_turrets"]->Value->LabelText = "Plentiful";
 	else
-		YavinTurrets->Value->LabelText = "Way Too Many";
+		Configs["yavin_turrets"]->Value->LabelText = "Way Too Many";
 	
 	int hunt_time_limit = atoi( Raptor::Game->Data.Properties["hunt_time_limit"].c_str() );
-	HuntTimeLimit->Value->LabelText = Num::ToString(hunt_time_limit);
+	Configs["hunt_time_limit"]->Value->LabelText = hunt_time_limit ? (Num::ToString(hunt_time_limit) + std::string(" min")) : "Unlimited";
 	
-	std::string permissions = Raptor::Game->Data.Properties["permissions"];
-	if( permissions == "all" )
-		Permissions->Value->LabelText = "All Players";
+	std::string defending_team = Raptor::Game->Data.Properties["defending_team"];
+	if( defending_team == "empire" )
+		Configs["defending_team"]->Value->LabelText = "Empire";
+	else if( defending_team == "rebel" )
+		Configs["defending_team"]->Value->LabelText = "Rebels";
 	else
-		Permissions->Value->LabelText = "Only Host";
+		Configs["defending_team"]->Value->LabelText = defending_team;
+	
+	std::string rebel_ship = Raptor::Game->Data.Properties["rebel_ship"];
+	if( rebel_ship == "isd2" )
+		Configs["rebel_ship"]->Value->LabelText = "Imperial Star Destroyer";
+	else if( rebel_ship == "crv" )
+		Configs["rebel_ship"]->Value->LabelText = "Corellian Corvette";
+	else if( rebel_ship == "frg" )
+		Configs["rebel_ship"]->Value->LabelText = "Nebulon B Frigate";
+	else if( rebel_ship == "crs" )
+		Configs["rebel_ship"]->Value->LabelText = "Mon Calamari Cruiser";
+	else
+		Configs["rebel_ship"]->Value->LabelText = rebel_ship;
+	
+	std::string empire_ship = Raptor::Game->Data.Properties["empire_ship"];
+	if( empire_ship == "isd2" )
+		Configs["empire_ship"]->Value->LabelText = "Imperial Star Destroyer";
+	else if( empire_ship == "crv" )
+		Configs["empire_ship"]->Value->LabelText = "Corellian Corvette";
+	else if( empire_ship == "frg" )
+		Configs["empire_ship"]->Value->LabelText = "Nebulon B Frigate";
+	else if( empire_ship == "crs" )
+		Configs["empire_ship"]->Value->LabelText = "Mon Calamari Cruiser";
+	else
+		Configs["empire_ship"]->Value->LabelText = empire_ship;
+	
+	std::string bg = Raptor::Game->Data.Properties["bg"];
+	if( bg == "stars" )
+		Configs["bg"]->Value->LabelText = "Deep Space";
+	else if( bg == "nebula" )
+		Configs["bg"]->Value->LabelText = "Nebula";
+	else
+		Configs["bg"]->Value->LabelText = bg;
 	
 	// Determine player permissions.
 	Player *player = Raptor::Game->Data.GetPlayer( Raptor::Game->PlayerID );
@@ -517,103 +518,142 @@ void LobbyMenu::UpdateInfoBoxes( void )
 	
 	// Show "Change" buttons for admin.
 	FlyButton->Visible = FlyButton->Enabled;
-	GameType->ShowButton = (admin || permissions_all) && (! flying);
-	TDMKillLimit->ShowButton = (admin || permissions_all) && (! flying);
-	DMKillLimit->ShowButton = (admin || permissions_all) && (! flying);
-	AI->ShowButton = (admin || permissions_all) && (! flying);
-	Respawn->ShowButton = (admin || permissions_all) && (! flying);
-	Asteroids->ShowButton = (admin || permissions_all) && (! flying);
-	YavinTimeLimit->ShowButton = (admin || permissions_all) && (! flying);
-	YavinTurrets->ShowButton = (admin || permissions_all) && (! flying);
-	HuntTimeLimit->ShowButton = (admin || permissions_all) && (! flying);
-	Permissions->ShowButton = admin;
+	for( std::map<std::string,LobbyMenuConfiguration*>::iterator config_iter = Configs.begin(); config_iter != Configs.end(); config_iter ++ )
+		config_iter->second->ShowButton = (admin || permissions_all) && (! flying);
+	Configs["permissions"]->ShowButton = admin;
 	
-	// Hide "Respawn" unless it's Team Elimination or Yavin.
-	if( (gametype != "team_elim") && (gametype != "yavin") && (gametype != "isd2_hunt") && (gametype != "crv_hunt") )
+	// Show "Respawn" unless it's Deathmatch or FFA Elimination.
+	if( (gametype == "team_dm") || (gametype == "ffa_dm") || (gametype == "ffa_elim") )
 	{
-		Respawn->ShowButton = false;
-		Respawn->Visible = false;
-		Respawn->Enabled = false;
+		Configs["respawn"]->ShowButton = false;
+		Configs["respawn"]->Visible = false;
+		Configs["respawn"]->Enabled = false;
 	}
 	else
 	{
-		Respawn->Visible = true;
-		Respawn->Enabled = true;
+		Configs["respawn"]->Visible = true;
+		Configs["respawn"]->Enabled = true;
 	}
 	
 	// Hide "Team Kill Limit" unless it's Team Deathmatch.
 	if( gametype != "team_dm" )
 	{
-		TDMKillLimit->ShowButton = false;
-		TDMKillLimit->Visible = false;
-		TDMKillLimit->Enabled = false;
+		Configs["tdm_kill_limit"]->ShowButton = false;
+		Configs["tdm_kill_limit"]->Visible = false;
+		Configs["tdm_kill_limit"]->Enabled = false;
 	}
 	else
 	{
-		TDMKillLimit->Visible = true;
-		TDMKillLimit->Enabled = true;
+		Configs["tdm_kill_limit"]->Visible = true;
+		Configs["tdm_kill_limit"]->Enabled = true;
 	}
 	
 	// Hide "Kill Limit" unless it's FFA Deathmatch.
 	if( gametype != "ffa_dm" )
 	{
-		DMKillLimit->ShowButton = false;
-		DMKillLimit->Visible = false;
-		DMKillLimit->Enabled = false;
+		Configs["dm_kill_limit"]->ShowButton = false;
+		Configs["dm_kill_limit"]->Visible = false;
+		Configs["dm_kill_limit"]->Enabled = false;
 	}
 	else
 	{
-		DMKillLimit->Visible = true;
-		DMKillLimit->Enabled = true;
+		Configs["dm_kill_limit"]->Visible = true;
+		Configs["dm_kill_limit"]->Enabled = true;
 	}
 	
 	// Hide "Asteroids" if Battle of Yavin and show "Time Limit" and "Surface Turrets" instead.
 	if( gametype == "yavin" )
 	{
-		Asteroids->ShowButton = false;
-		Asteroids->Visible = false;
-		Asteroids->Enabled = false;
+		Configs["asteroids"]->ShowButton = false;
+		Configs["asteroids"]->Visible = false;
+		Configs["asteroids"]->Enabled = false;
 		
-		YavinTimeLimit->Visible = true;
-		YavinTimeLimit->Enabled = true;
-		YavinTurrets->Visible = true;
-		YavinTurrets->Enabled = true;
+		Configs["yavin_time_limit"]->Visible = true;
+		Configs["yavin_time_limit"]->Enabled = true;
+		Configs["yavin_turrets"]->Visible = true;
+		Configs["yavin_turrets"]->Enabled = true;
 	}
 	else
 	{
-		Asteroids->Visible = true;
-		Asteroids->Enabled = true;
+		Configs["asteroids"]->Visible = true;
+		Configs["asteroids"]->Enabled = true;
 		
-		YavinTimeLimit->ShowButton = false;
-		YavinTimeLimit->Visible = false;
-		YavinTimeLimit->Enabled = false;
-		YavinTurrets->ShowButton = false;
-		YavinTurrets->Visible = false;
-		YavinTurrets->Enabled = false;
+		Configs["yavin_time_limit"]->ShowButton = false;
+		Configs["yavin_time_limit"]->Visible = false;
+		Configs["yavin_time_limit"]->Enabled = false;
+		Configs["yavin_turrets"]->ShowButton = false;
+		Configs["yavin_turrets"]->Visible = false;
+		Configs["yavin_turrets"]->Enabled = false;
 	}
 	
-	// Show "Hunt Time Limit" for any hunt modes.
-	if( gametype == "isd2_hunt" || gametype == "crv_hunt" )
+	// Show "Defending Team", "Capital Ship", and "Time Limit" for hunt mode.
+	// Show "Rebel Capital Ship" and "Empire Capital Ship" for defend/destroy mode.
+	if( gametype == "hunt" )
 	{
-		HuntTimeLimit->Visible = true;
-		HuntTimeLimit->Enabled = true;
+		Configs["defending_team"]->Visible = true;
+		Configs["defending_team"]->Enabled = true;
+		
+		Configs["hunt_time_limit"]->Visible = true;
+		Configs["hunt_time_limit"]->Enabled = true;
+		
+		if( Raptor::Game->Data.Properties["defending_team"] == "rebel" )
+		{
+			Configs["rebel_ship"]->Visible = true;
+			Configs["rebel_ship"]->Enabled = true;
+			
+			Configs["empire_ship"]->ShowButton = false;
+			Configs["empire_ship"]->Visible = false;
+			Configs["empire_ship"]->Enabled = false;
+		}
+		else
+		{
+			Configs["empire_ship"]->Visible = true;
+			Configs["empire_ship"]->Enabled = true;
+			
+			Configs["rebel_ship"]->ShowButton = false;
+			Configs["rebel_ship"]->Visible = false;
+			Configs["rebel_ship"]->Enabled = false;
+		}
 	}
 	else
 	{
-		HuntTimeLimit->ShowButton = false;
-		HuntTimeLimit->Visible = false;
-		HuntTimeLimit->Enabled = false;
+		Configs["defending_team"]->ShowButton = false;
+		Configs["defending_team"]->Visible = false;
+		Configs["defending_team"]->Enabled = false;
+		
+		Configs["hunt_time_limit"]->ShowButton = false;
+		Configs["hunt_time_limit"]->Visible = false;
+		Configs["hunt_time_limit"]->Enabled = false;
+		
+		if( gametype == "def_des" )
+		{
+			Configs["rebel_ship"]->Visible = true;
+			Configs["rebel_ship"]->Enabled = true;
+			
+			Configs["empire_ship"]->Visible = true;
+			Configs["empire_ship"]->Enabled = true;
+		}
+		else
+		{
+			Configs["rebel_ship"]->ShowButton = false;
+			Configs["rebel_ship"]->Visible = false;
+			Configs["rebel_ship"]->Enabled = false;
+			
+			Configs["empire_ship"]->ShowButton = false;
+			Configs["empire_ship"]->Visible = false;
+			Configs["empire_ship"]->Enabled = false;
+		}
 	}
 }
 
 
 void LobbyMenu::Draw( void )
 {
+	UpdateRects();
 	UpdateInfoBoxes();
 	UpdatePlayerName();
 	UpdatePlayerList();
 	UpdateMessageList();
-	UpdateRects();
 	
 	Raptor::Game->Gfx.DrawRect2D( Rect.w / 2 - Rect.h, 0, Rect.w / 2 + Rect.h, Rect.h, Background.CurrentFrame(), 1.f, 1.f, 1.f, 1.f );
 	
@@ -625,6 +665,9 @@ void LobbyMenu::Draw( void )
 	
 	TitleFont->DrawText( title, Rect.w/2 + 2, 12, Font::ALIGN_TOP_CENTER, 0.f,0.f,0.f,0.8f );
 	TitleFont->DrawText( title, Rect.w/2, 10, Font::ALIGN_TOP_CENTER );
+	
+	TitleFont->DrawText( "Game Settings", PlayerList->Rect.x + PlayerList->Rect.w*1.4 + 12, PlayerName->Rect.y + 2, Font::ALIGN_TOP_CENTER, 0.f,0.f,0.f,0.8f );
+	TitleFont->DrawText( "Game Settings", PlayerList->Rect.x + PlayerList->Rect.w*1.4 + 10, PlayerName->Rect.y, Font::ALIGN_TOP_CENTER );
 }
 
 
@@ -945,29 +988,43 @@ void LobbyMenuShipButton::Clicked( Uint8 button )
 // ---------------------------------------------------------------------------
 
 
-LobbyMenuConfiguration::LobbyMenuConfiguration( std::string property, std::string desc, bool tiny )
+LobbyMenuConfiguration::LobbyMenuConfiguration( std::string property, std::string desc, int label_size, int value_size )
 : Layer()
 {
 	Property = property;
 	
-	AddElement( TitleShadow = new Label( &Rect, desc, Raptor::Game->Res.GetFont( "Verdana.ttf", tiny ? 12 : 17 ), Font::ALIGN_TOP_CENTER ) );
-	AddElement( Title = new Label( &Rect, desc, TitleShadow->LabelFont, TitleShadow->LabelAlign ) );
+	uint8_t value_align = Font::ALIGN_MIDDLE_LEFT;
 	
-	AddElement( ValueShadow = new Label( &Rect, "", Raptor::Game->Res.GetFont( "Verdana.ttf", tiny ? 17 : 20 ), Font::ALIGN_TOP_CENTER ) );
+	if( label_size )
+	{
+		AddElement( TitleShadow = new Label( &Rect, desc, Raptor::Game->Res.GetFont( "Verdana.ttf", label_size ), Font::ALIGN_MIDDLE_RIGHT ) );
+		AddElement( Title = new Label( &Rect, desc, TitleShadow->LabelFont, TitleShadow->LabelAlign ) );
+	
+		Title->Alpha = 0.9f;
+		TitleShadow->Red = 0.f;
+		TitleShadow->Green = 0.f;
+		TitleShadow->Blue = 0.f;
+		TitleShadow->Alpha = 0.8f;
+	}
+	else
+	{
+		TitleShadow = NULL;
+		Title = NULL;
+		
+		value_align = Font::ALIGN_MIDDLE_CENTER;
+	}
+	
+	AddElement( ValueShadow = new Label( &Rect, "", Raptor::Game->Res.GetFont( "Verdana.ttf", value_size ), value_align ) );
 	AddElement( Value = new Label( &Rect, "", ValueShadow->LabelFont, ValueShadow->LabelAlign ) );
 	
-	AddElement( ChangeButton = new LobbyMenuConfigChangeButton( tiny ) );
+	Value->Alpha = 0.9f;
+	ValueShadow->Red = 0.f;
+	ValueShadow->Green = 0.f;
+	ValueShadow->Blue = 0.f;
+	ValueShadow->Alpha = 0.8f;
+	
+	AddElement( ChangeButton = new LobbyMenuConfigChangeButton( Value->LabelFont, Value->LabelAlign ) );
 	ShowButton = false;
-	
-	TitleShadow->Red = 0.f;
-	TitleShadow->Green = 0.f;
-	TitleShadow->Blue = 0.f;
-	TitleShadow->Alpha = 0.8f;
-	
-	ValueShadow->Red = TitleShadow->Red;
-	ValueShadow->Green = TitleShadow->Green;
-	ValueShadow->Blue = TitleShadow->Blue;
-	ValueShadow->Alpha = TitleShadow->Alpha;
 	
 	Update();
 }
@@ -980,23 +1037,31 @@ LobbyMenuConfiguration::~LobbyMenuConfiguration()
 
 void LobbyMenuConfiguration::Update( void )
 {
-	bool tiny = (Raptor::Game->Gfx.H < 720);
-	
-	Title->Rect.w = Rect.w;
-	Title->Rect.h = Title->LabelFont->GetHeight();
-	Title->Rect.x = 0;
-	Title->Rect.y = 0;
-	
-	TitleShadow->LabelText = Title->LabelText;
-	TitleShadow->Rect.w = Title->Rect.w;
-	TitleShadow->Rect.h = Title->Rect.h;
-	TitleShadow->Rect.x = Title->Rect.x + 2;
-	TitleShadow->Rect.y = Title->Rect.y + 2;
-	
-	Value->Rect.w = Rect.w;
-	Value->Rect.h = Title->LabelFont->GetHeight();
-	Value->Rect.x = 0;
-	Value->Rect.y = Title->Rect.y + Title->Rect.h + (tiny ? -2 : 1);
+	if( Title && TitleShadow )
+	{
+		Title->Rect.w = Rect.w * 0.4 - 5;
+		Title->Rect.h = Value->LabelFont->GetHeight();
+		Title->Rect.x = 0;
+		Title->Rect.y = 0;
+		
+		TitleShadow->LabelText = Title->LabelText;
+		TitleShadow->Rect.w = Title->Rect.w;
+		TitleShadow->Rect.h = Title->Rect.h;
+		TitleShadow->Rect.x = Title->Rect.x + 2;
+		TitleShadow->Rect.y = Title->Rect.y + 2;
+		
+		Value->Rect.w = Rect.w * 0.6 - 5;
+		Value->Rect.h = Title->Rect.h;
+		Value->Rect.x = Rect.w * 0.4 + 5;
+		Value->Rect.y = 0;
+	}
+	else
+	{
+		Value->Rect.w = Rect.w * 0.8;
+		Value->Rect.h = Value->LabelFont->GetHeight();
+		Value->Rect.x = 0;
+		Value->Rect.y = 0;
+	}
 	
 	ValueShadow->LabelText = Value->LabelText;
 	ValueShadow->Rect.w = Value->Rect.w;
@@ -1004,23 +1069,26 @@ void LobbyMenuConfiguration::Update( void )
 	ValueShadow->Rect.x = Value->Rect.x + 2;
 	ValueShadow->Rect.y = Value->Rect.y + 2;
 	
-	ChangeButton->Rect.w = (ShowButton && Enabled) ? 100 : 0;
-	ChangeButton->Rect.h = (ShowButton && Enabled) ? (ChangeButton->LabelFont->GetHeight() + (tiny ? 2 : 4)) : 0;
-	ChangeButton->Rect.x = (Rect.w - ChangeButton->Rect.w) / 2;
-	ChangeButton->Rect.y = Value->Rect.y + Value->Rect.h + (tiny ? 4 : 7);
+	ChangeButton->Rect.w = Value->Rect.w;
+	ChangeButton->Rect.h = Value->Rect.h;
+	ChangeButton->Rect.x = Value->Rect.x;
+	ChangeButton->Rect.y = Value->Rect.y;
 	ChangeButton->Enabled = (ShowButton && Enabled);
 	ChangeButton->Visible = (ShowButton && Enabled);
+	ChangeButton->LabelText = Value->LabelText;
 	
-	Rect.h = ChangeButton->Rect.y + ChangeButton->LabelFont->GetHeight() + (tiny ? 2 : 4);
+	Rect.h = Value->Rect.h;
 }
 
 
 // ---------------------------------------------------------------------------
 
 
-LobbyMenuConfigChangeButton::LobbyMenuConfigChangeButton( bool tiny )
-: LabelledButton( NULL, Raptor::Game->Res.GetFont( "Verdana.ttf", tiny ? 11 : 15 ), "Change", Font::ALIGN_MIDDLE_CENTER, Raptor::Game->Res.GetAnimation("button.ani"), Raptor::Game->Res.GetAnimation("button_mdown.ani") )
+LobbyMenuConfigChangeButton::LobbyMenuConfigChangeButton( Font *font, uint8_t align )
+: LabelledButton( NULL, font, "", align, NULL )
 {
+	Alpha = 0.f;
+	AlphaNormal = 0.f;
 }
 
 
@@ -1042,20 +1110,22 @@ void LobbyMenuConfigChangeButton::Clicked( Uint8 button )
 	
 	if( config->Property == "gametype" )
 	{
-		if( value == "team_elim" )
-			value = go_prev ? "yavin" : "team_dm";
-		else if( value == "team_dm" )
-			value = go_prev ? "team_elim" : "ffa_elim";
+		if( value == "yavin" )
+			value = go_prev ? "ffa_dm" : "hunt";
+		else if( value == "hunt" )
+			value = go_prev ? "yavin" : "def_des";
+		else if( value == "def_des" )
+			value = go_prev ? "hunt" : "team_elim";
+		else if( value == "team_elim" )
+			value = go_prev ? "def_des" : "ffa_elim";
 		else if( value == "ffa_elim" )
-			value = go_prev ? "team_dm" : "ffa_dm";
+			value = go_prev ? "team_elim" : "team_dm";
+		else if( value == "team_dm" )
+			value = go_prev ? "ffa_elim" : "ffa_dm";
 		else if( value == "ffa_dm" )
-			value = go_prev ? "ffa_elim" : "isd2_hunt";
-		else if( value == "isd2_hunt" )
-			value = go_prev ? "ffa_dm" : "crv_hunt";
-		else if( value == "crv_hunt" )
-			value = go_prev ? "isd2_hunt" : "yavin";
+			value = go_prev ? "team_dm" : "yavin";
 		else
-			value = go_prev ? "crv_hunt" : "team_elim";
+			value = "yavin";
 	}
 	
 	else if( (config->Property == "tdm_kill_limit") || (config->Property == "dm_kill_limit") )
@@ -1140,12 +1210,44 @@ void LobbyMenuConfigChangeButton::Clicked( Uint8 button )
 	
 	else if( config->Property == "hunt_time_limit" )
 	{
-		int new_hunt_time_limit = atoi( value.c_str() ) + (go_prev ? -5 : 5);
-		if( new_hunt_time_limit > 30 )
+		int new_hunt_time_limit = atoi( value.c_str() ) + (go_prev ? -1 : 1);
+		if( new_hunt_time_limit > 20 )
 			new_hunt_time_limit = 0;
 		else if( new_hunt_time_limit < 0 )
-			new_hunt_time_limit = 30;
+			new_hunt_time_limit = 20;
 		value = Num::ToString( new_hunt_time_limit );
+	}
+	
+	else if( config->Property == "defending_team" )
+	{
+		if( value == "empire" )
+			value = "rebel";
+		else
+			value = "empire";
+	}
+	
+	else if( config->Property == "empire_ship" )
+	{
+		if( value == "isd2" )
+			value = go_prev ? "frg" : "crv";
+		else if( value == "crv" )
+			value = go_prev ? "isd2" : "frg";
+		else if( value == "frg" )
+			value = go_prev ? "crv" : "isd2";
+		else
+			value = "isd2";
+	}
+	
+	else if( config->Property == "rebel_ship" )
+	{
+		if( value == "crs" )
+			value = go_prev ? "frg" : "crv";
+		else if( value == "crv" )
+			value = go_prev ? "crs" : "frg";
+		else if( value == "frg" )
+			value = go_prev ? "crv" : "crs";
+		else
+			value = "crs";
 	}
 	
 	else if( config->Property == "permissions" )
@@ -1154,6 +1256,14 @@ void LobbyMenuConfigChangeButton::Clicked( Uint8 button )
 			value = "admin";
 		else
 			value = "all";
+	}
+	
+	else if( config->Property == "bg" )
+	{
+		if( value == "stars" )
+			value = "nebula";
+		else
+			value = "stars";
 	}
 	
 	Packet info = Packet( Raptor::Packet::INFO );
