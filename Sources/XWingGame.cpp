@@ -56,14 +56,13 @@ void XWingGame::SetDefaults( void )
 	
 	Cfg.Settings[ "g_framebuffers" ] = "true";
 	Cfg.Settings[ "g_shader_enable" ] = "true";
-	Cfg.Settings[ "g_shader_file" ] = "model";
 	Cfg.Settings[ "g_dynamic_lights" ] = "4";
 	Cfg.Settings[ "g_bg" ] = "true";
 	Cfg.Settings[ "g_stars" ] = "0";
 	Cfg.Settings[ "g_debris" ] = "500";
 	Cfg.Settings[ "g_deathstar_detail" ] = "3";
 	Cfg.Settings[ "g_3d_cockpit" ] = "true";
-	Cfg.Settings[ "g_hq_cockpit" ] = "false";
+	Cfg.Settings[ "g_hq_cockpit" ] = "true";
 	Cfg.Settings[ "g_hq_ships" ] = "true";
 	Cfg.Settings[ "g_crosshair_thickness" ] = "1.5";
 	
@@ -112,14 +111,8 @@ void XWingGame::Setup( int argc, char **argv )
 		Cfg.Settings[ "s_game_music" ] = "false";
 		Cfg.Settings[ "saitek_enable" ] = "false";
 		Cfg.Settings[ "spectator_view" ] = "cinema2";
+		Cfg.Settings[ "sv_netrate" ] = "60";
 	}
-	
-	// Allow client to override resource directories.
-	Res.SoundDir = Cfg.SettingAsString( "res_sound_dir", "Sounds" );
-	Res.MusicDir = Cfg.SettingAsString( "res_music_dir", "Music" );
-	Res.TextureDir = Cfg.SettingAsString( "res_texture_dir", "Textures" );
-	Res.ModelDir = Cfg.SettingAsString( "res_model_dir", "Models" );
-	Res.FontDir = Cfg.SettingAsString( "res_font_dir", "Fonts" );
 	
 	// Set music to shuffle.
 	Snd.ShuffleMusic = true;
@@ -153,6 +146,10 @@ void XWingGame::Setup( int argc, char **argv )
 		// Add an input handler to quit the screensaver when necessary.
 		AddScreensaverLayer();
 	}
+	
+	// Load and select the model shader, but don't activate it yet.
+	Res.GetShader("model_hud");
+	ShaderMgr.Select( Res.GetShader("model") );
 	
 	// Generate all framebuffers for render-to-texture.
 	Res.GetFramebuffer( "health", 384, 512 );
@@ -284,14 +281,6 @@ void XWingGame::AddScreensaverLayer( void )
 
 void XWingGame::Update( double dt )
 {
-	// Allow client to override resource directories.
-	Res.SoundDir = Cfg.SettingAsString( "res_sound_dir", "Sounds" );
-	Res.MusicDir = Cfg.SettingAsString( "res_music_dir", "Music" );
-	Res.TextureDir = Cfg.SettingAsString( "res_texture_dir", "Textures" );
-	Res.ModelDir = Cfg.SettingAsString( "res_model_dir", "Models" );
-	Res.FontDir = Cfg.SettingAsString( "res_font_dir", "Fonts" );
-	
-	
 	// Update ship's motion changes based on client's controls.
 	
 	double roll = 0.;

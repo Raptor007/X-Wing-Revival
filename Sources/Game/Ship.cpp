@@ -432,11 +432,11 @@ double Ship::Radius( void ) const
 double Ship::MaxSpeed( void ) const
 {
 	if( ShipType == TYPE_XWING )
-		return 150.;
+		return 170.;
 	else if( ShipType == TYPE_YWING )
-		return 125.;
+		return 150.;
 	else if( ShipType == TYPE_TIE_FIGHTER )
-		return 180.;
+		return 200.;
 	else if( ShipType == TYPE_ISD2 )
 		return 25.;
 	else if( ShipType == TYPE_CORVETTE )
@@ -454,6 +454,9 @@ double Ship::MaxSpeed( void ) const
 
 double Ship::Acceleration( void ) const
 {
+	if( ShipType == TYPE_YWING )
+		return MaxSpeed() / 3.;
+	
 	return MaxSpeed() / 2.;
 }
 
@@ -484,9 +487,9 @@ double Ship::MaxRoll( void ) const
 double Ship::MaxPitch( void ) const
 {
 	if( ShipType == TYPE_XWING )
-		return 90.;
+		return 100.;
 	else if( ShipType == TYPE_YWING )
-		return 60.;
+		return 70.;
 	else if( ShipType == TYPE_TIE_FIGHTER )
 		return 120.;
 	else if( ShipType == TYPE_ISD2 )
@@ -507,11 +510,11 @@ double Ship::MaxPitch( void ) const
 double Ship::MaxYaw( void ) const
 {
 	if( ShipType == TYPE_XWING )
-		return 90.;
+		return 80.;
 	else if( ShipType == TYPE_YWING )
 		return 60.;
 	else if( ShipType == TYPE_TIE_FIGHTER )
-		return 120.;
+		return 90.;
 	else if( ShipType == TYPE_ISD2 )
 		return 0.5;
 	else if( ShipType == TYPE_CORVETTE )
@@ -1611,4 +1614,11 @@ void Ship::Draw( void )
 	}
 	else
 		Shape.DrawAt( this );
+}
+
+
+void Ship::DrawWireframe( void )
+{
+	// FIXME: Don't draw missing subsystems.
+	Shape.DrawWireframeAt( this, Color(0.5,0.5,1,1) );
 }

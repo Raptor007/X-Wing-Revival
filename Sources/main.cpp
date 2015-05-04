@@ -13,12 +13,13 @@
 #endif
 
 
-#define VERSION "0.1.2 Alpha"
+#define VERSION "0.1.3 Alpha"
 
 
 #ifdef WIN32
-// Avoid conflicts between 32-bit and 64-bit by using two different DLL directories.
-BOOL SetDllDirectoryResult = SetDllDirectory( (sizeof(void*) == 8) ? L"Bin64" : L"Bin32" );
+// Set DLL directory to Bin32/Bin64 and make sure the working directory is correct.
+// This must happen before main, or DLLs will fail to link!
+BOOL windows_init_result = Raptor::WindowsInit();
 #endif
 
 

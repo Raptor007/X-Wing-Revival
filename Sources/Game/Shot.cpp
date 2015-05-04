@@ -82,15 +82,15 @@ double Shot::AsteroidDamage( void ) const
 double Shot::Speed( void ) const
 {
 	if( ShotType == TYPE_TURBO_LASER_GREEN )
-		return 500.;
+		return 550.;
 	else if( ShotType == TYPE_TURBO_LASER_RED )
-		return 500.;
+		return 550.;
 	else if( ShotType == TYPE_TORPEDO )
 		return 400.;
 	else if( ShotType == TYPE_MISSILE )
 		return 450.;
 	
-	return 600.;
+	return 700.;
 }
 
 

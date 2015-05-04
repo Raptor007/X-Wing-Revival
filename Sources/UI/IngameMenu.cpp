@@ -7,6 +7,7 @@
 #include "RaptorGame.h"
 #include "PrefsMenu.h"
 #include "TextFileViewer.h"
+#include "XWingDefs.h"
 
 
 IngameMenu::IngameMenu( void )
@@ -111,6 +112,7 @@ void IngameMenuResumeButton::Clicked( Uint8 button )
 	if( button != SDL_BUTTON_LEFT )
 		return;
 	
+	// Close the ingame menu.
 	Container->Remove();
 	Raptor::Game->Mouse.ShowCursor = false;
 }
@@ -139,7 +141,10 @@ void IngameMenuPrefsButton::Clicked( Uint8 button )
 	if( button != SDL_BUTTON_LEFT )
 		return;
 	
+	// Close the ingame menu.
 	Container->Remove();
+	
+	// Open the prefs.
 	Raptor::Game->Layers.Add( new PrefsMenu() );
 }
 
@@ -167,7 +172,10 @@ void IngameMenuHelpButton::Clicked( Uint8 button )
 	if( button != SDL_BUTTON_LEFT )
 		return;
 	
+	// Close the ingame menu.
 	Container->Remove();
+	
+	// Show the readme.
 	Raptor::Game->Layers.Add( new TextFileViewer( NULL, "README.txt", NULL, "Help and Info" ) );
 }
 
@@ -176,7 +184,7 @@ void IngameMenuHelpButton::Clicked( Uint8 button )
 
 
 IngameMenuLeaveButton::IngameMenuLeaveButton( SDL_Rect *rect, Font *button_font, uint8_t align )
-: LabelledButton( rect, button_font, "    Leave", align, Raptor::Game->Res.GetAnimation("fade.ani") )
+: LabelledButton( rect, button_font, (Raptor::Server->IsRunning() ? ((Raptor::Server->State == XWing::State::FLYING) ? "    End Round" : "    Stop Game") : "    Leave"), align, Raptor::Game->Res.GetAnimation("fade.ani") )
 {
 	Red = 0.f;
 	Green = 0.f;
@@ -195,7 +203,16 @@ void IngameMenuLeaveButton::Clicked( Uint8 button )
 	if( button != SDL_BUTTON_LEFT )
 		return;
 	
+	// Close the ingame menu.
 	Container->Remove();
-	Raptor::Game->Net.DisconnectNice();
+	
+	// If we're hosting and the round is in progress, end the round.
+	if( Raptor::Server->IsRunning() && (Raptor::Server->State == XWing::State::FLYING) )
+	{
+		Raptor::Server->State = XWing::State::ROUND_WILL_END;
+		Raptor::Game->Mouse.ShowCursor = false;
+	}
+	// Any other state, leave the game.
+	else
+		Raptor::Game->Net.DisconnectNice();
 }
-

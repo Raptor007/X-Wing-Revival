@@ -15,7 +15,7 @@ LIBDIR = /usr/lib64
 LIB = libSDLmain.a libSDL_net.so libSDL_mixer.so libSDL_ttf.so libSDL_image.so libSDL.so libGLEW.a libGLU.so libGL.so
 DEF =
 EXE = xwingrev
-VERSION = 0.1.2
+VERSION = 0.1.3
 GAMEDIR = /Games/X-Wing Revival
 SERVERDIR = /srv/xwingrev
 SERVERUSER = xwingrev
@@ -24,7 +24,7 @@ INSTALL_FINALIZE =
 MAC_APP = X-Wing Revival
 MAC_FRAMEWORKS = OpenGL Cocoa AudioUnit AudioToolbox IOKit Carbon
 MAC_INSTALL_NAME_TOOL = /opt/local/bin/install_name_tool
-MAC_BUNDLE_LIBS = /opt/local/lib/gcc48/libstdc++.6.dylib /opt/local/lib/gcc48/libgcc_s.1.dylib /opt/local/lib/libgcc/libstdc++.6.dylib /opt/local/lib/libgcc/libgcc_s.1.dylib
+MAC_BUNDLE_LIBS = /opt/local/lib/gcc49/libstdc++.6.dylib /opt/local/lib/gcc49/libgcc_s.1.dylib /opt/local/lib/libgcc/libstdc++.6.dylib /opt/local/lib/libgcc/libgcc_s.1.dylib
 MAC_PPC_ARCH = ppc
 MAC_PPC_MCPU = G3
 MAC_PPC_MTUNE = G5
@@ -81,6 +81,12 @@ else
 # When building on 10.4, specify gcc 4.0.
 CC = g++-4.0
 LD = g++-4.0
+endif
+
+GCC_VERSION = $(shell $(CC) -dumpversion)
+ifneq (,$(findstring 4.9,$(GCC_VERSION)))
+# When using GCC 4.9, don't let the linker use compact unwind.
+XFLAGS += -Wl,-no_compact_unwind
 endif
 
 ifneq (,$(findstring -4.0,$(CC)))

@@ -25,7 +25,7 @@ XWingServer::XWingServer( std::string version ) : RaptorServer( "X-Wing Revival"
 	GameType = XWing::GameType::TEAM_ELIMINATION;
 	PlayersTakeEmptyShips = false;
 	Respawn = false;
-	RespawnDelay = 5.;
+	RespawnDelay = 10.;
 	RoundEndedDelay = 3.;
 	KillLimit = 10;
 	TimeLimit = 0;
@@ -1413,7 +1413,7 @@ void XWingServer::Update( double dt )
 							ship->SetThrottle( 1., dt );
 							//ship->SetShieldPos( Ship::SHIELD_CENTER );
 						}
-						else if( (dist_to_target < dodge_dist + 100.) && (t_dot_fwd < 0.25) )
+						else if( (dist_to_target < dodge_dist + 500.) && (t_dot_fwd < 0.25) )
 						{
 							// Off to the side, but too close to turn towards: Get some distance.
 							ship->SetPitch( 0. );
@@ -1432,15 +1432,17 @@ void XWingServer::Update( double dt )
 							//ship->SetShieldPos( Ship::SHIELD_FRONT );
 						}
 					}
+					/*
 					else if( (dist_to_target < dodge_dist + 150.) && (t_dot_fwd < -0.25) && (vec_to_target.Dot( &(ship->Fwd) ) < -0.25) )
 					{
 						// Behind and aiming at us: Shake 'em!
-						ship->SetPitch( 1. );
-						ship->SetYaw( Num::EveryOther( ship->Lifetime.ElapsedSeconds(), 3. ) ? 1. : -1. );
-						ship->SetRoll( Num::EveryOther( ship->Lifetime.ElapsedSeconds(), 3. ) ? 1. : -1. );
+						ship->SetPitch( cos( ship->Lifetime.ElapsedSeconds() * 3. ) * 0.4 + 0.6 );
+						ship->SetYaw( sin( ship->Lifetime.ElapsedSeconds() ) );
+						ship->SetRoll( sin( ship->Lifetime.ElapsedSeconds() ) );
 						ship->SetThrottle( 1., dt );
 						//ship->SetShieldPos( Ship::SHIELD_REAR );
 					}
+					*/
 					else if( dist_to_target < dodge_dist + 200. )
 					{
 						// Behind, not aiming at us, but too close to turn towards: Get some distance.
@@ -2325,7 +2327,7 @@ void XWingServer::BeginFlying( void )
 		
 		GameType = XWing::GameType::TEAM_ELIMINATION;
 		Respawn = false;
-		RespawnDelay = 5.;
+		RespawnDelay = 10.;
 		PlayersTakeEmptyShips = false;
 		bool ffa = false;
 		KillLimit = 0;
@@ -2350,6 +2352,7 @@ void XWingServer::BeginFlying( void )
 			GameType = XWing::GameType::TEAM_DEATHMATCH;
 			Respawn = true;
 			KillLimit = atoi( Data.Properties["tdm_kill_limit"].c_str() );
+			RespawnDelay = 5.;
 		}
 		else if( Data.Properties["gametype"] == "ffa_dm" )
 		{
@@ -2357,12 +2360,14 @@ void XWingServer::BeginFlying( void )
 			ffa = true;
 			Respawn = true;
 			KillLimit = atoi( Data.Properties["dm_kill_limit"].c_str() );
+			RespawnDelay = 5.;
 		}
 		else if( Data.Properties["gametype"] == "yavin" )
 		{
 			GameType = XWing::GameType::BATTLE_OF_YAVIN;
 			TimeLimit = atoi( Data.Properties["yavin_time_limit"].c_str() );
 			Respawn = (Data.Properties["respawn"] == "true");
+			RespawnDelay = 10.;
 			
 			if( TimeLimit >= 30 )
 				Alerts[ 30. * 60. ] = XWingServerAlert( "deathstar_30min.wav", "The moon with the Rebel base will be in range in 30 minutes." );
@@ -2385,13 +2390,13 @@ void XWingServer::BeginFlying( void )
 			TimeLimit = atoi( Data.Properties["hunt_time_limit"].c_str() );
 			Respawn = (Data.Properties["respawn"] == "true");
 			DefendingTeam = (Data.Properties["defending_team"] == "rebel") ? XWing::Team::REBEL : XWing::Team::EMPIRE;
-			RespawnDelay = 10.;
+			RespawnDelay = 15.;
 		}
 		else if( Data.Properties["gametype"] == "def_des" )
 		{
 			GameType = XWing::GameType::DEFEND_DESTROY;
 			Respawn = (Data.Properties["respawn"] == "true");
-			RespawnDelay = 10.;
+			RespawnDelay = 15.;
 		}
 		
 		if( Data.Properties["rebel_ship"] == "crv" )

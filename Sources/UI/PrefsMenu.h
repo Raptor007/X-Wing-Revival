@@ -31,7 +31,7 @@ public:
 	Font *LabelFont, *TitleFont, *ItemFont, *ButtonFont;
 	int PrevFullscreenX, PrevFullscreenY, PrevFSAA, PrevAF;
 	bool PrevFullscreen;
-	std::string PrevShaderFile, PrevSoundDir, PrevMusicDir;
+	std::string PrevSoundDir, PrevMusicDir;
 	
 	PrefsMenu( void );
 	virtual ~PrefsMenu();

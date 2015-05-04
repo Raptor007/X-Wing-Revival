@@ -35,7 +35,6 @@ PrefsMenu::PrefsMenu( void )
 	PrevFullscreenY = Raptor::Game->Cfg.SettingAsInt("g_res_fullscreen_y");
 	PrevFSAA = Raptor::Game->Cfg.SettingAsInt("g_fsaa");
 	PrevAF = Raptor::Game->Cfg.SettingAsInt("g_af");
-	PrevShaderFile = Raptor::Game->Cfg.SettingAsString("g_shader_file");
 	PrevSoundDir = Raptor::Game->Cfg.SettingAsString("res_sound_dir");
 	PrevMusicDir = Raptor::Game->Cfg.SettingAsString("res_music_dir");
 }
@@ -139,8 +138,14 @@ void PrefsMenu::UpdateContents( void )
 	
 	rect.y += rect.h + 8;
 	rect.x = 10;
-	rect.w = group_rect.w - 20;
-	group->AddElement( new PrefsMenuCheckBox( &rect, LabelFont, "High-Quality Ships", "g_hq_ships" ) );
+	rect.w = 120;
+	group->AddElement( new Label( &rect, "High Quality:", LabelFont, Font::ALIGN_MIDDLE_LEFT ) );
+	rect.x += rect.w;
+	rect.w = 80;
+	group->AddElement( new PrefsMenuCheckBox( &rect, LabelFont, "Ships", "g_hq_ships" ) );
+	rect.x += rect.w;
+	rect.w = 90;
+	group->AddElement( new PrefsMenuCheckBox( &rect, LabelFont, "Cockpit", "g_hq_cockpit" ) );
 	
 	// --------------------------------------------------------------------------------------------------------------------
 	// Sound
@@ -316,22 +321,6 @@ void PrefsMenu::UpdateContents( void )
 	rect.x = 10;
 	rect.y = 10 + group->TitleFont->GetAscent();
 	
-	rect.w = 70;
-	group->AddElement( new Label( &rect, "Smooth:", LabelFont, Font::ALIGN_MIDDLE_LEFT ) );
-	rect.x += rect.w + 5;
-	rect.w = 95;
-	PrefsMenuDropDown *joy_smooth_thumbsticks_dropdown = new PrefsMenuDropDown( &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, 0, "joy_smooth_thumbsticks" );
-	joy_smooth_thumbsticks_dropdown->AddItem( "0", "Off" );
-	joy_smooth_thumbsticks_dropdown->AddItem( "0.125", "Very Low" );
-	joy_smooth_thumbsticks_dropdown->AddItem( "0.25", "Low" );
-	joy_smooth_thumbsticks_dropdown->AddItem( "0.5", "Medium" );
-	joy_smooth_thumbsticks_dropdown->AddItem( "0.75", "High" );
-	joy_smooth_thumbsticks_dropdown->AddItem( "1", "Very High" );
-	joy_smooth_thumbsticks_dropdown->Update();
-	group->AddElement( joy_smooth_thumbsticks_dropdown );
-	
-	rect.y += rect.h + 8;
-	rect.x = 10;
 	rect.w = 90;
 	group->AddElement( new Label( &rect, "Deadzone:", LabelFont, Font::ALIGN_MIDDLE_LEFT ) );
 	rect.x += rect.w + 5;
@@ -360,6 +349,22 @@ void PrefsMenu::UpdateContents( void )
 	joy_deadzone_thumbsticks_dropdown->AddItem( "0.2", "20%" );
 	joy_deadzone_thumbsticks_dropdown->Update();
 	group->AddElement( joy_deadzone_thumbsticks_dropdown );
+	
+	rect.x = 10;
+	rect.y += rect.h + 8;
+	rect.w = 70;
+	group->AddElement( new Label( &rect, "Smooth:", LabelFont, Font::ALIGN_MIDDLE_LEFT ) );
+	rect.x += rect.w + 5;
+	rect.w = 95;
+	PrefsMenuDropDown *joy_smooth_thumbsticks_dropdown = new PrefsMenuDropDown( &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, 0, "joy_smooth_thumbsticks" );
+	joy_smooth_thumbsticks_dropdown->AddItem( "0", "Off" );
+	joy_smooth_thumbsticks_dropdown->AddItem( "0.125", "Very Low" );
+	joy_smooth_thumbsticks_dropdown->AddItem( "0.25", "Low" );
+	joy_smooth_thumbsticks_dropdown->AddItem( "0.5", "Medium" );
+	joy_smooth_thumbsticks_dropdown->AddItem( "0.75", "High" );
+	joy_smooth_thumbsticks_dropdown->AddItem( "1", "Very High" );
+	joy_smooth_thumbsticks_dropdown->Update();
+	group->AddElement( joy_smooth_thumbsticks_dropdown );
 	
 	// --------------------------------------------------------------------------------------------------------------------
 	// Mouse
@@ -590,8 +595,6 @@ void PrefsMenuDoneButton::Clicked( Uint8 button )
 	 || (menu->PrevFSAA != Raptor::Game->Cfg.SettingAsInt("g_fsaa"))
 	 || (menu->PrevAF != Raptor::Game->Cfg.SettingAsInt("g_af")) )
 		Raptor::Game->Gfx.Restart();
-	else if( menu->PrevShaderFile != Raptor::Game->Cfg.SettingAsString("g_shader_file") )
-		Raptor::Game->ShaderMgr.LoadShaders( Raptor::Game->Cfg.SettingAsString("g_shader_file") );
 	
 	// If we changed directories, clear old resources.
 	if( menu->PrevSoundDir != Raptor::Game->Cfg.SettingAsString("res_sound_dir") )

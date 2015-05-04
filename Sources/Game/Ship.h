@@ -101,6 +101,7 @@ public:
 	void Update( double dt );
 	
 	void Draw( void );
+	void DrawWireframe( void );
 	
 	enum
 	{

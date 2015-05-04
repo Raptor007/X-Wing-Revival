@@ -471,13 +471,14 @@ void RenderLayer::Draw( void )
 		{
 			double best = 0.;
 			
+			// Try to focus the cinema view on an alive or recently-dead enemy.
 			for( std::list<Ship*>::iterator ship_iter = ships.begin(); ship_iter != ships.end(); ship_iter ++ )
 			{
 				if( (*ship_iter)->ID != observed_ship->ID )
 				{
 					Ship *ship = *ship_iter;
 					
-					if( ship->Team != observed_ship->Team )
+					if( (ship->Team != observed_ship->Team) && ((ship->Health > 0.) || (ship->DeathClock.ElapsedSeconds() <= 5.)) )
 					{
 						double dist = observed_ship->Dist( ship );
 						if( (dist < best) || (! cinema_view_with) )
@@ -489,6 +490,7 @@ void RenderLayer::Draw( void )
 				}
 			}
 			
+			// If we found no suitable other ship with the original criteria, be less picky.
 			if( ! cinema_view_with )
 			{
 				for( std::list<Ship*>::iterator ship_iter = ships.begin(); ship_iter != ships.end(); ship_iter ++ )
@@ -649,30 +651,27 @@ void RenderLayer::Draw( void )
 				
 				health_framebuffer->Setup3D( &(above_cam) );
 				
-				float red = -1.f, green = 1.f, blue = -1.f;
+				float red = 0.f, green = 1.f, blue = 0.f;
 				if( observed_ship->Health < observed_ship->MaxHealth() )
-					red = 1.;
+					red = 1.f;
 				if( observed_ship->Health < (observed_ship->MaxHealth() * 0.7) )
-					green = -1.;
+					green = 0.f;
 				
 				glColor4f( red, green, blue, 1.f );
 				
 				if( use_shaders )
 				{
-					Pos3D light( observed_ship->X, observed_ship->Y, observed_ship->Z );
-					light.MoveAlong( &(observed_ship->Up), observed_ship->Shape.GetHeight() );
+					Raptor::Game->ShaderMgr.Select( Raptor::Game->Res.GetShader("model_hud") );
 					Raptor::Game->ShaderMgr.ResumeShaders();
-					ClearWorldLights();
-					ClearDynamicLights();
-					Raptor::Game->ShaderMgr.Set3f( "AmbientLight", red * 4., green * 4., blue * 4. );
+					Raptor::Game->ShaderMgr.Set3f( "AmbientLight", red, green, blue );
 				}
 				
-				observed_ship->Shape.DrawAt( observed_ship );
+				observed_ship->Draw();
 				
 				if( use_shaders )
 				{
-					SetWorldLights();
 					Raptor::Game->ShaderMgr.StopShaders();
+					Raptor::Game->ShaderMgr.Select( Raptor::Game->Res.GetShader("model") );
 				}
 				
 				glColor4f( 1.f, 1.f, 1.f, 1.f );
@@ -749,13 +748,38 @@ void RenderLayer::Draw( void )
 					
 					target_framebuffer->Setup3D( &(cam_to_target) );
 					
-					if( use_shaders )
-						Raptor::Game->ShaderMgr.ResumeShaders();
-					
-					target_obj->Draw();
-					
-					if( use_shaders )
-						Raptor::Game->ShaderMgr.StopShaders();
+					if( target_obj->Type() == XWing::Object::SHIP )
+					{
+						if( use_shaders )
+						{
+							Raptor::Game->ShaderMgr.Select( Raptor::Game->Res.GetShader("model_hud") );
+							Raptor::Game->ShaderMgr.ResumeShaders();
+							Raptor::Game->ShaderMgr.Set3f( "AmbientLight", 0., 0., 0. );
+						}
+						
+						target_obj->Draw();
+						
+						if( use_shaders )
+						{
+							Raptor::Game->ShaderMgr.StopShaders();
+							Raptor::Game->ShaderMgr.Select( Raptor::Game->Res.GetShader("model") );
+						}
+						
+						glLineWidth( 2.f );
+						((Ship*)( target_obj ))->DrawWireframe();
+						
+						
+					}
+					else
+					{
+						if( use_shaders )
+							Raptor::Game->ShaderMgr.ResumeShaders();
+						
+						target_obj->Draw();
+						
+						if( use_shaders )
+							Raptor::Game->ShaderMgr.StopShaders();
+					}
 					
 					
 					target_framebuffer->Setup2D();
@@ -1160,7 +1184,7 @@ void RenderLayer::Draw( void )
 				if( g_hq_cockpit )
 					cockpit_3d = Raptor::Game->Res.GetModel("x-wing_cockpit_hq.obj");
 				if( ! cockpit_3d )
-					cockpit_3d = Raptor::Game->Res.GetModel("x-wing_cockpit.obj");
+					cockpit_3d = Raptor::Game->Res.GetModel("wing_cockpit.obj");
 			}
 			cockpit_2d = Raptor::Game->Res.GetAnimation("cockpit_xwing.ani");
 		}
@@ -1226,33 +1250,30 @@ void RenderLayer::Draw( void )
 				}
 			}
 			
-			double cockpit_scale = std::max<double>( 0.022, Raptor::Game->Gfx.ZNear * 0.125 );
+			// Technically the correct scale is 0.022, but we'll probably need to make it higher to avoid near-plane clipping.
+			double cockpit_scale = std::max<double>( 0.022, Raptor::Game->Gfx.ZNear * 0.25 );
 			double cockpit_fwd = 0.;
 			double cockpit_up = 0.;
 			double cockpit_right = 0.;
-			double cockpit_tilt = 0.;
 			
 			if( observed_ship->ShipType == Ship::TYPE_XWING )
 			{
-				cockpit_fwd = (g_hq_cockpit ? 26. : 12.);
-				cockpit_up = (g_hq_cockpit ? -33. : -27.);
+				cockpit_fwd = (g_hq_cockpit ? 32. : 12.);
+				cockpit_up = (g_hq_cockpit ? -37. : -27.);
 				cockpit_right = (g_hq_cockpit ? 0. : -0.75);
-				cockpit_tilt = (g_hq_cockpit ? -6. : 0.);
 			}
 			else if( observed_ship->ShipType == Ship::TYPE_YWING )
 			{
-				cockpit_fwd = (g_hq_cockpit ? -200. : -300.);
-				cockpit_up = (g_hq_cockpit ? -40.: -38.);
+				cockpit_fwd = (g_hq_cockpit ? -190. : -300.);
+				cockpit_up = (g_hq_cockpit ? -38.: -38.);
 				cockpit_right = (g_hq_cockpit ? 0. : 1.5);
-				cockpit_tilt = (g_hq_cockpit ? 3. : 8.);
 			}
 			else if( observed_ship->ShipType == Ship::TYPE_TIE_FIGHTER )
 			{
-				cockpit_fwd = (g_hq_cockpit ? -5. : 0.);
+				cockpit_fwd = (g_hq_cockpit ? -14. : 0.);
 			}
 			
 			Pos3D cockpit_pos( observed_ship );
-			cockpit_pos.Fwd.RotateAround( &(cockpit_pos.Right), cockpit_tilt );
 			cockpit_pos.FixVectors();
 			cockpit_pos.MoveAlong( &(cockpit_pos.Fwd), cockpit_fwd * cockpit_scale );
 			cockpit_pos.MoveAlong( &(cockpit_pos.Up), cockpit_up * cockpit_scale );
@@ -1373,8 +1394,9 @@ void RenderLayer::Draw( void )
 	if( Raptor::Game->ShaderMgr.Active() )
 	{
 		// Remove dynamic lights and material properties so other things will render correctly.
-		Raptor::Game->ShaderMgr.Set3f( "AmbientColor", 1.f, 1.f, 1.f );
-		Raptor::Game->ShaderMgr.Set3f( "DiffuseColor", 0.f, 0.f, 0.f );
+		Raptor::Game->ShaderMgr.Set3f( "AmbientColor", 1., 1., 1. );
+		Raptor::Game->ShaderMgr.Set3f( "DiffuseColor", 0., 0., 0. );
+		Raptor::Game->ShaderMgr.Set1f( "Alpha", 1. );
 		ClearDynamicLights();
 	}
 	
@@ -1418,8 +1440,9 @@ void RenderLayer::Draw( void )
 		
 		if( Raptor::Game->ShaderMgr.Active() )
 		{
-			Raptor::Game->ShaderMgr.Set3f( "AmbientColor", 1.f, 1.f, 1.f );
-			Raptor::Game->ShaderMgr.Set3f( "DiffuseColor", 0.f, 0.f, 0.f );
+			Raptor::Game->ShaderMgr.Set3f( "AmbientColor", 1., 1., 1. );
+			Raptor::Game->ShaderMgr.Set3f( "DiffuseColor", 0., 0., 0. );
+			Raptor::Game->ShaderMgr.Set1f( "Alpha", 1. );
 			ClearDynamicLights();
 		}
 		
