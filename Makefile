@@ -84,9 +84,16 @@ LD = g++-4.0
 endif
 
 GCC_VERSION = $(shell $(CC) -dumpversion)
-ifneq (,$(findstring 4.9,$(GCC_VERSION)))
+GCC_VERSION_MAJOR = $(word 1,$(subst ., ,$(GCC_VERSION)))
+GCC_VERSION_MINOR = $(word 2,$(subst ., ,$(GCC_VERSION)))
+ifneq (,$(findstring 4.9.,$(GCC_VERSION)))
 # When using GCC 4.9, don't let the linker use compact unwind.
 XFLAGS += -Wl,-no_compact_unwind
+else
+ifeq (5,$(GCC_VERSION_MAJOR))
+# When using GCC 5, don't let the linker use compact unwind.
+XFLAGS += -Wl,-no_compact_unwind
+endif
 endif
 
 ifneq (,$(findstring -4.0,$(CC)))
@@ -218,12 +225,14 @@ play:
 
 server-install:
 	mkdir -p "$(SERVERDIR)"
-	cp "$(EXE)" "$(SERVERDIR)/$(EXE)-$(VERSION)"
 	cp xwingctl "$(SERVERDIR)/"
+	-"$(SERVERDIR)/xwingctl" stop
+	cp "$(EXE)" "$(SERVERDIR)/$(EXE)-$(VERSION)"
 	cd "$(SERVERDIR)" && ln -sf "$(EXE)-$(VERSION)" "$(EXE)"
 	-chown -R $(SERVERUSER):wheel "$(SERVERDIR)"
 	-chmod 775 "$(SERVERDIR)/$(EXE)-$(VERSION)"
 	-ln -sf "$(SERVERDIR)/xwingctl" /usr/local/bin/xwingctl
+	-"$(SERVERDIR)/xwingctl" start
 
 ppc:
 	make objects ARCH="$(MAC_PPC_ARCH)" MCPU="$(MAC_PPC_MCPU)" MTUNE="$(MAC_PPC_MTUNE)"
