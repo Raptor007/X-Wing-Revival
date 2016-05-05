@@ -180,6 +180,10 @@ void JoinMenu::Draw( void )
 						text += " [FFA DM]";
 					else if( properties["gametype"] == "yavin" )
 						text += " [Yavin]";
+					else if( properties["gametype"] == "def_des" )
+						text += " [Defend/Destroy]";
+					else if( properties["gametype"] == "hunt" )
+						text += " [CapShip Hunt]";
 					else
 						text += " [" + properties["gametype"] + "]";
 				}

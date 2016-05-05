@@ -54,8 +54,6 @@ void XWingGame::SetDefaults( void )
 	Cfg.Settings[ "spectator_view" ] = "cinema2";
 	Cfg.Settings[ "view_cycle_time" ] = "7";
 	
-	Cfg.Settings[ "g_framebuffers" ] = "true";
-	Cfg.Settings[ "g_shader_enable" ] = "true";
 	Cfg.Settings[ "g_dynamic_lights" ] = "4";
 	Cfg.Settings[ "g_bg" ] = "true";
 	Cfg.Settings[ "g_stars" ] = "0";
@@ -68,9 +66,6 @@ void XWingGame::SetDefaults( void )
 	
 	Cfg.Settings[ "s_menu_music" ] = "true";
 	Cfg.Settings[ "s_game_music" ] = "true";
-	Cfg.Settings[ "s_volume" ] = "0.5";
-	Cfg.Settings[ "s_effect_volume" ] = "0.5";
-	Cfg.Settings[ "s_music_volume" ] = "1";
 	Cfg.Settings[ "s_imuse" ] = "false";
 	
 	Cfg.Settings[ "joy_enable" ] = "true";
@@ -84,14 +79,12 @@ void XWingGame::SetDefaults( void )
 	Cfg.Settings[ "joy_smooth_pedals" ] = "0";
 	Cfg.Settings[ "joy_smooth_thumbsticks" ] = "1";
 	Cfg.Settings[ "joy_smooth_triggers" ] = "0.75";
+	Cfg.Settings[ "joy_thumbstick_look" ] = "true";
 	
 	Cfg.Settings[ "mouse_enable" ] = "fullscreen";
 	Cfg.Settings[ "mouse_invert" ] = "true";
 	Cfg.Settings[ "mouse_smooth" ] = "0.25";
 	Cfg.Settings[ "mouse_look" ] = "false";
-	
-	Cfg.Settings[ "netrate" ] = "30";
-	Cfg.Settings[ "sv_netrate" ] = "30";
 
 	#ifdef APPLE_POWERPC
 		Cfg.Settings[ "g_dynamic_lights" ] = "1";
@@ -253,10 +246,10 @@ void XWingGame::Precache( void )
 		Res.GetSound("xwing_fast.wav");
 		Res.GetSound("xwing_slow.wav");
 		
-		Res.GetMusic("Rebel Victory.mp3");
-		Res.GetMusic("Empire Victory.mp3");
-		Res.GetMusic("Victory.mp3");
-		Res.GetMusic("Defeat.mp3");
+		Res.GetMusic("rebel.dat");
+		Res.GetMusic("empire.dat");
+		Res.GetMusic("victory.dat");
+		Res.GetMusic("defeat.dat");
 		
 		Res.GetSound("deathstar_30min.wav");
 		Res.GetSound("deathstar_15min.wav");
@@ -275,6 +268,15 @@ void XWingGame::AddScreensaverLayer( void )
 	Screensaver *screensaver_layer = new Screensaver();
 	screensaver_layer->IgnoreKeys.insert( SDLK_LEFTBRACKET );
 	screensaver_layer->IgnoreKeys.insert( SDLK_RIGHTBRACKET );
+	screensaver_layer->IgnoreKeys.insert( SDLK_KP1 );
+	screensaver_layer->IgnoreKeys.insert( SDLK_KP2 );
+	screensaver_layer->IgnoreKeys.insert( SDLK_KP3 );
+	screensaver_layer->IgnoreKeys.insert( SDLK_KP4 );
+	screensaver_layer->IgnoreKeys.insert( SDLK_KP5 );
+	screensaver_layer->IgnoreKeys.insert( SDLK_KP6 );
+	screensaver_layer->IgnoreKeys.insert( SDLK_KP7 );
+	screensaver_layer->IgnoreKeys.insert( SDLK_KP8 );
+	screensaver_layer->IgnoreKeys.insert( SDLK_KP9 );
 	Layers.Add( screensaver_layer );
 }
 
@@ -338,7 +340,7 @@ void XWingGame::Update( double dt )
 		}
 	}
 	
-	if( Cfg.SettingAsBool("joy_enable") && Joy.Joysticks.size() )
+	if( Cfg.SettingAsBool("joy_enable",true) && Joy.Joysticks.size() )
 	{
 		double deadzone = Cfg.SettingAsDouble( "joy_deadzone" );
 		bool stick = false;
@@ -380,10 +382,13 @@ void XWingGame::Update( double dt )
 				pitch = fabs(pow( fabs(pitch), smooth + 1. )) * Num::Sign(pitch);
 				yaw = joy_iter->second.Axis( 0, deadzone_thumbsticks );
 				yaw = fabs(pow( fabs(yaw), smooth + 1. )) * Num::Sign(yaw);
-				LookYaw = joy_iter->second.Axis( 4, deadzone_thumbsticks );
-				LookYaw = 180. * fabs(pow( fabs(LookYaw), smooth + 1. )) * Num::Sign(LookYaw);
-				LookPitch = joy_iter->second.Axis( 3, deadzone_thumbsticks );
-				LookPitch = -90. * fabs(pow( fabs(LookPitch), smooth + 1. )) * Num::Sign(LookPitch);
+				if( Cfg.SettingAsBool("joy_thumbstick_look",true) )
+				{
+					LookYaw = joy_iter->second.Axis( 4, deadzone_thumbsticks );
+					LookYaw = 180. * fabs(pow( fabs(LookYaw), smooth + 1. )) * Num::Sign(LookYaw);
+					LookPitch = joy_iter->second.Axis( 3, deadzone_thumbsticks );
+					LookPitch = -90. * fabs(pow( fabs(LookPitch), smooth + 1. )) * Num::Sign(LookPitch);
+				}
 				
 				// Read controller's buttons.
 				if( joy_iter->second.ButtonDown( 0 ) ) // A
@@ -795,7 +800,7 @@ void XWingGame::Update( double dt )
 			if( observed_ship && (obj_iter->first == observed_ship->ID) )
 				continue;
 			
-			// Don't add two sounds for the same object flying by.
+			// Don't add multiple sounds for the same object flying by.
 			if( Snd.ObjectPans.find( obj_iter->first ) != Snd.ObjectPans.end() )
 				continue;
 			
@@ -817,14 +822,14 @@ void XWingGame::Update( double dt )
 				if( ship->ShipType == Ship::TYPE_TIE_FIGHTER )
 				{
 					if( relative_motion.Length() >= 250. )
-						Snd.PlayFromObject( Res.GetSound("tie_fast.wav"), obj_iter->first, 4. );
+						Snd.PlayFromObject( Res.GetSound("tie_fast.wav"), obj_iter->first, 10. );
 					else if( relative_motion.Length() >= 25. )
 						Snd.PlayFromObject( Res.GetSound("tie_slow.wav"), obj_iter->first, 5. );
 				}
 				else if( (ship->ShipType == Ship::TYPE_XWING) || (ship->ShipType == Ship::TYPE_YWING) )
 				{
 					if( relative_motion.Length() >= 200. )
-						Snd.PlayFromObject( Res.GetSound("xwing_fast.wav"), obj_iter->first, 4. );
+						Snd.PlayFromObject( Res.GetSound("xwing_fast.wav"), obj_iter->first, 10. );
 					else if( relative_motion.Length() >= 20. )
 						Snd.PlayFromObject( Res.GetSound("xwing_slow.wav"), obj_iter->first, 5. );
 				}
@@ -837,7 +842,7 @@ void XWingGame::Update( double dt )
 	{
 		if( Cfg.SettingAsBool("s_imuse") )
 		{
-			// iMUSE enabled: Update music according to the action.
+			// Dynamic music enabled: Update music according to the action.
 			
 			if( Snd.MusicSubdir.compare( 0, 6, "iMUSE/" ) != 0 )
 				Snd.StopMusic();
@@ -889,7 +894,7 @@ void XWingGame::Update( double dt )
 		}
 		else
 		{
-			// iMUSE disabled.
+			// Dynamic music disabled: Play full-length songs.
 			
 			if( Snd.MusicSubdir.compare( 0, 6, "iMUSE/" ) == 0 )
 			{
@@ -1485,28 +1490,6 @@ bool XWingGame::ProcessPacket( Packet *packet )
 		
 		return true;
 	}
-	else if( type == XWing::Packet::AMMO_UPDATE )
-	{
-		uint32_t ship_id = packet->NextUInt();
-		uint32_t weapon = packet->NextUInt();
-		int8_t ammo = packet->NextChar();
-		uint8_t weapon_index = packet->NextUChar();
-		
-		GameObject *obj = Data.GetObject( ship_id );
-		if( obj && (obj->Type() == XWing::Object::SHIP) )
-		{
-			Ship *ship = (Ship*) obj;
-			ship->Ammo[ weapon ] = ammo;
-			
-			if( ship->PlayerID != PlayerID )
-				ship->SelectedWeapon = weapon;
-			
-			if( ship->SelectedWeapon == weapon )
-				ship->WeaponIndex = weapon_index;
-		}
-		
-		return true;
-	}
 	else if( type == XWing::Packet::MISC_HIT_SHIP )
 	{
 		uint32_t ship_id = packet->NextUInt();
@@ -1582,28 +1565,28 @@ bool XWingGame::ProcessPacket( Packet *packet )
 		
 		if( State >= XWing::State::FLYING )
 		{
-			std::string music_name = "Defeat.mp3";
+			std::string music_name = "defeat.dat";
 			
 			// Victory checking is by player ID for FFA gametypes.
 			if( (game_type == XWing::GameType::FFA_ELIMINATION) || (game_type == XWing::GameType::FFA_DEATHMATCH) )
 			{
 				if( victor == PlayerID )
-					music_name = "Victory.mp3";
+					music_name = "victory.dat";
 				else if( victor )
 				{
 					// If we're spectating and any non-AI player wins, play the victory tune.
 					Player *player = Data.GetPlayer( PlayerID );
 					if( player && (player->Properties["assigned_team"] == "Spectator") )
-						music_name = "Victory.mp3";
+						music_name = "victory.dat";
 				}
 			}
 			// Usually assume it was a team game.
 			else
 			{
 				if( victor == XWing::Team::REBEL )
-					music_name = "Rebel Victory.mp3";
+					music_name = "rebel.dat";
 				else if( victor == XWing::Team::EMPIRE )
-					music_name = "Empire Victory.mp3";
+					music_name = "empire.dat";
 			}
 			
 			Mix_Music *music = Res.GetMusic(music_name);
@@ -1658,6 +1641,21 @@ void XWingGame::AddedObject( GameObject *obj )
 				Snd.PlayAt( Res.GetSound("turbolaser_green.wav"), obj->X, obj->Y, obj->Z, 1.5 );
 			else if( shot->ShotType == Shot::TYPE_TORPEDO )
 				Snd.PlayAt( Res.GetSound("torpedo.wav"), obj->X, obj->Y, obj->Z, 0.75 );
+			
+			GameObject *obj = Raptor::Game->Data.GetObject( shot->FiredFrom );
+			if( obj && (obj->Type() == XWing::Object::SHIP) )
+			{
+				Ship *ship = (Ship*) obj;
+				if( (ship->ID != PlayerID) && (ship->SelectedWeapon != shot->ShotType) )
+				{
+					ship->SelectedWeapon = shot->ShotType;
+					ship->WeaponIndex = 0;
+					ship->FiringMode = 1;
+				}
+				ship->JustFired( shot->ShotType, 1 );
+				if( ship->ID != PlayerID )
+					ship->FiringMode = ship->FiredThisFrame;
+			}
 		}
 	}
 }

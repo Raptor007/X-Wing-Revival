@@ -23,9 +23,9 @@ LobbyMenu::LobbyMenu( void )
 	
 	AddElement( LeaveButton = new LobbyMenuLeaveButton() );
 	AddElement( FlyButton = new LobbyMenuFlyButton() );
-	AddElement( TeamButton = new LobbyMenuTeamButton() );
-	AddElement( GroupButton = new LobbyMenuGroupButton() );
-	AddElement( ShipButton = new LobbyMenuShipButton() );
+	AddElement( TeamButton = new LobbyMenuTeamButton( tiny ? 12 : 17 ) );
+	AddElement( GroupButton = new LobbyMenuGroupButton( tiny ? 12 : 17 ) );
+	AddElement( ShipButton = new LobbyMenuShipButton( tiny ? 12 : 17 ) );
 	
 	AddElement( PlayerName = new TextBox( NULL, Raptor::Game->Res.GetFont( "Verdana.ttf", tiny ? 13 : 19 ), Font::ALIGN_MIDDLE_LEFT ) );
 	PlayerName->ReturnDeselects = false;
@@ -138,7 +138,7 @@ void LobbyMenu::UpdateRects( void )
 	
 	TeamButton->Rect.x = LeaveButton->Rect.x;
 	TeamButton->Rect.y = PlayerName->Rect.y + PlayerName->Rect.h + 10;
-	TeamButton->Rect.w = 140;
+	TeamButton->Rect.w = tiny ? 100 : 140;
 	TeamButton->Rect.h = TeamButton->LabelFont->GetHeight() + 6;
 	
 	GroupButton->Rect.x = TeamButton->Rect.x + TeamButton->Rect.w + 10;
@@ -794,8 +794,8 @@ void LobbyMenuLeaveButton::Clicked( Uint8 button )
 // ---------------------------------------------------------------------------
 
 
-LobbyMenuTeamButton::LobbyMenuTeamButton( void )
-: LabelledButton( NULL, Raptor::Game->Res.GetFont( "Verdana.ttf", 17 ), "Change Team", Font::ALIGN_MIDDLE_CENTER, Raptor::Game->Res.GetAnimation("button.ani"), Raptor::Game->Res.GetAnimation("button_mdown.ani") )
+LobbyMenuTeamButton::LobbyMenuTeamButton( int font_size )
+: LabelledButton( NULL, Raptor::Game->Res.GetFont( "Verdana.ttf", font_size ), "Change Team", Font::ALIGN_MIDDLE_CENTER, Raptor::Game->Res.GetAnimation("button.ani"), Raptor::Game->Res.GetAnimation("button_mdown.ani") )
 {
 	Red = 1.f;
 	Green = 1.f;
@@ -860,8 +860,8 @@ void LobbyMenuTeamButton::Clicked( Uint8 button )
 // ---------------------------------------------------------------------------
 
 
-LobbyMenuGroupButton::LobbyMenuGroupButton( void )
-: LabelledButton( NULL, Raptor::Game->Res.GetFont( "Verdana.ttf", 17 ), "Change Group", Font::ALIGN_MIDDLE_CENTER, Raptor::Game->Res.GetAnimation("button.ani"), Raptor::Game->Res.GetAnimation("button_mdown.ani") )
+LobbyMenuGroupButton::LobbyMenuGroupButton( int font_size )
+: LabelledButton( NULL, Raptor::Game->Res.GetFont( "Verdana.ttf", font_size ), "Change Group", Font::ALIGN_MIDDLE_CENTER, Raptor::Game->Res.GetAnimation("button.ani"), Raptor::Game->Res.GetAnimation("button_mdown.ani") )
 {
 	Red = 1.f;
 	Green = 1.f;
@@ -919,8 +919,8 @@ void LobbyMenuGroupButton::Clicked( Uint8 button )
 // ---------------------------------------------------------------------------
 
 
-LobbyMenuShipButton::LobbyMenuShipButton( void )
-: LabelledButton( NULL, Raptor::Game->Res.GetFont( "Verdana.ttf", 17 ), "Change Ship", Font::ALIGN_MIDDLE_CENTER, Raptor::Game->Res.GetAnimation("button.ani"), Raptor::Game->Res.GetAnimation("button_mdown.ani") )
+LobbyMenuShipButton::LobbyMenuShipButton( int font_size )
+: LabelledButton( NULL, Raptor::Game->Res.GetFont( "Verdana.ttf", font_size ), "Change Ship", Font::ALIGN_MIDDLE_CENTER, Raptor::Game->Res.GetAnimation("button.ani"), Raptor::Game->Res.GetAnimation("button_mdown.ani") )
 {
 	Red = 1.f;
 	Green = 1.f;

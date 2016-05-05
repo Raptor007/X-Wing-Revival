@@ -35,8 +35,7 @@ PrefsMenu::PrefsMenu( void )
 	PrevFullscreenY = Raptor::Game->Cfg.SettingAsInt("g_res_fullscreen_y");
 	PrevFSAA = Raptor::Game->Cfg.SettingAsInt("g_fsaa");
 	PrevAF = Raptor::Game->Cfg.SettingAsInt("g_af");
-	PrevSoundDir = Raptor::Game->Cfg.SettingAsString("res_sound_dir");
-	PrevMusicDir = Raptor::Game->Cfg.SettingAsString("res_music_dir");
+	PrevLightQuality = Raptor::Game->Cfg.SettingAsInt("g_shader_light_quality");
 }
 
 
@@ -71,9 +70,9 @@ void PrefsMenu::UpdateContents( void )
 	// Graphics
 	
 	group_rect.x = 10;
-	group_rect.y = 55;
+	group_rect.y = 50;
 	group_rect.w = 305;
-	group_rect.h = 180;
+	group_rect.h = 210;
 	group = new GroupBox( &group_rect, "Graphics", ItemFont );
 	AddElement( group );
 	rect.x = 10;
@@ -122,6 +121,20 @@ void PrefsMenu::UpdateContents( void )
 	rect.w = group_rect.w - 20;
 	group->AddElement( new PrefsMenuCheckBox( &rect, LabelFont, "Draw With Shaders", "g_shader_enable" ) );
 	
+	rect.x = 10;
+	rect.y += rect.h + 8;
+	rect.w = 115;
+	group->AddElement( new Label( &rect, "Light Quality:", LabelFont, Font::ALIGN_MIDDLE_LEFT ) );
+	rect.x += rect.w + 5;
+	rect.w = 130;
+	PrefsMenuDropDown *light_quality_dropdown = new PrefsMenuDropDown( &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, 0, "g_shader_light_quality" );
+	light_quality_dropdown->AddItem( "0", "Off" );
+	light_quality_dropdown->AddItem( "1", "Low (Vertex)" );
+	light_quality_dropdown->AddItem( "2", "High (Pixel)" );
+	light_quality_dropdown->Update();
+	group->AddElement( light_quality_dropdown );
+	
+	rect.x = 10;
 	rect.y += rect.h + 8;
 	rect.w = 225;
 	group->AddElement( new Label( &rect, "Dynamic Lights Per Object:", LabelFont, Font::ALIGN_MIDDLE_LEFT ) );
@@ -211,6 +224,9 @@ void PrefsMenu::UpdateContents( void )
 	
 	rect.y += rect.h + 8;
 	group->AddElement( new PrefsMenuCheckBox( &rect, LabelFont, "Flight Music", "s_game_music" ) );
+
+	rect.y += rect.h + 8;
+	group->AddElement( new PrefsMenuSillyButton( &rect ) );
 	
 	// --------------------------------------------------------------------------------------------------------------------
 	// Joystick
@@ -365,6 +381,11 @@ void PrefsMenu::UpdateContents( void )
 	joy_smooth_thumbsticks_dropdown->AddItem( "1", "Very High" );
 	joy_smooth_thumbsticks_dropdown->Update();
 	group->AddElement( joy_smooth_thumbsticks_dropdown );
+	
+	rect.y += rect.h + 8;
+	rect.x = 10;
+	rect.w = group_rect.w - 20;
+	group->AddElement( new PrefsMenuCheckBox( &rect, LabelFont, "Thumbstick Look", "joy_thumbstick_look" ) );
 	
 	// --------------------------------------------------------------------------------------------------------------------
 	// Mouse
@@ -593,20 +614,9 @@ void PrefsMenuDoneButton::Clicked( Uint8 button )
 	 || (menu->PrevFullscreen && (menu->PrevFullscreenX != Raptor::Game->Cfg.SettingAsInt("g_res_fullscreen_x")))
 	 || (menu->PrevFullscreen && (menu->PrevFullscreenY != Raptor::Game->Cfg.SettingAsInt("g_res_fullscreen_y")))
 	 || (menu->PrevFSAA != Raptor::Game->Cfg.SettingAsInt("g_fsaa"))
-	 || (menu->PrevAF != Raptor::Game->Cfg.SettingAsInt("g_af")) )
+	 || (menu->PrevAF != Raptor::Game->Cfg.SettingAsInt("g_af"))
+	 || (menu->PrevLightQuality != Raptor::Game->Cfg.SettingAsInt("g_shader_light_quality")) )
 		Raptor::Game->Gfx.Restart();
-	
-	// If we changed directories, clear old resources.
-	if( menu->PrevSoundDir != Raptor::Game->Cfg.SettingAsString("res_sound_dir") )
-	{
-		Raptor::Game->Snd.StopSounds();
-		Raptor::Game->Res.DeleteSounds();
-	}
-	if( menu->PrevMusicDir != Raptor::Game->Cfg.SettingAsString("res_music_dir") )
-	{
-		Raptor::Game->Snd.StopMusic();
-		Raptor::Game->Res.DeleteMusic();
-	}
 	
 	// Start/stop the music.
 	if( Raptor::Game->State >= XWing::State::FLYING )
@@ -670,4 +680,53 @@ void PrefsMenuDefaultsButton::Clicked( Uint8 button )
 		Raptor::Game->Cfg.Settings["name"] = old_name;
 	
 	((PrefsMenu*)( Container ))->UpdateContents();
+	
+	if( Raptor::Game->Res.SearchPath.front() == "Sounds/Silly" )
+	{
+		Raptor::Game->Res.SearchPath.pop_front();
+		Raptor::Game->Snd.StopSounds();
+		Raptor::Game->Res.DeleteSounds();
+	}
+}
+
+
+// ---------------------------------------------------------------------------
+
+
+PrefsMenuSillyButton::PrefsMenuSillyButton( SDL_Rect *rect ) : Button( rect, NULL )
+{
+	TimesClicked = 0;
+}
+
+
+PrefsMenuSillyButton::~PrefsMenuSillyButton()
+{
+}
+
+
+void PrefsMenuSillyButton::Draw( void )
+{
+}
+
+
+void PrefsMenuSillyButton::Clicked( Uint8 button )
+{
+	if( button != SDL_BUTTON_LEFT )
+		return;
+	if( !( Raptor::Game->Keys.KeyDown(SDLK_RSHIFT) || Raptor::Game->Keys.KeyDown(SDLK_LSHIFT) ) )
+		return;
+	
+	TimesClicked ++;
+	if( TimesClicked == 7 )
+	{
+		TimesClicked = 0;
+		
+		if( Raptor::Game->Res.SearchPath.front() == "Sounds/Silly" )
+			Raptor::Game->Res.SearchPath.pop_front();
+		else
+			Raptor::Game->Res.SearchPath.push_front( "Sounds/Silly" );
+		
+		Raptor::Game->Snd.StopSounds();
+		Raptor::Game->Res.DeleteSounds();
+	}
 }

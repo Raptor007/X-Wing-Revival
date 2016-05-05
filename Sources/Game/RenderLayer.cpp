@@ -16,6 +16,7 @@
 #include "Math3D.h"
 #include "MessageOverlay.h"
 #include "IngameMenu.h"
+#include "DeathStar.h"
 #include "DeathStarBox.h"
 
 #ifdef WIN32
@@ -99,80 +100,123 @@ void RenderLayer::SetBackground( void )
 }
 
 
-void RenderLayer::SetWorldLights( void )
+void RenderLayer::SetWorldLights( float ambient_scale, const std::vector<const Vec3D*> *obstructions )
 {
-	Vec3D vec;
+	Color ambient;
+	Vec3D dir[ 4 ];
+	Color color[ 4 ];
+	float wrap_around[ 4 ];
 	
 	if( Raptor::Game->Data.Properties["bg"] == "nebula" )
 	{
-		Raptor::Game->ShaderMgr.Set3f( "AmbientLight", 0.75, 0.75, 0.75 );
-		vec.Set( 0.897, -0.389, 0.208 );
-		vec.ScaleTo( 1. );
-		Raptor::Game->ShaderMgr.Set3f( "DirectionalLight0Dir", vec.X, vec.Y, vec.Z );
-		Raptor::Game->ShaderMgr.Set3f( "DirectionalLight0Color", 1.3, 1.3, 1.29 );
-		Raptor::Game->ShaderMgr.Set1f( "DirectionalLight0WrapAround", 0.5 );
-		vec.Set( -0.748, 0.66, -0.07 );
-		vec.ScaleTo( 1. );
-		Raptor::Game->ShaderMgr.Set3f( "DirectionalLight1Dir", vec.X, vec.Y, vec.Z );
-		Raptor::Game->ShaderMgr.Set3f( "DirectionalLight1Color", 0.6, 0.1, 0.1 );
-		Raptor::Game->ShaderMgr.Set1f( "DirectionalLight1WrapAround", 1.0 );
-		vec.Set( 0.555, -0.832, -0.023 );
-		vec.ScaleTo( 1. );
-		Raptor::Game->ShaderMgr.Set3f( "DirectionalLight2Dir", vec.X, vec.Y, vec.Z );
-		Raptor::Game->ShaderMgr.Set3f( "DirectionalLight2Color", 0.1, 0.05, 0.5 );
-		Raptor::Game->ShaderMgr.Set1f( "DirectionalLight2WrapAround", 0.5 );
-		vec.Set( -0.421, -0.396, -0.821 );
-		vec.ScaleTo( 1. );
-		Raptor::Game->ShaderMgr.Set3f( "DirectionalLight3Dir", vec.X, vec.Y, vec.Z );
-		Raptor::Game->ShaderMgr.Set3f( "DirectionalLight3Color", 0.01, 0.1, 0.05 );
-		Raptor::Game->ShaderMgr.Set1f( "DirectionalLight3WrapAround", 0.125 );
+		ambient.Set( 0.75f, 0.75f, 0.75f, 1.f );
+		
+		dir[ 0 ].Set( 0.897, -0.389, 0.208 );
+		dir[ 0 ].ScaleTo( 1. );
+		color[ 0 ].Set( 1.3, 1.3, 1.29, 1.f );
+		wrap_around[ 0 ] = 0.5;
+		
+		dir[ 1 ].Set( -0.748, 0.66, -0.07 );
+		dir[ 1 ].ScaleTo( 1. );
+		color[ 1 ].Set( 0.6, 0.1, 0.1, 1.f );
+		wrap_around[ 1 ] = 1.0;
+		
+		dir[ 2 ].Set( 0.555, -0.832, -0.023 );
+		dir[ 2 ].ScaleTo( 1. );
+		color[ 2 ].Set( 0.1, 0.05, 0.5, 1.f );
+		wrap_around[ 2 ] = 0.5;
+		
+		dir[ 3 ].Set( -0.421, -0.396, -0.821 );
+		dir[ 3 ].ScaleTo( 1. );
+		color[ 3 ].Set( 0.01, 0.1, 0.05, 1.f );
+		wrap_around[ 3 ] = 0.125;
 	}
 	else if( Raptor::Game->Data.Properties["gametype"] == "yavin" )
 	{
-		Raptor::Game->ShaderMgr.Set3f( "AmbientLight", 0.7, 0.7, 0.7 );
-		vec.Set( -0.6, 0., 0.8 );
-		Raptor::Game->ShaderMgr.Set3f( "DirectionalLight0Dir", vec.X, vec.Y, vec.Z );
-		Raptor::Game->ShaderMgr.Set3f( "DirectionalLight0Color", 0.85, 0.85, 0.85 );
-		Raptor::Game->ShaderMgr.Set1f( "DirectionalLight0WrapAround", 0. );
-		vec.Set( 0.15, 0.57, 0.8 );
-		vec.ScaleTo( 1. );
-		Raptor::Game->ShaderMgr.Set3f( "DirectionalLight1Dir", vec.X, vec.Y, vec.Z );
-		Raptor::Game->ShaderMgr.Set3f( "DirectionalLight1Color", 0.8, 0.85, 0.8 );
-		Raptor::Game->ShaderMgr.Set1f( "DirectionalLight1WrapAround", 0.125 );
-		vec.Set( -0.01, -0.86, 0.51 );
-		vec.ScaleTo( 1. );
-		Raptor::Game->ShaderMgr.Set3f( "DirectionalLight2Dir", vec.X, vec.Y, vec.Z );
-		Raptor::Game->ShaderMgr.Set3f( "DirectionalLight2Color", 0.2, 0.29, 0.41 );
-		Raptor::Game->ShaderMgr.Set1f( "DirectionalLight2WrapAround", 0.25 );
-		vec.Set( 0.2, 0., 0.98 );
-		vec.ScaleTo( 1. );
-		Raptor::Game->ShaderMgr.Set3f( "DirectionalLight3Dir", vec.X, vec.Y, vec.Z );
-		Raptor::Game->ShaderMgr.Set3f( "DirectionalLight3Color", 0.25, 0.125, 0.2 );
-		Raptor::Game->ShaderMgr.Set1f( "DirectionalLight3WrapAround", 0.125 );
+		ambient.Set( 0.7f, 0.7f, 0.7f, 1.f );
+		
+		dir[ 0 ].Set( -0.6, 0., 0.8 );
+		dir[ 0 ].ScaleTo( 1. );
+		color[ 0 ].Set( 0.85, 0.85, 0.85, 1.f );
+		wrap_around[ 0 ] = 0.;
+		
+		dir[ 1 ].Set( 0.15, 0.57, 0.8 );
+		dir[ 1 ].ScaleTo( 1. );
+		color[ 1 ].Set( 0.8, 0.85, 0.8, 1.f );
+		wrap_around[ 1 ] = 0.125;
+		
+		dir[ 2 ].Set( -0.01, -0.86, 0.51 );
+		dir[ 2 ].ScaleTo( 1. );
+		color[ 2 ].Set( 0.2, 0.29, 0.41, 1.f );
+		wrap_around[ 2 ] = 0.25;
+		
+		dir[ 3 ].Set( 0.2, 0., 0.98 );
+		dir[ 3 ].ScaleTo( 1. );
+		color[ 3 ].Set( 0.25, 0.125, 0.2, 1.f );
+		wrap_around[ 3 ] = 0.125;
 	}
 	else
 	{
-		Raptor::Game->ShaderMgr.Set3f( "AmbientLight", 0.75, 0.75, 0.75 );
-		vec.Set( 0.07, -0.8, 0.6 );
-		vec.ScaleTo( 1. );
-		Raptor::Game->ShaderMgr.Set3f( "DirectionalLight0Dir", vec.X, vec.Y, vec.Z );
-		Raptor::Game->ShaderMgr.Set3f( "DirectionalLight0Color", 1.3, 1.3, 1.29 );
-		Raptor::Game->ShaderMgr.Set1f( "DirectionalLight0WrapAround", 0.5 );
-		vec.Set( 0.9, 0.3, 0.25 );
-		vec.ScaleTo( 1. );
-		Raptor::Game->ShaderMgr.Set3f( "DirectionalLight1Dir", vec.X, vec.Y, vec.Z );
-		Raptor::Game->ShaderMgr.Set3f( "DirectionalLight1Color", 0.22, 0.2, 0.2 );
-		Raptor::Game->ShaderMgr.Set1f( "DirectionalLight1WrapAround", 1.0 );
-		vec.Set( -0.01, -0.86, -0.51 );
-		vec.ScaleTo( 1. );
-		Raptor::Game->ShaderMgr.Set3f( "DirectionalLight2Dir", vec.X, vec.Y, vec.Z );
-		Raptor::Game->ShaderMgr.Set3f( "DirectionalLight2Color", 0.2, 0.15, 0.3 );
-		Raptor::Game->ShaderMgr.Set1f( "DirectionalLight2WrapAround", 0.5 );
-		vec.Set( -0.35, -0.75, -0.56 );
-		vec.ScaleTo( 1. );
-		Raptor::Game->ShaderMgr.Set3f( "DirectionalLight3Dir", vec.X, vec.Y, vec.Z );
-		Raptor::Game->ShaderMgr.Set3f( "DirectionalLight3Color", 0.03, 0.08, 0.05 );
-		Raptor::Game->ShaderMgr.Set1f( "DirectionalLight3WrapAround", 0.125 );
+		ambient.Set( 0.75f, 0.75f, 0.75f, 1.f );
+		
+		dir[ 0 ].Set( 0.07, -0.8, 0.6 );
+		dir[ 0 ].ScaleTo( 1. );
+		color[ 0 ].Set( 1.3, 1.3, 1.29, 1.f );
+		wrap_around[ 0 ] = 0.5;
+		
+		dir[ 1 ].Set( 0.9, 0.3, 0.25 );
+		dir[ 1 ].ScaleTo( 1. );
+		color[ 1 ].Set( 0.22, 0.2, 0.2, 1.f );
+		wrap_around[ 1 ] = 1.0;
+		
+		dir[ 2 ].Set( -0.01, -0.86, -0.51 );
+		dir[ 2 ].ScaleTo( 1. );
+		color[ 2 ].Set( 0.2, 0.15, 0.3, 1.f );
+		wrap_around[ 2 ] = 0.5;
+		
+		dir[ 3 ].Set( -0.35, -0.75, -0.56 );
+		dir[ 3 ].ScaleTo( 1. );
+		color[ 3 ].Set( 0.03, 0.08, 0.05, 1.f );
+		wrap_around[ 3 ] = 0.125;
+	}
+	
+	ambient *= ambient_scale;
+	Raptor::Game->ShaderMgr.Set3f( "AmbientLight", ambient.Red, ambient.Green, ambient.Blue );
+	
+	char uniform_name[ 128 ] = "";
+	for( int i = 0; i < 4; i ++ )
+	{
+		if( obstructions )
+		{
+			for( std::vector<const Vec3D*>::const_iterator obst_iter = obstructions->begin(); obst_iter != obstructions->end(); obst_iter ++ )
+			{
+				double obst_length = (*obst_iter)->Length();
+				if( ! obst_length )
+					continue;
+				
+				Vec3D obst( *obst_iter );
+				if( obst_length > 1. )
+					obst.ScaleTo( 1. );
+				double similarity = dir[ i ].Dot( &obst );
+				if( similarity < 0. )
+					continue;
+				
+				wrap_around[ i ] -= similarity;
+				if( wrap_around[ i ] < 0. )
+					wrap_around[ i ] = 0.;
+				
+				dir[ i ] -= obst * similarity;
+				color[ i ] *= dir[ i ].Length();
+				dir[ i ].ScaleTo( 1. );
+			}
+		}
+		
+		snprintf( uniform_name, 128, "DirectionalLight%iDir", i );
+		Raptor::Game->ShaderMgr.Set3f( uniform_name, dir[ i ].X, dir[ i ].Y, dir[ i ].Z );
+		snprintf( uniform_name, 128, "DirectionalLight%iColor", i );
+		Raptor::Game->ShaderMgr.Set3f( uniform_name, color[ i ].Red, color[ i ].Green, color[ i ].Blue );
+		snprintf( uniform_name, 128, "DirectionalLight%iWrapAround", i );
+		Raptor::Game->ShaderMgr.Set1f( uniform_name, wrap_around[ i ] );
 	}
 }
 
@@ -209,6 +253,16 @@ void RenderLayer::ClearDynamicLights( void )
 	Raptor::Game->ShaderMgr.Set3f( "PointLight3Pos", 0., 0., 0. );
 	Raptor::Game->ShaderMgr.Set3f( "PointLight3Color", 0., 0., 0. );
 	Raptor::Game->ShaderMgr.Set1f( "PointLight3Radius", 0. );
+}
+
+
+void RenderLayer::ClearMaterial( void )
+{
+	Raptor::Game->ShaderMgr.Set3f( "AmbientColor", 1., 1., 1. );
+	Raptor::Game->ShaderMgr.Set3f( "DiffuseColor", 0., 0., 0. );
+	Raptor::Game->ShaderMgr.Set3f( "SpecularColor", 0., 0., 0. );
+	Raptor::Game->ShaderMgr.Set1f( "Alpha", 1. );
+	Raptor::Game->ShaderMgr.Set1f( "Shininess", 0. );
 }
 
 
@@ -263,15 +317,19 @@ void RenderLayer::Draw( void )
 	
 	// Build a list of all ships, because we'll refer to it often.
 	// Also build a list of shots for use when determining dynamic lights.
+	// And keep track of the Death Star trench location for darkening world lights.
 	
 	std::list<Ship*> ships;
 	std::list<Shot*> shots;
+	DeathStar *death_star = NULL;
 	for( std::map<uint32_t,GameObject*>::iterator obj_iter = Raptor::Game->Data.GameObjects.begin(); obj_iter != Raptor::Game->Data.GameObjects.end(); obj_iter ++ )
 	{
 		if( obj_iter->second->Type() == XWing::Object::SHIP )
 			ships.push_back( (Ship*) obj_iter->second );
 		else if( obj_iter->second->Type() == XWing::Object::SHOT )
 			shots.push_back( (Shot*) obj_iter->second );
+		else if( obj_iter->second->Type() == XWing::Object::DEATH_STAR )
+			death_star = (DeathStar*) obj_iter->second;
 	}
 	
 	
@@ -307,7 +365,7 @@ void RenderLayer::Draw( void )
 	{
 		// This player has no ship, let's watch somebody else.
 		
-		// First try to observe a specific ship ID.
+		// First try to observe a specific ship ID (who we were watching before).
 		if( ((XWingGame*)( Raptor::Game ))->ObservedShipID )
 		{
 			for( std::list<Ship*>::iterator ship_iter = ships.begin(); ship_iter != ships.end(); ship_iter ++ )
@@ -329,7 +387,7 @@ void RenderLayer::Draw( void )
 			}
 		}
 		
-		// Next try to observe the player's spawn group.
+		// Try to observe anyone in the player's spawn group.
 		if( (! observed_ship) && player_ship && player_ship->Team && player_ship->Group )
 		{
 			for( std::list<Ship*>::iterator ship_iter = ships.begin(); ship_iter != ships.end(); ship_iter ++ )
@@ -351,7 +409,73 @@ void RenderLayer::Draw( void )
 			}
 		}
 		
-		// Then try to observe the next ship alive after a specific ship ID.
+		// Try to observe the next ship alive on the player's team after the ID we were observing.
+		if( (! observed_ship) && player_ship && player_ship->Team )
+		{
+			for( std::list<Ship*>::iterator ship_iter = ships.begin(); ship_iter != ships.end(); ship_iter ++ )
+			{
+				// Don't spectate the Death Star exhaust port.
+				if( (*ship_iter)->ShipType == Ship::TYPE_EXHAUST_PORT )
+					continue;
+				
+				// Don't start observing dead ships.
+				if( (*ship_iter)->Health <= 0. )
+					continue;
+				
+				// If we'd selected a specific ship to watch, keep going until we find it.
+				if( ((*ship_iter)->Team == player_ship->Team) && ((*ship_iter)->ID >= ((XWingGame*)( Raptor::Game ))->ObservedShipID) )
+				{
+					observed_ship = *ship_iter;
+					break;
+				}
+			}
+		}
+		
+		// Try to observe anyone alive on the player's team.
+		if( (! observed_ship) && player_ship && player_ship->Team )
+		{
+			for( std::list<Ship*>::iterator ship_iter = ships.begin(); ship_iter != ships.end(); ship_iter ++ )
+			{
+				// Don't spectate the Death Star exhaust port.
+				if( (*ship_iter)->ShipType == Ship::TYPE_EXHAUST_PORT )
+					continue;
+				
+				// Don't start observing dead ships.
+				if( (*ship_iter)->Health <= 0. )
+					continue;
+				
+				// If our team has other ships, watch them.
+				if( (*ship_iter)->Team == player_ship->Team )
+				{
+					observed_ship = *ship_iter;
+					break;
+				}
+			}
+		}
+		
+		// Try to observe anyone alive or recently dead on the player's team.
+		if( (! observed_ship) && player_ship && player_ship->Team )
+		{
+			for( std::list<Ship*>::iterator ship_iter = ships.begin(); ship_iter != ships.end(); ship_iter ++ )
+			{
+				// Don't spectate the Death Star exhaust port.
+				if( (*ship_iter)->ShipType == Ship::TYPE_EXHAUST_PORT )
+					continue;
+				
+				// Don't observe long-dead ships.
+				if( ((*ship_iter)->Health <= 0.) && ((*ship_iter)->DeathClock.ElapsedSeconds() >= 6.) )
+					continue;
+				
+				// If our team has other ships, watch them.
+				if( (*ship_iter)->Team == player_ship->Team )
+				{
+					observed_ship = *ship_iter;
+					break;
+				}
+			}
+		}
+		
+		// No teammates to watch; try to observe the next non-capital ship alive after a specific ship ID.
 		if( ! observed_ship )
 		{
 			for( std::list<Ship*>::iterator ship_iter = ships.begin(); ship_iter != ships.end(); ship_iter ++ )
@@ -365,7 +489,29 @@ void RenderLayer::Draw( void )
 					continue;
 				
 				// If we'd selected a specific ship to watch, keep going until we find it.
-				if( (*ship_iter)->ID >= ((XWingGame*)( Raptor::Game ))->ObservedShipID )
+				if( ((*ship_iter)->ID >= ((XWingGame*)( Raptor::Game ))->ObservedShipID) && (*ship_iter)->PlayersCanFly() )
+				{
+					observed_ship = *ship_iter;
+					break;
+				}
+			}
+		}
+		
+		// Observe anybody alive that isn't a capital ship.
+		if( ! observed_ship )
+		{
+			for( std::list<Ship*>::iterator ship_iter = ships.begin(); ship_iter != ships.end(); ship_iter ++ )
+			{
+				// Don't spectate the Death Star exhaust port.
+				if( (*ship_iter)->ShipType == Ship::TYPE_EXHAUST_PORT )
+					continue;
+				
+				// Don't observe dead ships.
+				if( (*ship_iter)->Health <= 0. )
+					continue;
+				
+				// If this is not a capital ship, observe it.
+				if( (*ship_iter)->PlayersCanFly() )
 				{
 					observed_ship = *ship_iter;
 					break;
@@ -391,7 +537,7 @@ void RenderLayer::Draw( void )
 			}
 		}
 		
-		// Last ditch effort, observe anybody.
+		// Last ditch effort, observe anybody recently dead.
 		if( ! observed_ship )
 		{
 			for( std::list<Ship*>::iterator ship_iter = ships.begin(); ship_iter != ships.end(); ship_iter ++ )
@@ -563,7 +709,7 @@ void RenderLayer::Draw( void )
 		{
 			// Chase camera.
 			
-			Raptor::Game->Cam.MoveAlong( &(Raptor::Game->Cam.Fwd), -30. - observed_ship->Shape.GetTriagonal() );
+			Raptor::Game->Cam.MoveAlong( &(Raptor::Game->Cam.Fwd), -20. - observed_ship->Shape.GetTriagonal() );
 		}
 	}
 	else
@@ -1221,32 +1367,52 @@ void RenderLayer::Draw( void )
 			if( use_shaders )
 				Raptor::Game->ShaderMgr.ResumeShaders();
 			
-			if( dynamic_lights && Raptor::Game->ShaderMgr.Active() )
+			bool change_light_for_cockpit = false;
+			if( Raptor::Game->ShaderMgr.Active() )
 			{
-				Shot *nearest_shot = NULL;
-				std::set<Pos3D*> used_lights;
-				char uniform_name[ 128 ] = "";
-				
-				ClearDynamicLights();
-				
-				for( int i = 0; i < dynamic_lights; i ++ )
+				float ambient_scale = 1.f;
+				std::vector<const Vec3D*> obstructions;
+				if( death_star )
 				{
-					nearest_shot = (Shot*) observed_ship->Nearest( (std::list<Pos3D*> *) &shots, i ? &used_lights : NULL );
-					if( nearest_shot )
+					// Reduce cockpit ambient light if we're in the trench.
+					double dist_in_trench = -1. * observed_ship->DistAlong( &(death_star->Up), death_star );
+					if( dist_in_trench > 0. )
 					{
-						snprintf( uniform_name, 128, "PointLight%iPos", i );
-						Raptor::Game->ShaderMgr.Set3f( uniform_name, nearest_shot->X, nearest_shot->Y, nearest_shot->Z );
-						
-						Color dynamic_light_color = nearest_shot->LightColor();
-						snprintf( uniform_name, 128, "PointLight%iColor", i );
-						Raptor::Game->ShaderMgr.Set3f( uniform_name, dynamic_light_color.Red, dynamic_light_color.Green, dynamic_light_color.Blue );
-						snprintf( uniform_name, 128, "PointLight%iRadius", i );
-						Raptor::Game->ShaderMgr.Set1f( uniform_name, dynamic_light_color.Alpha );
-						
-						used_lights.insert( nearest_shot );
+						ambient_scale = std::max<float>( 0.2f, 1. - dist_in_trench * 1.5 / death_star->TrenchDepth );
+						change_light_for_cockpit = true;
 					}
-					else
-						break;
+				}
+				
+				if( change_light_for_cockpit )
+					SetWorldLights( ambient_scale, obstructions.size() ? &obstructions : NULL );
+				
+				if( dynamic_lights )
+				{
+					Shot *nearest_shot = NULL;
+					std::set<Pos3D*> used_lights;
+					char uniform_name[ 128 ] = "";
+					
+					ClearDynamicLights();
+					
+					for( int i = 0; i < dynamic_lights; i ++ )
+					{
+						nearest_shot = (Shot*) observed_ship->Nearest( (std::list<Pos3D*> *) &shots, i ? &used_lights : NULL );
+						if( nearest_shot )
+						{
+							snprintf( uniform_name, 128, "PointLight%iPos", i );
+							Raptor::Game->ShaderMgr.Set3f( uniform_name, nearest_shot->X, nearest_shot->Y, nearest_shot->Z );
+							
+							Color dynamic_light_color = nearest_shot->LightColor();
+							snprintf( uniform_name, 128, "PointLight%iColor", i );
+							Raptor::Game->ShaderMgr.Set3f( uniform_name, dynamic_light_color.Red, dynamic_light_color.Green, dynamic_light_color.Blue );
+							snprintf( uniform_name, 128, "PointLight%iRadius", i );
+							Raptor::Game->ShaderMgr.Set1f( uniform_name, dynamic_light_color.Alpha );
+							
+							used_lights.insert( nearest_shot );
+						}
+						else
+							break;
+					}
 				}
 			}
 			
@@ -1279,6 +1445,10 @@ void RenderLayer::Draw( void )
 			cockpit_pos.MoveAlong( &(cockpit_pos.Up), cockpit_up * cockpit_scale );
 			cockpit_pos.MoveAlong( &(cockpit_pos.Right), cockpit_right * cockpit_scale );
 			cockpit_3d->DrawAt( &cockpit_pos, cockpit_scale );
+			
+			// Reset world lights to normal.
+			if( change_light_for_cockpit )
+				SetWorldLights();
 			
 			if( use_shaders )
 				Raptor::Game->ShaderMgr.StopShaders();
@@ -1348,7 +1518,7 @@ void RenderLayer::Draw( void )
 			if( obj_iter->second->DistAlong( &(Raptor::Game->Cam.Fwd), &(Raptor::Game->Cam) ) < (box->L + box->W + box->H) / -2. )
 				continue;
 		}
-		
+
 		if( dynamic_lights && Raptor::Game->ShaderMgr.Active() )
 		{
 			// Recast the list of Shot pointers to a list of Pos3D pointers.
@@ -1394,9 +1564,7 @@ void RenderLayer::Draw( void )
 	if( Raptor::Game->ShaderMgr.Active() )
 	{
 		// Remove dynamic lights and material properties so other things will render correctly.
-		Raptor::Game->ShaderMgr.Set3f( "AmbientColor", 1., 1., 1. );
-		Raptor::Game->ShaderMgr.Set3f( "DiffuseColor", 0., 0., 0. );
-		Raptor::Game->ShaderMgr.Set1f( "Alpha", 1. );
+		ClearMaterial();
 		ClearDynamicLights();
 	}
 	
@@ -1440,9 +1608,7 @@ void RenderLayer::Draw( void )
 		
 		if( Raptor::Game->ShaderMgr.Active() )
 		{
-			Raptor::Game->ShaderMgr.Set3f( "AmbientColor", 1., 1., 1. );
-			Raptor::Game->ShaderMgr.Set3f( "DiffuseColor", 0., 0., 0. );
-			Raptor::Game->ShaderMgr.Set1f( "Alpha", 1. );
+			ClearMaterial();
 			ClearDynamicLights();
 		}
 		
@@ -2021,9 +2187,21 @@ void RenderLayer::UpdateSaitek( const Ship *ship, bool is_player, int view )
 	if( ! Raptor::Game->Cfg.SettingAsBool("saitek_enable") )
 		return;
 	
-	if( ship && (ship->Health > 0.) )
+	if( ship && (ship->Health > 0.) && is_player )
 	{
-		Raptor::Game->Saitek.SetX52ProLED( SaitekX52ProLED::Fire, true );
+		Ship *target = NULL;
+		if( ship->Target )
+		{
+			GameObject *obj = Raptor::Game->Data.GetObject( ship->Target );
+			if( obj && (obj->Type() == XWing::Object::SHIP) )
+				target = (Ship*) obj;
+		}
+		
+		std::map<uint32_t,int8_t>::const_iterator ammo_iter = ship->Ammo.find( ship->SelectedWeapon );
+		if( (ammo_iter != ship->Ammo.end()) && (ammo_iter->second == 0) )
+			Raptor::Game->Saitek.SetX52ProLED( SaitekX52ProLED::Fire, (fmod( ship->Lifetime.ElapsedSeconds(), 0.5 ) >= 0.25) );
+		else
+			Raptor::Game->Saitek.SetX52ProLED( SaitekX52ProLED::Fire, true );
 		
 		Raptor::Game->Saitek.SetX52ProLED( SaitekX52ProLED::Hat2Green, true );
 		Raptor::Game->Saitek.SetX52ProLED( SaitekX52ProLED::AGreen, true );
@@ -2053,9 +2231,33 @@ void RenderLayer::UpdateSaitek( const Ship *ship, bool is_player, int view )
 		
 		
 		char text_buffer[ 32 ] = "";
+		
 		memset( text_buffer, 0, 32 );
-		snprintf( text_buffer, 32, "Throttle: %3i%%", (int)( ship->GetThrottle() * 100. + 0.5 ) );
+		if( ship->MaxShield() )
+			snprintf( text_buffer, 17, "Shld: %3i%%/%3i%%", (int)( ship->ShieldF / ship->MaxShield() * 100. + 0.5 ), (int)( ship->ShieldR / ship->MaxShield() * 100. + 0.5 ) );
+		else if( ship->MaxHealth() )
+			snprintf( text_buffer, 17, "Hull: %3i%%", (int)( ship->Health / ship->MaxHealth() * 100. + 0.5 ) );
 		Raptor::Game->Saitek.SetX52ProMFD( 0, text_buffer );
+		
+		memset( text_buffer, 0, 32 );
+		snprintf( text_buffer, 17, "Throttle: %3i%%", (int)( ship->GetThrottle() * 100. + 0.5 ) );
+		Raptor::Game->Saitek.SetX52ProMFD( 1, text_buffer );
+		
+		memset( text_buffer, 0, 32 );
+		if( target )
+		{
+			snprintf( text_buffer, 17, "%-16.16s", target->Name.c_str() );
+			double dist = ship->Dist(target);
+			if( dist >= 98950. )
+				snprintf( text_buffer + 12, 5, ">99K" );
+			else if( dist >= 9950. )
+				snprintf( text_buffer + 11, 6, "%4.1fK", dist / 1000. );
+			else if( dist >= 999.5 )
+				snprintf( text_buffer + 12, 5, "%3.1fK", dist / 1000. );
+			else
+				snprintf( text_buffer + 13, 4, "%3.0f", dist );
+		}
+		Raptor::Game->Saitek.SetX52ProMFD( 2, text_buffer );
 		
 		
 		if( Raptor::Game->Cfg.SettingAsBool( "g_framebuffers", true ) )

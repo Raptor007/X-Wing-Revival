@@ -26,8 +26,12 @@ DeathStar::DeathStar( uint32_t id ) : GameObject( id, XWing::Object::DEATH_STAR 
 	
 	Ambient.Set( 0.f, 0.f, 0.f, 1.f );
 	Diffuse.Set( 0.4f, 0.4f, 0.4f, 1.f );
+	Specular.Set( 0.1f, 0.1f, 0.1f, 1.f );
+	Shininess = 1.f;
 	BottomAmbient.Set( -0.35f, -0.35f, -0.35f, 1.f );
 	BottomDiffuse.Set( 0.4f, 0.4f, 0.4f, 1.f );
+	BottomSpecular.Set( 0.1f, 0.1f, 0.1f, 1.f );
+	BottomShininess = 1.f;
 }
 
 
@@ -69,6 +73,8 @@ void DeathStar::ClientInit( void )
 				Texture.BecomeInstance( &(mtl_iter->second.Texture) );
 				Ambient = mtl_iter->second.Ambient;
 				Diffuse = mtl_iter->second.Diffuse;
+				Specular = mtl_iter->second.Specular;
+				Shininess = mtl_iter->second.Shininess;
 				best_vertex_count = mtl_iter->second.Arrays.VertexCount;
 			}
 		}
@@ -92,6 +98,8 @@ void DeathStar::ClientInit( void )
 			{
 				BottomAmbient = mtl_iter->second.Ambient;
 				BottomDiffuse = mtl_iter->second.Diffuse;
+				BottomSpecular = mtl_iter->second.Specular;
+				BottomShininess = mtl_iter->second.Shininess;
 				best_vertex_count = mtl_iter->second.Arrays.VertexCount;
 			}
 		}
@@ -331,6 +339,8 @@ void DeathStar::Draw( void )
 	{
 		Raptor::Game->ShaderMgr.Set3f( "AmbientColor", Ambient.Red, Ambient.Green, Ambient.Blue );
 		Raptor::Game->ShaderMgr.Set3f( "DiffuseColor", Diffuse.Red, Diffuse.Green, Diffuse.Blue );
+		Raptor::Game->ShaderMgr.Set3f( "SpecularColor", Specular.Red, Specular.Green, Specular.Blue );
+		Raptor::Game->ShaderMgr.Set1f( "Shininess", Shininess );
 	}
 	
 	glEnable( GL_TEXTURE_2D );
@@ -407,6 +417,8 @@ void DeathStar::Draw( void )
 			glEnd();
 			Raptor::Game->ShaderMgr.Set3f( "AmbientColor", BottomAmbient.Red, BottomAmbient.Green, BottomAmbient.Blue );
 			Raptor::Game->ShaderMgr.Set3f( "DiffuseColor", BottomDiffuse.Red, BottomDiffuse.Green, BottomDiffuse.Blue );
+			Raptor::Game->ShaderMgr.Set3f( "SpecularColor", BottomSpecular.Red, BottomSpecular.Green, BottomSpecular.Blue );
+			Raptor::Game->ShaderMgr.Set1f( "Shininess", BottomShininess );
 			glBegin( GL_QUADS );
 		}
 		
@@ -430,5 +442,7 @@ void DeathStar::Draw( void )
 	{
 		Raptor::Game->ShaderMgr.Set3f( "AmbientColor", 1.f, 1.f, 1.f );
 		Raptor::Game->ShaderMgr.Set3f( "DiffuseColor", 0.f, 0.f, 0.f );
+		Raptor::Game->ShaderMgr.Set3f( "SpecularColor", 0.f, 0.f, 0.f );
+		Raptor::Game->ShaderMgr.Set1f( "Shininess", 0.f );
 	}
 }

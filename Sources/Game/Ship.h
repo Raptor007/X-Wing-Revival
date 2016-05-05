@@ -29,6 +29,7 @@ public:
 	
 	double Health;
 	Clock HitClock;
+	Vec3D HitDir;
 	Clock DeathClock;
 	std::map<std::string,double> Subsystems;
 	
@@ -43,6 +44,7 @@ public:
 	std::map<uint32_t,int8_t> Ammo;
 	uint8_t FiringMode;
 	uint8_t WeaponIndex;
+	uint8_t FiredThisFrame;
 	
 	uint32_t Target;
 	
@@ -74,11 +76,13 @@ public:
 	double ShieldRechargeDelay( void ) const;
 	double ShieldRechargeRate( void ) const;
 	double PiecesDangerousTime( void ) const;
+	int WeaponCount( int weapon_type ) const;
 	bool PlayersCanFly( void ) const;
 	
 	std::map<int,Shot*> NextShots( GameObject *target = NULL ) const;
 	std::map<int,Shot*> AllShots( GameObject *target = NULL );
 	void JustFired( void );
+	void JustFired( uint32_t weapon, uint8_t mode );
 	void NextWeapon( void );
 	void NextFiringMode( void );
 	double ShotDelay( void ) const;

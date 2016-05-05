@@ -37,6 +37,7 @@ Ship::Ship( uint32_t id ) : GameObject( id, XWing::Object::SHIP )
 	WeaponIndex = 0;
 	Target = 0;
 	Ammo[ SelectedWeapon ] = -1;
+	FiredThisFrame = 0;
 }
 
 
@@ -607,6 +608,33 @@ double Ship::PiecesDangerousTime( void ) const
 }
 
 
+int Ship::WeaponCount( int weapon_type ) const
+{
+	if( ShipType == TYPE_XWING )
+	{
+		if( weapon_type == Shot::TYPE_LASER_RED )
+			return 4;
+		else if( weapon_type == Shot::TYPE_TORPEDO )
+			return 2;
+	}
+	else if( ShipType == TYPE_YWING )
+	{
+		if( weapon_type == Shot::TYPE_LASER_RED )
+			return 2;
+		else if( weapon_type == Shot::TYPE_TORPEDO )
+			return 2;
+	}
+	else if( ShipType == TYPE_TIE_FIGHTER )
+	{
+		if( weapon_type == Shot::TYPE_LASER_GREEN )
+			return 2;
+	}
+	
+	// FIXME: There are other ships with non-zero weapon counts.
+	return 0;
+}
+
+
 bool Ship::PlayersCanFly( void ) const
 {
 	if( ShipType == TYPE_ISD2 )
@@ -828,32 +856,30 @@ std::map<int,Shot*> Ship::AllShots( GameObject *target )
 
 void Ship::JustFired( void )
 {
-	FiringClocks[ SelectedWeapon ].Reset();
+	JustFired( SelectedWeapon, FiringMode );
+}
+
+
+void Ship::JustFired( uint32_t weapon, uint8_t mode )
+{
+	FiringClocks[ weapon ].Reset();
 	
-	if( Ammo[ SelectedWeapon ] > 0 )
+	if( Ammo[ weapon ] > 0 )
 	{
-		if( Ammo[ SelectedWeapon ] > FiringMode )
-			Ammo[ SelectedWeapon ] -= FiringMode;
+		if( Ammo[ weapon ] > mode )
+			Ammo[ weapon ] -= mode;
 		else
-			Ammo[ SelectedWeapon ] = 0;
+			Ammo[ weapon ] = 0;
 	}
 	
-	int weapon_count = 1;
-	if( ShipType == TYPE_XWING )
+	if( (SelectedWeapon == weapon) && ! FiredThisFrame )
 	{
-		if( SelectedWeapon == Shot::TYPE_TORPEDO )
-			weapon_count = 2;
-		else
-			weapon_count = 4;
+		WeaponIndex ++;
+		if( WeaponIndex >= WeaponCount(weapon) )
+			WeaponIndex = 0;
 	}
-	else if( ShipType == TYPE_YWING )
-		weapon_count = 2;
-	else if( ShipType == TYPE_TIE_FIGHTER )
-		weapon_count = 2;
 	
-	WeaponIndex ++;
-	if( WeaponIndex >= weapon_count )
-		WeaponIndex = 0;
+	FiredThisFrame ++;
 }
 
 
@@ -986,9 +1012,6 @@ void Ship::AddToUpdatePacketFromServer( Packet *packet, int8_t precision )
 	packet->AddFloat( Health );
 	packet->AddUChar( ShieldPos );
 	packet->AddUInt( Target );
-	//packet->AddUInt( SelectedWeapon );
-	//packet->AddUChar( FiringMode );
-	//packet->AddUChar( WeaponIndex );
 	
 	SpecialUpdate = false;
 }
@@ -1000,9 +1023,6 @@ void Ship::ReadFromUpdatePacketFromServer( Packet *packet, int8_t precision )
 	SetHealth( packet->NextFloat() );
 	SetShieldPos( packet->NextUChar() );
 	Target = packet->NextUInt();
-	//SelectedWeapon = packet->NextInt();
-	//FiringMode = packet->NextUChar();
-	//WeaponIndex = packet->NextUChar();
 }
 
 
@@ -1540,6 +1560,8 @@ bool Ship::WillCollide( const GameObject *other, double dt, std::string *this_ob
 
 void Ship::Update( double dt )
 {
+	FiredThisFrame = 0;
+	
 	if( Health <= 0. )
 	{
 		// Dead ships stay on their old course.

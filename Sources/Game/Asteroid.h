@@ -19,7 +19,8 @@ public:
 	double Radius;
 	Model *Shape;
 	Animation Texture;
-	Color Ambient, Diffuse;
+	Color Ambient, Diffuse, Specular;
+	float Shininess;
 	
 	Asteroid( uint32_t id = 0 );
 	virtual ~Asteroid();

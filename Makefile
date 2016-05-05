@@ -7,15 +7,15 @@ ARCH =
 MARCH = native
 MCPU =
 MTUNE =
-MFLAGS = -mssse3 -msahf -mfpmath=sse,387
-OFLAGS = -O3 -fstrict-aliasing -ftree-vectorize -fomit-frame-pointer -flto
-WFLAGS = -Wall -Wno-multichar
+MFLAGS =
+OFLAGS = -O3 -fomit-frame-pointer -ftree-vectorize -fno-strict-aliasing -flto
+WFLAGS = -Wall -Wextra -Wno-multichar -Wno-unused-parameter
 INC = /opt/local/include /opt/local/include/SDL /usr/include
 LIBDIR = /usr/lib64
 LIB = libSDLmain.a libSDL_net.so libSDL_mixer.so libSDL_ttf.so libSDL_image.so libSDL.so libGLEW.a libGLU.so libGL.so
 DEF =
 EXE = xwingrev
-VERSION = 0.1.3
+VERSION = 0.1.4
 GAMEDIR = /Games/X-Wing Revival
 SERVERDIR = /srv/xwingrev
 SERVERUSER = xwingrev
@@ -24,7 +24,7 @@ INSTALL_FINALIZE =
 MAC_APP = X-Wing Revival
 MAC_FRAMEWORKS = OpenGL Cocoa AudioUnit AudioToolbox IOKit Carbon
 MAC_INSTALL_NAME_TOOL = /opt/local/bin/install_name_tool
-MAC_BUNDLE_LIBS = /opt/local/lib/gcc49/libstdc++.6.dylib /opt/local/lib/gcc49/libgcc_s.1.dylib /opt/local/lib/libgcc/libstdc++.6.dylib /opt/local/lib/libgcc/libgcc_s.1.dylib
+MAC_BUNDLE_LIBS = /opt/local/lib/libgcc/libstdc++.6.dylib /opt/local/lib/libgcc/libgcc_s.1.dylib
 MAC_PPC_ARCH = ppc
 MAC_PPC_MCPU = G3
 MAC_PPC_MTUNE = G5
@@ -40,6 +40,7 @@ INCLUDES = Sources Sources/Game Sources/UI $(wildcard ../RaptorEngine/*) $(INC)
 LIBRARIES = $(foreach lib,$(LIB),$(LIBDIR)/$(lib))
 SOURCES = $(wildcard Sources/*.cpp) $(wildcard Sources/*/*.cpp) $(wildcard ../RaptorEngine/*/*.cpp)
 HEADERS = $(wildcard Sources/*.h) $(wildcard Sources/*/*.h) $(wildcard ../RaptorEngine/*/*.h)
+TARGET = exe
 EXE_INSTALL = $(EXE)
 BINDIR = $(GAMEDIR)
 XFLAGS =
@@ -50,7 +51,8 @@ ifeq ($(UNAME), Darwin)
 # Begin Mac OS X section.
 
 ifndef ARCH
-# Unless ARCH is defined, Macs should make 32-bit universal binaries by default.
+# Unless ARCH is defined, Macs should make universal binaries by default.
+TARGET = universal
 ARCH = $(MAC_PPC_ARCH) $(MAC_I32_ARCH)
 endif
 
@@ -97,8 +99,9 @@ endif
 endif
 
 ifneq (,$(findstring -4.0,$(CC)))
-# When using gcc 4.0, don't use link-time optimization (it's not supported).
+# When using gcc 4.0, don't use link-time optimization (it's not supported) and don't use auto-vectorization because it enables strict aliasing.
 OFLAGS := $(filter-out -flto,$(OFLAGS))
+OFLAGS := $(filter-out -ftree-vectorize,$(OFLAGS))
 endif
 
 ifeq ($(MAC_PPC_ARCH),$(ARCH))
@@ -117,8 +120,8 @@ else
 MFLAGS = -msse3
 endif
 ifeq (,$(findstring $(MAC_PPC_ARCH),$(ARCH)))
-# Specify mfpmath=both if there's no ppc target.
-MFLAGS += -mfpmath=sse,387
+# Specify mfpmath=sse if there's no ppc target.
+MFLAGS += -mfpmath=sse
 endif
 endif
 
@@ -134,22 +137,33 @@ LIBRARIES += $(foreach framework,$(MAC_FRAMEWORKS),-framework $(framework))
 # Macs must pad install names so install_name_tool can make them longer.
 XFLAGS += -headerpad_max_install_names
 
-# Fix dynamic library paths.
-BUILD_FINALIZE += $(foreach lib,$(MAC_BUNDLE_LIBS),$(MAC_INSTALL_NAME_TOOL) -change "$(lib)" "@executable_path/$(notdir $(lib))" "$(EXE)";)
-
 ifdef MAC_APP
 # Create application package.
+TARGET = X-Wing\ Revival.app
 EXE_INSTALL = $(MAC_APP)
 BINDIR = $(GAMEDIR)/$(MAC_APP).app/Contents/MacOS
 INSTALL_FINALIZE += mkdir -p "$(GAMEDIR)/$(MAC_APP).app/Contents/Resources"; cp -p "Info.plist" "$(GAMEDIR)/$(MAC_APP).app/Contents/"; rsync -ax --exclude=".*" "English.lproj" "$(GAMEDIR)/$(MAC_APP).app/Contents/Resources/"; cp -p "xwing128.icns" "$(GAMEDIR)/$(MAC_APP).app/Contents/Resources/";
 endif
 
 ifdef MAC_BUNDLE_LIBS
-# Include necessary dylibs.
+# Fix dynamic library paths, and include necessary dylibs during install.
+BUILD_FINALIZE += $(foreach lib,$(MAC_BUNDLE_LIBS),$(MAC_INSTALL_NAME_TOOL) -change "$(lib)" "@executable_path/$(notdir $(lib))" "$(EXE)";)
 INSTALL_FINALIZE += $(foreach lib,$(MAC_BUNDLE_LIBS),cp -p "$(lib)" "$(BINDIR)/"; chmod 644 "$(BINDIR)/$(notdir $(lib))";)
 endif
 
 # End Mac OS X section.
+endif
+
+
+# MinGW (Windows without MSVC).
+ifneq (,$(findstring MINGW,$(UNAME))$(findstring CYGWIN,$(UNAME)))
+LDFLAGS += -static-libgcc -static-libstdc++ -lmingw32 -lSDLmain
+LIBDIR = /lib
+LIB = SDL_ttf.lib SDL_image.lib SDL_mixer.lib SDL_net.lib SDL.lib glew32s.lib GLU32.lib OpenGL32.lib bufferoverflowu.lib
+MFLAGS += -mwindows
+LIBRARIES += -liphlpapi -ladvapi32
+EXE = xwingrev.exe
+OBJECTS += XWing.res
 endif
 
 
@@ -180,7 +194,21 @@ AFLAGS += -mtune=$(MTUNE)
 endif
 
 
-default: $(SOURCES) $(HEADERS) $(EXE)
+.PHONY: default exe objects clean install uninstall play server-install ppc i32 i64 universal lipo
+
+default: $(TARGET)
+
+%.app: universal
+	mkdir -p "$@/Contents/MacOS"
+	cp "$(EXE)" "$@/Contents/MacOS/$(patsubst %.app,%,$@)"
+	mkdir -p "$@/Contents/Resources"
+	cp -p "Info.plist" "$@/Contents/"
+	rsync -ax --exclude=".*" "English.lproj" "$@/Contents/Resources/"
+	cp -p "xwing128.icns" "$@/Contents/Resources/"
+	-$(foreach lib,$(MAC_BUNDLE_LIBS),cp -p "$(lib)" "$@/Contents/MacOS/"; chmod 644 "$@/Contents/MacOS/$(notdir $(lib))";)
+
+
+exe: $(SOURCES) $(HEADERS) $(EXE)
 
 $(EXE): $(OBJECTS)
 	$(LD) $(AFLAGS) $(MFLAGS) $(OFLAGS) $(WFLAGS) $(XFLAGS) $(LDFLAGS) $(OBJECTS) $(LIBRARIES) -o $@
@@ -196,10 +224,13 @@ build/%/.dir:
 	mkdir -p $(dir $@)
 	touch $@
 
+XWing.res:
+	windres XWing.rc -O coff -o $@
+
 objects: $(SOURCES) $(HEADERS) $(OBJECTS)
 
 clean:
-	rm -rf build/arch-* "$(EXE)" "$(EXE)"_*
+	rm -rf build/arch-* "$(EXE)" "$(EXE)"_* XWing.res "X-Wing Revival.app"
 
 install:
 	mkdir -p "$(BINDIR)"
@@ -236,15 +267,15 @@ server-install:
 
 ppc:
 	make objects ARCH="$(MAC_PPC_ARCH)" MCPU="$(MAC_PPC_MCPU)" MTUNE="$(MAC_PPC_MTUNE)"
-	make EXE="$(EXE)_ppc" ARCH="$(MAC_PPC_ARCH)" MARCH="$(MAC_PPC_MARCH)" MTUNE="$(MAC_PPC_MTUNE)"
+	make exe EXE="$(EXE)_ppc" ARCH="$(MAC_PPC_ARCH)" MARCH="$(MAC_PPC_MARCH)" MTUNE="$(MAC_PPC_MTUNE)"
 
 i32:
 	make objects ARCH="$(MAC_I32_ARCH)" MARCH="$(MAC_I32_MARCH)" MTUNE="$(MAC_I32_MTUNE)"
-	make EXE="$(EXE)_i32" ARCH="$(MAC_I32_ARCH)" MARCH="$(MAC_I32_MARCH)" MTUNE="$(MAC_I32_MTUNE)"
+	make exe EXE="$(EXE)_i32" ARCH="$(MAC_I32_ARCH)" MARCH="$(MAC_I32_MARCH)" MTUNE="$(MAC_I32_MTUNE)"
 
 i64:
 	make objects ARCH="$(MAC_I64_ARCH)" MARCH="$(MAC_I64_MARCH)" MTUNE="$(MAC_I64_MTUNE)" CC="/opt/local/bin/g++"
-	make EXE="$(EXE)_i64" ARCH="$(MAC_I64_ARCH)" MARCH="$(MAC_I64_MARCH)" MTUNE="$(MAC_I64_MTUNE)" CC="/opt/local/bin/g++"
+	make exe EXE="$(EXE)_i64" ARCH="$(MAC_I64_ARCH)" MARCH="$(MAC_I64_MARCH)" MTUNE="$(MAC_I64_MTUNE)" CC="/opt/local/bin/g++"
 
 universal:
 	make ppc EXE="$(EXE)"

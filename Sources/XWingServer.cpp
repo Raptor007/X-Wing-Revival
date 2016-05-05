@@ -1634,7 +1634,6 @@ void XWingServer::Update( double dt )
 					
 					if( ship->Firing && (ship->FiringClocks[ ship->SelectedWeapon ].ElapsedSeconds() >= ship->ShotDelay()) )
 					{
-						uint8_t prev_weapon_index = ship->WeaponIndex;
 						GameObject *target = Data.GetObject( ship->Target );
 						std::map<int,Shot*> shots = ship->NextShots( target );
 						ship->JustFired();
@@ -1643,20 +1642,6 @@ void XWingServer::Update( double dt )
 						{
 							uint32_t shot_id = Data.AddObject( shot_iter->second );
 							add_object_ids.insert( shot_id );
-						}
-						
-						if( shots.size() && ((ship->Ammo[ ship->SelectedWeapon ] >= 0) || (ship->PlayerID && (ship->WeaponIndex != prev_weapon_index))) )
-						{
-							// Send updated ammo count and weapon index to everyone.
-							Packet ammo_update( XWing::Packet::AMMO_UPDATE );
-							ammo_update.AddUInt( ship->ID );
-							ammo_update.AddUInt( ship->SelectedWeapon );
-							ammo_update.AddChar( ship->Ammo[ ship->SelectedWeapon ] );
-							ammo_update.AddUChar( ship->WeaponIndex );
-							if( ship->Ammo[ ship->SelectedWeapon ] >= 0 )
-								Net.SendAll( &ammo_update );
-							else
-								Net.SendToPlayer( &ammo_update, ship->PlayerID );
 						}
 					}
 				}
@@ -2453,13 +2438,18 @@ void XWingServer::BeginFlying( void )
 			deathstar->SetUpVec( 0., 0., 1. );
 			Data.AddObject( deathstar );
 			
+			// Allow server variable to set distance to exhaust port.
+			double trench_length = atof( Data.Properties["yavin_dist"].c_str() );
+			if( trench_length <= 0. )
+				trench_length = 15000.;
+			
 			// Exhaust port floor.
 			DeathStarBox *exhaust_box = new DeathStarBox();
 			exhaust_box->Copy( deathstar );
 			exhaust_box->W = deathstar->TrenchWidth;
 			exhaust_box->L = exhaust_box->W;
 			exhaust_box->H = exhaust_box->W;
-			exhaust_box->MoveAlong( &(deathstar->Fwd), 15000. );
+			exhaust_box->MoveAlong( &(deathstar->Fwd), trench_length );
 			exhaust_box->MoveAlong( &(deathstar->Up), exhaust_box->H / 4. - deathstar->TrenchDepth );
 			exhaust_box->Pitch( 15. );
 			Data.AddObject( exhaust_box );
@@ -2481,7 +2471,7 @@ void XWingServer::BeginFlying( void )
 			back_wall->W = deathstar->TrenchWidth;
 			back_wall->L = back_wall->W * 2.;
 			back_wall->H = deathstar->TrenchDepth * 0.9;
-			back_wall->MoveAlong( &(deathstar->Fwd), 15200. );
+			back_wall->MoveAlong( &(deathstar->Fwd), trench_length + 200. );
 			back_wall->MoveAlong( &(deathstar->Up), back_wall->H / 2. - deathstar->TrenchDepth );
 			Data.AddObject( back_wall );
 			
@@ -2494,7 +2484,7 @@ void XWingServer::BeginFlying( void )
 			back_turret->MaxGunPitch = 90.;
 			back_turret->SingleShotDelay = 0.25;
 			back_turret->FiringMode = 2;
-			back_turret->MoveAlong( &(deathstar->Fwd), 14900. );
+			back_turret->MoveAlong( &(deathstar->Fwd), trench_length - 100. );
 			back_turret->MoveAlong( &(deathstar->Up), -deathstar->TrenchDepth );
 			Data.AddObject( back_turret );
 			
@@ -2504,7 +2494,7 @@ void XWingServer::BeginFlying( void )
 			front_wall->W = deathstar->TrenchWidth;
 			front_wall->H = 10.;
 			front_wall->L = front_wall->H / 2.;
-			front_wall->MoveAlong( &(deathstar->Fwd), 14800. );
+			front_wall->MoveAlong( &(deathstar->Fwd), trench_length - 200. );
 			front_wall->MoveAlong( &(deathstar->Up), front_wall->H / 2. - deathstar->TrenchDepth );
 			Data.AddObject( front_wall );
 			
@@ -2517,7 +2507,7 @@ void XWingServer::BeginFlying( void )
 				box->L = 11.;
 				box->H = Rand::Double( 10., 30. );
 				box->MoveAlong( &(deathstar->Up), box->H / 2. );
-				box->MoveAlong( &(deathstar->Fwd), Rand::Double( 14000., 16000. ) );
+				box->MoveAlong( &(deathstar->Fwd), Rand::Double( trench_length - 1000., trench_length + 1000. ) );
 				box->MoveAlong( &(deathstar->Right), deathstar->TrenchWidth * (Rand::Bool() ? 1. : -1.) * Rand::Double( 2., 10. ) );
 				Data.AddObject( box );
 				
@@ -2540,7 +2530,7 @@ void XWingServer::BeginFlying( void )
 				box->L = 11.;
 				box->H = Rand::Double( 10., 80. );
 				box->MoveAlong( &(deathstar->Up), box->H / 2. );
-				box->MoveAlong( &(deathstar->Fwd), Rand::Double( -10000., 20000. ) );
+				box->MoveAlong( &(deathstar->Fwd), Rand::Double( -10000., trench_length + 5000. ) );
 				box->MoveAlong( &(deathstar->Right), deathstar->TrenchWidth * (Rand::Bool() ? 1. : -1.) * Rand::Double( 2., 50. ) );
 				Data.AddObject( box );
 				
@@ -2554,7 +2544,7 @@ void XWingServer::BeginFlying( void )
 			}
 			
 			// Trench bottom turrets.
-			for( double fwd = 2550.; fwd < 14300.1; fwd += 900. )
+			for( double fwd = 2550.; fwd < (trench_length - 699.9); fwd += 900. )
 			{
 				Turret *turret = new Turret();
 				turret->Copy( deathstar );
@@ -2577,7 +2567,7 @@ void XWingServer::BeginFlying( void )
 			}
 			
 			// Trench side turrets.
-			for( double fwd = 2800.; fwd < 14500.1; fwd += 900. )
+			for( double fwd = 2800.; fwd < (trench_length - 499.9); fwd += 900. )
 			{
 				Turret *turret = new Turret();
 				turret->Copy( deathstar );
@@ -2603,7 +2593,7 @@ void XWingServer::BeginFlying( void )
 			// Obstacles in trench.
 			int prev_box_type = Rand::Int( 0, 3 );
 			Pos3D waypoint;
-			for( double fwd = -1000.; fwd < 14000.1; fwd += 300. )
+			for( double fwd = -1000.; fwd < (trench_length - 999.9); fwd += 300. )
 			{
 				DeathStarBox *box = new DeathStarBox();
 				box->Copy( deathstar );
@@ -2990,7 +2980,7 @@ void XWingServer::BeginFlying( void )
 				else
 					empire_count ++;
 				
-				uint32_t ship_type = rebel ? rebel_ship_type : Ship::TYPE_TIE_FIGHTER;
+				uint32_t ship_type = rebel ? rebel_ship_type : (uint32_t) Ship::TYPE_TIE_FIGHTER;
 				std::string squadron = rebel ? rebel_squadron : "Alpha";
 				
 				Ship *ship = new Ship();

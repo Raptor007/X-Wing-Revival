@@ -34,8 +34,7 @@ namespace XWing
 			SHOT_HIT_SHIP = 'HitS',
 			SHOT_HIT_TURRET = 'HitT',
 			SHOT_HIT_HAZARD = 'HitH',
-			MISC_HIT_SHIP = '?Hit',
-			AMMO_UPDATE = 'Ammo'
+			MISC_HIT_SHIP = '?Hit'
 		};
 	}
 	

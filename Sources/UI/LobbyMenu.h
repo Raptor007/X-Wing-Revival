@@ -74,7 +74,7 @@ public:
 class LobbyMenuTeamButton : public LabelledButton
 {
 public:
-	LobbyMenuTeamButton( void );
+	LobbyMenuTeamButton( int font_size = 17 );
 	virtual ~LobbyMenuTeamButton();
 	void Clicked( Uint8 button = SDL_BUTTON_LEFT );
 };
@@ -83,7 +83,7 @@ public:
 class LobbyMenuGroupButton : public LabelledButton
 {
 public:
-	LobbyMenuGroupButton( void );
+	LobbyMenuGroupButton( int font_size = 17 );
 	virtual ~LobbyMenuGroupButton();
 	void Clicked( Uint8 button = SDL_BUTTON_LEFT );
 };
@@ -92,7 +92,7 @@ public:
 class LobbyMenuShipButton : public LabelledButton
 {
 public:
-	LobbyMenuShipButton( void );
+	LobbyMenuShipButton( int font_size = 17 );
 	virtual ~LobbyMenuShipButton();
 	void Clicked( Uint8 button = SDL_BUTTON_LEFT );
 };

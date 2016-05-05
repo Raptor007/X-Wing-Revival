@@ -40,9 +40,10 @@ public:
 	virtual ~RenderLayer();
 	
 	void SetBackground( void );
-	void SetWorldLights( void );
+	void SetWorldLights( float ambient_scale = 1.f, const std::vector<const Vec3D*> *obstructions = NULL );
 	void ClearWorldLights( void );
 	void ClearDynamicLights( void );
+	void ClearMaterial( void );
 	
 	void Draw( void );
 	void DrawBackground( void );

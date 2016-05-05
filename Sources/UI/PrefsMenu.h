@@ -29,9 +29,8 @@ class PrefsMenu : public Window
 {
 public:
 	Font *LabelFont, *TitleFont, *ItemFont, *ButtonFont;
-	int PrevFullscreenX, PrevFullscreenY, PrevFSAA, PrevAF;
+	int PrevFullscreenX, PrevFullscreenY, PrevFSAA, PrevAF, PrevLightQuality;
 	bool PrevFullscreen;
-	std::string PrevSoundDir, PrevMusicDir;
 	
 	PrefsMenu( void );
 	virtual ~PrefsMenu();
@@ -115,5 +114,16 @@ class PrefsMenuDefaultsButton : public LabelledButton
 public:
 	PrefsMenuDefaultsButton( SDL_Rect *rect, Font *button_font, const char *label );
 	virtual ~PrefsMenuDefaultsButton();
+	void Clicked( Uint8 button = SDL_BUTTON_LEFT );
+};
+
+
+class PrefsMenuSillyButton : public Button
+{
+public:
+	int TimesClicked;
+	PrefsMenuSillyButton( SDL_Rect *rect );
+	virtual ~PrefsMenuSillyButton();
+	void Draw( void );
 	void Clicked( Uint8 button = SDL_BUTTON_LEFT );
 };

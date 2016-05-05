@@ -50,7 +50,7 @@ void MainMenu::UpdateRects( void )
 	Rect.w = Raptor::Game->Gfx.W;
 	Rect.h = Raptor::Game->Gfx.H;
 	
-	SDL_Rect title_size;
+	SDL_Rect title_size = {0,0,0,0};
 	TitleFontBig->TextSize( Raptor::Game->Game, &title_size );
 	if( (title_size.w <= Raptor::Game->Gfx.W) && (title_size.h <= (Raptor::Game->Gfx.H / 2)) )
 		TitleFont = TitleFontBig;

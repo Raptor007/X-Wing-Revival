@@ -25,6 +25,8 @@ Asteroid::Asteroid( uint32_t id ) : GameObject( id, XWing::Object::ASTEROID )
 	RollRate = Rand::Double( -10., 10 );
 	PitchRate = Rand::Double( -10., 10 );
 	YawRate = Rand::Double( -10., 10 );
+
+	Shininess = 1.f;
 }
 
 
@@ -54,6 +56,8 @@ void Asteroid::ClientInit( void )
 				Texture.BecomeInstance( &(mtl_iter->second.Texture) );
 				Ambient = mtl_iter->second.Ambient;
 				Diffuse = mtl_iter->second.Diffuse;
+				Specular = mtl_iter->second.Specular;
+				Shininess = mtl_iter->second.Shininess;
 				best_vertex_count = mtl_iter->second.Arrays.VertexCount;
 			}
 		}
@@ -64,6 +68,8 @@ void Asteroid::ClientInit( void )
 		Texture.BecomeInstance( Raptor::Game->Res.GetAnimation("dirt.ani") );
 		Ambient.Set( 0.f, 0.f, 0.f, 1.f );
 		Diffuse.Set( 0.5f, 0.5f, 0.5f, 1.f );
+		Specular.Set( 0.f, 0.f, 0.f, 1.f );
+		Shininess = 1.f;
 	}
 }
 
@@ -175,6 +181,8 @@ void Asteroid::Draw( void )
 			// Match the color values in asteroid.mtl for shader lighting.
 			Raptor::Game->ShaderMgr.Set3f( "AmbientColor", Ambient.Red, Ambient.Green, Ambient.Blue );
 			Raptor::Game->ShaderMgr.Set3f( "DiffuseColor", Diffuse.Red, Diffuse.Green, Diffuse.Blue );
+			Raptor::Game->ShaderMgr.Set3f( "SpecularColor", Specular.Red, Specular.Green, Specular.Blue );
+			Raptor::Game->ShaderMgr.Set1f( "Shininess", Shininess );
 		}
 		
 		Raptor::Game->Gfx.DrawSphere3D( X, Y, Z, Radius, detail, Texture.CurrentFrame(), Graphics::TEXTURE_MODE_X_DIV_R );
