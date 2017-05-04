@@ -12,9 +12,17 @@
 LobbyMenu::LobbyMenu( void )
 {
 	Rect.x = 0;
-	Rect.w = 0;
+	Rect.y = 0;
 	Rect.w = Raptor::Game->Gfx.W;
 	Rect.h = Raptor::Game->Gfx.H;
+	
+	if( Raptor::Game->Head.VR )
+	{
+		Rect.x = Raptor::Game->Gfx.W/2 - 640/2;
+		Rect.y = Raptor::Game->Gfx.H/2 - 480/2;
+		Rect.w = 640;
+		Rect.h = 480;
+	}
 	
 	Background.BecomeInstance( Raptor::Game->Res.GetAnimation("bg_lobby.ani") );
 	
@@ -110,9 +118,17 @@ LobbyMenu::~LobbyMenu()
 void LobbyMenu::UpdateRects( void )
 {
 	Rect.x = 0;
-	Rect.w = 0;
+	Rect.y = 0;
 	Rect.w = Raptor::Game->Gfx.W;
 	Rect.h = Raptor::Game->Gfx.H;
+	
+	if( Raptor::Game->Head.VR && Raptor::Game->Gfx.DrawTo )
+	{
+		Rect.x = Raptor::Game->Gfx.W/2 - 640/2;
+		Rect.y = Raptor::Game->Gfx.H/2 - 480/2;
+		Rect.w = 640;
+		Rect.h = 480;
+	}
 	
 	bool tiny = (Rect.h < 720) || (Rect.w < 800);
 	
@@ -271,6 +287,8 @@ void LobbyMenu::UpdateRects( void )
 		;
 	else
 		Selected = MessageInput;
+	
+	UpdateCalcRects();
 }
 
 

@@ -18,6 +18,7 @@ public:
 	Clock RoundTimer;
 	uint32_t ObservedShipID;
 	double LookYaw, LookPitch;
+	bool ThumbstickLook;
 	
 	XWingGame( std::string version );
 	virtual ~XWingGame();

@@ -36,6 +36,7 @@ XWingGame::XWingGame( std::string version ) : RaptorGame( "X-Wing Revival", vers
 	ObservedShipID = 0;
 	LookYaw = 0.;
 	LookPitch = 0.;
+	ThumbstickLook = true;
 }
 
 
@@ -54,6 +55,7 @@ void XWingGame::SetDefaults( void )
 	Cfg.Settings[ "spectator_view" ] = "cinema2";
 	Cfg.Settings[ "view_cycle_time" ] = "7";
 	
+	Cfg.Settings[ "g_zfar" ] = "15000";
 	Cfg.Settings[ "g_dynamic_lights" ] = "4";
 	Cfg.Settings[ "g_bg" ] = "true";
 	Cfg.Settings[ "g_stars" ] = "0";
@@ -79,7 +81,6 @@ void XWingGame::SetDefaults( void )
 	Cfg.Settings[ "joy_smooth_pedals" ] = "0";
 	Cfg.Settings[ "joy_smooth_thumbsticks" ] = "1";
 	Cfg.Settings[ "joy_smooth_triggers" ] = "0.75";
-	Cfg.Settings[ "joy_thumbstick_look" ] = "true";
 	
 	Cfg.Settings[ "mouse_enable" ] = "fullscreen";
 	Cfg.Settings[ "mouse_invert" ] = "true";
@@ -231,6 +232,7 @@ void XWingGame::Precache( void )
 		Res.GetModel("calamari-cruiser.obj");
 		
 		Res.GetSound("beep.wav");
+		Res.GetSound("chat.wav");
 		Res.GetSound("laser_red.wav");
 		Res.GetSound("laser_green.wav");
 		Res.GetSound("turbolaser_green.wav");
@@ -333,10 +335,11 @@ void XWingGame::Update( double dt )
 			if( Mouse.ButtonDown( SDL_BUTTON_X2 ) )
 				throttle += FrameTime / 2.;
 		}
-		else if( Cfg.SettingAsBool("mouse_look") )
+		else if( Cfg.SettingAsBool("mouse_look") && (! Raptor::Game->Head.VR) )
 		{
 			LookYaw = ( (fabs(mouse_x_percent) <= 1.) ? mouse_x_percent : Num::Sign(mouse_x_percent) ) * 180.;
 			LookPitch = ( (fabs(mouse_y_percent) <= 1.) ? mouse_y_percent : Num::Sign(mouse_y_percent) ) * -90.;
+			ThumbstickLook = false;
 		}
 	}
 	
@@ -382,12 +385,14 @@ void XWingGame::Update( double dt )
 				pitch = fabs(pow( fabs(pitch), smooth + 1. )) * Num::Sign(pitch);
 				yaw = joy_iter->second.Axis( 0, deadzone_thumbsticks );
 				yaw = fabs(pow( fabs(yaw), smooth + 1. )) * Num::Sign(yaw);
-				if( Cfg.SettingAsBool("joy_thumbstick_look",true) )
+				double look_yaw = joy_iter->second.Axis( 4, deadzone_thumbsticks );
+				double look_pitch = joy_iter->second.Axis( 3, deadzone_thumbsticks );
+				if( (fabs(look_yaw) > 0.5) || (fabs(look_pitch) > 0.5) )
+					ThumbstickLook = true;
+				if( ThumbstickLook )
 				{
-					LookYaw = joy_iter->second.Axis( 4, deadzone_thumbsticks );
-					LookYaw = 180. * fabs(pow( fabs(LookYaw), smooth + 1. )) * Num::Sign(LookYaw);
-					LookPitch = joy_iter->second.Axis( 3, deadzone_thumbsticks );
-					LookPitch = -90. * fabs(pow( fabs(LookPitch), smooth + 1. )) * Num::Sign(LookPitch);
+					LookYaw = 180. * fabs(pow( fabs(look_yaw), smooth + 1. )) * Num::Sign(look_yaw);
+					LookPitch = -90. * fabs(pow( fabs(look_pitch), smooth + 1. )) * Num::Sign(look_pitch);
 				}
 				
 				// Read controller's buttons.
@@ -423,7 +428,7 @@ void XWingGame::Update( double dt )
 			}
 			else
 			{
-				// Only real analog data if this is an analog stick (not a button pad).
+				// Only read axis data if this is an analog stick (not a button pad).
 				if( joy_iter->second.HasAxis(0) || joy_iter->second.HasAxis(1) || joy_iter->second.HasAxis(2) || joy_iter->second.HasAxis(3) )
 				{
 					stick = true;
@@ -465,6 +470,7 @@ void XWingGame::Update( double dt )
 					LookPitch = 0.;
 					LookYaw = 0.;
 					joy_look = true;
+					Raptor::Game->Head.Recenter();
 				}
 				if( joy_iter->second.ButtonDown( 7 ) ) // E
 					target_nearest_attacker = true;
@@ -496,11 +502,13 @@ void XWingGame::Update( double dt )
 		}
 		
 		// Allow mouse_look to override mouse_enable when a joystick was found.
-		if( ReadMouse && Cfg.SettingAsBool("mouse_look") && stick && (! joy_look) )
+		if( ReadMouse && Cfg.SettingAsBool("mouse_look") && stick && (! joy_look) && (! Raptor::Game->Head.VR) )
 		{
 			LookYaw = ( (fabs(mouse_x_percent) <= 1.) ? mouse_x_percent : Num::Sign(mouse_x_percent) ) * 180.;
 			LookPitch = ( (fabs(mouse_y_percent) <= 1.) ? mouse_y_percent : Num::Sign(mouse_y_percent) ) * -90.;
 		}
+		else if( joy_look )
+			ThumbstickLook = false;
 	}
 	
 	if( ReadKeyboard && ! Console.IsActive() )
@@ -540,17 +548,31 @@ void XWingGame::Update( double dt )
 		if( Keys.KeyDown(SDLK_SPACE) )
 			firing = true;
 		if( Keys.KeyDown(SDLK_KP7) || Keys.KeyDown(SDLK_KP8) || Keys.KeyDown(SDLK_KP9) )
+		{
 			LookPitch += 90. * FrameTime;
+			ThumbstickLook = false;
+		}
 		if( Keys.KeyDown(SDLK_KP1) || Keys.KeyDown(SDLK_KP2) || Keys.KeyDown(SDLK_KP3) )
+		{
 			LookPitch -= 90. * FrameTime;
+			ThumbstickLook = false;
+		}
 		if( Keys.KeyDown(SDLK_KP1) || Keys.KeyDown(SDLK_KP4) || Keys.KeyDown(SDLK_KP7) )
+		{
 			LookYaw -= 90. * FrameTime;
+			ThumbstickLook = false;
+		}
 		if( Keys.KeyDown(SDLK_KP3) || Keys.KeyDown(SDLK_KP6) || Keys.KeyDown(SDLK_KP9) )
+		{
 			LookYaw += 90. * FrameTime;
+			ThumbstickLook = false;
+		}
 		if( Keys.KeyDown(SDLK_KP5) )
 		{
 			LookPitch = 0.;
 			LookYaw = 0.;
+			ThumbstickLook = false;
+			Raptor::Game->Head.Recenter();
 		}
 		
 		if( Keys.KeyDown(SDLK_LCTRL) )
@@ -1315,7 +1337,20 @@ bool XWingGame::ProcessPacket( Packet *packet )
 	packet->Rewind();
 	PacketType type = packet->Type();
 	
-	if( type == XWing::Packet::EXPLOSION )
+	if( type == Raptor::Packet::MESSAGE )
+	{
+		packet->NextString();
+		if( packet->Remaining() )
+		{
+			uint32_t msg_type = packet->NextUInt();
+			if( msg_type == TextConsole::MSG_CHAT )
+				Snd.Play( Res.GetSound("chat.wav") );
+		}
+		
+		// Don't return true, because we want RaptorGame to process the message too.
+	}
+	
+	else if( type == XWing::Packet::EXPLOSION )
 	{
 		double x = packet->NextDouble();
 		double y = packet->NextDouble();
@@ -1336,13 +1371,14 @@ bool XWingGame::ProcessPacket( Packet *packet )
 				Vec3D rand( Rand::Double(-size,size), Rand::Double(-size,size), Rand::Double(-size,size) );
 				rand.ScaleBy( 0.5 );
 				pos.SetPos( x + rand.X, y + rand.Y, z + rand.Z );
-				motion_vec.Set( dx + rand.X * abs(rand.X), dy + rand.Y * abs(rand.Y), dz + rand.Z * abs(rand.Z) );
+				motion_vec.Set( dx + rand.X * fabs(rand.X), dy + rand.Y * fabs(rand.Y), dz + rand.Z * fabs(rand.Z) );
 				Data.Effects.push_back( Effect( Res.GetAnimation("explosion.ani"), size * Rand::Double(0.1,0.5), NULL, 0., &pos, &motion_vec, Rand::Bool() ? 360. : -360., Rand::Double(0.5, 2.) ) );
 			}
 		}
 		
 		return true;
 	}
+	
 	else if( type == XWing::Packet::SHOT_HIT_SHIP )
 	{
 		uint32_t ship_id = packet->NextUInt();
@@ -1426,6 +1462,7 @@ bool XWingGame::ProcessPacket( Packet *packet )
 		
 		return true;
 	}
+	
 	else if( type == XWing::Packet::SHOT_HIT_TURRET )
 	{
 		uint32_t turret_id = packet->NextUInt();
@@ -1468,6 +1505,7 @@ bool XWingGame::ProcessPacket( Packet *packet )
 		
 		return true;
 	}
+	
 	else if( type == XWing::Packet::SHOT_HIT_HAZARD )
 	{
 		uint32_t shot_type = packet->NextUInt();
@@ -1490,6 +1528,7 @@ bool XWingGame::ProcessPacket( Packet *packet )
 		
 		return true;
 	}
+	
 	else if( type == XWing::Packet::MISC_HIT_SHIP )
 	{
 		uint32_t ship_id = packet->NextUInt();
@@ -1543,21 +1582,25 @@ bool XWingGame::ProcessPacket( Packet *packet )
 		
 		return true;
 	}
+	
 	else if( type == XWing::Packet::TIME_REMAINING )
 	{
 		RoundTimer.Reset( packet->NextFloat() );
 		return true;
 	}
+	
 	else if( type == XWing::Packet::LOBBY )
 	{
 		ChangeState( XWing::State::LOBBY );
 		return true;
 	}
+	
 	else if( type == XWing::Packet::FLY )
 	{
 		ChangeState( XWing::State::FLYING );
 		return true;
 	}
+	
 	else if( type == XWing::Packet::ROUND_ENDED )
 	{
 		uint32_t game_type = packet->NextUInt();

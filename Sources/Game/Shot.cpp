@@ -324,6 +324,9 @@ void Shot::Draw( void )
 		glBindTexture( GL_TEXTURE_2D, Anim.CurrentFrame() );
 		glColor4f( 1.f, 1.f, 1.f, 1.f );
 		
+		// Don't mipmap shots; they should look bright in the distance.
+		glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
+		
 		glBegin( GL_TRIANGLES );
 			
 			if( going_away )

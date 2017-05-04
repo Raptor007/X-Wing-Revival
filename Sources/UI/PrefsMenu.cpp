@@ -33,8 +33,13 @@ PrefsMenu::PrefsMenu( void )
 	PrevFullscreen = Raptor::Game->Cfg.SettingAsBool("g_fullscreen");
 	PrevFullscreenX = Raptor::Game->Cfg.SettingAsInt("g_res_fullscreen_x");
 	PrevFullscreenY = Raptor::Game->Cfg.SettingAsInt("g_res_fullscreen_y");
+	PrevBPP = Raptor::Game->Cfg.SettingAsInt("g_bpp");
 	PrevFSAA = Raptor::Game->Cfg.SettingAsInt("g_fsaa");
+	PrevMipmap = Raptor::Game->Cfg.SettingAsBool("g_mipmap");
 	PrevAF = Raptor::Game->Cfg.SettingAsInt("g_af");
+	PrevTextureMaxres = Raptor::Game->Cfg.SettingAsInt("g_texture_maxres");
+	PrevFramebuffers = Raptor::Game->Cfg.SettingAsBool("g_framebuffers");
+	PrevShaderEnable = Raptor::Game->Cfg.SettingAsBool("g_shader_enable");
 	PrevLightQuality = Raptor::Game->Cfg.SettingAsInt("g_shader_light_quality");
 }
 
@@ -71,7 +76,7 @@ void PrefsMenu::UpdateContents( void )
 	
 	group_rect.x = 10;
 	group_rect.y = 50;
-	group_rect.w = 305;
+	group_rect.w = 400;
 	group_rect.h = 210;
 	group = new GroupBox( &group_rect, "Graphics", ItemFont );
 	AddElement( group );
@@ -90,12 +95,7 @@ void PrefsMenu::UpdateContents( void )
 	rect.x += rect.w + 5;
 	rect.w = 60;
 	group->AddElement( new PrefsMenuTextBox( &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, "g_res_fullscreen_y" ) );
-	
-	rect.y += rect.h + 8;
-	rect.x = 10;
-	rect.w = 80;
-	group->AddElement( new Label( &rect, "Filtering:", LabelFont, Font::ALIGN_MIDDLE_LEFT ) );
-	rect.x += rect.w + 5;
+	rect.x += rect.w + 15;
 	rect.w = 85;
 	PrefsMenuDropDown *fsaa_dropdown = new PrefsMenuDropDown( &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, 0, "g_fsaa" );
 	fsaa_dropdown->AddItem( "0", "No AA" );
@@ -105,20 +105,34 @@ void PrefsMenu::UpdateContents( void )
 	fsaa_dropdown->AddItem( "16", "16xFSAA" );
 	fsaa_dropdown->Update();
 	group->AddElement( fsaa_dropdown );
+	
+	rect.y += rect.h + 8;
+	rect.x = 10;
+	rect.w = 80;
+	group->AddElement( new Label( &rect, "Textures:", LabelFont, Font::ALIGN_MIDDLE_LEFT ) );
 	rect.x += rect.w + 5;
 	rect.w = 85;
-	PrefsMenuDropDown *af_dropdown = new PrefsMenuDropDown( &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, 0, "g_af" );
-	af_dropdown->AddItem( "1", "No AF" );
+	PrefsMenuDropDown *texture_res_dropdown = new PrefsMenuDropDown( &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, 0, "g_texture_maxres" );
+	texture_res_dropdown->AddItem( "128", "Low" );
+	texture_res_dropdown->AddItem( "256", "Medium" );
+	texture_res_dropdown->AddItem( "0", "High" );
+	texture_res_dropdown->Update();
+	group->AddElement( texture_res_dropdown );
+	rect.x += rect.w + 10;
+	rect.w = 85;
+	PrefsMenuFilterDropDown *af_dropdown = new PrefsMenuFilterDropDown( &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, 0 );
+	af_dropdown->AddItem( "1", "Trilinear" );
 	af_dropdown->AddItem( "2", "2xAF" );
 	af_dropdown->AddItem( "4", "4xAF" );
 	af_dropdown->AddItem( "8", "8xAF" );
 	af_dropdown->AddItem( "16", "16xAF" );
+	af_dropdown->AddItem( "-1", "Linear" );
 	af_dropdown->Update();
 	group->AddElement( af_dropdown );
 	
 	rect.y += rect.h + 8;
 	rect.x = 10;
-	rect.w = group_rect.w - 20;
+	rect.w = 185;
 	group->AddElement( new PrefsMenuCheckBox( &rect, LabelFont, "Draw With Shaders", "g_shader_enable" ) );
 	
 	rect.x = 10;
@@ -126,26 +140,21 @@ void PrefsMenu::UpdateContents( void )
 	rect.w = 115;
 	group->AddElement( new Label( &rect, "Light Quality:", LabelFont, Font::ALIGN_MIDDLE_LEFT ) );
 	rect.x += rect.w + 5;
-	rect.w = 130;
+	rect.w = 125;
 	PrefsMenuDropDown *light_quality_dropdown = new PrefsMenuDropDown( &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, 0, "g_shader_light_quality" );
 	light_quality_dropdown->AddItem( "0", "Off" );
 	light_quality_dropdown->AddItem( "1", "Low (Vertex)" );
 	light_quality_dropdown->AddItem( "2", "High (Pixel)" );
 	light_quality_dropdown->Update();
 	group->AddElement( light_quality_dropdown );
-	
-	rect.x = 10;
-	rect.y += rect.h + 8;
-	rect.w = 225;
-	group->AddElement( new Label( &rect, "Dynamic Lights Per Object:", LabelFont, Font::ALIGN_MIDDLE_LEFT ) );
-	rect.x += rect.w + 5;
-	rect.w = 50;
+	rect.x += rect.w + 10;
+	rect.w = 125;
 	PrefsMenuDropDown *dynamic_lights_dropdown = new PrefsMenuDropDown( &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, 0, "g_dynamic_lights" );
-	dynamic_lights_dropdown->AddItem( "0", "Off" );
-	dynamic_lights_dropdown->AddItem( "1", "1" );
-	dynamic_lights_dropdown->AddItem( "2", "2" );
-	dynamic_lights_dropdown->AddItem( "3", "3" );
-	dynamic_lights_dropdown->AddItem( "4", "4" );
+	dynamic_lights_dropdown->AddItem( "0", "No Dynamic" );
+	dynamic_lights_dropdown->AddItem( "1", "1 Dynamic" );
+	dynamic_lights_dropdown->AddItem( "2", "2 Dynamic" );
+	dynamic_lights_dropdown->AddItem( "3", "3 Dynamic" );
+	dynamic_lights_dropdown->AddItem( "4", "4 Dynamic" );
 	dynamic_lights_dropdown->Update();
 	group->AddElement( dynamic_lights_dropdown );
 	
@@ -157,8 +166,22 @@ void PrefsMenu::UpdateContents( void )
 	rect.w = 80;
 	group->AddElement( new PrefsMenuCheckBox( &rect, LabelFont, "Ships", "g_hq_ships" ) );
 	rect.x += rect.w;
-	rect.w = 90;
+	rect.w = 95;
 	group->AddElement( new PrefsMenuCheckBox( &rect, LabelFont, "Cockpit", "g_hq_cockpit" ) );
+	rect.x += rect.w;
+	rect.w = 85;
+	group->AddElement( new PrefsMenuCheckBox( &rect, LabelFont, "Trench", "g_deathstar_detail", "3", "0" ) );
+	
+	rect.x = 10;
+	rect.y += rect.h + 8;
+	rect.w = 345;
+	PrefsMenuCheckBox *framebuffers_checkbox = new PrefsMenuCheckBox( &rect, LabelFont, "Framebuffer Textures (Required for VR)", "g_framebuffers" );
+	group->AddElement( framebuffers_checkbox );
+	
+	rect.x = group_rect.w - 60;
+	rect.y = af_dropdown->Rect.y + (rect.h + 8) / 2;
+	rect.w = 50;
+	group->AddElement( new PrefsMenuVRCheckBox( &rect, LabelFont, "VR", framebuffers_checkbox, fsaa_dropdown ) );
 	
 	// --------------------------------------------------------------------------------------------------------------------
 	// Sound
@@ -219,13 +242,14 @@ void PrefsMenu::UpdateContents( void )
 	
 	rect.x = 10;
 	rect.y += rect.h + 8;
-	rect.w = group_rect.w - 20;
+	rect.w = 120;
 	group->AddElement( new PrefsMenuCheckBox( &rect, LabelFont, "Menu Music", "s_menu_music" ) );
 	
 	rect.y += rect.h + 8;
 	group->AddElement( new PrefsMenuCheckBox( &rect, LabelFont, "Flight Music", "s_game_music" ) );
 
 	rect.y += rect.h + 8;
+	rect.w = group_rect.w - 20;
 	group->AddElement( new PrefsMenuSillyButton( &rect ) );
 	
 	// --------------------------------------------------------------------------------------------------------------------
@@ -272,6 +296,7 @@ void PrefsMenu::UpdateContents( void )
 	
 	rect.y += rect.h + 8;
 	rect.x = 10;
+	rect.w = 150;
 	group->AddElement( new PrefsMenuCheckBox( &rect, LabelFont, "Swap Yaw/Roll", "joy_swap_xz" ) );
 	
 	rect.y += rect.h + 8;
@@ -382,11 +407,6 @@ void PrefsMenu::UpdateContents( void )
 	joy_smooth_thumbsticks_dropdown->Update();
 	group->AddElement( joy_smooth_thumbsticks_dropdown );
 	
-	rect.y += rect.h + 8;
-	rect.x = 10;
-	rect.w = group_rect.w - 20;
-	group->AddElement( new PrefsMenuCheckBox( &rect, LabelFont, "Thumbstick Look", "joy_thumbstick_look" ) );
-	
 	// --------------------------------------------------------------------------------------------------------------------
 	// Mouse
 	
@@ -407,7 +427,7 @@ void PrefsMenu::UpdateContents( void )
 	
 	rect.y += rect.h + 8;
 	rect.x = 10;
-	rect.w = group_rect.w - 20;
+	rect.w = 80;
 	group->AddElement( new PrefsMenuCheckBox( &rect, LabelFont, "Invert", "mouse_invert" ) );
 	
 	rect.y += rect.h + 8;
@@ -473,6 +493,43 @@ PrefsMenuCheckBox::~PrefsMenuCheckBox()
 void PrefsMenuCheckBox::Changed( void )
 {
 	Raptor::Game->Cfg.Settings[ Variable ] = Checked ? TrueStr : FalseStr;
+}
+
+
+// ---------------------------------------------------------------------------
+
+
+PrefsMenuVRCheckBox::PrefsMenuVRCheckBox( SDL_Rect *rect, Font *font, std::string label, PrefsMenuCheckBox *framebuffers_checkbox, PrefsMenuDropDown *fsaa_dropdown ) : PrefsMenuCheckBox( rect, font, label, "vr_enable" )
+{
+	FramebuffersCheckbox = framebuffers_checkbox;
+	FSAADropDown = fsaa_dropdown;
+}
+
+
+PrefsMenuVRCheckBox::~PrefsMenuVRCheckBox()
+{
+}
+
+
+void PrefsMenuVRCheckBox::Changed( void )
+{
+	PrefsMenuCheckBox::Changed();
+	if( Checked )
+	{
+		Raptor::Game->Cfg.Settings[ "g_framebuffers" ] = "true";
+		Raptor::Game->Cfg.Settings[ "g_fsaa" ] = "0";
+		
+		if( FramebuffersCheckbox )
+		{
+			FramebuffersCheckbox->Checked = true;
+			FramebuffersCheckbox->Image.BecomeInstance( FramebuffersCheckbox->ImageNormalChecked );
+		}
+		if( FSAADropDown )
+		{
+			FSAADropDown->Value = FSAADropDown->Items[0].Value;
+			FSAADropDown->LabelText = FSAADropDown->Items[0].Text;
+		}
+	}
 }
 
 
@@ -589,6 +646,43 @@ void PrefsMenuDropDown::Changed( void )
 // ---------------------------------------------------------------------------
 
 
+PrefsMenuFilterDropDown::PrefsMenuFilterDropDown( SDL_Rect *rect, Font *font, uint8_t align, int scroll_bar_size ) : DropDown( rect, font, align, scroll_bar_size, NULL, NULL )
+{
+	Red = 0.f;
+	Green = 0.f;
+	Blue = 0.f;
+	Alpha = 0.75f;
+	
+	if( Raptor::Game->Cfg.SettingAsBool( "g_mipmap", true ) )
+		Value = Raptor::Game->Cfg.SettingAsString( "g_af", "1" );
+	else
+		Value = "-1";
+}
+
+
+PrefsMenuFilterDropDown::~PrefsMenuFilterDropDown()
+{
+}
+
+
+void PrefsMenuFilterDropDown::Changed( void )
+{
+	if( Value == "-1" )
+	{
+		Raptor::Game->Cfg.Settings[ "g_mipmap" ] = "false";
+		Raptor::Game->Cfg.Settings[ "g_af" ] = "1";
+	}
+	else
+	{
+		Raptor::Game->Cfg.Settings[ "g_mipmap" ] = "true";
+		Raptor::Game->Cfg.Settings[ "g_af" ] = Value;
+	}
+}
+
+
+// ---------------------------------------------------------------------------
+
+
 PrefsMenuDoneButton::PrefsMenuDoneButton( SDL_Rect *rect, Font *button_font, const char *label ) : LabelledButton( rect, button_font, label, Font::ALIGN_MIDDLE_CENTER, Raptor::Game->Res.GetAnimation("button.ani"), Raptor::Game->Res.GetAnimation("button_mdown.ani") )
 {
 	Red = 1.f;
@@ -613,10 +707,19 @@ void PrefsMenuDoneButton::Clicked( Uint8 button )
 	if( (menu->PrevFullscreen != Raptor::Game->Cfg.SettingAsBool("g_fullscreen"))
 	 || (menu->PrevFullscreen && (menu->PrevFullscreenX != Raptor::Game->Cfg.SettingAsInt("g_res_fullscreen_x")))
 	 || (menu->PrevFullscreen && (menu->PrevFullscreenY != Raptor::Game->Cfg.SettingAsInt("g_res_fullscreen_y")))
+	 || (menu->PrevBPP != Raptor::Game->Cfg.SettingAsInt("g_bpp"))
 	 || (menu->PrevFSAA != Raptor::Game->Cfg.SettingAsInt("g_fsaa"))
+	 || (menu->PrevMipmap != Raptor::Game->Cfg.SettingAsBool("g_mipmap"))
 	 || (menu->PrevAF != Raptor::Game->Cfg.SettingAsInt("g_af"))
-	 || (menu->PrevLightQuality != Raptor::Game->Cfg.SettingAsInt("g_shader_light_quality")) )
+	 || (menu->PrevTextureMaxres != Raptor::Game->Cfg.SettingAsInt("g_texture_maxres"))
+	 || (menu->PrevFramebuffers != Raptor::Game->Cfg.SettingAsBool("g_framebuffers"))
+	 || ((! menu->PrevShaderEnable) && (menu->PrevShaderEnable != Raptor::Game->Cfg.SettingAsBool("g_shader_enable")))
+	 || (menu->PrevShaderEnable && (menu->PrevLightQuality != Raptor::Game->Cfg.SettingAsInt("g_shader_light_quality"))) )
 		Raptor::Game->Gfx.Restart();
+	
+	// Restart VR if it's checked but not working.
+	if( (! Raptor::Game->Head.VR) && Raptor::Game->Cfg.SettingAsBool("vr_enable") )
+		Raptor::Game->Head.RestartVR();
 	
 	// Start/stop the music.
 	if( Raptor::Game->State >= XWing::State::FLYING )
@@ -728,5 +831,7 @@ void PrefsMenuSillyButton::Clicked( Uint8 button )
 		
 		Raptor::Game->Snd.StopSounds();
 		Raptor::Game->Res.DeleteSounds();
+		
+		Raptor::Game->Snd.Play( Raptor::Game->Res.GetSound("laser_green.wav") );
 	}
 }

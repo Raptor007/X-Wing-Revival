@@ -43,13 +43,21 @@ IngameMenu::~IngameMenu()
 void IngameMenu::UpdateRects( void )
 {
 	Rect.x = 0;
-	Rect.w = 0;
+	Rect.y = 0;
 	Rect.w = Raptor::Game->Gfx.W;
 	Rect.h = Raptor::Game->Gfx.H;
 	
+	if( Raptor::Game->Head.VR && Raptor::Game->Gfx.DrawTo )
+	{
+		Rect.x = Raptor::Game->Gfx.W/2 - 640/2;
+		Rect.y = Raptor::Game->Gfx.H/2 - 480/2;
+		Rect.w = 640;
+		Rect.h = 480;
+	}
+	
 	SDL_Rect title_size = {0,0,0,0};
 	TitleFontBig->TextSize( Raptor::Game->Game, &title_size );
-	if( (title_size.w <= Raptor::Game->Gfx.W) && (title_size.h <= (Raptor::Game->Gfx.H / 2)) )
+	if( (title_size.w <= Rect.w) && (title_size.h <= (Rect.h / 2)) )
 		TitleFont = TitleFontBig;
 	else
 		TitleFont = TitleFontSmall;
@@ -62,6 +70,8 @@ void IngameMenu::UpdateRects( void )
 	PrefsButton->Rect.y = mid - PrefsButton->Rect.h - 11;
 	HelpButton->Rect.y = mid + 11;
 	LeaveButton->Rect.y = mid + HelpButton->Rect.h + 33;
+	
+	UpdateCalcRects();
 }
 
 

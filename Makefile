@@ -10,18 +10,17 @@ MTUNE =
 MFLAGS =
 OFLAGS = -O3 -fomit-frame-pointer -ftree-vectorize -fno-strict-aliasing -flto
 WFLAGS = -Wall -Wextra -Wno-multichar -Wno-unused-parameter
-INC = /opt/local/include /opt/local/include/SDL /usr/include
+INC = /opt/local/include /opt/local/include/SDL /usr/local/include /usr/include
 LIBDIR = /usr/lib64
-LIB = libSDLmain.a libSDL_net.so libSDL_mixer.so libSDL_ttf.so libSDL_image.so libSDL.so libGLEW.a libGLU.so libGL.so
+LIB = libSDLmain.a libSDL_net.so libSDL_mixer.so libSDL_ttf.so libSDL_image.so libSDL.so libGLEW.a libGLU.so libGL.so libopenvr_api.so
 DEF =
 EXE = xwingrev
-VERSION = 0.1.4
+VERSION = 0.1.5
 GAMEDIR = /Games/X-Wing Revival
 SERVERDIR = /srv/xwingrev
 SERVERUSER = xwingrev
 BUILD_FINALIZE =
-INSTALL_FINALIZE =
-MAC_APP = X-Wing Revival
+MAC_CODESIGN = Raptor007
 MAC_FRAMEWORKS = OpenGL Cocoa AudioUnit AudioToolbox IOKit Carbon
 MAC_INSTALL_NAME_TOOL = /opt/local/bin/install_name_tool
 MAC_BUNDLE_LIBS = /opt/local/lib/libgcc/libstdc++.6.dylib /opt/local/lib/libgcc/libgcc_s.1.dylib
@@ -41,8 +40,7 @@ LIBRARIES = $(foreach lib,$(LIB),$(LIBDIR)/$(lib))
 SOURCES = $(wildcard Sources/*.cpp) $(wildcard Sources/*/*.cpp) $(wildcard ../RaptorEngine/*/*.cpp)
 HEADERS = $(wildcard Sources/*.h) $(wildcard Sources/*/*.h) $(wildcard ../RaptorEngine/*/*.h)
 TARGET = exe
-EXE_INSTALL = $(EXE)
-BINDIR = $(GAMEDIR)
+PRODUCT = $(EXE)
 XFLAGS =
 
 
@@ -92,8 +90,8 @@ ifneq (,$(findstring 4.9.,$(GCC_VERSION)))
 # When using GCC 4.9, don't let the linker use compact unwind.
 XFLAGS += -Wl,-no_compact_unwind
 else
-ifeq (5,$(GCC_VERSION_MAJOR))
-# When using GCC 5, don't let the linker use compact unwind.
+ifneq (4,$(GCC_VERSION_MAJOR))
+# When using GCC 5+, don't let the linker use compact unwind.
 XFLAGS += -Wl,-no_compact_unwind
 endif
 endif
@@ -102,6 +100,8 @@ ifneq (,$(findstring -4.0,$(CC)))
 # When using gcc 4.0, don't use link-time optimization (it's not supported) and don't use auto-vectorization because it enables strict aliasing.
 OFLAGS := $(filter-out -flto,$(OFLAGS))
 OFLAGS := $(filter-out -ftree-vectorize,$(OFLAGS))
+# Don't warn about OpenVR's use of non-virtual destructors.
+WFLAGS += -Wno-non-virtual-dtor
 endif
 
 ifeq ($(MAC_PPC_ARCH),$(ARCH))
@@ -134,21 +134,21 @@ LIBRARIES := $(patsubst %.so,%.a,$(LIBRARIES))
 # Add frameworks to Mac linker line.
 LIBRARIES += $(foreach framework,$(MAC_FRAMEWORKS),-framework $(framework))
 
+# Add openvr lib on non-PPC targets.
+ifneq ($(MAC_PPC_ARCH),$(ARCH))
+LIBRARIES += /usr/local/lib/libopenvr_api.dylib
+endif
+
 # Macs must pad install names so install_name_tool can make them longer.
 XFLAGS += -headerpad_max_install_names
 
-ifdef MAC_APP
 # Create application package.
 TARGET = X-Wing\ Revival.app
-EXE_INSTALL = $(MAC_APP)
-BINDIR = $(GAMEDIR)/$(MAC_APP).app/Contents/MacOS
-INSTALL_FINALIZE += mkdir -p "$(GAMEDIR)/$(MAC_APP).app/Contents/Resources"; cp -p "Info.plist" "$(GAMEDIR)/$(MAC_APP).app/Contents/"; rsync -ax --exclude=".*" "English.lproj" "$(GAMEDIR)/$(MAC_APP).app/Contents/Resources/"; cp -p "xwing128.icns" "$(GAMEDIR)/$(MAC_APP).app/Contents/Resources/";
-endif
+PRODUCT = X-Wing Revival.app
 
 ifdef MAC_BUNDLE_LIBS
-# Fix dynamic library paths, and include necessary dylibs during install.
+# Fix dynamic library paths.
 BUILD_FINALIZE += $(foreach lib,$(MAC_BUNDLE_LIBS),$(MAC_INSTALL_NAME_TOOL) -change "$(lib)" "@executable_path/$(notdir $(lib))" "$(EXE)";)
-INSTALL_FINALIZE += $(foreach lib,$(MAC_BUNDLE_LIBS),cp -p "$(lib)" "$(BINDIR)/"; chmod 644 "$(BINDIR)/$(notdir $(lib))";)
 endif
 
 # End Mac OS X section.
@@ -159,7 +159,7 @@ endif
 ifneq (,$(findstring MINGW,$(UNAME))$(findstring CYGWIN,$(UNAME)))
 LDFLAGS += -static-libgcc -static-libstdc++ -lmingw32 -lSDLmain
 LIBDIR = /lib
-LIB = SDL_ttf.lib SDL_image.lib SDL_mixer.lib SDL_net.lib SDL.lib glew32s.lib GLU32.lib OpenGL32.lib bufferoverflowu.lib
+LIB = SDL_ttf.lib SDL_image.lib SDL_mixer.lib SDL_net.lib SDL.lib openvr_api.lib glew32s.lib GLU32.lib OpenGL32.lib bufferoverflowu.lib
 MFLAGS += -mwindows
 LIBRARIES += -liphlpapi -ladvapi32
 EXE = xwingrev.exe
@@ -206,7 +206,7 @@ default: $(TARGET)
 	rsync -ax --exclude=".*" "English.lproj" "$@/Contents/Resources/"
 	cp -p "xwing128.icns" "$@/Contents/Resources/"
 	-$(foreach lib,$(MAC_BUNDLE_LIBS),cp -p "$(lib)" "$@/Contents/MacOS/"; chmod 644 "$@/Contents/MacOS/$(notdir $(lib))";)
-
+	-codesign -s "$(MAC_CODESIGN)" "$@"
 
 exe: $(SOURCES) $(HEADERS) $(EXE)
 
@@ -230,11 +230,11 @@ XWing.res:
 objects: $(SOURCES) $(HEADERS) $(OBJECTS)
 
 clean:
-	rm -rf build/arch-* "$(EXE)" "$(EXE)"_* XWing.res "X-Wing Revival.app"
+	rm -rf build/arch-* "$(PRODUCT)" "$(EXE)" "$(EXE)"_* XWing.res
 
 install:
-	mkdir -p "$(BINDIR)"
-	cp "$(EXE)" "$(BINDIR)/$(EXE_INSTALL)"
+	mkdir -p "$(GAMEDIR)"
+	rsync -ax "$(PRODUCT)" "$(GAMEDIR)/"
 	cp -p build/Debug/README.txt "$(GAMEDIR)/"
 	rsync -ax --exclude=".*" build/Debug/Fonts "$(GAMEDIR)/"
 	rsync -ax --exclude=".*" build/Debug/Textures "$(GAMEDIR)/"
@@ -245,14 +245,6 @@ install:
 	rsync -ax --exclude=".*" build/Debug/Screensaver "$(GAMEDIR)/"
 	rsync -ax --exclude=".*" build/Debug/Tools "$(GAMEDIR)/"
 	rsync -ax --exclude=".*" build/Debug/Docs "$(GAMEDIR)/"
-	chmod ugo+x "$(BINDIR)/$(EXE_INSTALL)"
-	$(INSTALL_FINALIZE)
-
-uninstall:
-	rm -r "$(GAMEDIR)"
-
-play:
-	cd "$(GAMEDIR)"; "$(BINDIR)/$(EXE_INSTALL)"
 
 server-install:
 	mkdir -p "$(SERVERDIR)"

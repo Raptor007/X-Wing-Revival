@@ -5,10 +5,12 @@
 #pragma once
 class PrefsMenu;
 class PrefsMenuCheckBox;
+class PrefsMenuVRCheckBox;
 class PrefsMenuRadioButton;
 class PrefsMenuTextBox;
 class PrefsMenuListBox;
 class PrefsMenuDropDown;
+class PrefsMenuFilterDropDown;
 class PrefsMenuDoneButton;
 class PrefsMenuDefaultsButton;
 
@@ -29,8 +31,8 @@ class PrefsMenu : public Window
 {
 public:
 	Font *LabelFont, *TitleFont, *ItemFont, *ButtonFont;
-	int PrevFullscreenX, PrevFullscreenY, PrevFSAA, PrevAF, PrevLightQuality;
-	bool PrevFullscreen;
+	int PrevFullscreenX, PrevFullscreenY, PrevBPP, PrevFSAA, PrevAF, PrevTextureMaxres, PrevLightQuality;
+	bool PrevFullscreen, PrevMipmap, PrevFramebuffers, PrevShaderEnable;
 	
 	PrefsMenu( void );
 	virtual ~PrefsMenu();
@@ -48,6 +50,18 @@ public:
 	
 	PrefsMenuCheckBox( SDL_Rect *rect, Font *font, std::string label, std::string variable, std::string true_str = "true", std::string false_str = "false" );
 	virtual ~PrefsMenuCheckBox();
+	virtual void Changed( void );
+};
+
+
+class PrefsMenuVRCheckBox : public PrefsMenuCheckBox
+{
+public:
+	PrefsMenuCheckBox *FramebuffersCheckbox;
+	PrefsMenuDropDown *FSAADropDown;
+	
+	PrefsMenuVRCheckBox( SDL_Rect *rect, Font *font, std::string label, PrefsMenuCheckBox *framebuffers_checkbox = NULL, PrefsMenuDropDown *fsaa_dropdown = NULL );
+	virtual ~PrefsMenuVRCheckBox();
 	void Changed( void );
 };
 
@@ -96,6 +110,15 @@ public:
 	
 	PrefsMenuDropDown( SDL_Rect *rect, Font *font, uint8_t align, int scroll_bar_size, std::string variable );
 	virtual ~PrefsMenuDropDown();
+	void Changed( void );
+};
+
+
+class PrefsMenuFilterDropDown : public DropDown
+{
+public:
+	PrefsMenuFilterDropDown( SDL_Rect *rect, Font *font, uint8_t align, int scroll_bar_size );
+	virtual ~PrefsMenuFilterDropDown();
 	void Changed( void );
 };
 

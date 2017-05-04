@@ -96,6 +96,7 @@
 		2CD2E217191D6FB6003E46AA /* AudioToolbox.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2CD2E216191D6FB6003E46AA /* AudioToolbox.framework */; };
 		2CD2E219191D6FBE003E46AA /* IOKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2CD2E218191D6FBE003E46AA /* IOKit.framework */; };
 		2CD2E21B191D6FC5003E46AA /* Carbon.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2CD2E21A191D6FC5003E46AA /* Carbon.framework */; };
+		2CEFC42A1EBBADD90044B237 /* HeadState.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2CEFC4281EBBADD90044B237 /* HeadState.cpp */; };
 		8D11072B0486CEB800E47090 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 089C165CFE840E0CC02AAC07 /* InfoPlist.strings */; };
 /* End PBXBuildFile section */
 
@@ -289,6 +290,8 @@
 		2CD2E216191D6FB6003E46AA /* AudioToolbox.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AudioToolbox.framework; path = ../../../../../System/Library/Frameworks/AudioToolbox.framework; sourceTree = "<group>"; };
 		2CD2E218191D6FBE003E46AA /* IOKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = IOKit.framework; path = ../../../../../System/Library/Frameworks/IOKit.framework; sourceTree = "<group>"; };
 		2CD2E21A191D6FC5003E46AA /* Carbon.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Carbon.framework; path = ../../../../../System/Library/Frameworks/Carbon.framework; sourceTree = "<group>"; };
+		2CEFC4281EBBADD90044B237 /* HeadState.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = HeadState.cpp; sourceTree = "<group>"; };
+		2CEFC4291EBBADD90044B237 /* HeadState.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = HeadState.h; sourceTree = "<group>"; };
 		8D1107310486CEB800E47090 /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		8D1107320486CEB800E47090 /* X-Wing Revival.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "X-Wing Revival.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -434,6 +437,7 @@
 				2CD2E007191D6D38003E46AA /* Saitek */,
 				2CD2E013191D6D38003E46AA /* Sound */,
 				2CD2E018191D6D38003E46AA /* UI */,
+				2CEFC4271EBBADD90044B237 /* VR */,
 			);
 			name = RaptorEngine;
 			path = ../RaptorEngine;
@@ -640,6 +644,15 @@
 			path = UI;
 			sourceTree = "<group>";
 		};
+		2CEFC4271EBBADD90044B237 /* VR */ = {
+			isa = PBXGroup;
+			children = (
+				2CEFC4281EBBADD90044B237 /* HeadState.cpp */,
+				2CEFC4291EBBADD90044B237 /* HeadState.h */,
+			);
+			path = VR;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -802,6 +815,7 @@
 				2CD2E20F191D6D38003E46AA /* TextFileViewer.cpp in Sources */,
 				2CD2E210191D6D38003E46AA /* WaitScreen.cpp in Sources */,
 				2CD2E211191D6D38003E46AA /* Window.cpp in Sources */,
+				2CEFC42A1EBBADD90044B237 /* HeadState.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -896,10 +910,11 @@
 				GCC_WARN_MISSING_PARENTHESES = YES;
 				GCC_WARN_NON_VIRTUAL_DESTRUCTOR = YES;
 				GCC_WARN_SIGN_COMPARE = YES;
-				GCC_WARN_UNINITIALIZED_AUTOS = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = NO;
 				GCC_WARN_UNUSED_PARAMETER = NO;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				HEADER_SEARCH_PATHS = (
+					/opt/local/include/SDL,
 					/opt/local/include,
 					/usr/local/include,
 					/usr/include,
@@ -920,6 +935,7 @@
 					/opt/local/lib/libSDL.a,
 					/opt/local/lib/libSDLmain.a,
 					/opt/local/lib/libGLEW.a,
+					/usr/local/lib/libopenvr_api.dylib,
 					/opt/local/lib/libmikmod.a,
 					/opt/local/lib/libsmpeg.a,
 					/opt/local/lib/libflac.a,
@@ -947,6 +963,7 @@
 				STRIP_INSTALLED_PRODUCT = NO;
 				USER_HEADER_SEARCH_PATHS = "../RaptorEngine/** Sources/**";
 				VALID_ARCHS = "ppc i386 x86_64";
+				WARNING_CFLAGS = "-Wno-non-virtual-dtor";
 			};
 			name = Debug;
 		};
@@ -983,6 +1000,7 @@
 				GCC_WARN_UNUSED_PARAMETER = NO;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				HEADER_SEARCH_PATHS = (
+					/opt/local/include/SDL,
 					/opt/local/include,
 					/usr/local/include,
 					/usr/include,
@@ -1003,6 +1021,7 @@
 					/opt/local/lib/libSDL.a,
 					/opt/local/lib/libSDLmain.a,
 					/opt/local/lib/libGLEW.a,
+					/usr/local/lib/libopenvr_api.dylib,
 					/opt/local/lib/libmikmod.a,
 					/opt/local/lib/libsmpeg.a,
 					/opt/local/lib/libflac.a,
@@ -1030,6 +1049,7 @@
 				STRIP_INSTALLED_PRODUCT = NO;
 				USER_HEADER_SEARCH_PATHS = "../RaptorEngine/** Sources/**";
 				VALID_ARCHS = "ppc i386 x86_64";
+				WARNING_CFLAGS = "-Wno-non-virtual-dtor";
 			};
 			name = Release;
 		};

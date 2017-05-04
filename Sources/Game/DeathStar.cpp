@@ -347,8 +347,9 @@ void DeathStar::Draw( void )
 	glBindTexture( GL_TEXTURE_2D, Texture.CurrentFrame() );
 	glColor4f( 1.f, 1.f, 1.f, 1.f );
 	
-	// NOTE: This assumes we've run glGenerateMipmap(GL_TEXTURE_2D) when loading the texture!
-	glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR );
+	// Make sure the Death Star surface texture is allowed to repeat.
+	glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT );
+	glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT );
 	
 	int tx_width = Num::NearestWhole( TrenchWidth / TextureSize ) + 0.5;
 	if( tx_width < 1 )

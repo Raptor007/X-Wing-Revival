@@ -19,6 +19,7 @@ class Renderable;
 #include "Ship.h"
 #include "Shot.h"
 #include "Effect.h"
+#include "MessageOverlay.h"
 
 
 #define STAR_COUNT 2000
@@ -34,7 +35,9 @@ public:
 	GLdouble Stars[ STAR_COUNT * 3 ];
 	Pos3D Debris[ DEBRIS_COUNT ];
 	Font *BigFont, *SmallFont, *ScreenFont, *RadarDirectionFont;
+	MessageOverlay *MessageOutput;
 	TextBox *MessageInput;
+	Pos3D Cam;
 	
 	RenderLayer( void );
 	virtual ~RenderLayer();

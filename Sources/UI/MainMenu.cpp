@@ -46,13 +46,21 @@ MainMenu::~MainMenu()
 void MainMenu::UpdateRects( void )
 {
 	Rect.x = 0;
-	Rect.w = 0;
+	Rect.y = 0;
 	Rect.w = Raptor::Game->Gfx.W;
 	Rect.h = Raptor::Game->Gfx.H;
 	
+	if( Raptor::Game->Head.VR && Raptor::Game->Gfx.DrawTo )
+	{
+		Rect.x = Raptor::Game->Gfx.W/2 - 640/2;
+		Rect.y = Raptor::Game->Gfx.H/2 - 480/2;
+		Rect.w = 640;
+		Rect.h = 480;
+	}
+	
 	SDL_Rect title_size = {0,0,0,0};
 	TitleFontBig->TextSize( Raptor::Game->Game, &title_size );
-	if( (title_size.w <= Raptor::Game->Gfx.W) && (title_size.h <= (Raptor::Game->Gfx.H / 2)) )
+	if( (title_size.w <= Rect.w) && (title_size.h <= (Rect.h / 2)) )
 		TitleFont = TitleFontBig;
 	else
 		TitleFont = TitleFontSmall;
@@ -65,6 +73,8 @@ void MainMenu::UpdateRects( void )
 	PrefsButton->Rect.y = mid - PrefsButton->Rect.h - 11;
 	HelpButton->Rect.y = mid + 11;
 	QuitButton->Rect.y = mid + HelpButton->Rect.h + 33;
+	
+	UpdateCalcRects();
 }
 
 
@@ -77,8 +87,14 @@ void MainMenu::Draw( void )
 	glEnable( GL_TEXTURE_2D );
 	glBindTexture( GL_TEXTURE_2D, Fog.CurrentFrame() );
 	
-	double fog_h1 = Rect.h / 5.;
-	double fog_h2 = Rect.h / 6.;
+	// Make sure the fog texture is allowed to repeat.
+	glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT );
+	glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT );
+	
+	int fog_h1 = Rect.h / 5;
+	int fog_h2 = Rect.h / 6;
+	int fog_x1 = Rect.w / 2 - Rect.h;
+	int fog_x2 = fog_x1 + Rect.h * 2;
 	float fog_alpha = std::min<float>( FogTime / 12.f, 0.25f );
 	
 	glBegin( GL_QUADS );
@@ -87,37 +103,37 @@ void MainMenu::Draw( void )
 		
 		// Top-left
 		glTexCoord2d( FogTime * -0.03, 0 );
-		glVertex2i( 0., Rect.h - fog_h1 );
+		glVertex2i( fog_x1, Rect.h - fog_h1 );
 		
 		// Bottom-left
 		glTexCoord2d( FogTime * -0.03, 1 );
-		glVertex2i( 0., Rect.h );
+		glVertex2i( fog_x1, Rect.h );
 		
 		// Bottom-right
-		glTexCoord2d( (FogTime * -0.03) + (0.25 * Rect.w / fog_h1), 1 );
-		glVertex2i( Rect.w, Rect.h );
+		glTexCoord2d( (FogTime * -0.03) + (0.5 * Rect.h / fog_h1), 1 );
+		glVertex2i( fog_x2, Rect.h );
 		
 		// Top-right
-		glTexCoord2d( (FogTime * -0.03) + (0.25 * Rect.w / fog_h1), 0 );
-		glVertex2i( Rect.w, Rect.h - fog_h1 );
+		glTexCoord2d( (FogTime * -0.03) + (0.5 * Rect.h / fog_h1), 0 );
+		glVertex2i( fog_x2, Rect.h - fog_h1 );
 		
 		glColor4f( 0.41f, 0.54f, 0.55f, fog_alpha );
 		
 		// Top-left
 		glTexCoord2d( FogTime * -0.07, 0 );
-		glVertex2i( 0., Rect.h - fog_h2 );
+		glVertex2i( fog_x1, Rect.h - fog_h2 );
 		
 		// Bottom-left
 		glTexCoord2d( FogTime * -0.07, 1 );
-		glVertex2i( 0., Rect.h );
+		glVertex2i( fog_x1, Rect.h );
 		
 		// Bottom-right
-		glTexCoord2d( (FogTime * -0.07) + (0.25 * Rect.w / fog_h2), 1 );
-		glVertex2i( Rect.w, Rect.h );
+		glTexCoord2d( (FogTime * -0.07) + (0.5 * Rect.h / fog_h2), 1 );
+		glVertex2i( fog_x2, Rect.h );
 		
 		// Top-right
-		glTexCoord2d( (FogTime * -0.07) + (0.25 * Rect.w / fog_h2), 0 );
-		glVertex2i( Rect.w, Rect.h - fog_h2 );
+		glTexCoord2d( (FogTime * -0.07) + (0.5 * Rect.h / fog_h2), 0 );
+		glVertex2i( fog_x2, Rect.h - fog_h2 );
 		
 	glEnd();
 	glDisable( GL_TEXTURE_2D );
