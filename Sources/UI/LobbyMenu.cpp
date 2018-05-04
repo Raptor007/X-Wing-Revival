@@ -673,7 +673,23 @@ void LobbyMenu::Draw( void )
 	UpdatePlayerList();
 	UpdateMessageList();
 	
-	Raptor::Game->Gfx.DrawRect2D( Rect.w / 2 - Rect.h, 0, Rect.w / 2 + Rect.h, Rect.h, Background.CurrentFrame(), 1.f, 1.f, 1.f, 1.f );
+	if( Raptor::Game->Head.VR && Raptor::Game->Gfx.DrawTo )
+	{
+		// In VR, show 3D background behind the menu.
+		// FIXME: Clean this up.
+		glPushMatrix();
+		Pos3D origin;
+		Raptor::Game->Cam.Copy( &origin );
+		Raptor::Game->Cam.FOV = Raptor::Game->Cfg.SettingAsDouble("vr_fov");
+		Raptor::Game->Gfx.Setup3D( &(Raptor::Game->Cam) );
+		Animation bg;
+		bg.BecomeInstance( Raptor::Game->Res.GetAnimation("stars.ani") );
+		double bg_dist = Raptor::Game->Cfg.SettingAsDouble( "g_bg_dist", std::min<double>( 50000., Raptor::Game->Gfx.ZFar * 0.875 ) );
+		Raptor::Game->Gfx.DrawSphere3D( 0,0,0, bg_dist, 32, bg.CurrentFrame(), Graphics::TEXTURE_MODE_Y_ASIN );
+		glPopMatrix();
+	}
+	else
+		Raptor::Game->Gfx.DrawRect2D( Rect.w / 2 - Rect.h, 0, Rect.w / 2 + Rect.h, Rect.h, Background.CurrentFrame(), 1.f, 1.f, 1.f, 1.f );
 	
 	Layer::Draw();
 	

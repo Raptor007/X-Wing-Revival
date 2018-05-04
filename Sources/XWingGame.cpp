@@ -55,6 +55,7 @@ void XWingGame::SetDefaults( void )
 	Cfg.Settings[ "spectator_view" ] = "cinema2";
 	Cfg.Settings[ "view_cycle_time" ] = "7";
 	
+	Cfg.Settings[ "g_znear" ] = "0.125";
 	Cfg.Settings[ "g_zfar" ] = "15000";
 	Cfg.Settings[ "g_dynamic_lights" ] = "4";
 	Cfg.Settings[ "g_bg" ] = "true";
@@ -335,7 +336,7 @@ void XWingGame::Update( double dt )
 			if( Mouse.ButtonDown( SDL_BUTTON_X2 ) )
 				throttle += FrameTime / 2.;
 		}
-		else if( Cfg.SettingAsBool("mouse_look") && (! Raptor::Game->Head.VR) )
+		else if( Cfg.SettingAsBool("mouse_look") && (! Head.VR) )
 		{
 			LookYaw = ( (fabs(mouse_x_percent) <= 1.) ? mouse_x_percent : Num::Sign(mouse_x_percent) ) * 180.;
 			LookPitch = ( (fabs(mouse_y_percent) <= 1.) ? mouse_y_percent : Num::Sign(mouse_y_percent) ) * -90.;
@@ -470,7 +471,7 @@ void XWingGame::Update( double dt )
 					LookPitch = 0.;
 					LookYaw = 0.;
 					joy_look = true;
-					Raptor::Game->Head.Recenter();
+					Head.Recenter();
 				}
 				if( joy_iter->second.ButtonDown( 7 ) ) // E
 					target_nearest_attacker = true;
@@ -502,7 +503,7 @@ void XWingGame::Update( double dt )
 		}
 		
 		// Allow mouse_look to override mouse_enable when a joystick was found.
-		if( ReadMouse && Cfg.SettingAsBool("mouse_look") && stick && (! joy_look) && (! Raptor::Game->Head.VR) )
+		if( ReadMouse && Cfg.SettingAsBool("mouse_look") && stick && (! joy_look) && (! Head.VR) )
 		{
 			LookYaw = ( (fabs(mouse_x_percent) <= 1.) ? mouse_x_percent : Num::Sign(mouse_x_percent) ) * 180.;
 			LookPitch = ( (fabs(mouse_y_percent) <= 1.) ? mouse_y_percent : Num::Sign(mouse_y_percent) ) * -90.;
@@ -513,20 +514,18 @@ void XWingGame::Update( double dt )
 	
 	if( ReadKeyboard && ! Console.IsActive() )
 	{
-		bool shift = Keys.KeyDown(SDLK_LSHIFT);
-		
 		if( Keys.KeyDown(SDLK_UP) )
-			pitch += shift ? -1. : -0.5;
+			pitch -= 1.;
 		if( Keys.KeyDown(SDLK_DOWN) )
-			pitch += shift ? 1. : 0.5;
+			pitch += 1.;
 		if( Keys.KeyDown(SDLK_LEFT) )
-			yaw += shift ? -1. : -0.5;
+			yaw -= 1.;
 		if( Keys.KeyDown(SDLK_RIGHT) )
-			yaw += shift ? 1. : 0.5;
+			yaw += 1.;
 		if( Keys.KeyDown(SDLK_d) )
-			roll += shift ? -1. : -0.5;
+			roll -= 1.;
 		if( Keys.KeyDown(SDLK_f) )
-			roll += shift ? 1. : 0.5;
+			roll += 1.;
 		
 		if( Keys.KeyDown(SDLK_BACKSPACE) )
 			throttle = 1.;
@@ -572,7 +571,7 @@ void XWingGame::Update( double dt )
 			LookPitch = 0.;
 			LookYaw = 0.;
 			ThumbstickLook = false;
-			Raptor::Game->Head.Recenter();
+			Head.Recenter();
 		}
 		
 		if( Keys.KeyDown(SDLK_LCTRL) )
@@ -624,9 +623,9 @@ void XWingGame::Update( double dt )
 		{
 			bool beep = false;
 			
-			my_ship->SetRoll( roll );
-			my_ship->SetPitch( pitch );
-			my_ship->SetYaw( yaw );
+			my_ship->SetRoll( roll, dt );
+			my_ship->SetPitch( pitch, dt );
+			my_ship->SetYaw( yaw, dt );
 			my_ship->SetThrottle( throttle, dt );
 			my_ship->Firing = firing;
 			
@@ -1685,7 +1684,7 @@ void XWingGame::AddedObject( GameObject *obj )
 			else if( shot->ShotType == Shot::TYPE_TORPEDO )
 				Snd.PlayAt( Res.GetSound("torpedo.wav"), obj->X, obj->Y, obj->Z, 0.75 );
 			
-			GameObject *obj = Raptor::Game->Data.GetObject( shot->FiredFrom );
+			GameObject *obj = Data.GetObject( shot->FiredFrom );
 			if( obj && (obj->Type() == XWing::Object::SHIP) )
 			{
 				Ship *ship = (Ship*) obj;
@@ -1804,6 +1803,7 @@ void XWingGame::BeginFlying( void )
 		ObservedShipID = 0;
 		LookYaw = 0.;
 		LookPitch = 0.;
+		Head.Recenter();
 		
 		Overlay = NULL;
 		Layers.RemoveAll();

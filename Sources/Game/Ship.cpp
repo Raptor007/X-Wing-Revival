@@ -311,36 +311,54 @@ void Ship::Explode( double dt )
 }
 
 
-void Ship::SetRoll( double roll )
+void Ship::SetRoll( double roll, double dt )
 {
 	if( roll > 1. )
 		roll = 1.;
 	else if( roll < -1. )
 		roll = -1.;
 	
-	RollRate = roll * MaxRoll();
+	double max_change = dt * MaxRoll() * 8.; // FIXME
+	double desired = roll * MaxRoll();
+	
+	if( fabs( desired - RollRate ) > max_change )
+		RollRate += max_change * Num::Sign( desired - RollRate );
+	else
+		RollRate = desired;
 }
 
 
-void Ship::SetPitch( double pitch )
+void Ship::SetPitch( double pitch, double dt )
 {
 	if( pitch > 1. )
 		pitch = 1.;
 	else if( pitch < -1. )
 		pitch = -1.;
 	
-	PitchRate = pitch * MaxPitch();
+	double max_change = dt * MaxPitch() * 8.; // FIXME
+	double desired = pitch * MaxPitch();
+	
+	if( fabs( desired - PitchRate ) > max_change )
+		PitchRate += max_change * Num::Sign( desired - PitchRate );
+	else
+		PitchRate = desired;
 }
 
 
-void Ship::SetYaw( double yaw )
+void Ship::SetYaw( double yaw, double dt )
 {
 	if( yaw > 1. )
 		yaw = 1.;
 	else if( yaw < -1. )
 		yaw = -1.;
 	
-	YawRate = yaw * MaxYaw();
+	double max_change = dt * MaxYaw() * 8.; // FIXME
+	double desired = yaw * MaxYaw();
+	
+	if( fabs( desired - YawRate ) > max_change )
+		YawRate += max_change * Num::Sign( desired - YawRate );
+	else
+		YawRate = desired;
 }
 
 

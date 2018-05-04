@@ -52,7 +52,7 @@ void XWingServer::Started( void )
 	Data.Properties["tdm_kill_limit"] = "20";
 	Data.Properties["yavin_time_limit"] = "15";
 	Data.Properties["yavin_turrets"] = "120";
-	Data.Properties["hunt_time_limit"] = "5";
+	Data.Properties["hunt_time_limit"] = "7";
 	Data.Properties["defending_team"] = "empire";
 	Data.Properties["empire_ship"] = "isd2";
 	Data.Properties["rebel_ship"] = "frg";
@@ -1188,11 +1188,11 @@ void XWingServer::Update( double dt )
 					ship->SpecialUpdate = true;
 					players_waiting[ ship->Team ].pop_front();
 					
-					ship->SetYaw( 0. );
-					ship->SetPitch( 0. );
-					ship->SetRoll( 0. );
-					ship->SetThrottle( 0.5, dt );
-
+					ship->SetYaw( 0., 120. );
+					ship->SetPitch( 0., 120. );
+					ship->SetRoll( 0., 120. );
+					ship->SetThrottle( 0.5, 120. );
+					
 					// FIXME: Dirty hack to make sure the respawn is noticed!
 					int precision = 0;
 					Packet update_packet( Raptor::Packet::UPDATE );
@@ -1213,6 +1213,11 @@ void XWingServer::Update( double dt )
 			
 			if( (! player) && (ship->Health > 0.) )
 			{
+				double pitch = 0.;
+				double yaw = 0.;
+				double roll = 0.;
+				double throttle = 0.75;
+				
 				GameObject *target = NULL;
 				
 				if( ship->Radius() > 500. )
@@ -1275,6 +1280,10 @@ void XWingServer::Update( double dt )
 							if( ship->Team && (potential_target->Team == ship->Team) )
 								continue;
 							
+							// Don't attack the exhaust port when out of torpedos.
+							if( (potential_target->ShipType == Ship::TYPE_EXHAUST_PORT) && ! ship->Ammo[ Shot::TYPE_TORPEDO ] )
+								continue;
+							
 							potential_targets.push_back( potential_target );
 						}
 					}
@@ -1331,7 +1340,7 @@ void XWingServer::Update( double dt )
 				}
 				
 				// This is scoped out here so the waypoint section can see it.
-				double t_dot_fwd = 0.;
+				bool facing_target = false;
 				
 				if( target )
 				{
@@ -1374,7 +1383,7 @@ void XWingServer::Update( double dt )
 					double dist_to_intercept = vec_to_intercept.Length();
 					vec_to_target.ScaleTo( 1. );
 					vec_to_intercept.ScaleTo( 1. );
-					t_dot_fwd = vec_to_target.Dot( &(ship->Fwd) );
+					double t_dot_fwd = vec_to_target.Dot( &(ship->Fwd) );
 					double i_dot_fwd = vec_to_intercept.Dot( &(ship->Fwd) );
 					double i_dot_up = vec_to_intercept.Dot( &(ship->Up) );
 					double i_dot_right = vec_to_intercept.Dot( &(ship->Right) );
@@ -1386,6 +1395,8 @@ void XWingServer::Update( double dt )
 					else if( target->Type() == XWing::Object::TURRET )
 						firing_dist = 2000.;
 					ship->Firing = (i_dot_fwd > 0.9) && (dist_to_intercept < firing_dist);
+					
+					// Capital ships use their turrets to fire regardless of heading.
 					if( (ship->ShipType != Ship::TYPE_EXHAUST_PORT) && ! ship->PlayersCanFly() )
 						ship->Firing = (dist_to_target < ship->Radius() + 1000.);
 					
@@ -1397,68 +1408,69 @@ void XWingServer::Update( double dt )
 					
 					if( target->Type() == XWing::Object::ASTEROID )
 					{
-						ship->SetPitch( 0. );
-						ship->SetYaw( 0. );
-						ship->SetRoll( 0. );
-						ship->SetThrottle( 1., dt );
+						pitch = 0.;
+						yaw = 0.;
+						roll = 0.;
+						throttle = 1.;
 					}
 					else if( t_dot_fwd >= 0. )
 					{
 						if( dist_to_intercept < dodge_dist )
 						{
 							// Damn close ahead: Avoid collision!
-							ship->SetPitch( (i_dot_up >= 0.) ? -1. : 1. );
-							ship->SetYaw( (i_dot_right >= 0.) ? -1. : 1. );
-							ship->SetRoll( (i_dot_right >= 0.) ? -1. : 1. );
-							ship->SetThrottle( 1., dt );
+							pitch = (i_dot_up >= 0.) ? -1. : 1.;
+							yaw = (i_dot_right >= 0.) ? -1. : 1.;
+							roll = (i_dot_right >= 0.) ? -1. : 1.;
+							throttle = 0.75;
 							//ship->SetShieldPos( Ship::SHIELD_CENTER );
 						}
 						else if( (dist_to_target < dodge_dist + 500.) && (t_dot_fwd < 0.25) )
 						{
 							// Off to the side, but too close to turn towards: Get some distance.
-							ship->SetPitch( 0. );
-							ship->SetYaw( i_dot_right / 4. );
-							ship->SetRoll( i_dot_right / 2. );
-							ship->SetThrottle( 1., dt );
+							pitch = 0.;
+							yaw = i_dot_right / 4.;
+							roll = i_dot_right / 2.;
+							throttle = 1.;
 							//ship->SetShieldPos( Ship::SHIELD_CENTER );
 						}
 						else
 						{
 							// Generally ahead of us: Aim at enemy.
-							ship->SetPitch( (fabs(i_dot_up) > 0.2) ? Num::Sign(i_dot_up) : (i_dot_up*5.) );
-							ship->SetYaw( (fabs(i_dot_right) >= 0.5) ? Num::Sign(i_dot_right) : (i_dot_right*2.) );
-							ship->SetRoll( (fabs(i_dot_right) > 0.333) ? Num::Sign(i_dot_right) : (i_dot_right*3.) );
-							ship->SetThrottle( ((dist_to_target < 300.) && (i_dot_fwd > 0.5)) ? (dist_to_target/300.) : 1., dt );
+							pitch = (fabs(i_dot_up) > 0.2) ? Num::Sign(i_dot_up) : (i_dot_up*5.);
+							yaw = (fabs(i_dot_right) >= 0.5) ? Num::Sign(i_dot_right) : (i_dot_right*2.);
+							roll = (fabs(i_dot_right) > 0.333) ? Num::Sign(i_dot_right) : (i_dot_right*3.);
+							throttle = ((dist_to_target < 300.) && (i_dot_fwd > 0.5)) ? (dist_to_target/300.) : 1.;
 							//ship->SetShieldPos( Ship::SHIELD_FRONT );
+							facing_target = (t_dot_fwd > 0.95);
 						}
 					}
 					/*
 					else if( (dist_to_target < dodge_dist + 150.) && (t_dot_fwd < -0.25) && (vec_to_target.Dot( &(ship->Fwd) ) < -0.25) )
 					{
 						// Behind and aiming at us: Shake 'em!
-						ship->SetPitch( cos( ship->Lifetime.ElapsedSeconds() * 3. ) * 0.4 + 0.6 );
-						ship->SetYaw( sin( ship->Lifetime.ElapsedSeconds() ) );
-						ship->SetRoll( sin( ship->Lifetime.ElapsedSeconds() ) );
-						ship->SetThrottle( 1., dt );
+						pitch = cos( ship->Lifetime.ElapsedSeconds() * 3. ) * 0.4 + 0.6;
+						yaw = sin( ship->Lifetime.ElapsedSeconds() );
+						roll = sin( ship->Lifetime.ElapsedSeconds() );
+						throttle = 1.;
 						//ship->SetShieldPos( Ship::SHIELD_REAR );
 					}
 					*/
 					else if( dist_to_target < dodge_dist + 200. )
 					{
 						// Behind, not aiming at us, but too close to turn towards: Get some distance.
-						ship->SetPitch( 0. );
-						ship->SetYaw( i_dot_right / 4. );
-						ship->SetRoll( i_dot_right / 2. );
-						ship->SetThrottle( 1., dt );
+						pitch = 0.;
+						yaw = i_dot_right / 4.;
+						roll = i_dot_right / 2.;
+						throttle = 1.;
 						//ship->SetShieldPos( Ship::SHIELD_REAR );
 					}
 					else
 					{
 						// Generally behind us: Turn towards enemy.
-						ship->SetPitch( (i_dot_up >= 0.) ? 1. : -1. );
-						ship->SetYaw( i_dot_right );
-						ship->SetRoll( i_dot_right );
-						ship->SetThrottle( 1. - i_dot_up/2., dt );
+						pitch = (i_dot_up >= 0.) ? 1. : -1.;
+						yaw = i_dot_right;
+						roll = i_dot_right;
+						throttle = 1. - i_dot_up/2.;
 						//ship->SetShieldPos( Ship::SHIELD_CENTER );
 					}
 				}
@@ -1466,11 +1478,6 @@ void XWingServer::Update( double dt )
 				{
 					ship->Target = 0;
 					ship->Firing = false;
-					ship->SetPitch( 0. );
-					ship->SetYaw( 0. );
-					ship->SetRoll( 0. );
-					ship->SetThrottle( 1., dt );
-					t_dot_fwd = 0.;
 				}
 				
 				// See if we should be chasing waypoints.
@@ -1577,20 +1584,48 @@ void XWingServer::Update( double dt )
 					bool target_is_exhaust_port = ( target && (target->Type() == XWing::Object::SHIP) && ( ((Ship*)( target ))->ShipType == Ship::TYPE_EXHAUST_PORT ) );
 					
 					// Allow override for shooting at targets ahead of us near the waypoint.
-					if( target && (ship->Dist(target) < 1000.) && (t_dot_fwd > 0.95) && (w_dot_fwd > 0.9) && (! target_is_exhaust_port) )
+					if( target && facing_target && (ship->Dist(target) < 1000.) && (w_dot_fwd > 0.9) && (! target_is_exhaust_port) )
 						;
 					else
 					{
-						ship->SetPitch( (fabs(w_dot_up) > 0.2) ? Num::Sign(w_dot_up) : (w_dot_up*5.) );
-						ship->SetYaw( (fabs(w_dot_right) >= 0.5) ? Num::Sign(w_dot_right) : (w_dot_right*2.) );
-						ship->SetRoll( (fabs(w_dot_right) > 0.333) ? Num::Sign(w_dot_right) : (w_dot_right*3.) );
-						ship->SetThrottle( 1., dt );
+						pitch = (fabs(w_dot_up) > 0.2) ? Num::Sign(w_dot_up) : (w_dot_up*5.);
+						yaw = (fabs(w_dot_right) > 0.5) ? Num::Sign(w_dot_right) : (w_dot_right*2.);
+						roll = (fabs(w_dot_right) > 0.333) ? Num::Sign(w_dot_right) : (w_dot_right*3.);
+						throttle = (w_dot_fwd > 0.3) ? 1. : 0.5;
 						
 						// Don't fire at the waypoint just because our target is somewhere near the front of us.
 						if( ! target_is_exhaust_port )
 							ship->Firing = false;
 					}
 				}
+				else if( deathstar )
+				{
+					// Don't be like Porkins.
+					double dist = ship->DistAlong( &(deathstar->Up), deathstar ) - ship->Radius();
+					double time = dist / ship->MaxSpeed();
+					double d_dot_fwd = deathstar->Up.Dot( &(ship->Fwd) );
+					double d_dot_up = deathstar->Up.Dot( &(ship->Up) );
+					double d_dot_right = deathstar->Up.Dot( &(ship->Right) );
+					if( (time < 1.) && (d_dot_fwd < 0.) )
+					{
+						if( d_dot_up < 0. )
+							roll = (d_dot_right < 0.) ? -1. : 1.;
+						else
+							roll = d_dot_right;
+						yaw *= 2.;
+					}
+					if( time < 0.5 )
+					{
+						pitch = std::max<double>( pitch, 1.25 - time );
+						throttle = (d_dot_fwd < 0.) ? (2.*time) : 1.;
+					}
+				}
+				
+				// Apply AI's desired controls.
+				ship->SetPitch( pitch, dt );
+				ship->SetYaw( yaw, dt );
+				ship->SetRoll( roll, dt );
+				ship->SetThrottle( throttle, dt );
 			}
 		}
 		

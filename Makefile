@@ -15,15 +15,14 @@ LIBDIR = /usr/lib64
 LIB = libSDLmain.a libSDL_net.so libSDL_mixer.so libSDL_ttf.so libSDL_image.so libSDL.so libGLEW.a libGLU.so libGL.so libopenvr_api.so
 DEF =
 EXE = xwingrev
-VERSION = 0.1.5
+VERSION = 0.1.6
 GAMEDIR = /Games/X-Wing Revival
 SERVERDIR = /srv/xwingrev
 SERVERUSER = xwingrev
-BUILD_FINALIZE =
 MAC_CODESIGN = Raptor007
 MAC_FRAMEWORKS = OpenGL Cocoa AudioUnit AudioToolbox IOKit Carbon
 MAC_INSTALL_NAME_TOOL = /opt/local/bin/install_name_tool
-MAC_BUNDLE_LIBS = /opt/local/lib/libgcc/libstdc++.6.dylib /opt/local/lib/libgcc/libgcc_s.1.dylib
+MAC_BUNDLE_LIBS = /opt/local/lib/libgcc/libstdc++.6.dylib /opt/local/lib/libgcc/libgcc_s.1.dylib /usr/local/lib/libopenvr_api.dylib
 MAC_PPC_ARCH = ppc
 MAC_PPC_MCPU = G3
 MAC_PPC_MTUNE = G5
@@ -38,7 +37,8 @@ MAC_I64_MTUNE = core2
 INCLUDES = Sources Sources/Game Sources/UI $(wildcard ../RaptorEngine/*) $(INC)
 LIBRARIES = $(foreach lib,$(LIB),$(LIBDIR)/$(lib))
 SOURCES = $(wildcard Sources/*.cpp) $(wildcard Sources/*/*.cpp) $(wildcard ../RaptorEngine/*/*.cpp)
-HEADERS = $(wildcard Sources/*.h) $(wildcard Sources/*/*.h) $(wildcard ../RaptorEngine/*/*.h)
+GAME_HEADERS = $(wildcard Sources/*.h) $(wildcard Sources/*/*.h)
+ENGINE_HEADERS = $(wildcard ../RaptorEngine/*/*.h)
 TARGET = exe
 PRODUCT = $(EXE)
 XFLAGS =
@@ -146,11 +146,6 @@ XFLAGS += -headerpad_max_install_names
 TARGET = X-Wing\ Revival.app
 PRODUCT = X-Wing Revival.app
 
-ifdef MAC_BUNDLE_LIBS
-# Fix dynamic library paths.
-BUILD_FINALIZE += $(foreach lib,$(MAC_BUNDLE_LIBS),$(MAC_INSTALL_NAME_TOOL) -change "$(lib)" "@executable_path/$(notdir $(lib))" "$(EXE)";)
-endif
-
 # End Mac OS X section.
 endif
 
@@ -206,23 +201,22 @@ default: $(TARGET)
 	rsync -ax --exclude=".*" "English.lproj" "$@/Contents/Resources/"
 	cp -p "xwing128.icns" "$@/Contents/Resources/"
 	-$(foreach lib,$(MAC_BUNDLE_LIBS),cp -p "$(lib)" "$@/Contents/MacOS/"; chmod 644 "$@/Contents/MacOS/$(notdir $(lib))";)
+	-$(foreach lib,$(MAC_BUNDLE_LIBS),$(MAC_INSTALL_NAME_TOOL) -change "$(lib)" "@loader_path/$(notdir $(lib))" "$(EXE)";)
+	-$(foreach lib1,$(MAC_BUNDLE_LIBS),$(foreach lib2,$(MAC_BUNDLE_LIBS),$(MAC_INSTALL_NAME_TOOL) -change "$(lib1)" "@loader_path/$(notdir $(lib1))" "$@/Contents/MacOS/$(notdir $(lib2))";))
 	-codesign -s "$(MAC_CODESIGN)" "$@"
 
-exe: $(SOURCES) $(HEADERS) $(EXE)
+exe: $(SOURCES) $(GAME_HEADERS) $(ENGINE_HEADERS) $(EXE)
 
 $(EXE): $(OBJECTS)
 	$(LD) $(AFLAGS) $(MFLAGS) $(OFLAGS) $(WFLAGS) $(XFLAGS) $(LDFLAGS) $(OBJECTS) $(LIBRARIES) -o $@
-	-$(BUILD_FINALIZE)
 
-build/$(ARCHDIR)XWing/%.o: Sources/%.cpp $(HEADERS) $(foreach objdir,$(OBJDIRS),$(objdir).dir)
+build/$(ARCHDIR)XWing/%.o: Sources/%.cpp $(GAME_HEADERS) $(ENGINE_HEADERS)
+	@mkdir -p $(dir $@)
 	$(CC) -c $(AFLAGS) $(MFLAGS) $(OFLAGS) $(WFLAGS) $(XFLAGS) $(CFLAGS) $(foreach inc,$(INCLUDES),-I$(inc)) $(foreach def,$(DEF),-D$(def)) $< -o $@
 
-build/$(ARCHDIR)RaptorEngine/%.o: ../RaptorEngine/%.cpp $(HEADERS) $(foreach objdir,$(OBJDIRS),$(objdir).dir)
+build/$(ARCHDIR)RaptorEngine/%.o: ../RaptorEngine/%.cpp $(ENGINE_HEADERS)
+	@mkdir -p $(dir $@)
 	$(CC) -c $(AFLAGS) $(MFLAGS) $(OFLAGS) $(WFLAGS) $(XFLAGS) $(CFLAGS) $(foreach inc,$(INCLUDES),-I$(inc)) $(foreach def,$(DEF),-D$(def)) $< -o $@
-
-build/%/.dir:
-	mkdir -p $(dir $@)
-	touch $@
 
 XWing.res:
 	windres XWing.rc -O coff -o $@

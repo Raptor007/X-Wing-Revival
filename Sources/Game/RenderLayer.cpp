@@ -687,7 +687,7 @@ void RenderLayer::Draw( void )
 		
 		Cam.Copy( observed_ship );
 		
-		if( (view != VIEW_COCKPIT) || Raptor::Game->Cfg.SettingAsBool("g_3d_cockpit") )
+		if( (view != VIEW_COCKPIT) || Raptor::Game->Cfg.SettingAsBool("g_3d_cockpit",true) )
 		{
 			// Apply camera angle change.
 			Cam.Yaw( ((XWingGame*)( Raptor::Game ))->LookYaw );
@@ -1349,7 +1349,7 @@ void RenderLayer::Draw( void )
 		
 		// Load cockpits.
 		
-		bool g_3d_cockpit = Raptor::Game->Cfg.SettingAsBool("g_3d_cockpit");
+		bool g_3d_cockpit = Raptor::Game->Cfg.SettingAsBool("g_3d_cockpit",true);
 		bool g_hq_cockpit = Raptor::Game->Cfg.SettingAsBool("g_hq_cockpit");
 		
 		if( observed_ship->ShipType == Ship::TYPE_XWING )
@@ -1429,7 +1429,7 @@ void RenderLayer::Draw( void )
 						if( nearest_shot )
 						{
 							snprintf( uniform_name, 128, "PointLight%iPos", i );
-							Raptor::Game->ShaderMgr.Set3f( uniform_name, nearest_shot->X, nearest_shot->Y, nearest_shot->Z );
+							Raptor::Game->ShaderMgr.Set3f( uniform_name, nearest_shot->X - observed_ship->X, nearest_shot->Y - observed_ship->Y, nearest_shot->Z - observed_ship->Z );
 							
 							Color dynamic_light_color = nearest_shot->LightColor();
 							snprintf( uniform_name, 128, "PointLight%iColor", i );
@@ -1468,19 +1468,33 @@ void RenderLayer::Draw( void )
 				cockpit_fwd = (g_hq_cockpit ? -14. : 0.);
 			}
 			
+			// Draw the cockpit as though it were at 0,0,0 to avoid Z-fighting issues.
 			Pos3D cockpit_pos( observed_ship );
+			cockpit_pos.SetPos(0,0,0);
 			cockpit_pos.FixVectors();
+			Raptor::Game->Cam.Copy( &cockpit_pos );
+			Raptor::Game->Gfx.Setup3D( &(Raptor::Game->Cam) );
+			if( use_shaders )
+				Raptor::Game->ShaderMgr.Set3f( "CamPos", Raptor::Game->Cam.X, Raptor::Game->Cam.Y, Raptor::Game->Cam.Z );
 			cockpit_pos.MoveAlong( &(cockpit_pos.Fwd), cockpit_fwd * cockpit_scale );
 			cockpit_pos.MoveAlong( &(cockpit_pos.Up), cockpit_up * cockpit_scale );
 			cockpit_pos.MoveAlong( &(cockpit_pos.Right), cockpit_right * cockpit_scale );
 			cockpit_3d->DrawAt( &cockpit_pos, cockpit_scale );
+			
+			// Restore camera position for scene render.
+			Raptor::Game->Cam.Copy( &Cam );
+			Raptor::Game->Gfx.Setup3D( &(Raptor::Game->Cam) );
 			
 			// Reset world lights to normal.
 			if( change_light_for_cockpit )
 				SetWorldLights();
 			
 			if( use_shaders )
+			{
+				// Restore camera position in shaders for lighting effects.
+				Raptor::Game->ShaderMgr.Set3f( "CamPos", Raptor::Game->Cam.X, Raptor::Game->Cam.Y, Raptor::Game->Cam.Z );
 				Raptor::Game->ShaderMgr.StopShaders();
+			}
 		}
 		else
 		{

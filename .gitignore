@@ -9,3 +9,9 @@
 *.pbxuser
 *.xcuserstate
 *.o
+*.app
+arch-*
+xwingrev
+xwingrev_*
+xwingrev.exe
+XWing.build

@@ -58,9 +58,9 @@ public:
 	void AddDamage( double front, double rear, const char *subsystem = NULL );
 	void Explode( double dt );
 	
-	void SetRoll( double roll );
-	void SetPitch( double pitch );
-	void SetYaw( double yaw );
+	void SetRoll( double roll, double dt );
+	void SetPitch( double pitch, double dt );
+	void SetYaw( double yaw, double dt );
 	double GetThrottle( void ) const;
 	void SetThrottle( double throttle, double dt );
 	void SetShieldPos( uint8_t pos );

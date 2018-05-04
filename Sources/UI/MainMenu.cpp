@@ -82,61 +82,79 @@ void MainMenu::Draw( void )
 {
 	UpdateRects();
 	
-	Raptor::Game->Gfx.DrawRect2D( Rect.w / 2 - Rect.h, 0, Rect.w / 2 + Rect.h, Rect.h, Background.CurrentFrame(), 1.f, 1.f, 1.f, 1.f );
-	
-	glEnable( GL_TEXTURE_2D );
-	glBindTexture( GL_TEXTURE_2D, Fog.CurrentFrame() );
-	
-	// Make sure the fog texture is allowed to repeat.
-	glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT );
-	glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT );
-	
-	int fog_h1 = Rect.h / 5;
-	int fog_h2 = Rect.h / 6;
-	int fog_x1 = Rect.w / 2 - Rect.h;
-	int fog_x2 = fog_x1 + Rect.h * 2;
-	float fog_alpha = std::min<float>( FogTime / 12.f, 0.25f );
-	
-	glBegin( GL_QUADS );
+	if( Raptor::Game->Head.VR && Raptor::Game->Gfx.DrawTo )
+	{
+		// In VR, show 3D background behind the menu.
+		// FIXME: Clean this up.
+		glPushMatrix();
+		Pos3D origin;
+		Raptor::Game->Cam.Copy( &origin );
+		Raptor::Game->Cam.FOV = Raptor::Game->Cfg.SettingAsDouble("vr_fov");
+		Raptor::Game->Gfx.Setup3D( &(Raptor::Game->Cam) );
+		Animation bg;
+		bg.BecomeInstance( Raptor::Game->Res.GetAnimation("nebula.ani") );
+		double bg_dist = Raptor::Game->Cfg.SettingAsDouble( "g_bg_dist", std::min<double>( 50000., Raptor::Game->Gfx.ZFar * 0.875 ) );
+		Raptor::Game->Gfx.DrawSphere3D( 0,0,0, bg_dist, 32, bg.CurrentFrame(), Graphics::TEXTURE_MODE_Y_ASIN );
+		glPopMatrix();
+	}
+	else
+	{
+		Raptor::Game->Gfx.DrawRect2D( Rect.w / 2 - Rect.h, 0, Rect.w / 2 + Rect.h, Rect.h, Background.CurrentFrame(), 1.f, 1.f, 1.f, 1.f );
 		
-		glColor4f( 0.41f, 0.56f, 0.58f, fog_alpha );
+		glEnable( GL_TEXTURE_2D );
+		glBindTexture( GL_TEXTURE_2D, Fog.CurrentFrame() );
 		
-		// Top-left
-		glTexCoord2d( FogTime * -0.03, 0 );
-		glVertex2i( fog_x1, Rect.h - fog_h1 );
+		// Make sure the fog texture is allowed to repeat.
+		glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT );
+		glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT );
 		
-		// Bottom-left
-		glTexCoord2d( FogTime * -0.03, 1 );
-		glVertex2i( fog_x1, Rect.h );
+		int fog_h1 = Rect.h / 5;
+		int fog_h2 = Rect.h / 6;
+		int fog_x1 = Rect.w / 2 - Rect.h;
+		int fog_x2 = fog_x1 + Rect.h * 2;
+		float fog_alpha = std::min<float>( FogTime / 12.f, 0.25f );
 		
-		// Bottom-right
-		glTexCoord2d( (FogTime * -0.03) + (0.5 * Rect.h / fog_h1), 1 );
-		glVertex2i( fog_x2, Rect.h );
-		
-		// Top-right
-		glTexCoord2d( (FogTime * -0.03) + (0.5 * Rect.h / fog_h1), 0 );
-		glVertex2i( fog_x2, Rect.h - fog_h1 );
-		
-		glColor4f( 0.41f, 0.54f, 0.55f, fog_alpha );
-		
-		// Top-left
-		glTexCoord2d( FogTime * -0.07, 0 );
-		glVertex2i( fog_x1, Rect.h - fog_h2 );
-		
-		// Bottom-left
-		glTexCoord2d( FogTime * -0.07, 1 );
-		glVertex2i( fog_x1, Rect.h );
-		
-		// Bottom-right
-		glTexCoord2d( (FogTime * -0.07) + (0.5 * Rect.h / fog_h2), 1 );
-		glVertex2i( fog_x2, Rect.h );
-		
-		// Top-right
-		glTexCoord2d( (FogTime * -0.07) + (0.5 * Rect.h / fog_h2), 0 );
-		glVertex2i( fog_x2, Rect.h - fog_h2 );
-		
-	glEnd();
-	glDisable( GL_TEXTURE_2D );
+		glBegin( GL_QUADS );
+			
+			glColor4f( 0.41f, 0.56f, 0.58f, fog_alpha );
+			
+			// Top-left
+			glTexCoord2d( FogTime * -0.03, 0 );
+			glVertex2i( fog_x1, Rect.h - fog_h1 );
+			
+			// Bottom-left
+			glTexCoord2d( FogTime * -0.03, 1 );
+			glVertex2i( fog_x1, Rect.h );
+			
+			// Bottom-right
+			glTexCoord2d( (FogTime * -0.03) + (0.5 * Rect.h / fog_h1), 1 );
+			glVertex2i( fog_x2, Rect.h );
+			
+			// Top-right
+			glTexCoord2d( (FogTime * -0.03) + (0.5 * Rect.h / fog_h1), 0 );
+			glVertex2i( fog_x2, Rect.h - fog_h1 );
+			
+			glColor4f( 0.41f, 0.54f, 0.55f, fog_alpha );
+			
+			// Top-left
+			glTexCoord2d( FogTime * -0.07, 0 );
+			glVertex2i( fog_x1, Rect.h - fog_h2 );
+			
+			// Bottom-left
+			glTexCoord2d( FogTime * -0.07, 1 );
+			glVertex2i( fog_x1, Rect.h );
+			
+			// Bottom-right
+			glTexCoord2d( (FogTime * -0.07) + (0.5 * Rect.h / fog_h2), 1 );
+			glVertex2i( fog_x2, Rect.h );
+			
+			// Top-right
+			glTexCoord2d( (FogTime * -0.07) + (0.5 * Rect.h / fog_h2), 0 );
+			glVertex2i( fog_x2, Rect.h - fog_h2 );
+			
+		glEnd();
+		glDisable( GL_TEXTURE_2D );
+	}
 	
 	FogTime += std::min<double>( Raptor::Game->FrameTime, 0.25 );
 	
