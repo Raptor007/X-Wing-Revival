@@ -417,13 +417,17 @@ void PrefsMenu::UpdateContents( void )
 	rect.x = 10;
 	rect.y = 10 + group->TitleFont->GetAscent();
 	
-	rect.w = 185;
-	PrefsMenuDropDown *mouse_enable_dropdown = new PrefsMenuDropDown( &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, 0, "mouse_enable" );
-	mouse_enable_dropdown->AddItem( "false", "Never Fly By Mouse" );
-	mouse_enable_dropdown->AddItem( "fullscreen", "Fullscreen Only" );
-	mouse_enable_dropdown->AddItem( "true", "Anytime No Joystick" );
-	mouse_enable_dropdown->Update();
-	group->AddElement( mouse_enable_dropdown );
+	rect.w = 55;
+	group->AddElement( new Label( &rect, "Mode:", LabelFont, Font::ALIGN_MIDDLE_LEFT ) );
+	rect.x += rect.w + 5;
+	rect.w = 110;
+	PrefsMenuDropDown *mouse_mode_dropdown = new PrefsMenuDropDown( &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, 0, "mouse_mode" );
+	mouse_mode_dropdown->AddItem( "disabled", "Disabled" );
+	mouse_mode_dropdown->AddItem( "fly", "Yaw/Pitch" );
+	mouse_mode_dropdown->AddItem( "fly2", "Roll/Pitch" );
+	mouse_mode_dropdown->AddItem( "look", "Freelook" );
+	mouse_mode_dropdown->Update();
+	group->AddElement( mouse_mode_dropdown );
 	
 	rect.y += rect.h + 8;
 	rect.x = 10;

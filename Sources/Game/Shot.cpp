@@ -97,9 +97,20 @@ double Shot::Speed( void ) const
 double Shot::TurnRate( void ) const
 {
 	if( ShotType == TYPE_TORPEDO )
-		return 90.;
+		return 95.;
 	else if( ShotType == TYPE_MISSILE )
 		return 120.;
+	
+	return 0.;
+}
+
+
+double Shot::Intercept( void ) const
+{
+	if( ShotType == TYPE_TORPEDO )
+		return 0.95;
+	else if( ShotType == TYPE_MISSILE )
+		return 1.;
 	
 	return 0.;
 }
@@ -244,18 +255,20 @@ void Shot::Update( double dt )
 		
 		if( target )
 		{
-			// Point at the target.
+			// Point somewhere between the target and intercept point.
 			
 			Vec3D vec_to_target( target->X - X, target->Y - Y, target->Z - Z );
+			double time_to_target = vec_to_target.Length() / Speed();
+			vec_to_target += target->MotionVector * (time_to_target * Intercept());
 			vec_to_target.ScaleTo( 1. );
 			Up.Copy( &vec_to_target );
 			FixVectors();
 			
 			double fwd_dot = Fwd.Dot(&vec_to_target);
-			if( fwd_dot < 0.9 )
+			if( fwd_dot < 0.95 )
 				PitchRate = TurnRate();
 			else
-				PitchRate = TurnRate() * (1. - fwd_dot) * 10.;
+				PitchRate = TurnRate() * (1. - fwd_dot) * 20.;
 			
 			MotionVector.Copy( &Fwd );
 			MotionVector.ScaleTo( Speed() );

@@ -31,6 +31,7 @@ public:
 	double AsteroidDamage( void ) const;
 	double Speed( void ) const;
 	double TurnRate( void ) const;
+	double Intercept( void ) const;
 	double MaxLifetime( void ) const;
 	Color LightColor( void ) const;
 	

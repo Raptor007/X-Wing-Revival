@@ -29,14 +29,12 @@ public:
 	
 	double Health;
 	Clock HitClock;
-	Vec3D HitDir;
+	Vec3D CockpitOffset;
 	Clock DeathClock;
 	std::map<std::string,double> Subsystems;
-	
+	double CollisionPotential;
 	double ShieldF, ShieldR;
 	uint8_t ShieldPos;
-	
-	double CollisionPotential;
 	
 	bool Firing;
 	uint32_t SelectedWeapon;
@@ -47,6 +45,7 @@ public:
 	uint8_t FiredThisFrame;
 	
 	uint32_t Target;
+	float TargetLock;
 	
 	
 	Ship( uint32_t id = 0 );
@@ -56,6 +55,7 @@ public:
 	void Reset( void );
 	void SetHealth( double health );
 	void AddDamage( double front, double rear, const char *subsystem = NULL );
+	void KnockCockpit( const Vec3D *dir, double force );
 	void Explode( double dt );
 	
 	void SetRoll( double roll, double dt );
@@ -86,6 +86,8 @@ public:
 	void NextWeapon( void );
 	void NextFiringMode( void );
 	double ShotDelay( void ) const;
+	float LockingOn( const GameObject *target ) const;
+	void UpdateTarget( const GameObject *target, double dt = 0. );
 	
 	bool PlayerShouldUpdateServer( void ) const;
 	bool ServerShouldUpdatePlayer( void ) const;

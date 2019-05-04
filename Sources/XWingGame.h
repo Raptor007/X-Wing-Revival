@@ -13,7 +13,6 @@ class XWingGame;
 class XWingGame : public RaptorGame
 {
 public:
-	Layer *Overlay;
 	bool ReadKeyboard, ReadMouse;
 	Clock RoundTimer;
 	uint32_t ObservedShipID;
@@ -33,13 +32,11 @@ public:
 	bool ProcessPacket( Packet *packet );
 	
 	void ChangeState( int state );
-	void AddedObject( GameObject *obj );
-	
 	void Disconnected( void );
-	void Connecting( void );
-	void Connected( void );
 	void ShowLobby( void );
 	void BeginFlying( void );
+	
+	void AddedObject( GameObject *obj );
 	
 	GameObject *NewObject( uint32_t id, uint32_t type );
 };

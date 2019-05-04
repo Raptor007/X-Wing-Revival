@@ -232,9 +232,9 @@ void XWingServer::Update( double dt )
 						}
 						else
 							hit.AddString( "" );
-						hit.AddDouble( ship2->X );
-						hit.AddDouble( ship2->Y );
-						hit.AddDouble( ship2->Z );
+						hit.AddDouble( (ship2->X + ship2->PrevPos.X) / 2. );
+						hit.AddDouble( (ship2->Y + ship2->PrevPos.Y) / 2. );
+						hit.AddDouble( (ship2->Z + ship2->PrevPos.Z) / 2. );
 						Net.SendAll( &hit );
 					}
 				}
@@ -304,9 +304,9 @@ void XWingServer::Update( double dt )
 						}
 						else
 							hit.AddString( "" );
-						hit.AddDouble( ship1->X );
-						hit.AddDouble( ship1->Y );
-						hit.AddDouble( ship1->Z );
+						hit.AddDouble( (ship1->X + ship1->PrevPos.X) / 2. );
+						hit.AddDouble( (ship1->Y + ship1->PrevPos.Y) / 2. );
+						hit.AddDouble( (ship1->Z + ship1->PrevPos.Z) / 2. );
 						Net.SendAll( &hit );
 					}
 				}
@@ -416,9 +416,9 @@ void XWingServer::Update( double dt )
 					else
 						shot_hit.AddString( "" );
 					shot_hit.AddUInt( shot->ShotType );
-					shot_hit.AddDouble( shot->X );
-					shot_hit.AddDouble( shot->Y );
-					shot_hit.AddDouble( shot->Z );
+					shot_hit.AddDouble( (shot->X + shot->PrevPos.X) / 2. );
+					shot_hit.AddDouble( (shot->Y + shot->PrevPos.Y) / 2. );
+					shot_hit.AddDouble( (shot->Z + shot->PrevPos.Z) / 2. );
 					Net.SendAll( &shot_hit );
 					
 					if( (subsystem_iter != ship->Subsystems.end()) && (subsystem_iter->second <= 0.) )
@@ -593,9 +593,9 @@ void XWingServer::Update( double dt )
 					else
 						shot_hit.AddString( "" );
 					shot_hit.AddUInt( shot->ShotType );
-					shot_hit.AddDouble( shot->X );
-					shot_hit.AddDouble( shot->Y );
-					shot_hit.AddDouble( shot->Z );
+					shot_hit.AddDouble( (shot->X + shot->PrevPos.X) / 2. );
+					shot_hit.AddDouble( (shot->Y + shot->PrevPos.Y) / 2. );
+					shot_hit.AddDouble( (shot->Z + shot->PrevPos.Z) / 2. );
 					Net.SendAll( &shot_hit );
 					
 					if( (subsystem_iter != ship->Subsystems.end()) && (subsystem_iter->second <= 0.) )
@@ -1288,13 +1288,13 @@ void XWingServer::Update( double dt )
 						}
 					}
 					
-					// If we're running the trench, filter out any targets outside it.
+					// If we're running the trench, filter out any targets outside it or behind us.
 					if( deathstar && (ship->DistAlong( &(deathstar->Up), deathstar ) <= 0.) )
 					{
 						std::vector<GameObject*> trench_targets;
 						for( std::vector<GameObject*>::iterator target_iter = potential_targets.begin(); target_iter != potential_targets.end(); target_iter ++ )
 						{
-							if( fabs( (*target_iter)->DistAlong( &(deathstar->Right), deathstar ) ) < (deathstar->TrenchWidth / 2.) )
+							if( ((*target_iter)->DistAlong( &(ship->Fwd), ship ) > 0.) && (fabs( (*target_iter)->DistAlong( &(deathstar->Right), deathstar ) ) < (deathstar->TrenchWidth / 2.)) )
 								trench_targets.push_back( *target_iter );
 						}
 						potential_targets = trench_targets;
@@ -1304,28 +1304,23 @@ void XWingServer::Update( double dt )
 					std::vector<GameObject*> close_targets;
 					for( std::vector<GameObject*>::iterator target_iter = potential_targets.begin(); target_iter != potential_targets.end(); target_iter ++ )
 					{
-						if( (*target_iter)->Dist( ship ) < 2000. )
+						double dist = (*target_iter)->Dist( ship );
+						if( dist < 2000. )
 							close_targets.push_back( *target_iter );
-					}
-					if( close_targets.size() )
-					{
-						potential_targets = close_targets;
-						
-						// If the exhaust port is close, go for that.
-						for( std::vector<GameObject*>::iterator target_iter = potential_targets.begin(); target_iter != potential_targets.end(); target_iter ++ )
+						else if( (*target_iter)->Type() == XWing::Object::SHIP )
 						{
-							if( (*target_iter)->Type() == XWing::Object::SHIP )
+							Ship *potential_ship = (Ship*) *target_iter;
+							if( (dist < 3000.) && (potential_ship->ShipType == Ship::TYPE_EXHAUST_PORT) )
 							{
-								Ship *potential_ship = (Ship*) *target_iter;
-								if( potential_ship->ShipType == Ship::TYPE_EXHAUST_PORT )
-								{
-									potential_targets.clear();
-									potential_targets.push_back( potential_ship );
-									break;
-								}
+								// If the exhaust port is close, go for that.
+								close_targets.clear();
+								close_targets.push_back( potential_ship );
+								break;
 							}
 						}
 					}
+					if( close_targets.size() )
+						potential_targets = close_targets;
 					
 					// Pick a target.
 					if( potential_targets.size() > 1 )
@@ -1344,8 +1339,6 @@ void XWingServer::Update( double dt )
 				
 				if( target )
 				{
-					ship->Target = target->ID;
-					
 					// Make AI ships select torpedos when attacking appropriate targets.
 					if( (ship->ShipType == Ship::TYPE_XWING) || (ship->ShipType == Ship::TYPE_YWING) )
 					{
@@ -1476,9 +1469,16 @@ void XWingServer::Update( double dt )
 				}
 				else
 				{
-					ship->Target = 0;
+					// No target.
 					ship->Firing = false;
 				}
+				
+				// Set target ID and update missile lock progress.
+				ship->UpdateTarget( target, dt );
+				
+				// Don't fire torpedos before we have a lock.
+				if( ship->Firing && (ship->Ammo[ ship->SelectedWeapon ] > 0) && (ship->TargetLock < 1.f) )
+					ship->Firing = false;
 				
 				// See if we should be chasing waypoints.
 				Pos3D *waypoint = NULL;
@@ -1670,6 +1670,7 @@ void XWingServer::Update( double dt )
 					if( ship->Firing && (ship->FiringClocks[ ship->SelectedWeapon ].ElapsedSeconds() >= ship->ShotDelay()) )
 					{
 						GameObject *target = Data.GetObject( ship->Target );
+						bool locked = ship->LockingOn( target );
 						std::map<int,Shot*> shots = ship->NextShots( target );
 						ship->JustFired();
 						
@@ -1677,6 +1678,10 @@ void XWingServer::Update( double dt )
 						{
 							uint32_t shot_id = Data.AddObject( shot_iter->second );
 							add_object_ids.insert( shot_id );
+							
+							// No missile lock if they weren't facing the target when they fired.
+							if( ! locked )
+								shot_iter->second->Seeking = 0;
 						}
 					}
 				}
@@ -2642,7 +2647,7 @@ void XWingServer::BeginFlying( void )
 				if( box_type == 0 )
 				{
 					// Across the bottom.
-					box->H = (deathstar->TrenchDepth - 20.) * Rand::Double( 0.2, 0.45 );
+					box->H = (deathstar->TrenchDepth - 20.) * Rand::Double( 0.15, 0.3 );
 					box->W = deathstar->TrenchWidth;
 					box->L = box->H / 2.;
 					box->MoveAlong( &(deathstar->Up), box->H / 2. - deathstar->TrenchDepth );
@@ -2659,7 +2664,7 @@ void XWingServer::BeginFlying( void )
 				else if( box_type == 1 )
 				{
 					// Across the top.
-					box->H = (deathstar->TrenchDepth - 20.) * Rand::Double( 0.2, 0.45 );
+					box->H = (deathstar->TrenchDepth - 20.) * Rand::Double( 0.2, 0.4 );
 					box->W = deathstar->TrenchWidth;
 					box->L = box->H / 2.;
 					box->MoveAlong( &(deathstar->Up), box->H / -2. );
@@ -2674,7 +2679,7 @@ void XWingServer::BeginFlying( void )
 				else if( box_type == 2 )
 				{
 					// Across the left.
-					box->W = (deathstar->TrenchWidth - 20.) * Rand::Double( 0.4, 0.7 );
+					box->W = (deathstar->TrenchWidth - 20.) * Rand::Double( 0.45, 0.6 );
 					box->H = deathstar->TrenchDepth;
 					box->L = box->W / 2.;
 					box->MoveAlong( &(deathstar->Right), (box->W - deathstar->TrenchWidth) / 2. );
@@ -2690,7 +2695,7 @@ void XWingServer::BeginFlying( void )
 				else if( box_type == 3 )
 				{
 					// Across the right.
-					box->W = (deathstar->TrenchWidth - 20.) * Rand::Double( 0.4, 0.7 );
+					box->W = (deathstar->TrenchWidth - 20.) * Rand::Double( 0.45, 0.6 );
 					box->H = deathstar->TrenchDepth;
 					box->L = box->W / 2.;
 					box->MoveAlong( &(deathstar->Right), (deathstar->TrenchWidth - box->W) / 2. );

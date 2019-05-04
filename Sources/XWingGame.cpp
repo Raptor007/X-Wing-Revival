@@ -23,13 +23,10 @@
 #include "Turret.h"
 #include "DeathStar.h"
 #include "DeathStarBox.h"
-#include "Notification.h"
 
 
 XWingGame::XWingGame( std::string version ) : RaptorGame( "X-Wing Revival", version )
 {
-	Overlay = NULL;
-	
 	ReadKeyboard = true;
 	ReadMouse = true;
 	
@@ -52,7 +49,7 @@ void XWingGame::SetDefaults( void )
 	Cfg.Settings[ "name" ] = "Rookie One";
 	
 	Cfg.Settings[ "view" ] = "cockpit";
-	Cfg.Settings[ "spectator_view" ] = "cinema2";
+	Cfg.Settings[ "spectator_view" ] = "auto";
 	Cfg.Settings[ "view_cycle_time" ] = "7";
 	
 	Cfg.Settings[ "g_znear" ] = "0.125";
@@ -83,10 +80,9 @@ void XWingGame::SetDefaults( void )
 	Cfg.Settings[ "joy_smooth_thumbsticks" ] = "1";
 	Cfg.Settings[ "joy_smooth_triggers" ] = "0.75";
 	
-	Cfg.Settings[ "mouse_enable" ] = "fullscreen";
+	Cfg.Settings[ "mouse_mode" ] = "disabled";
 	Cfg.Settings[ "mouse_invert" ] = "true";
 	Cfg.Settings[ "mouse_smooth" ] = "0.25";
-	Cfg.Settings[ "mouse_look" ] = "false";
 
 	#ifdef APPLE_POWERPC
 		Cfg.Settings[ "g_dynamic_lights" ] = "1";
@@ -233,6 +229,8 @@ void XWingGame::Precache( void )
 		Res.GetModel("calamari-cruiser.obj");
 		
 		Res.GetSound("beep.wav");
+		Res.GetSound("locking.wav");
+		Res.GetSound("locked.wav");
 		Res.GetSound("chat.wav");
 		Res.GetSound("laser_red.wav");
 		Res.GetSound("laser_green.wav");
@@ -309,13 +307,18 @@ void XWingGame::Update( double dt )
 		mouse_x_percent *= Gfx.W / min_dim;
 		mouse_y_percent *= Gfx.H / min_dim;
 	}
+	bool mouse_fly2 = (Cfg.SettingAsString("mouse_mode") == "fly2");
 	
 	if( ReadMouse )
 	{
 		// Read mouse position for pitch/yaw.
-		if( Cfg.SettingAsBool("mouse_enable") || (Gfx.Fullscreen && (Cfg.SettingAsString("mouse_enable") == "fullscreen")) )
+		if( (Cfg.SettingAsString("mouse_mode") == "fly") || mouse_fly2 )
 		{
-			yaw = (fabs(mouse_x_percent) <= 1.) ? mouse_x_percent : Num::Sign(mouse_x_percent);
+			if( mouse_fly2 )
+				roll = (fabs(mouse_x_percent) <= 1.) ? mouse_x_percent : Num::Sign(mouse_x_percent);
+			else
+				yaw = (fabs(mouse_x_percent) <= 1.) ? mouse_x_percent : Num::Sign(mouse_x_percent);
+			
 			pitch = (fabs(mouse_y_percent) <= 1.) ? mouse_y_percent : Num::Sign(mouse_y_percent);
 			
 			// If mouse_invert=false, reverse the pitch.
@@ -336,7 +339,7 @@ void XWingGame::Update( double dt )
 			if( Mouse.ButtonDown( SDL_BUTTON_X2 ) )
 				throttle += FrameTime / 2.;
 		}
-		else if( Cfg.SettingAsBool("mouse_look") && (! Head.VR) )
+		else if( (Cfg.SettingAsString("mouse_mode") == "look") && (! Head.VR) )
 		{
 			LookYaw = ( (fabs(mouse_x_percent) <= 1.) ? mouse_x_percent : Num::Sign(mouse_x_percent) ) * 180.;
 			LookPitch = ( (fabs(mouse_y_percent) <= 1.) ? mouse_y_percent : Num::Sign(mouse_y_percent) ) * -90.;
@@ -347,7 +350,7 @@ void XWingGame::Update( double dt )
 	if( Cfg.SettingAsBool("joy_enable",true) && Joy.Joysticks.size() )
 	{
 		double deadzone = Cfg.SettingAsDouble( "joy_deadzone" );
-		bool stick = false;
+		//bool stick = false;
 		bool pedals = false;
 		bool joy_look = false;
 		
@@ -372,7 +375,7 @@ void XWingGame::Update( double dt )
 			}
 			else if( Str::FindInsensitive( joy_iter->second.Name, "Xbox" ) >= 0 )
 			{
-				stick = true;
+				//stick = true;
 				double deadzone_thumbsticks = Cfg.SettingAsDouble( "joy_deadzone_thumbsticks", 0.1 );
 				double deadzone_triggers = Cfg.SettingAsDouble( "joy_deadzone_triggers", 0.02 );
 				
@@ -432,7 +435,7 @@ void XWingGame::Update( double dt )
 				// Only read axis data if this is an analog stick (not a button pad).
 				if( joy_iter->second.HasAxis(0) || joy_iter->second.HasAxis(1) || joy_iter->second.HasAxis(2) || joy_iter->second.HasAxis(3) )
 				{
-					stick = true;
+					//stick = true;
 					
 					// Read joystick's analog axes.
 					double x = joy_iter->second.Axis( 0, deadzone );
@@ -502,13 +505,7 @@ void XWingGame::Update( double dt )
 			}
 		}
 		
-		// Allow mouse_look to override mouse_enable when a joystick was found.
-		if( ReadMouse && Cfg.SettingAsBool("mouse_look") && stick && (! joy_look) && (! Head.VR) )
-		{
-			LookYaw = ( (fabs(mouse_x_percent) <= 1.) ? mouse_x_percent : Num::Sign(mouse_x_percent) ) * 180.;
-			LookPitch = ( (fabs(mouse_y_percent) <= 1.) ? mouse_y_percent : Num::Sign(mouse_y_percent) ) * -90.;
-		}
-		else if( joy_look )
+		if( joy_look )
 			ThumbstickLook = false;
 	}
 	
@@ -523,9 +520,19 @@ void XWingGame::Update( double dt )
 		if( Keys.KeyDown(SDLK_RIGHT) )
 			yaw += 1.;
 		if( Keys.KeyDown(SDLK_d) )
-			roll -= 1.;
+		{
+			if( mouse_fly2 )
+				yaw -= 1.;
+			else
+				roll -= 1.;
+		}
 		if( Keys.KeyDown(SDLK_f) )
-			roll += 1.;
+		{
+			if( mouse_fly2 )
+				yaw += 1.;
+			else
+				roll += 1.;
+		}
 		
 		if( Keys.KeyDown(SDLK_BACKSPACE) )
 			throttle = 1.;
@@ -619,6 +626,8 @@ void XWingGame::Update( double dt )
 	
 	if( my_ship )
 	{
+		uint32_t target_id = my_ship->Target;
+		
 		if( my_ship->Health > 0. )
 		{
 			bool beep = false;
@@ -657,10 +666,10 @@ void XWingGame::Update( double dt )
 					}
 				}
 				
-				if( my_ship->Target != id )
+				if( target_id != id )
 				{
 					// Note: This clears the current target if no match was found.
-					my_ship->Target = id;
+					target_id = id;
 					beep = true;
 				}
 			}
@@ -691,10 +700,10 @@ void XWingGame::Update( double dt )
 					}
 				}
 				
-				if( my_ship->Target != id )
+				if( target_id != id )
 				{
 					// Note: This clears the current target if no match was found.
-					my_ship->Target = id;
+					target_id = id;
 					beep = true;
 				}
 			}
@@ -721,9 +730,9 @@ void XWingGame::Update( double dt )
 					}
 				}
 				
-				if( my_ship->Target != id )
+				if( target_id != id )
 				{
-					my_ship->Target = id;
+					target_id = id;
 					beep = true;
 				}
 			}
@@ -750,19 +759,18 @@ void XWingGame::Update( double dt )
 					}
 				}
 				
-				if( my_ship->Target != id )
+				if( target_id != id )
 				{
 					// Note: This clears the current target if no match was found.
-					my_ship->Target = id;
+					target_id = id;
 					beep = true;
 				}
 			}
 			else if( target_nothing )
 			{
-				if( my_ship->Target )
+				if( target_id )
 				{
-					// Note: This clears the current target if no match was found.
-					my_ship->Target = 0;
+					target_id = 0;
 					beep = true;
 				}
 			}
@@ -774,20 +782,20 @@ void XWingGame::Update( double dt )
 			
 			
 			// Unselect dead target before it can respawn.
-			if( my_ship->Target )
+			if( target_id )
 			{
-				GameObject *target_obj = Data.GetObject( my_ship->Target );
+				GameObject *target_obj = Data.GetObject( target_id );
 				if( target_obj )
 				{
 					if( target_obj->Type() == XWing::Object::SHIP )
 					{
 						Ship *target_ship = (Ship*) target_obj;
 						if( (target_ship->Health < 0.) && (target_ship->DeathClock.ElapsedSeconds() > 4.) )
-							my_ship->Target = 0;
+							target_id = 0;
 					}
 				}
 				else
-					my_ship->Target = 0;
+					target_id = 0;
 			}
 		}
 		else
@@ -796,7 +804,19 @@ void XWingGame::Update( double dt )
 			my_ship->PitchRate = 0.;
 			my_ship->YawRate = 0.;
 			my_ship->Firing = false;
-			my_ship->Target = 0;
+			target_id = 0;
+		}
+		
+		// Set target ID and update missile lock progress.
+		int old_lock = my_ship->TargetLock * 9;
+		my_ship->UpdateTarget( target_id ? Data.GetObject(target_id) : NULL, dt );
+		int new_lock = my_ship->TargetLock * 9;
+		if( new_lock > old_lock )
+		{
+			if( new_lock == 9 )
+				Snd.Play( Res.GetSound("locked.wav") );
+			else if( new_lock < 9 )
+				Snd.Play( Res.GetSound("locking.wav") );
 		}
 	}
 	
@@ -1169,101 +1189,89 @@ bool XWingGame::HandleEvent( SDL_Event *event )
 		
 		// Apply controls.
 		
-		if( my_ship )
+		if( my_ship && (my_ship->Health > 0.) )
 		{
-			if( my_ship->Health > 0. )
+			bool beep = false;
+			
+			if( weapon_next )
 			{
-				bool beep = false;
+				my_ship->NextWeapon();
+				beep = true;
+			}
+			else if( firing_mode_next )
+			{
+				my_ship->NextFiringMode();
+				beep = true;
+			}
+			else if( shield_shunt )
+			{
+				// Set shield position.
 				
-				if( weapon_next )
-				{
-					my_ship->NextWeapon();
+				if( my_ship->ShieldPos == Ship::SHIELD_CENTER )
+					my_ship->SetShieldPos( Ship::SHIELD_FRONT );
+				else if( my_ship->ShieldPos == Ship::SHIELD_FRONT )
+					my_ship->SetShieldPos( Ship::SHIELD_REAR );
+				else
+					my_ship->SetShieldPos( Ship::SHIELD_CENTER );
+				
+				if( my_ship->MaxShield() > 0. )
 					beep = true;
-				}
-				else if( firing_mode_next )
+			}
+			else if( target_next || target_prev || target_next_enemy || target_prev_enemy || target_next_friendly || target_prev_friendly )
+			{
+				// Apply targeting.
+				
+				std::map<uint32_t,Ship*> potential_targets;
+				for( std::list<Ship*>::iterator ship_iter = ships.begin(); ship_iter != ships.end(); ship_iter ++ )
 				{
-					my_ship->NextFiringMode();
-					beep = true;
+					if( (*ship_iter)->ID != my_ship->ID )
+					{
+						Ship *ship = *ship_iter;
+						
+						if( ship->Health <= 0. )
+							continue;
+						if( (target_next_enemy || target_prev_enemy) && my_ship->Team && (ship->Team == my_ship->Team) )
+							continue;
+						if( (target_next_friendly || target_prev_friendly) && ((! my_ship->Team) || (ship->Team != my_ship->Team)) )
+							continue;
+						
+						potential_targets[ ship->ID ] = ship;
+					}
 				}
-				else if( shield_shunt )
+				
+				std::map<uint32_t,Ship*>::iterator target_iter = potential_targets.find( my_ship->Target );
+				if( target_next || target_next_enemy || target_next_friendly )
 				{
-					// Set shield position.
-					
-					if( my_ship->ShieldPos == Ship::SHIELD_CENTER )
-						my_ship->SetShieldPos( Ship::SHIELD_FRONT );
-					else if( my_ship->ShieldPos == Ship::SHIELD_FRONT )
-						my_ship->SetShieldPos( Ship::SHIELD_REAR );
+					if( target_iter == potential_targets.end() )
+						target_iter = potential_targets.begin();
 					else
-						my_ship->SetShieldPos( Ship::SHIELD_CENTER );
-					
-					if( my_ship->MaxShield() > 0. )
-						beep = true;
+						target_iter ++;
 				}
-				else if( target_next || target_prev || target_next_enemy || target_prev_enemy || target_next_friendly || target_prev_friendly )
+				else if( target_prev || target_prev_enemy || target_prev_friendly )
 				{
-					// Apply targeting.
-					
-					std::map<uint32_t,Ship*> potential_targets;
-					for( std::list<Ship*>::iterator ship_iter = ships.begin(); ship_iter != ships.end(); ship_iter ++ )
-					{
-						if( (*ship_iter)->ID != my_ship->ID )
-						{
-							Ship *ship = *ship_iter;
-							
-							if( ship->Health <= 0. )
-								continue;
-							if( (target_next_enemy || target_prev_enemy) && my_ship->Team && (ship->Team == my_ship->Team) )
-								continue;
-							if( (target_next_friendly || target_prev_friendly) && ((! my_ship->Team) || (ship->Team != my_ship->Team)) )
-								continue;
-							
-							potential_targets[ ship->ID ] = ship;
-						}
-					}
-					
-					std::map<uint32_t,Ship*>::iterator target_iter = potential_targets.find( my_ship->Target );
-					if( target_next || target_next_enemy || target_next_friendly )
-					{
-						if( target_iter == potential_targets.end() )
-							target_iter = potential_targets.begin();
-						else
-							target_iter ++;
-					}
-					else if( target_prev || target_prev_enemy || target_prev_friendly )
-					{
-						if( target_iter == potential_targets.begin() )
-							target_iter = potential_targets.end();
-						else if( potential_targets.size() )
-							target_iter --;
-					}
-					
-					uint32_t id = 0;
-					if( target_iter != potential_targets.end() )
-						id = target_iter->first;
-					
-					if( my_ship->Target != id )
-					{
-						// Note: This clears the current target if no match was found.
-						my_ship->Target = id;
-						beep = true;
-					}
+					if( target_iter == potential_targets.begin() )
+						target_iter = potential_targets.end();
+					else if( potential_targets.size() )
+						target_iter --;
 				}
 				
-				
-				// If we did anything that calls for a beep, play the sound now.
-				if( beep )
-					Snd.Play( Res.GetSound("beep.wav") );
+				if( (target_iter != potential_targets.end()) && (target_iter->second->ID != my_ship->Target) )
+				{
+					my_ship->UpdateTarget( target_iter->second );
+					beep = true;
+				}
+				else
+				{
+					// Note: This clears the current target if no match was found.
+					beep = my_ship->Target;
+					my_ship->UpdateTarget( NULL );
+				}
 			}
-			else
-			{
-				// Player has a ship, but it's dead.
-				
-				my_ship->RollRate = 0.;
-				my_ship->PitchRate = 0.;
-				my_ship->YawRate = 0.;
-				my_ship->Firing = false;
-				my_ship->Target = 0;
-			}
+			
+			
+			// If we did anything that calls for a beep, play the sound now.
+			if( beep )
+				Snd.Play( Res.GetSound("beep.wav") );
 		}
 		else if( observe_next || observe_prev )
 		{
@@ -1449,6 +1457,10 @@ bool XWingGame::ProcessPacket( Packet *packet )
 				}
 				if( sound )
 					Snd.PlayAt( sound, x, y, z, loudness );
+				
+				double total_damage = (old_shields + old_health) - (ship->ShieldF + ship->ShieldR + ship->Health);
+				Vec3D knock( ship->X - x, ship->Y - y, ship->Z - z );
+				ship->KnockCockpit( &knock, total_damage );
 			}
 			
 			if( ship && (ship->ShipType == Ship::TYPE_EXHAUST_PORT) )
@@ -1576,6 +1588,10 @@ bool XWingGame::ProcessPacket( Packet *packet )
 				}
 				if( sound )
 					Snd.PlayAt( sound, x, y, z, loudness );
+				
+				double total_damage = (old_shields + old_health) - (ship->ShieldF + ship->ShieldR + ship->Health);
+				Vec3D knock( ship->X - x, ship->Y - y, ship->Z - z );
+				ship->KnockCockpit( &knock, total_damage );
 			}
 		}
 		
@@ -1650,18 +1666,111 @@ bool XWingGame::ProcessPacket( Packet *packet )
 
 void XWingGame::ChangeState( int state )
 {
-	if( state == Raptor::State::DISCONNECTED )
-		Disconnected();
-	else if( state == Raptor::State::CONNECTING )
-		Connecting();
-	else if( state == Raptor::State::CONNECTED )
-		Connected();
-	else if( state == XWing::State::LOBBY )
+	if( state == XWing::State::LOBBY )
 		ShowLobby();
 	else if( state == XWing::State::FLYING )
 		BeginFlying();
 	
 	RaptorGame::ChangeState( state );
+}
+
+
+void XWingGame::Disconnected( void )
+{
+	Mouse.ShowCursor = true;
+	
+	if( State >= XWing::State::LOBBY )
+	{
+		if( Cfg.SettingAsBool( "s_menu_music" ) )
+			Snd.PlayMusicSubdir( "Menu" );
+		else
+			Snd.StopMusic();
+		
+		Layers.RemoveAll();
+		Layers.Add( new MainMenu() );
+	}
+	
+	RaptorGame::Disconnected();
+}
+
+
+void XWingGame::ShowLobby( void )
+{
+	if( Cfg.SettingAsBool("screensaver") )
+	{
+		if( Raptor::Server->IsRunning() )
+		{
+			Raptor::Server->Data.Players[ PlayerID ]->Properties["team"] = "Spectator";
+			Raptor::Server->Data.Properties["gametype"] = "team_dm";
+			Raptor::Server->Data.Properties["dm_kill_limit"] = "0";
+			Raptor::Server->Data.Properties["tdm_kill_limit"] = "0";
+			Raptor::Server->Data.Properties["ai_waves"] = "4";
+			Raptor::Server->Data.Properties["ai_flock"] = "true";
+			Raptor::Server->Data.Properties["asteroids"] = "32";
+			Raptor::Server->Data.Properties["bg"] = "nebula";
+			Data.Properties["bg"] = "nebula";
+			((XWingServer*)( Raptor::Server ))->BeginFlying();
+		}
+		else
+		{
+			// Screensaver activated when there was already a local server running.
+			
+			Packet player_properties = Packet( Raptor::Packet::PLAYER_PROPERTIES );
+			player_properties.AddUShort( Raptor::Game->PlayerID );
+			player_properties.AddUInt( 2 );
+			player_properties.AddString( "name" );
+			player_properties.AddString( "Screensaver" );
+			player_properties.AddString( "team" );
+			player_properties.AddString( "Spectator" );
+			Raptor::Game->Net.Send( &player_properties );
+			
+			Packet fly = Packet( XWing::Packet::FLY );
+			Raptor::Game->Net.Send( &fly );
+		}
+	}
+	else
+	{
+		Mouse.ShowCursor = true;
+		
+		if( State != XWing::State::LOBBY )
+		{
+			if( Cfg.SettingAsBool( "s_menu_music" ) )
+				Snd.PlayMusicSubdir( "Lobby" );
+			else
+				Snd.StopMusic();
+			
+			Layers.RemoveAll();
+			Layers.Add( new LobbyMenu() );
+		}
+	}
+}
+
+
+void XWingGame::BeginFlying( void )
+{
+	if( State != XWing::State::FLYING )
+	{
+		if( Cfg.SettingAsBool( "s_game_music" ) )
+			Snd.PlayMusicSubdir( "Flight" );
+		else
+			Snd.StopMusic();
+		
+		ObservedShipID = 0;
+		LookYaw = 0.;
+		LookPitch = 0.;
+		Head.Recenter();
+		
+		Layers.RemoveAll();
+		Layers.Add( new RenderLayer() );
+		
+		if( Cfg.SettingAsBool("screensaver") )
+		{
+			// Add an input handler to quit the screensaver when necessary.
+			AddScreensaverLayer();
+		}
+		
+		Mouse.ShowCursor = false;
+	}
 }
 
 
@@ -1684,6 +1793,11 @@ void XWingGame::AddedObject( GameObject *obj )
 			else if( shot->ShotType == Shot::TYPE_TORPEDO )
 				Snd.PlayAt( Res.GetSound("torpedo.wav"), obj->X, obj->Y, obj->Z, 0.75 );
 			
+			if( shot->Seeking && (shot->Seeking == ObservedShipID) )
+			{
+				// FIXME: Warning for incoming missile/torpedo.
+			}
+			
 			GameObject *obj = Data.GetObject( shot->FiredFrom );
 			if( obj && (obj->Type() == XWing::Object::SHIP) )
 			{
@@ -1699,123 +1813,6 @@ void XWingGame::AddedObject( GameObject *obj )
 					ship->FiringMode = ship->FiredThisFrame;
 			}
 		}
-	}
-}
-
-
-void XWingGame::Disconnected( void )
-{
-	Mouse.ShowCursor = true;
-	
-	if( State >= XWing::State::LOBBY )
-	{
-		if( Cfg.SettingAsBool( "s_menu_music" ) )
-			Snd.PlayMusicSubdir( "Menu" );
-		else
-			Snd.StopMusic();
-		
-		Overlay = NULL;
-		Layers.RemoveAll();
-		Layers.Add( new MainMenu() );
-		Layers.Add( new Notification( "Disconnected from server." ) );
-	}
-	
-	else if( State >= Raptor::State::CONNECTING )
-	{
-		if( Overlay )
-		{
-			Layers.Remove( Overlay );
-			Overlay = NULL;
-		}
-		
-		Layers.Add( new Notification( std::string("Failed to connect to ") + Net.Host + std::string(":") + Num::ToString(Net.Port) + std::string(".") ) );
-	}
-}
-
-
-void XWingGame::Connecting( void )
-{
-	if( Overlay )
-	{
-		Layers.Remove( Overlay );
-		Overlay = NULL;
-	}
-	
-	Overlay = new WaitScreen( std::string("Connecting to ") + Net.Host + std::string(":") + Num::ToString(Net.Port) + std::string("...") );
-	Layers.Add( Overlay );
-	Draw();
-}
-
-
-void XWingGame::Connected( void )
-{
-	if( Overlay )
-	{
-		Layers.Remove( Overlay );
-		Overlay = NULL;
-	}
-}
-
-
-void XWingGame::ShowLobby( void )
-{
-	if( Cfg.SettingAsBool("screensaver") && Raptor::Server->IsRunning() )
-	{
-		Raptor::Server->Data.Players[ PlayerID ]->Properties["team"] = "Spectator";
-		Raptor::Server->Data.Properties["gametype"] = "team_dm";
-		Raptor::Server->Data.Properties["dm_kill_limit"] = "0";
-		Raptor::Server->Data.Properties["tdm_kill_limit"] = "0";
-		Raptor::Server->Data.Properties["ai_waves"] = "4";
-		Raptor::Server->Data.Properties["ai_flock"] = "true";
-		Raptor::Server->Data.Properties["asteroids"] = "32";
-		Raptor::Server->Data.Properties["bg"] = "nebula";
-		Data.Properties["bg"] = "nebula";
-		((XWingServer*)( Raptor::Server ))->BeginFlying();
-	}
-	else
-	{
-		Mouse.ShowCursor = true;
-		
-		if( State != XWing::State::LOBBY )
-		{
-			if( Cfg.SettingAsBool( "s_menu_music" ) )
-				Snd.PlayMusicSubdir( "Lobby" );
-			else
-				Snd.StopMusic();
-			
-			Overlay = NULL;
-			Layers.RemoveAll();
-			Layers.Add( new LobbyMenu() );
-		}
-	}
-}
-
-
-void XWingGame::BeginFlying( void )
-{
-	if( State != XWing::State::FLYING )
-	{
-		if( Cfg.SettingAsBool( "s_game_music" ) )
-			Snd.PlayMusicSubdir( "Flight" );
-		else
-			Snd.StopMusic();
-		
-		ObservedShipID = 0;
-		LookYaw = 0.;
-		LookPitch = 0.;
-		Head.Recenter();
-		
-		Overlay = NULL;
-		Layers.RemoveAll();
-		Layers.Add( new RenderLayer() );
-		
-		if( Cfg.SettingAsBool("screensaver") )
-		{
-			// Add an input handler to quit the screensaver when necessary.
-			AddScreensaverLayer();
-		}
-		
-		Mouse.ShowCursor = false;
 	}
 }
 

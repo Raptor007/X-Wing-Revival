@@ -25,7 +25,7 @@ MAC_INSTALL_NAME_TOOL = /opt/local/bin/install_name_tool
 MAC_BUNDLE_LIBS = /opt/local/lib/libgcc/libstdc++.6.dylib /opt/local/lib/libgcc/libgcc_s.1.dylib /usr/local/lib/libopenvr_api.dylib
 MAC_PPC_ARCH = ppc
 MAC_PPC_MCPU = G3
-MAC_PPC_MTUNE = G5
+MAC_PPC_MTUNE = G4
 MAC_I32_ARCH = pentium4
 MAC_I32_MARCH = nocona
 MAC_I32_MTUNE = nocona
@@ -200,9 +200,9 @@ default: $(TARGET)
 	cp -p "Info.plist" "$@/Contents/"
 	rsync -ax --exclude=".*" "English.lproj" "$@/Contents/Resources/"
 	cp -p "xwing128.icns" "$@/Contents/Resources/"
-	-$(foreach lib,$(MAC_BUNDLE_LIBS),cp -p "$(lib)" "$@/Contents/MacOS/"; chmod 644 "$@/Contents/MacOS/$(notdir $(lib))";)
-	-$(foreach lib,$(MAC_BUNDLE_LIBS),$(MAC_INSTALL_NAME_TOOL) -change "$(lib)" "@loader_path/$(notdir $(lib))" "$(EXE)";)
-	-$(foreach lib1,$(MAC_BUNDLE_LIBS),$(foreach lib2,$(MAC_BUNDLE_LIBS),$(MAC_INSTALL_NAME_TOOL) -change "$(lib1)" "@loader_path/$(notdir $(lib1))" "$@/Contents/MacOS/$(notdir $(lib2))";))
+	$(foreach lib,$(MAC_BUNDLE_LIBS),cp -p "$(lib)" "$@/Contents/MacOS/"; chmod 644 "$@/Contents/MacOS/$(notdir $(lib))";)
+	$(foreach lib,$(MAC_BUNDLE_LIBS),$(MAC_INSTALL_NAME_TOOL) -change "$(lib)" "@loader_path/$(notdir $(lib))" "$(EXE)";)
+	$(foreach lib1,$(MAC_BUNDLE_LIBS),$(foreach lib2,$(MAC_BUNDLE_LIBS),$(MAC_INSTALL_NAME_TOOL) -change "$(lib1)" "@loader_path/$(notdir $(lib1))" "$@/Contents/MacOS/$(notdir $(lib2))";))
 	-codesign -s "$(MAC_CODESIGN)" "$@"
 
 exe: $(SOURCES) $(GAME_HEADERS) $(ENGINE_HEADERS) $(EXE)

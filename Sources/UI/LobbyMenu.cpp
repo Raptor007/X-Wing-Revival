@@ -316,11 +316,12 @@ void LobbyMenu::UpdatePlayerList( void )
 		
 		std::string team = player_iter->second->Properties["team"];
 		int group = ffa ? 0 : atoi( player_iter->second->Properties["group"].c_str() );
-		if( (! ffa) || (team == "Spectator") )
+		bool spectator = (team == "Spectator");
+		if( (! ffa) || spectator )
 		{
 			if( team.empty() )
 				display_name += " [Auto-Team]";
-			else if( group )
+			else if( group && ! spectator )
 				display_name += " [" + team + " group " + Num::ToString(group) + "]";
 			else
 				display_name += " [" + team + "]";

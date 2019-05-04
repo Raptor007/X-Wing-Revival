@@ -26,18 +26,20 @@ Ship::Ship( uint32_t id ) : GameObject( id, XWing::Object::SHIP )
 	SpecialUpdate = false;
 	
 	Health = 100.;
+	CollisionPotential = 0.;
 	ShieldF = 0.;
 	ShieldR = 0.;
 	ShieldPos = SHIELD_CENTER;
-	CollisionPotential = 0.;
 	
 	Firing = false;
 	SelectedWeapon = Shot::TYPE_LASER_GREEN;
-	FiringMode = 1;
-	WeaponIndex = 0;
-	Target = 0;
 	Ammo[ SelectedWeapon ] = -1;
 	FiredThisFrame = 0;
+	FiringMode = 1;
+	WeaponIndex = 0;
+	
+	Target = 0;
+	TargetLock = 0.f;
 }
 
 
@@ -157,13 +159,13 @@ void Ship::Reset( void )
 	{
 		SelectedWeapon = Shot::TYPE_LASER_RED;
 		Ammo[ Shot::TYPE_TORPEDO ] = 6;
-		FiringClocks[ Shot::TYPE_TORPEDO ].ElapsedSeconds();
+		FiringClocks[ Shot::TYPE_TORPEDO ].Reset();
 	}
 	else if( ShipType == TYPE_YWING )
 	{
 		SelectedWeapon = Shot::TYPE_LASER_RED;
 		Ammo[ Shot::TYPE_TORPEDO ] = 8;
-		FiringClocks[ Shot::TYPE_TORPEDO ].ElapsedSeconds();
+		FiringClocks[ Shot::TYPE_TORPEDO ].Reset();
 	}
 	else if( ShipType == TYPE_TIE_FIGHTER )
 		SelectedWeapon = Shot::TYPE_LASER_GREEN;
@@ -208,6 +210,7 @@ void Ship::Reset( void )
 	FiringClocks[ SelectedWeapon ].Reset();
 	
 	Target = 0;
+	TargetLock = 0.f;
 }
 
 
@@ -302,6 +305,12 @@ void Ship::AddDamage( double front, double rear, const char *subsystem )
 }
 
 
+void Ship::KnockCockpit( const Vec3D *dir, double force )
+{
+	CockpitOffset += (*dir * force);
+}
+
+
 void Ship::Explode( double dt )
 {
 	if( ShipType == TYPE_EXHAUST_PORT )
@@ -385,6 +394,8 @@ void Ship::SetThrottle( double throttle, double dt )
 	
 	MotionVector = Fwd;
 	MotionVector.ScaleTo( new_speed );
+	
+	CockpitOffset.X -= (new_speed - old_speed) * 3. * dt;
 }
 
 
@@ -709,7 +720,7 @@ std::map<int,Shot*> Ship::NextShots( GameObject *target ) const
 					right = -0.5;
 				up = -0.2;
 				
-				if( target )
+				if( target && (TargetLock >= 1.) )
 					shot->Seeking = target->ID;
 			}
 			else
@@ -754,7 +765,7 @@ std::map<int,Shot*> Ship::NextShots( GameObject *target ) const
 				up = -0.2;
 				fwd = 4.;
 				
-				if( target )
+				if( target && (TargetLock >= 1.) )
 					shot->Seeking = target->ID;
 			}
 			else
@@ -941,6 +952,76 @@ double Ship::ShotDelay( void ) const
 }
 
 
+float Ship::LockingOn( const GameObject *target ) const
+{
+	if( ! target )
+		return 0.f;
+	
+	if( (SelectedWeapon != Shot::TYPE_TORPEDO) && (SelectedWeapon != Shot::TYPE_MISSILE) )
+		return 0.f;
+	std::map<uint32_t,int8_t>::const_iterator ammo_iter = Ammo.find( SelectedWeapon );
+	if( ammo_iter == Ammo.end() )
+		return 0.f;
+	if( ammo_iter->second == 0 )
+		return 0.f;
+	
+	Vec3D vec_to_target( target->X - X, target->Y - Y, target->Z - Z );
+	double dist_to_target = vec_to_target.Length();
+	
+	if( dist_to_target > 3000. )
+		return 0.f;
+	
+	vec_to_target.ScaleTo( 1. );
+	double t_dot_fwd = vec_to_target.Dot( &Fwd );
+	
+	double required_dot = 0.9;
+	if( target->Type() == XWing::Object::SHIP )
+	{
+		Ship *t = (Ship*) target;
+		if( t->Health <= 0. )
+			return 0.f;
+		required_dot = std::min<double>( 0.95, dist_to_target / (20. * t->Radius()) );
+	}
+	
+	if( t_dot_fwd >= required_dot )
+		// Lock on faster when closer to the target.
+		return 300.f / std::max<float>( 1000.f, dist_to_target );
+	
+	return 0.f;
+}
+
+
+void Ship::UpdateTarget( const GameObject *target, double dt )
+{
+	if( Health <= 0. )
+	{
+		TargetLock = 0.f;
+		return;
+	}
+	
+	if( target && (target->ID != Target) )
+	{
+		Target = target->ID;
+		
+		// Lose lock progress when changing targets.
+		TargetLock = 0.f;
+	}
+	else if( ! target )
+		Target = 0;
+	
+	float locking_on = LockingOn( target );
+	if( locking_on )
+		TargetLock += locking_on * dt;
+	else
+		TargetLock -= dt / 2.;
+	
+	if( TargetLock > 2.f )
+		TargetLock = 2.f;
+	else if( TargetLock < 0.f )
+		TargetLock = 0.f;
+}
+
+
 void Ship::NextFiringMode( void )
 {
 	FiringMode *= 2;
@@ -1030,6 +1111,7 @@ void Ship::AddToUpdatePacketFromServer( Packet *packet, int8_t precision )
 	packet->AddFloat( Health );
 	packet->AddUChar( ShieldPos );
 	packet->AddUInt( Target );
+	packet->AddChar( Num::UnitFloatTo8( TargetLock - 1.f ) );
 	
 	SpecialUpdate = false;
 }
@@ -1041,6 +1123,7 @@ void Ship::ReadFromUpdatePacketFromServer( Packet *packet, int8_t precision )
 	SetHealth( packet->NextFloat() );
 	SetShieldPos( packet->NextUChar() );
 	Target = packet->NextUInt();
+	TargetLock = Num::UnitFloatFrom8( packet->NextChar() ) + 1.f;
 }
 
 
@@ -1052,6 +1135,7 @@ void Ship::AddToUpdatePacketFromClient( Packet *packet, int8_t precision )
 	packet->AddUInt( Target );
 	packet->AddUInt( SelectedWeapon );
 	packet->AddUChar( FiringMode );
+	packet->AddChar( Num::UnitFloatTo8( TargetLock - 1.f ) );
 }
 
 
@@ -1074,6 +1158,7 @@ void Ship::ReadFromUpdatePacketFromClient( Packet *packet, int8_t precision )
 	Target = packet->NextUInt();
 	SelectedWeapon = packet->NextUInt();
 	FiringMode = packet->NextUChar();
+	TargetLock = Num::UnitFloatFrom8( packet->NextChar() ) + 1.f;
 	
 	if( SelectedWeapon != prev_selected_weapon )
 		WeaponIndex = 0;
@@ -1624,6 +1709,10 @@ void Ship::Update( double dt )
 		if( ShieldF > max_shield )
 			ShieldF = max_shield;
 	}
+	
+	if( CockpitOffset.Length() > 1. )
+		CockpitOffset.ScaleTo( 1. );
+	CockpitOffset.ScaleBy( pow( 0.5, dt * 5. ) );
 	
 	GameObject::Update( dt );
 	

@@ -28,7 +28,9 @@ enum
 	VIEW_COCKPIT,
 	VIEW_CHASE,
 	VIEW_CINEMA,
-	VIEW_CINEMA2
+	VIEW_CINEMA2,
+	VIEW_FIXED,
+	VIEW_STATIONARY
 };
 
 
@@ -81,6 +83,9 @@ RenderLayer::RenderLayer( void )
 	MessageInput->SelectedAlpha = MessageInput->Alpha;
 	
 	((XWingGame*)( Raptor::Game ))->ObservedShipID = 0;
+	Cam.Fwd.Set( 1., 0., 0. );
+	Cam.Up.Set( 0., 0., 1. );
+	Cam.FixVectors();
 }
 
 
@@ -364,11 +369,11 @@ void RenderLayer::Draw( void )
 	Ship *player_ship = NULL;
 	GameObject *target_obj = NULL;
 	Ship *target = NULL;
-	int view = VIEW_CINEMA;
+	int view = vr ? VIEW_FIXED : VIEW_CINEMA2;
 	
 	
 	// Look for the player's ship.
-
+	
 	for( std::list<Ship*>::iterator ship_iter = ships.begin(); ship_iter != ships.end(); ship_iter ++ )
 	{
 		if( (*ship_iter)->PlayerID == Raptor::Game->PlayerID )
@@ -584,10 +589,7 @@ void RenderLayer::Draw( void )
 	
 	// Determine which view we'll render.
 	
-	std::string view_str = Raptor::Game->Cfg.SettingAsString("view");
-	if( view != VIEW_COCKPIT )
-		view_str = Raptor::Game->Cfg.SettingAsString("spectator_view");
-	
+	std::string view_str = Raptor::Game->Cfg.SettingAsString( (view == VIEW_COCKPIT) ? "view" : "spectator_view" );
 	if( view_str == "cockpit" )
 		view = VIEW_COCKPIT;
 	else if( view_str == "chase" )
@@ -596,25 +598,34 @@ void RenderLayer::Draw( void )
 		view = VIEW_CINEMA;
 	else if( view_str == "cinema2" )
 		view = VIEW_CINEMA2;
+	else if( view_str == "fixed" )
+		view = VIEW_FIXED;
+	else if( view_str == "stationary" )
+		view = VIEW_STATIONARY;
 	else if( view_str == "cycle" )
 	{
 		double cycle_time = Raptor::Game->Cfg.SettingAsDouble("view_cycle_time");
 		if( cycle_time <= 0. )
 			cycle_time = 7.;
 		
-		double cam_picker = observed_ship ? fmod( observed_ship->Lifetime.ElapsedSeconds(), cycle_time * 4. ) : 0.;
-		if( cam_picker >= cycle_time * 3. )
+		double cam_picker = observed_ship ? fmod( observed_ship->Lifetime.ElapsedSeconds(), cycle_time * 5. ) : 0.;
+		if( cam_picker >= cycle_time * 4. )
 			view = VIEW_CHASE;
-		else if( cam_picker >= cycle_time * 2. )
+		else if( cam_picker >= cycle_time * 3. )
 			view = VIEW_COCKPIT;
-		else if( cam_picker >= cycle_time )
+		else if( cam_picker >= cycle_time * 2. )
 			view = VIEW_CINEMA2;
+		else if( cam_picker >= cycle_time )
+			view = VIEW_FIXED;
 		else
 			view = VIEW_CINEMA;
 	}
 	
 	if( (view == VIEW_COCKPIT) && ((! observed_ship) || (observed_ship->Health <= 0.)) )
 		view = VIEW_CHASE;
+	
+	if( view == VIEW_STATIONARY )
+		observed_ship = NULL;
 	
 	
 	Player *observed_player = NULL;
@@ -681,11 +692,19 @@ void RenderLayer::Draw( void )
 			}
 			
 			if( ! cinema_view_with )
-				view = VIEW_CHASE;
+				view = VIEW_FIXED;
 		}
 		
 		
 		Cam.Copy( observed_ship );
+		
+		if( view == VIEW_FIXED )
+		{
+			// Fixed-angle external camera.
+			Cam.Fwd.Set( 1., 0., 0. );
+			Cam.Up.Set( 0., 0., 1. );
+			Cam.FixVectors();
+		}
 		
 		if( (view != VIEW_COCKPIT) || Raptor::Game->Cfg.SettingAsBool("g_3d_cockpit",true) )
 		{
@@ -730,10 +749,9 @@ void RenderLayer::Draw( void )
 			Cam.Pitch( ((XWingGame*)( Raptor::Game ))->LookPitch );
 		}
 		
-		else if( view == VIEW_CHASE )
+		else if( (view == VIEW_CHASE) || (view == VIEW_FIXED) )
 		{
-			// Chase camera.
-			
+			// Camera is centered in the observed ship, so move it backwards.
 			Cam.MoveAlong( &(Cam.Fwd), -20. - observed_ship->Shape.GetTriagonal() );
 		}
 	}
@@ -1073,122 +1091,310 @@ void RenderLayer::Draw( void )
 				// Render intercept display.
 				
 				changed_framebuffer = true;
-				Raptor::Game->Gfx.Clear( 0.f, 0.25f, 0.f );
+				bool lock_display = (observed_ship->SelectedWeapon == Shot::TYPE_TORPEDO);
 				
-				
-				// See if the crosshair is lined up so the next shot would hit.
-				
-				bool will_hit = false;
-				Vec3D shot_vec;
-				
-				if( target || (target_obj && (target_obj->Type() == XWing::Object::SHOT)) )
+				if( lock_display )
 				{
-					std::map<int,Shot*> test_shots = observed_ship->NextShots();
-					for( std::map<int,Shot*>::iterator shot_iter = test_shots.begin(); shot_iter != test_shots.end(); shot_iter ++ )
+					// Draw torpedo lock-on display.
+					
+					Raptor::Game->Gfx.Clear( 0.f, 0.0f, 0.f );
+					intercept_framebuffer->Setup2D();
+					
+					float lock_wait = std::max<float>( 0.f, 1.f - observed_ship->TargetLock );
+					bool lock_blink = ((lock_wait == 0.f) && observed_ship->LockingOn(target_obj)) ? !( ((int)( observed_ship->TargetLock * 100 )) % 2 ) : false;
+					int cx = intercept_framebuffer->W / 2;
+					int cy = intercept_framebuffer->H / 2 - 25;
+					
+					if( (lock_wait < 0.9f) && ! lock_blink )
 					{
-						shot_vec.Copy( &(shot_iter->second->MotionVector) );
-						if( target_obj->WillCollide( shot_iter->second, 4. ) )
-							will_hit = true;
+						// Draw red targeting lines.
 						
-						delete shot_iter->second;
+						double lock_x = (intercept_framebuffer->W / 2) * lock_wait;
+						glColor4f( 1.f, 0.f, 0.f, 1.f );
+						glLineWidth( 4.f );
+						
+						glBegin( GL_LINES );
+							glVertex2d( intercept_framebuffer->W / 2 - lock_x, 10 );
+							glVertex2d( intercept_framebuffer->W / 2 - lock_x, intercept_framebuffer->H - 60 );
+							glVertex2d( intercept_framebuffer->W / 2 + lock_x, 10 );
+							glVertex2d( intercept_framebuffer->W / 2 + lock_x, intercept_framebuffer->H - 60 );
+						glEnd();
+						
+						if( lock_wait == 0.f )
+						{
+							glBegin( GL_LINES );
+								glVertex2d( 10, (intercept_framebuffer->H - 50) / 2 );
+								glVertex2d( intercept_framebuffer->W - 10, (intercept_framebuffer->H - 50) / 2 );
+							glEnd();
+						}
 					}
-				}
-				
-				
-				glLineWidth( 2.f );
-				
-				
-				// Draw the pointy bits.
-				
-				intercept_framebuffer->Setup2D( -1., -1., 1., 1. );
-				
-				float r = 0.f, g = 1.f, b = 0.f;
-				
-				if( will_hit )
-				{
-					r = 1.f;
-					b = 1.f;
-				}
-				
-				glColor4f( r, g, b, 1.f );
-				
-				glBegin( GL_LINES );
 					
-					// Top
-					glVertex2d( -1.3, -2. );
-					glVertex2d( 0., -0.25 );
-					glVertex2d( 0., -0.25 );
-					glVertex2d( 1.3, -2. );
+					// Draw targeting box outlines.
 					
-					// Bottom
-					glVertex2d( -1.3, 2. );
-					glVertex2d( 0., 0.25 );
-					glVertex2d( 0., 0.25 );
-					glVertex2d( 1.3, 2. );
+					glColor4f( 1.f, 1.f, 0.f, 1.f );
 					
-					// Left
-					glVertex2d( -2., -1.3 );
-					glVertex2d( -0.25, 0. );
-					glVertex2d( -0.25, 0. );
-					glVertex2d( -2., 1.3 );
+					glLineWidth( 3.f );
 					
-					// Right
-					glVertex2d( 2., -1.3 );
-					glVertex2d( 0.25, 0. );
-					glVertex2d( 0.25, 0. );
-					glVertex2d( 2., 1.3 );
+					glBegin( GL_LINE_STRIP );
+						glVertex2d( 10, 10 );
+						glVertex2d( 10, intercept_framebuffer->H - 60 );
+						glVertex2d( intercept_framebuffer->W - 10, intercept_framebuffer->H - 60 );
+						glVertex2d( intercept_framebuffer->W - 10, 10 );
+						glVertex2d( 10, 10 );
+					glEnd();
 					
-					// Top-Left
-					glVertex2d( -0.35, 0.71 );
-					glVertex2d( -0.59, 0.59 );
-					glVertex2d( -0.59, 0.59 );
-					glVertex2d( -0.71, 0.35 );
+					glBegin( GL_LINE_STRIP );
+						glVertex2d( intercept_framebuffer->W / 2 - 80, intercept_framebuffer->H );
+						glVertex2d( intercept_framebuffer->W / 2 - 80, intercept_framebuffer->H - 55 );
+						glVertex2d( intercept_framebuffer->W / 2 + 80, intercept_framebuffer->H - 55 );
+						glVertex2d( intercept_framebuffer->W / 2 + 80, intercept_framebuffer->H );
+					glEnd();
 					
-					// Top-Right
-					glVertex2d( 0.35, 0.71 );
-					glVertex2d( 0.59, 0.59 );
-					glVertex2d( 0.59, 0.59 );
-					glVertex2d( 0.71, 0.35 );
-					
-					// Bottom-Right
-					glVertex2d( 0.35, -0.71 );
-					glVertex2d( 0.59, -0.59 );
-					glVertex2d( 0.59, -0.59 );
-					glVertex2d( 0.71, -0.35 );
-					
-					// Bottom-Left
-					glVertex2d( -0.35, -0.71 );
-					glVertex2d( -0.59, -0.59 );
-					glVertex2d( -0.59, -0.59 );
-					glVertex2d( -0.71, -0.35 );
-					
-				glEnd();
-				
-				
-				// Draw the intercept point.
-				
-				if( target || (target_obj && (target_obj->Type() == XWing::Object::SHOT)) )
-				{
-					shot_vec -= target_obj->MotionVector;
-					
-					Vec3D vec_to_target( target_obj->X - observed_ship->X, target_obj->Y - observed_ship->Y, target_obj->Z - observed_ship->Z );
-					double time_to_target = vec_to_target.Length() / shot_vec.Length();
-					
-					Vec3D vec_to_intercept = vec_to_target;
-					vec_to_intercept.X += target_obj->MotionVector.X * time_to_target;
-					vec_to_intercept.Y += target_obj->MotionVector.Y * time_to_target;
-					vec_to_intercept.Z += target_obj->MotionVector.Z * time_to_target;
-					
-					vec_to_intercept.ScaleTo( 1. );
-					
-					if( vec_to_intercept.Dot( &(observed_ship->Fwd) ) > 0. )
+					if( lock_blink )
 					{
-						double x = vec_to_intercept.Dot( &(observed_ship->Right) ) * 7.;
-						double y = vec_to_intercept.Dot( &(observed_ship->Up) ) * -7.;
+						// Flash red chevrons when locked on.
 						
-						intercept_framebuffer->Setup2D( -1., 1. );
+						glColor4f( 1.f, 0.f, 0.f, 1.f );
 						
-						Raptor::Game->Gfx.DrawCircle2D( x, y, 0.1, 4, 0, r, g, b, 1.f );
+						glBegin( GL_TRIANGLE_FAN );
+							glVertex2d( cx + 10, cy + 10 );
+							glVertex2d( cx + 30, cy + 50 );
+							glVertex2d( cx + 30, cy + 30 );
+							glVertex2d( cx + 50, cy + 30 );
+						glEnd();
+						
+						glBegin( GL_TRIANGLE_FAN );
+							glVertex2d( cx - 10, cy + 10 );
+							glVertex2d( cx - 30, cy + 50 );
+							glVertex2d( cx - 30, cy + 30 );
+							glVertex2d( cx - 50, cy + 30 );
+						glEnd();
+						
+						glBegin( GL_TRIANGLE_FAN );
+							glVertex2d( cx + 10, cy - 10 );
+							glVertex2d( cx + 30, cy - 50 );
+							glVertex2d( cx + 30, cy - 30 );
+							glVertex2d( cx + 50, cy - 30 );
+						glEnd();
+						
+						glBegin( GL_TRIANGLE_FAN );
+							glVertex2d( cx - 10, cy - 10 );
+							glVertex2d( cx - 30, cy - 50 );
+							glVertex2d( cx - 30, cy - 30 );
+							glVertex2d( cx - 50, cy - 30 );
+						glEnd();
+					}
+					else if( target && (target->ShipType == Ship::TYPE_EXHAUST_PORT) && (lock_wait > 0.f) )
+					{
+						// Draw Death Star trench grid lines.
+						
+						glLineWidth( 2.f );
+						
+						glBegin( GL_LINES );
+							
+							glVertex2d( cx, cy );
+							glVertex2d( cx - (intercept_framebuffer->H / 2 - 35) / 1.25, 10 );
+							glVertex2d( cx, cy );
+							glVertex2d( cx + (intercept_framebuffer->H / 2 - 35) / 1.25, 10 );
+							glVertex2d( cx, cy );
+							glVertex2d( cx - (intercept_framebuffer->H / 2 - 35) / 1.25, intercept_framebuffer->H - 60 );
+							glVertex2d( cx, cy );
+							glVertex2d( cx + (intercept_framebuffer->H / 2 - 35) / 1.25, intercept_framebuffer->H - 60 );
+							
+							glVertex2d( cx, cy );
+							glVertex2d( 30, 10 );
+							glVertex2d( cx, cy );
+							glVertex2d( 30, intercept_framebuffer->H - 60 );
+							glVertex2d( cx, cy );
+							glVertex2d( intercept_framebuffer->W - 30, 10 );
+							glVertex2d( cx, cy );
+							glVertex2d( intercept_framebuffer->W - 30, intercept_framebuffer->H - 60 );
+							
+							glVertex2d( cx, cy );
+							glVertex2d( 10, 10 + (intercept_framebuffer->H - 70) * 0.31 );
+							glVertex2d( cx, cy );
+							glVertex2d( 10, 10 + (intercept_framebuffer->H - 70) * 0.69 );
+							glVertex2d( cx, cy );
+							glVertex2d( intercept_framebuffer->W - 10, 10 + (intercept_framebuffer->H - 70) * 0.31 );
+							glVertex2d( cx, cy );
+							glVertex2d( intercept_framebuffer->W - 10, 10 + (intercept_framebuffer->H - 70) * 0.69 );
+							
+						glEnd();
+						
+						double dist = observed_ship->Dist( target_obj );
+						for( int i = 0; i < 400; i += 100 )
+						{
+							double x = (intercept_framebuffer->W / 2 - 10) * pow( 1. - fmod( dist + i, 400. ) / 400., 2.0 );
+							double y = std::min<double>( x * 1.25, intercept_framebuffer->H / 2 - 35 );
+							
+							glBegin( GL_LINE_STRIP );
+								glVertex2d( cx - x, cy - y );
+								glVertex2d( cx - x, cy + y );
+								glVertex2d( cx + x, cy + y );
+								glVertex2d( cx + x, cy - y );
+							glEnd();
+						}
+					}
+					else if( target && (target->Health > 0.) && (lock_wait > 0.f) )
+					{
+						// Draw dot for any other torpedo target.
+						
+						Vec3D vec_to_target( target_obj->X - observed_ship->X, target_obj->Y - observed_ship->Y, target_obj->Z - observed_ship->Z );
+						if( vec_to_target.Dot( &(observed_ship->Fwd) ) > 0. )
+						{
+							vec_to_target.ScaleTo( 1. );
+							double x = cx + vec_to_target.Dot( &(observed_ship->Right) ) * intercept_framebuffer->W * 0.75;
+							double y = cy - vec_to_target.Dot( &(observed_ship->Up) ) * intercept_framebuffer->W * 0.75;
+							if( (x > 15) && (x < intercept_framebuffer->W - 15) && (y > 15) && (y < intercept_framebuffer->H - 65) )
+								Raptor::Game->Gfx.DrawCircle2D( x, y, 10., 6, 0, 1.f, 1.f, 0.f, 1.f );
+						}
+					}
+					
+					char lock_num[ 7 ] = "------";
+					if( lock_wait < 1.f )
+						snprintf( lock_num, 7, "%06.0f", 999999.4f * lock_wait * lock_wait * lock_wait * lock_wait );
+					ScreenFont->DrawText( lock_num, intercept_framebuffer->W / 2, intercept_framebuffer->H, Font::ALIGN_BOTTOM_CENTER, 1.f, 0.f, 0.f, 1.f );
+				}
+				else
+				{
+					// Draw laser intercept display.
+					
+					Raptor::Game->Gfx.Clear( 0.f, 0.25f, 0.f );
+					
+					
+					// See if the crosshair is lined up so the next shot would hit.
+					
+					bool will_hit = false;
+					Vec3D shot_vec;
+					
+					if( target || (target_obj && (target_obj->Type() == XWing::Object::SHOT)) )
+					{
+						std::map<int,Shot*> test_shots = observed_ship->NextShots();
+						for( std::map<int,Shot*>::iterator shot_iter = test_shots.begin(); shot_iter != test_shots.end(); shot_iter ++ )
+						{
+							shot_vec.Copy( &(shot_iter->second->MotionVector) );
+							if( target_obj->WillCollide( shot_iter->second, 4. ) )
+								will_hit = true;
+							
+							delete shot_iter->second;
+						}
+					}
+					
+					
+					glLineWidth( 2.f );
+					
+					
+					// Draw the pointy bits.
+					
+					intercept_framebuffer->Setup2D( -1., -1., 1., 1. );
+					
+					float r = 0.f, g = 1.f, b = 0.f;
+					
+					if( will_hit )
+					{
+						r = 1.f;
+						b = 1.f;
+					}
+					
+					glColor4f( r, g, b, 1.f );
+					
+					glBegin( GL_LINES );
+						
+						// Top
+						glVertex2d( -1.3, -2. );
+						glVertex2d( 0., -0.25 );
+						glVertex2d( 0., -0.25 );
+						glVertex2d( 1.3, -2. );
+						
+						// Bottom
+						glVertex2d( -1.3, 2. );
+						glVertex2d( 0., 0.25 );
+						glVertex2d( 0., 0.25 );
+						glVertex2d( 1.3, 2. );
+						
+						// Left
+						glVertex2d( -2., -1.3 );
+						glVertex2d( -0.25, 0. );
+						glVertex2d( -0.25, 0. );
+						glVertex2d( -2., 1.3 );
+						
+						// Right
+						glVertex2d( 2., -1.3 );
+						glVertex2d( 0.25, 0. );
+						glVertex2d( 0.25, 0. );
+						glVertex2d( 2., 1.3 );
+						
+						// Top-Left
+						glVertex2d( -0.35, 0.71 );
+						glVertex2d( -0.59, 0.59 );
+						glVertex2d( -0.59, 0.59 );
+						glVertex2d( -0.71, 0.35 );
+						
+						// Top-Right
+						glVertex2d( 0.35, 0.71 );
+						glVertex2d( 0.59, 0.59 );
+						glVertex2d( 0.59, 0.59 );
+						glVertex2d( 0.71, 0.35 );
+						
+						// Bottom-Right
+						glVertex2d( 0.35, -0.71 );
+						glVertex2d( 0.59, -0.59 );
+						glVertex2d( 0.59, -0.59 );
+						glVertex2d( 0.71, -0.35 );
+						
+						// Bottom-Left
+						glVertex2d( -0.35, -0.71 );
+						glVertex2d( -0.59, -0.59 );
+						glVertex2d( -0.59, -0.59 );
+						glVertex2d( -0.71, -0.35 );
+						
+					glEnd();
+					
+					
+					// Draw the target dots.
+					
+					if( (target && (target->Health > 0.f)) || (target_obj && (target_obj->Type() == XWing::Object::SHOT)) )
+					{
+						shot_vec -= target_obj->MotionVector;
+						
+						Vec3D vec_to_target( target_obj->X - observed_ship->X, target_obj->Y - observed_ship->Y, target_obj->Z - observed_ship->Z );
+						
+						double time_to_target = vec_to_target.Length() / shot_vec.Length();
+						
+						Vec3D vec_to_intercept = vec_to_target;
+						vec_to_intercept.X += target_obj->MotionVector.X * time_to_target;
+						vec_to_intercept.Y += target_obj->MotionVector.Y * time_to_target;
+						vec_to_intercept.Z += target_obj->MotionVector.Z * time_to_target;
+						
+						vec_to_target.ScaleTo( 1. );
+						vec_to_intercept.ScaleTo( 1. );
+						
+						bool draw_target = (vec_to_target.Dot( &(observed_ship->Fwd) ) > 0.);
+						bool draw_intercept = (vec_to_intercept.Dot( &(observed_ship->Fwd) ) > 0.);
+						
+						double tx = vec_to_target.Dot( &(observed_ship->Right) ) * 7.;
+						double ty = vec_to_target.Dot( &(observed_ship->Up) ) * -7.;
+						double ix = vec_to_intercept.Dot( &(observed_ship->Right) ) * 7.;
+						double iy = vec_to_intercept.Dot( &(observed_ship->Up) ) * -7.;
+						
+						if( draw_target || draw_intercept )
+						{
+							intercept_framebuffer->Setup2D( -1., 1. );
+							
+							glLineWidth( 1.f );
+							glColor4f( 0.f, 0.5f, 0.f, 1.f );
+							
+							glBegin( GL_LINES );
+								glVertex2d( tx, ty );
+								glVertex2d( ix, iy );
+							glEnd();
+						}
+						
+						if( draw_target )
+							Raptor::Game->Gfx.DrawCircle2D( tx, ty, 0.07, 6, 0, 0.f, 0.5f, 0.f, 1.0f );
+						
+						if( draw_intercept )
+							Raptor::Game->Gfx.DrawCircle2D( ix, iy, 0.1, 4, 0, r, g, b, 1.f );
 					}
 				}
 				
@@ -1208,7 +1414,7 @@ void RenderLayer::Draw( void )
 						for( int i = 0; i < dots; i ++ )
 						{
 							brightness = Rand::Double( 0.5, 1. );
-							glColor4f( brightness - 0.5f, brightness, brightness - 0.5f, 1.f );
+							glColor4f( lock_display ? brightness : (brightness - 0.5f), brightness, brightness - 0.5f, 1.f );
 							glVertex2d( Rand::Int( 0, intercept_framebuffer->W ), Rand::Int( 0, intercept_framebuffer->H ) );
 						}
 						
@@ -1305,36 +1511,25 @@ void RenderLayer::Draw( void )
 	{
 		if( (observed_ship->SelectedWeapon == Shot::TYPE_TORPEDO) || (observed_ship->SelectedWeapon == Shot::TYPE_MISSILE) )
 		{
-			crosshair_red = 1.f;
-			crosshair_green = 1.f;
-			crosshair_blue = 0.f;
+			if( observed_ship->LockingOn(target) )
+			{
+				crosshair_red = 1.f;
+				crosshair_green = (target && (observed_ship->TargetLock > 1.f)) ? 0.f : 1.f;
+				crosshair_blue = 0.f;
+			}
 		}
-		
-		// See if the crosshair is lined up so the next shot would hit.
-		
-		if( target )
+		else if( target )
 		{
+			// See if the crosshair is lined up so the next shot would hit.
 			std::map<int,Shot*> test_shots = observed_ship->NextShots();
 			for( std::map<int,Shot*>::iterator shot_iter = test_shots.begin(); shot_iter != test_shots.end(); shot_iter ++ )
 			{
 				if( target->WillCollide( shot_iter->second, 4. ) )
 				{
-					if( (observed_ship->SelectedWeapon == Shot::TYPE_TORPEDO) || (observed_ship->SelectedWeapon == Shot::TYPE_MISSILE) )
-					{
-						/*
-						crosshair_red = 1.f;
-						crosshair_green = 0.f;
-						crosshair_blue = 0.f;
-						*/
-					}
-					else
-					{
-						crosshair_red = 0.25f;
-						crosshair_green = 1.f;
-						crosshair_blue = 0.25f;
-					}
+					crosshair_red = 0.25f;
+					crosshair_green = 1.f;
+					crosshair_blue = 0.25f;
 				}
-				
 				delete shot_iter->second;
 			}
 		}
@@ -1468,11 +1663,18 @@ void RenderLayer::Draw( void )
 				cockpit_fwd = (g_hq_cockpit ? -14. : 0.);
 			}
 			
+			// Show acceleration and shot hits by moving the cockpit.
+			cockpit_fwd += observed_ship->CockpitOffset.X;
+			cockpit_up += observed_ship->CockpitOffset.Y;
+			cockpit_right += observed_ship->CockpitOffset.Z;
+			
 			// Draw the cockpit as though it were at 0,0,0 to avoid Z-fighting issues.
 			Pos3D cockpit_pos( observed_ship );
 			cockpit_pos.SetPos(0,0,0);
 			cockpit_pos.FixVectors();
 			Raptor::Game->Cam.Copy( &cockpit_pos );
+			Raptor::Game->Cam.Yaw( ((XWingGame*)( Raptor::Game ))->LookYaw );
+			Raptor::Game->Cam.Pitch( ((XWingGame*)( Raptor::Game ))->LookPitch );
 			Raptor::Game->Gfx.Setup3D( &(Raptor::Game->Cam) );
 			if( use_shaders )
 				Raptor::Game->ShaderMgr.Set3f( "CamPos", Raptor::Game->Cam.X, Raptor::Game->Cam.Y, Raptor::Game->Cam.Z );
@@ -2240,12 +2442,13 @@ void RenderLayer::UpdateSaitek( const Ship *ship, bool is_player, int view )
 	
 	if( ship && (ship->Health > 0.) && is_player )
 	{
+		GameObject *target_obj = NULL;
 		Ship *target = NULL;
 		if( ship->Target )
 		{
-			GameObject *obj = Raptor::Game->Data.GetObject( ship->Target );
-			if( obj && (obj->Type() == XWing::Object::SHIP) )
-				target = (Ship*) obj;
+			target_obj = Raptor::Game->Data.GetObject( ship->Target );
+			if( target_obj && (target_obj->Type() == XWing::Object::SHIP) )
+				target = (Ship*) target_obj;
 		}
 		
 		std::map<uint32_t,int8_t>::const_iterator ammo_iter = ship->Ammo.find( ship->SelectedWeapon );
@@ -2254,21 +2457,20 @@ void RenderLayer::UpdateSaitek( const Ship *ship, bool is_player, int view )
 		else
 			Raptor::Game->Saitek.SetX52ProLED( SaitekX52ProLED::Fire, true );
 		
-		Raptor::Game->Saitek.SetX52ProLED( SaitekX52ProLED::Hat2Green, true );
-		Raptor::Game->Saitek.SetX52ProLED( SaitekX52ProLED::AGreen, true );
-		Raptor::Game->Saitek.SetX52ProLED( SaitekX52ProLED::BGreen, true );
+		bool locked_on = (ship->TargetLock >= 1.f) && ship->LockingOn( target_obj );
+		
+		bool joy_r = false, joy_g = true;
 		if( ship->SelectedWeapon == Shot::TYPE_TORPEDO )
 		{
-			Raptor::Game->Saitek.SetX52ProLED( SaitekX52ProLED::Hat2Red, true );
-			Raptor::Game->Saitek.SetX52ProLED( SaitekX52ProLED::ARed, true );
-			Raptor::Game->Saitek.SetX52ProLED( SaitekX52ProLED::BRed, true );
+			joy_r = true;
+			joy_g = ! locked_on;
 		}
-		else
-		{
-			Raptor::Game->Saitek.SetX52ProLED( SaitekX52ProLED::Hat2Red, false );
-			Raptor::Game->Saitek.SetX52ProLED( SaitekX52ProLED::ARed, false );
-			Raptor::Game->Saitek.SetX52ProLED( SaitekX52ProLED::BRed, false );
-		}
+		Raptor::Game->Saitek.SetX52ProLED( SaitekX52ProLED::Hat2Green, joy_g );
+		Raptor::Game->Saitek.SetX52ProLED( SaitekX52ProLED::AGreen, joy_g );
+		Raptor::Game->Saitek.SetX52ProLED( SaitekX52ProLED::BGreen, joy_g );
+		Raptor::Game->Saitek.SetX52ProLED( SaitekX52ProLED::Hat2Red, joy_r );
+		Raptor::Game->Saitek.SetX52ProLED( SaitekX52ProLED::ARed, joy_r );
+		Raptor::Game->Saitek.SetX52ProLED( SaitekX52ProLED::BRed, joy_r );
 		
 		Raptor::Game->Saitek.SetX52ProLED( SaitekX52ProLED::T1Green, true );
 		Raptor::Game->Saitek.SetX52ProLED( SaitekX52ProLED::T3Green, true );
@@ -2298,8 +2500,10 @@ void RenderLayer::UpdateSaitek( const Ship *ship, bool is_player, int view )
 		if( target )
 		{
 			snprintf( text_buffer, 17, "%-16.16s", target->Name.c_str() );
-			double dist = ship->Dist(target);
-			if( dist >= 98950. )
+			double dist = ship->Dist( target );
+			if( locked_on )
+				snprintf( text_buffer + 12, 5, "LOCK" );
+			else if( dist >= 98950. )
 				snprintf( text_buffer + 12, 5, ">99K" );
 			else if( dist >= 9950. )
 				snprintf( text_buffer + 11, 6, "%4.1fK", dist / 1000. );
