@@ -10,11 +10,14 @@ class XWingServerAlert;
 
 #include "RaptorServer.h"
 #include "Ship.h"
+#include "ShipClass.h"
 
 
 class XWingServer : public RaptorServer
 {
 public:
+	std::set<ShipClass> ShipClasses;
+	
 	uint32_t GameType;
 	int KillLimit;
 	int TimeLimit;
@@ -41,19 +44,22 @@ public:
 	virtual ~XWingServer();
 	
 	void Started( void );
+	void Stopped( void );
 	bool ProcessPacket( Packet *packet, ConnectedClient *from_client );
 	void AcceptedClient( ConnectedClient *client );
 	void DroppedClient( ConnectedClient *client );
 	
 	void Update( double dt );
 	
+	void ResetToStartingObjects( void );
 	void ToggleCountdown( void );
 	void BeginFlying( void );
 	void SendScores( void );
 	
 	double RoundTimeRemaining( void );
 	
-	Ship *SpawnShip( uint32_t ship_type, uint32_t team );
+	const ShipClass *GetShipClass( const std::string &name );
+	Ship *SpawnShip( const ShipClass *ship_class, uint32_t team );
 };
 
 

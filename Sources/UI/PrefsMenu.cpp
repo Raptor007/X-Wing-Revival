@@ -30,22 +30,51 @@ PrefsMenu::PrefsMenu( void )
 	
 	UpdateContents();
 	
-	PrevFullscreen = Raptor::Game->Cfg.SettingAsBool("g_fullscreen");
-	PrevFullscreenX = Raptor::Game->Cfg.SettingAsInt("g_res_fullscreen_x");
-	PrevFullscreenY = Raptor::Game->Cfg.SettingAsInt("g_res_fullscreen_y");
-	PrevBPP = Raptor::Game->Cfg.SettingAsInt("g_bpp");
-	PrevFSAA = Raptor::Game->Cfg.SettingAsInt("g_fsaa");
-	PrevMipmap = Raptor::Game->Cfg.SettingAsBool("g_mipmap");
-	PrevAF = Raptor::Game->Cfg.SettingAsInt("g_af");
-	PrevTextureMaxres = Raptor::Game->Cfg.SettingAsInt("g_texture_maxres");
-	PrevFramebuffers = Raptor::Game->Cfg.SettingAsBool("g_framebuffers");
-	PrevShaderEnable = Raptor::Game->Cfg.SettingAsBool("g_shader_enable");
-	PrevLightQuality = Raptor::Game->Cfg.SettingAsInt("g_shader_light_quality");
+	WatchSetting( "g_fullscreen" );
+	WatchSetting( "g_res_fullscreen_x" );
+	WatchSetting( "g_res_fullscreen_y" );
+	WatchSetting( "g_bpp" );
+	WatchSetting( "g_fsaa" );
+	WatchSetting( "g_mipmap" );
+	WatchSetting( "g_af" );
+	WatchSetting( "g_texture_maxres" );
+	WatchSetting( "g_framebuffers" );
+	WatchSetting( "g_shader_enable" );
+	WatchSetting( "g_shader_light_quality" );
+	WatchSetting( "g_shader_point_lights" );
 }
 
 
 PrefsMenu::~PrefsMenu()
 {
+}
+
+
+void PrefsMenu::WatchSetting( const std::string &name )
+{
+	Previous[ name ] = Raptor::Game->Cfg.SettingAsString( name );
+}
+
+
+bool PrefsMenu::WatchedSettingsChanged( void )
+{
+	// Restart graphics for turning shaders on, but not for turning them off.
+	bool shader_enable = Raptor::Game->Cfg.SettingAsBool( "g_shader_enable" );
+	if( shader_enable && (Previous[ "g_shader_enable" ] != Raptor::Game->Cfg.SettingAsString( "g_shader_enable" )) )
+		return true;
+	
+	for( std::map<std::string,std::string>::const_iterator prev_iter = Previous.begin(); prev_iter != Previous.end(); prev_iter ++ )
+	{
+		// Don't restart graphics for changes to shader variables if shaders are disabled.
+		if( (! shader_enable) && (strncmp( prev_iter->first.c_str(), "g_shader_", 9 ) == 0) )
+			continue;
+		
+		// Restart if any other watched variable was changed.
+		if( prev_iter->second != Raptor::Game->Cfg.SettingAsString( prev_iter->first ) )
+			return true;
+	}
+	
+	return false;
 }
 
 
@@ -75,9 +104,9 @@ void PrefsMenu::UpdateContents( void )
 	// Graphics
 	
 	group_rect.x = 10;
-	group_rect.y = 50;
+	group_rect.y = 34;
 	group_rect.w = 400;
-	group_rect.h = 210;
+	group_rect.h = 237;
 	group = new GroupBox( &group_rect, "Graphics", ItemFont );
 	AddElement( group );
 	rect.x = 10;
@@ -130,8 +159,14 @@ void PrefsMenu::UpdateContents( void )
 	af_dropdown->Update();
 	group->AddElement( af_dropdown );
 	
-	rect.y += rect.h + 8;
 	rect.x = 10;
+	rect.y += rect.h + 8;
+	rect.w = 345;
+	PrefsMenuCheckBox *framebuffers_checkbox = new PrefsMenuCheckBox( &rect, LabelFont, "Framebuffer Textures (Required for VR)", "g_framebuffers" );
+	group->AddElement( framebuffers_checkbox );
+	
+	rect.x = 10;
+	rect.y += rect.h + 8;
 	rect.w = 185;
 	group->AddElement( new PrefsMenuCheckBox( &rect, LabelFont, "Draw With Shaders", "g_shader_enable" ) );
 	
@@ -149,7 +184,7 @@ void PrefsMenu::UpdateContents( void )
 	group->AddElement( light_quality_dropdown );
 	rect.x += rect.w + 10;
 	rect.w = 125;
-	PrefsMenuDropDown *dynamic_lights_dropdown = new PrefsMenuDropDown( &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, 0, "g_dynamic_lights" );
+	PrefsMenuDropDown *dynamic_lights_dropdown = new PrefsMenuDropDown( &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, 0, "g_shader_point_lights" );
 	dynamic_lights_dropdown->AddItem( "0", "No Dynamic" );
 	dynamic_lights_dropdown->AddItem( "1", "1 Dynamic" );
 	dynamic_lights_dropdown->AddItem( "2", "2 Dynamic" );
@@ -158,30 +193,15 @@ void PrefsMenu::UpdateContents( void )
 	dynamic_lights_dropdown->Update();
 	group->AddElement( dynamic_lights_dropdown );
 	
-	rect.y += rect.h + 8;
 	rect.x = 10;
-	rect.w = 120;
-	group->AddElement( new Label( &rect, "High Quality:", LabelFont, Font::ALIGN_MIDDLE_LEFT ) );
-	rect.x += rect.w;
-	rect.w = 80;
-	group->AddElement( new PrefsMenuCheckBox( &rect, LabelFont, "Ships", "g_hq_ships" ) );
-	rect.x += rect.w;
-	rect.w = 95;
-	group->AddElement( new PrefsMenuCheckBox( &rect, LabelFont, "Cockpit", "g_hq_cockpit" ) );
-	rect.x += rect.w;
-	rect.w = 85;
-	group->AddElement( new PrefsMenuCheckBox( &rect, LabelFont, "Trench", "g_deathstar_detail", "3", "0" ) );
+	rect.y += rect.h + 8;
+	rect.w = 240;
+	group->AddElement( new PrefsMenuCheckBox( &rect, LabelFont, "Death Star Trench Details", "g_deathstar_detail", "3", "0" ) );
 	
 	rect.x = 10;
 	rect.y += rect.h + 8;
-	rect.w = 345;
-	PrefsMenuCheckBox *framebuffers_checkbox = new PrefsMenuCheckBox( &rect, LabelFont, "Framebuffer Textures (Required for VR)", "g_framebuffers" );
-	group->AddElement( framebuffers_checkbox );
-	
-	rect.x = group_rect.w - 60;
-	rect.y = af_dropdown->Rect.y + (rect.h + 8) / 2;
-	rect.w = 50;
-	group->AddElement( new PrefsMenuVRCheckBox( &rect, LabelFont, "VR", framebuffers_checkbox, fsaa_dropdown ) );
+	rect.w = 305;
+	group->AddElement( new PrefsMenuVRCheckBox( &rect, LabelFont, "Virtual Reality (OpenVR/SteamVR)", framebuffers_checkbox, fsaa_dropdown ) );
 	
 	// --------------------------------------------------------------------------------------------------------------------
 	// Sound
@@ -247,18 +267,21 @@ void PrefsMenu::UpdateContents( void )
 	
 	rect.y += rect.h + 8;
 	group->AddElement( new PrefsMenuCheckBox( &rect, LabelFont, "Flight Music", "s_game_music" ) );
-
+	
 	rect.y += rect.h + 8;
 	rect.w = group_rect.w - 20;
+	rect.h *= 2;
 	group->AddElement( new PrefsMenuSillyButton( &rect ) );
+	
+	rect.h = s_music_volume_dropdown->Rect.h;
 	
 	// --------------------------------------------------------------------------------------------------------------------
 	// Joystick
 	
 	group_rect.x = 10;
-	group_rect.y += group_rect.h + 10;
+	group_rect.y += group_rect.h + 7;
 	group_rect.w = 195;
-	group_rect.h = 195;
+	group_rect.h = 190;
 	group = new GroupBox( &group_rect, "Joystick", ItemFont );
 	AddElement( group );
 	rect.x = 10;
@@ -461,8 +484,8 @@ void PrefsMenu::Draw( void )
 	Rect.h = 480;
 	
 	Window::Draw();
-	TitleFont->DrawText( "Preferences", Rect.w/2 + 2, 12, Font::ALIGN_TOP_CENTER, 0,0,0,0.8f );
-	TitleFont->DrawText( "Preferences", Rect.w/2, 10, Font::ALIGN_TOP_CENTER );
+	TitleFont->DrawText( "Preferences", Rect.w/2 + 2, 7, Font::ALIGN_TOP_CENTER, 0,0,0,0.8f );
+	TitleFont->DrawText( "Preferences", Rect.w/2, 5, Font::ALIGN_TOP_CENTER );
 }
 
 
@@ -708,17 +731,7 @@ void PrefsMenuDoneButton::Clicked( Uint8 button )
 	
 	// Restart graphics/shaders if necessary.
 	PrefsMenu *menu = (PrefsMenu*) Container;
-	if( (menu->PrevFullscreen != Raptor::Game->Cfg.SettingAsBool("g_fullscreen"))
-	 || (menu->PrevFullscreen && (menu->PrevFullscreenX != Raptor::Game->Cfg.SettingAsInt("g_res_fullscreen_x")))
-	 || (menu->PrevFullscreen && (menu->PrevFullscreenY != Raptor::Game->Cfg.SettingAsInt("g_res_fullscreen_y")))
-	 || (menu->PrevBPP != Raptor::Game->Cfg.SettingAsInt("g_bpp"))
-	 || (menu->PrevFSAA != Raptor::Game->Cfg.SettingAsInt("g_fsaa"))
-	 || (menu->PrevMipmap != Raptor::Game->Cfg.SettingAsBool("g_mipmap"))
-	 || (menu->PrevAF != Raptor::Game->Cfg.SettingAsInt("g_af"))
-	 || (menu->PrevTextureMaxres != Raptor::Game->Cfg.SettingAsInt("g_texture_maxres"))
-	 || (menu->PrevFramebuffers != Raptor::Game->Cfg.SettingAsBool("g_framebuffers"))
-	 || ((! menu->PrevShaderEnable) && (menu->PrevShaderEnable != Raptor::Game->Cfg.SettingAsBool("g_shader_enable")))
-	 || (menu->PrevShaderEnable && (menu->PrevLightQuality != Raptor::Game->Cfg.SettingAsInt("g_shader_light_quality"))) )
+	if( menu->WatchedSettingsChanged() )
 		Raptor::Game->Gfx.Restart();
 	
 	// Restart VR if it's checked but not working.
@@ -803,6 +816,10 @@ void PrefsMenuDefaultsButton::Clicked( Uint8 button )
 PrefsMenuSillyButton::PrefsMenuSillyButton( SDL_Rect *rect ) : Button( rect, NULL )
 {
 	TimesClicked = 0;
+	Red = 1.f;
+	Green = 0.f;
+	Blue = 1.f;
+	Alpha = 0.75f;
 }
 
 
@@ -813,6 +830,12 @@ PrefsMenuSillyButton::~PrefsMenuSillyButton()
 
 void PrefsMenuSillyButton::Draw( void )
 {
+	if( Raptor::Game->Res.SearchPath.front() == "Sounds/Silly" )
+	{
+		Button::Draw();
+		PrefsMenu *prefs = (PrefsMenu*) Container->Container;
+		prefs->TitleFont->DrawText( "PEW PEW", Rect.w/2, Rect.h/2, Font::ALIGN_MIDDLE_CENTER );
+	}
 }
 
 
@@ -820,10 +843,13 @@ void PrefsMenuSillyButton::Clicked( Uint8 button )
 {
 	if( button != SDL_BUTTON_LEFT )
 		return;
-	if( !( Raptor::Game->Keys.KeyDown(SDLK_RSHIFT) || Raptor::Game->Keys.KeyDown(SDLK_LSHIFT) ) )
+	else if( Raptor::Game->Res.SearchPath.front() == "Sounds/Silly" )
+		TimesClicked = 7;
+	else if( !( Raptor::Game->Keys.KeyDown(SDLK_RSHIFT) || Raptor::Game->Keys.KeyDown(SDLK_LSHIFT) ) )
 		return;
+	else
+		TimesClicked ++;
 	
-	TimesClicked ++;
 	if( TimesClicked == 7 )
 	{
 		TimesClicked = 0;

@@ -6,6 +6,7 @@
 
 #include <cstddef>
 #include <cmath>
+#include <dirent.h>
 #include "XWingDefs.h"
 #include "XWingServer.h"
 #include "FirstLoadScreen.h"
@@ -23,6 +24,7 @@
 #include "Turret.h"
 #include "DeathStar.h"
 #include "DeathStarBox.h"
+#include "ShipClass.h"
 
 
 XWingGame::XWingGame( std::string version ) : RaptorGame( "X-Wing Revival", version )
@@ -52,16 +54,10 @@ void XWingGame::SetDefaults( void )
 	Cfg.Settings[ "spectator_view" ] = "auto";
 	Cfg.Settings[ "view_cycle_time" ] = "7";
 	
-	Cfg.Settings[ "g_znear" ] = "0.125";
-	Cfg.Settings[ "g_zfar" ] = "15000";
-	Cfg.Settings[ "g_dynamic_lights" ] = "4";
 	Cfg.Settings[ "g_bg" ] = "true";
 	Cfg.Settings[ "g_stars" ] = "0";
 	Cfg.Settings[ "g_debris" ] = "500";
 	Cfg.Settings[ "g_deathstar_detail" ] = "3";
-	Cfg.Settings[ "g_3d_cockpit" ] = "true";
-	Cfg.Settings[ "g_hq_cockpit" ] = "true";
-	Cfg.Settings[ "g_hq_ships" ] = "true";
 	Cfg.Settings[ "g_crosshair_thickness" ] = "1.5";
 	
 	Cfg.Settings[ "s_menu_music" ] = "true";
@@ -159,24 +155,21 @@ void XWingGame::Precache( void )
 	Res.GetAnimation("explosion.ani");
 	Res.GetAnimation("laser_red.ani");
 	Res.GetAnimation("laser_green.ani");
-	
-	if( Cfg.SettingAsBool("g_hq_ships") )
-	{
-		Res.GetModel("x-wing_hq.obj");
-		Res.GetModel("tie-fighter_hq.obj");
-	}
-	else
-	{
-		Res.GetModel("x-wing.obj");
-		Res.GetModel("tie-fighter.obj");
-	}
-	
 	Res.GetModel("asteroid.obj");
 	
-	if( ! Cfg.SettingAsBool("screensaver") )
+	// Technically these are played at zero volume in the screensaver.
+	Res.GetSound("laser_red.wav");
+	Res.GetSound("laser_green.wav");
+	Res.GetSound("explosion.wav");
+	Res.GetSound("damage_hull.wav");
+	Res.GetSound("damage_shield.wav");
+	Res.GetSound("hit_hull.wav");
+	Res.GetSound("hit_shield.wav");
+	
+	bool screensaver = Cfg.SettingAsBool("screensaver");
+	if( ! screensaver )
 	{
 		Res.GetAnimation("stars.ani");
-		
 		Res.GetAnimation("bg_lobby.ani");
 		
 		Res.GetAnimation("special/health.ani");
@@ -189,33 +182,8 @@ void XWingGame::Precache( void )
 		Res.GetAnimation("shields_r.ani");
 		
 		Res.GetAnimation("torpedo.ani");
+		Res.GetAnimation("missile.ani");
 		Res.GetAnimation("deathstar.ani");
-
-		if( Cfg.SettingAsBool("g_hq_ships") )
-			Res.GetModel("y-wing_hq.obj");
-		else
-			Res.GetModel("y-wing.obj");
-		
-		if( Cfg.SettingAsBool("g_3d_cockpit") )
-		{
-			if( Cfg.SettingAsBool("g_hq_cockpit") )
-			{
-				Res.GetModel("x-wing_cockpit_hq.obj");
-				Res.GetModel("tie-fighter_cockpit_hq.obj");
-				Res.GetModel("y-wing_cockpit_hq.obj");
-			}
-			else
-			{
-				Res.GetModel("x-wing_cockpit.obj");
-				Res.GetModel("tie-fighter_cockpit.obj");
-				Res.GetModel("y-wing_cockpit.obj");
-			}
-		}
-		else
-		{
-			Res.GetAnimation("cockpit_xwing.ani");
-			Res.GetAnimation("cockpit_tie.ani");
-		}
 		
 		Res.GetModel("turret_body.obj");
 		Res.GetModel("turret_gun.obj");
@@ -223,29 +191,16 @@ void XWingGame::Precache( void )
 		Res.GetModel("deathstar_detail_bottom.obj");
 		Res.GetModel("deathstar_box.obj");
 		Res.GetModel("deathstar_exhaust_port.obj");
-		Res.GetModel("isd2.obj");
-		Res.GetModel("corvette.obj");
-		Res.GetModel("nebulon-b.obj");
-		Res.GetModel("calamari-cruiser.obj");
 		
 		Res.GetSound("beep.wav");
 		Res.GetSound("locking.wav");
 		Res.GetSound("locked.wav");
 		Res.GetSound("chat.wav");
-		Res.GetSound("laser_red.wav");
-		Res.GetSound("laser_green.wav");
+		Res.GetSound("incoming.wav");
+		
 		Res.GetSound("turbolaser_green.wav");
 		Res.GetSound("torpedo.wav");
 		Res.GetSound("torpedo_enter.wav");
-		Res.GetSound("explosion.wav");
-		Res.GetSound("damage_hull.wav");
-		Res.GetSound("damage_shield.wav");
-		Res.GetSound("hit_hull.wav");
-		Res.GetSound("hit_shield.wav");
-		Res.GetSound("tie_fast.wav");
-		Res.GetSound("tie_slow.wav");
-		Res.GetSound("xwing_fast.wav");
-		Res.GetSound("xwing_slow.wav");
 		
 		Res.GetMusic("rebel.dat");
 		Res.GetMusic("empire.dat");
@@ -260,6 +215,34 @@ void XWingGame::Precache( void )
 		Res.GetSound("deathstar_1min.wav");
 		Res.GetSound("deathstar_30sec.wav");
 		Res.GetSound("deathstar_0sec.wav");
+	}
+	
+	if( DIR *dir_p = opendir("Ships") )
+	{
+		while( struct dirent *dir_entry_p = readdir(dir_p) )
+		{
+			if( ! dir_entry_p->d_name )
+				continue;
+			if( dir_entry_p->d_name[ 0 ] == '.' )
+				continue;
+			
+			// FIXME: Look for a specific file extension.
+			
+			ShipClass sc;
+			if( sc.Load( std::string("Ships/") + std::string(dir_entry_p->d_name) ) )
+			{
+				if( screensaver && (sc.ShortName != "X/W") && (sc.ShortName != "T/F") )
+					continue;
+				
+				if( sc.ExternalModel.length() )
+					Res.GetModel( sc.ExternalModel );
+				if( sc.CockpitModel.length() && ! screensaver )
+					Res.GetModel( sc.CockpitModel );
+				for( std::map< double, std::string >::const_iterator flyby_iter = sc.FlybySounds.begin(); flyby_iter != sc.FlybySounds.end(); flyby_iter ++ )
+					Res.GetSound( flyby_iter->second );
+			}
+		}
+		closedir( dir_p );
 	}
 }
 
@@ -349,22 +332,38 @@ void XWingGame::Update( double dt )
 	
 	if( Cfg.SettingAsBool("joy_enable",true) && Joy.Joysticks.size() )
 	{
-		double deadzone = Cfg.SettingAsDouble( "joy_deadzone" );
+		double deadzone = Cfg.SettingAsDouble( "joy_deadzone", 0.03 );
+		// FIXME: More distinct deadzone variables for different devices and axes?
 		//bool stick = false;
 		bool pedals = false;
+		bool throttle_unit = false;
 		bool joy_look = false;
 		
 		for( std::map<Uint8, JoystickState>::reverse_iterator joy_iter = Joy.Joysticks.rbegin(); joy_iter != Joy.Joysticks.rend(); joy_iter ++ )
 		{
 			if( Str::FindInsensitive( joy_iter->second.Name, "Pedal" ) >= 0 )
 			{
-				// Make sure the pedals have analog data.
-				if( joy_iter->second.HasAxis(2) )
+				bool found_axis = false;
+				double z = 0.;
+				
+				if( joy_iter->second.HasAxis(2) && ! Cfg.SettingAsBool("joy_separate_pedals",false) )
+				{
+					// Combined pedal axis (typical slider pedals).
+					found_axis = true;
+					z = joy_iter->second.Axis( 2, deadzone );
+				}
+				else if( joy_iter->second.HasAxis(0) || joy_iter->second.HasAxis(1) )
+				{
+					// Separate left/right (toe pedals).
+					found_axis = true;
+					double l = joy_iter->second.HasAxis(0) ? joy_iter->second.AxisScaled( 0, 0.,1., 0.,deadzone ) : 0.;
+					double r = joy_iter->second.HasAxis(1) ? joy_iter->second.AxisScaled( 1, 0.,1., 0.,deadzone ) : 0.;
+					z = r - l;
+				}
+				
+				if( found_axis )
 				{
 					pedals = true;
-					
-					// Read pedals.
-					double z = joy_iter->second.Axis( 2, deadzone );
 					z = fabs(pow( fabs(z), Cfg.SettingAsDouble("joy_smooth_pedals") + 1. )) * Num::Sign(z);
 					
 					if( Cfg.SettingAsBool("joy_swap_xz") )
@@ -372,6 +371,11 @@ void XWingGame::Update( double dt )
 					else
 						yaw = z;
 				}
+			}
+			else if( Str::FindInsensitive( joy_iter->second.Name, "Throttle" ) >= 0 )
+			{
+				throttle = joy_iter->second.AxisScaled( 0, 1.,0., 0.,deadzone );
+				throttle_unit = true;
 			}
 			else if( Str::FindInsensitive( joy_iter->second.Name, "Xbox" ) >= 0 )
 			{
@@ -446,7 +450,8 @@ void XWingGame::Update( double dt )
 					z = fabs(pow( fabs(z), Cfg.SettingAsDouble("joy_smooth_z") + 1. )) * Num::Sign(z);
 					
 					pitch = y;
-					throttle = joy_iter->second.AxisScaled( 2, 1., 0., 0., deadzone );
+					if( ! throttle_unit )
+						throttle = joy_iter->second.AxisScaled( 2, 1.,0., 0.,deadzone );
 					
 					if( Cfg.SettingAsBool("joy_swap_xz") )
 					{
@@ -860,20 +865,10 @@ void XWingGame::Update( double dt )
 					continue;
 				
 				// Different sounds for different speeds and ships.
-				if( ship->ShipType == Ship::TYPE_TIE_FIGHTER )
-				{
-					if( relative_motion.Length() >= 250. )
-						Snd.PlayFromObject( Res.GetSound("tie_fast.wav"), obj_iter->first, 10. );
-					else if( relative_motion.Length() >= 25. )
-						Snd.PlayFromObject( Res.GetSound("tie_slow.wav"), obj_iter->first, 5. );
-				}
-				else if( (ship->ShipType == Ship::TYPE_XWING) || (ship->ShipType == Ship::TYPE_YWING) )
-				{
-					if( relative_motion.Length() >= 200. )
-						Snd.PlayFromObject( Res.GetSound("xwing_fast.wav"), obj_iter->first, 10. );
-					else if( relative_motion.Length() >= 20. )
-						Snd.PlayFromObject( Res.GetSound("xwing_slow.wav"), obj_iter->first, 5. );
-				}
+				double speed = relative_motion.Length();
+				const char *sound = ship->FlybySound( speed );
+				if( sound )
+					Snd.PlayFromObject( Res.GetSound(sound), obj_iter->first, (speed > 100.) ? 10. : 5. );
 			}
 		}
 	}
@@ -907,7 +902,7 @@ void XWingGame::Update( double dt )
 					if( obj_iter->second->Type() == XWing::Object::SHIP )
 					{
 						Ship *this_ship = (Ship*) obj_iter->second;
-						if( this_ship->ShipType == Ship::TYPE_EXHAUST_PORT )
+						if( this_ship->Category() == ShipClass::CATEGORY_TARGET )
 							exhaust_port = this_ship;
 					}
 					else if( obj_iter->second->Type() == XWing::Object::DEATH_STAR )
@@ -1194,15 +1189,9 @@ bool XWingGame::HandleEvent( SDL_Event *event )
 			bool beep = false;
 			
 			if( weapon_next )
-			{
-				my_ship->NextWeapon();
-				beep = true;
-			}
+				beep = my_ship->NextWeapon();
 			else if( firing_mode_next )
-			{
-				my_ship->NextFiringMode();
-				beep = true;
-			}
+				beep = my_ship->NextFiringMode();
 			else if( shield_shunt )
 			{
 				// Set shield position.
@@ -1283,7 +1272,7 @@ bool XWingGame::HandleEvent( SDL_Event *event )
 			for( std::list<Ship*>::iterator ship_iter = ships.begin(); ship_iter != ships.end(); ship_iter ++ )
 			{
 				// Don't spectate the Death Star exhaust port.
-				if( (*ship_iter)->ShipType == Ship::TYPE_EXHAUST_PORT )
+				if( (*ship_iter)->Category() == ShipClass::CATEGORY_TARGET )
 					continue;
 				
 				// Don't observe long-dead ships.
@@ -1322,7 +1311,7 @@ bool XWingGame::HandleEvent( SDL_Event *event )
 				for( std::list<Ship*>::iterator ship_iter = ships.begin(); ship_iter != ships.end(); ship_iter ++ )
 				{
 					// Don't spectate the Death Star exhaust port.
-					if( (*ship_iter)->ShipType == Ship::TYPE_EXHAUST_PORT )
+					if( (*ship_iter)->Category() == ShipClass::CATEGORY_TARGET )
 						continue;
 					
 					observed_ship = *ship_iter;
@@ -1392,7 +1381,7 @@ bool XWingGame::ProcessPacket( Packet *packet )
 		double health = packet->NextFloat();
 		double shield_f = packet->NextFloat();
 		double shield_r = packet->NextFloat();
-		char *subsystem = packet->NextString();
+		const char *subsystem = packet->NextString();
 		double subsystem_health = 0.;
 		if( strlen(subsystem) )
 			subsystem_health = packet->NextFloat();
@@ -1400,11 +1389,14 @@ bool XWingGame::ProcessPacket( Packet *packet )
 		double x = packet->NextDouble();
 		double y = packet->NextDouble();
 		double z = packet->NextDouble();
+		double shot_dx = packet->NextFloat();
+		double shot_dy = packet->NextFloat();
+		double shot_dz = packet->NextFloat();
 		
 		Ship *ship = NULL;
 		double old_health = 0.;
 		double old_shields = 0.;
-		double dx = 0., dy = 0., dz = 0.;
+		double ship_dx = 0., ship_dy = 0., ship_dz = 0.;
 		
 		GameObject *ship_obj = Data.GetObject( ship_id );
 		if( ship_obj && (ship_obj->Type() == XWing::Object::SHIP) )
@@ -1412,9 +1404,9 @@ bool XWingGame::ProcessPacket( Packet *packet )
 			ship = (Ship*) ship_obj;
 			old_health = ship->Health;
 			old_shields = ship->ShieldF + ship->ShieldR;
-			dx = ship->MotionVector.X;
-			dy = ship->MotionVector.Y;
-			dz = ship->MotionVector.Z;
+			ship_dx = ship->MotionVector.X;
+			ship_dy = ship->MotionVector.Y;
+			ship_dz = ship->MotionVector.Z;
 			ship->HitClock.Reset();
 			ship->SetHealth( health );
 			ship->ShieldF = shield_f;
@@ -1426,13 +1418,13 @@ bool XWingGame::ProcessPacket( Packet *packet )
 		if( State >= XWing::State::FLYING )
 		{
 			Pos3D pos( x, y, z );
-			Vec3D motion_vec( dx, dy, dz );
+			Vec3D motion_vec( ship_dx, ship_dy, ship_dz );
 			
 			if( ship )
 			{
 				Mix_Chunk *sound = NULL;
 				double loudness = 1.;
-				if( ship->ShipType == Ship::TYPE_EXHAUST_PORT )
+				if( ship->Category() == ShipClass::CATEGORY_TARGET )
 				{
 					if( ship->Health < old_health )
 					{
@@ -1459,11 +1451,11 @@ bool XWingGame::ProcessPacket( Packet *packet )
 					Snd.PlayAt( sound, x, y, z, loudness );
 				
 				double total_damage = (old_shields + old_health) - (ship->ShieldF + ship->ShieldR + ship->Health);
-				Vec3D knock( ship->X - x, ship->Y - y, ship->Z - z );
+				Vec3D knock( shot_dx - ship_dx, shot_dy - ship_dy, shot_dz - ship_dz );
 				ship->KnockCockpit( &knock, total_damage );
 			}
 			
-			if( ship && (ship->ShipType == Ship::TYPE_EXHAUST_PORT) )
+			if( ship && (ship->Category() == ShipClass::CATEGORY_TARGET) )
 				;
 			else if( shot_type == Shot::TYPE_TORPEDO )
 				Data.Effects.push_back( Effect( Res.GetAnimation("explosion.ani"), 5., Res.GetSound("explosion.wav"), 2.5, &pos, &motion_vec, Rand::Bool() ? 360. : -360., 1. ) );
@@ -1546,7 +1538,7 @@ bool XWingGame::ProcessPacket( Packet *packet )
 		double health = packet->NextFloat();
 		double shield_f = packet->NextFloat();
 		double shield_r = packet->NextFloat();
-		char *subsystem = packet->NextString();
+		const char *subsystem = packet->NextString();
 		double subsystem_health = 0.;
 		if( strlen(subsystem) )
 			subsystem_health = packet->NextFloat();
@@ -1634,7 +1626,7 @@ bool XWingGame::ProcessPacket( Packet *packet )
 				{
 					// If we're spectating and any non-AI player wins, play the victory tune.
 					Player *player = Data.GetPlayer( PlayerID );
-					if( player && (player->Properties["assigned_team"] == "Spectator") )
+					if( player && (player->Properties["team"] == "Spectator") )
 						music_name = "victory.dat";
 				}
 			}
@@ -1700,7 +1692,7 @@ void XWingGame::ShowLobby( void )
 	{
 		if( Raptor::Server->IsRunning() )
 		{
-			Raptor::Server->Data.Players[ PlayerID ]->Properties["team"] = "Spectator";
+			Raptor::Server->Data.Players[ PlayerID ]->Properties["ship"] = "Spectator";
 			Raptor::Server->Data.Properties["gametype"] = "team_dm";
 			Raptor::Server->Data.Properties["dm_kill_limit"] = "0";
 			Raptor::Server->Data.Properties["tdm_kill_limit"] = "0";
@@ -1720,7 +1712,7 @@ void XWingGame::ShowLobby( void )
 			player_properties.AddUInt( 2 );
 			player_properties.AddString( "name" );
 			player_properties.AddString( "Screensaver" );
-			player_properties.AddString( "team" );
+			player_properties.AddString( "ship" );
 			player_properties.AddString( "Spectator" );
 			Raptor::Game->Net.Send( &player_properties );
 			
@@ -1774,49 +1766,6 @@ void XWingGame::BeginFlying( void )
 }
 
 
-void XWingGame::AddedObject( GameObject *obj )
-{
-	if( State >= XWing::State::FLYING )
-	{
-		if( obj->Type() == XWing::Object::SHOT )
-		{
-			Shot *shot = (Shot*) obj;
-			
-			if( shot->ShotType == Shot::TYPE_LASER_RED )
-				Snd.PlayAt( Res.GetSound("laser_red.wav"), obj->X, obj->Y, obj->Z );
-			else if( shot->ShotType == Shot::TYPE_LASER_GREEN )
-				Snd.PlayAt( Res.GetSound("laser_green.wav"), obj->X, obj->Y, obj->Z );
-			else if( shot->ShotType == Shot::TYPE_TURBO_LASER_RED )
-				Snd.PlayAt( Res.GetSound("laser_red.wav"), obj->X, obj->Y, obj->Z, 1.5 );
-			else if( shot->ShotType == Shot::TYPE_TURBO_LASER_GREEN )
-				Snd.PlayAt( Res.GetSound("turbolaser_green.wav"), obj->X, obj->Y, obj->Z, 1.5 );
-			else if( shot->ShotType == Shot::TYPE_TORPEDO )
-				Snd.PlayAt( Res.GetSound("torpedo.wav"), obj->X, obj->Y, obj->Z, 0.75 );
-			
-			if( shot->Seeking && (shot->Seeking == ObservedShipID) )
-			{
-				// FIXME: Warning for incoming missile/torpedo.
-			}
-			
-			GameObject *obj = Data.GetObject( shot->FiredFrom );
-			if( obj && (obj->Type() == XWing::Object::SHIP) )
-			{
-				Ship *ship = (Ship*) obj;
-				if( (ship->ID != PlayerID) && (ship->SelectedWeapon != shot->ShotType) )
-				{
-					ship->SelectedWeapon = shot->ShotType;
-					ship->WeaponIndex = 0;
-					ship->FiringMode = 1;
-				}
-				ship->JustFired( shot->ShotType, 1 );
-				if( ship->ID != PlayerID )
-					ship->FiringMode = ship->FiredThisFrame;
-			}
-		}
-	}
-}
-
-
 GameObject *XWingGame::NewObject( uint32_t id, uint32_t type )
 {
 	if( type == XWing::Object::SHIP )
@@ -1831,6 +1780,8 @@ GameObject *XWingGame::NewObject( uint32_t id, uint32_t type )
 		return new DeathStar( id );
 	else if( type == XWing::Object::DEATH_STAR_BOX )
 		return new DeathStarBox( id );
+	else if( type == XWing::Object::SHIP_CLASS )
+		return new ShipClass( id );
 	
 	return RaptorGame::NewObject( id, type );
 }

@@ -32,6 +32,7 @@ Turret::Turret( uint32_t id ) : GameObject( id, XWing::Object::TURRET )
 	TargetArc = 360.;
 	SafetyDistance = 0.;
 	
+	Visible = true;
 	BodyShape = NULL;
 	GunShape = NULL;
 	
@@ -51,17 +52,28 @@ Turret::~Turret()
 
 void Turret::ClientInit( void )
 {
-	BodyShape = Raptor::Game->Res.GetModel("turret_body.obj");
-	GunShape = Raptor::Game->Res.GetModel("turret_gun.obj");
+	if( Visible )
+	{
+		BodyShape = Raptor::Game->Res.GetModel("turret_body.obj");
+		GunShape = Raptor::Game->Res.GetModel("turret_gun.obj");
+	}
 }
 
 
-void Turret::Attach( const GameObject *parent, const Vec3D *offset, const Vec3D *relative_up, bool parent_control )
+void Turret::Attach( const GameObject *parent, const Vec3D *offset, const Vec3D *relative_up, const Vec3D *relative_fwd, bool parent_control )
 {
 	if( offset )
 		Offset.Copy( offset );
 	if( relative_up )
+	{
 		RelativeUp.Copy( relative_up );
+		RelativeUp.ScaleTo( 1. );
+	}
+	if( relative_fwd )
+	{
+		RelativeFwd.Copy( relative_fwd );
+		RelativeFwd.ScaleTo( 1. );
+	}
 	
 	ParentControl = parent_control;
 	
@@ -85,6 +97,7 @@ void Turret::UpdatePos( const GameObject *parent )
 	MoveAlong( &(parent->Right), Offset.Z );
 	MotionVector.Copy( &(parent->MotionVector) );
 	Up = (parent->Fwd * RelativeUp.X) + (parent->Up * RelativeUp.Y) + (parent->Right * RelativeUp.Z);
+	TargetDir = (parent->Fwd * RelativeFwd.X) + (parent->Up * RelativeFwd.Y) + (parent->Right * RelativeFwd.Z);
 	FixVectorsKeepUp();
 }
 
@@ -136,8 +149,11 @@ Pos3D Turret::GunPos( void )
 {
 	GameObject gun;
 	gun.Copy( this );
-	gun.MoveAlong( &(this->Up), 0.022 * 175. );
-	gun.MoveAlong( &(this->Fwd), 0.022 * 50. );
+	if( Visible )
+	{
+		gun.MoveAlong( &(this->Up), 0.022 * 175. );
+		gun.MoveAlong( &(this->Fwd), 0.022 * 50. );
+	}
 	gun.Pitch( GunPitch );
 	return gun;
 }
@@ -169,10 +185,8 @@ std::map<int,Shot*> Turret::NextShots( GameObject *target )
 		
 		double fwd = 0., up = 0., right = 0.;
 		
-		if( weapon_index == 0 )
-			right = 2.2;
-		else
-			right = -2.2;
+		if( Visible || (FiringMode > 1) )
+			right = weapon_index ? -2.2 : 2.2;
 		
 		shot->MoveAlong( &Fwd, fwd );
 		shot->MoveAlong( &Up, up );
@@ -223,7 +237,7 @@ bool Turret::CanCollideWithOwnType( void ) const
 
 bool Turret::CanCollideWithOtherTypes( void ) const
 {
-	return true;
+	return Visible;
 }
 
 bool Turret::IsMoving( void ) const
@@ -257,6 +271,8 @@ void Turret::AddToInitPacket( Packet *packet, int8_t precision )
 	while( unit_gun_pitch < -1. )
 		unit_gun_pitch += 2.;
 	packet->AddShort( Num::UnitFloatTo16(unit_gun_pitch) );
+	
+	packet->AddUChar( Visible ? 1 : 0 );
 }
 
 
@@ -278,6 +294,8 @@ void Turret::ReadFromInitPacket( Packet *packet, int8_t precision )
 	// Extact GunPitch in range (-180,180) from int16.
 	int16_t compressed_gun_pitch = packet->NextShort();
 	GunPitch = Num::UnitFloatFrom16(compressed_gun_pitch) * 180.;
+	
+	Visible = packet->NextUChar();
 }
 
 
@@ -342,6 +360,10 @@ bool Turret::WillCollide( const GameObject *other, double dt, std::string *this_
 	if( other->ID == ParentID )
 		return false;
 	
+	// Hidden embedded turrets don't collide.
+	if( ! Visible )
+		return false;
+	
 	// Dead turrets don't collide.
 	if( Health <= 0. )
 		return false;
@@ -376,9 +398,12 @@ bool Turret::WillCollide( const GameObject *other, double dt, std::string *this_
 			return true;
 	}
 	
-	// Let the Death Star determine whether collisions with ships occur.
+	/*
+	// Let the Death Star determine whether collisions with turrets occur.
+	// This could be used to scrape off attached turrets when ships fly too close.
 	else if( other->Type() == XWing::Object::DEATH_STAR )
 		return other->WillCollide( this, dt, other_object, this_object );
+	*/
 	
 	return false;
 }
@@ -424,8 +449,13 @@ void Turret::Update( double dt )
 
 void Turret::Draw( void )
 {
-	if( Health > 0. )
+	if( (Health > 0.) && Visible )
 	{
+		bool change_shader = (! ParentID) && (Raptor::Game->Cfg.SettingAsInt("g_shader_light_quality") >= 2) && Raptor::Game->ShaderMgr.Active();
+		Shader *prev_shader = Raptor::Game->ShaderMgr.Selected;
+		if( change_shader )
+			Raptor::Game->ShaderMgr.SelectAndCopyVars( Raptor::Game->Res.GetShader("deathstar") );
+		
 		if( BodyShape )
 			BodyShape->DrawAt( this, 0.022 );
 		
@@ -434,5 +464,8 @@ void Turret::Draw( void )
 			Pos3D gun = GunPos();
 			GunShape->DrawAt( &gun, 0.022 );
 		}
+		
+		if( change_shader )
+			Raptor::Game->ShaderMgr.Select( prev_shader );
 	}
 }

@@ -51,7 +51,7 @@ void Asteroid::ClientInit( void )
 		for( std::map<std::string,ModelMaterial>::iterator mtl_iter = Shape->Materials.begin(); mtl_iter != Shape->Materials.end(); mtl_iter ++ )
 		{
 			// We want to match the most-used material of the model.
-			if( mtl_iter->second.Arrays.VertexCount > best_vertex_count )
+			if( (int) mtl_iter->second.Arrays.VertexCount > best_vertex_count )
 			{
 				Texture.BecomeInstance( &(mtl_iter->second.Texture) );
 				Ambient = mtl_iter->second.Ambient;

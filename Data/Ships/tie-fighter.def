@@ -1,0 +1,23 @@
+id T/F
+name TIE Fighter
+squadron Alpha
+category fighter
+team empire
+radius 4.4
+speed 200
+accel 100
+roll 240
+pitch 120
+yaw 90
+health 100
+shield 0
+ramming 1000
+explode 1
+weapon laser_green 0.2 -0.9 0
+weapon laser_green -0.2 -0.9 0
+firetime laser_green 0.25
+model tie-fighter_hq.obj
+cockpit tie-fighter_cockpit_hq.obj 0 0 0.308
+model_scale 0.022
+flyby 25 tie_slow.wav
+flyby 250 tie_fast.wav

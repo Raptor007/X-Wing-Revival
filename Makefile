@@ -15,11 +15,11 @@ LIBDIR = /usr/lib64
 LIB = libSDLmain.a libSDL_net.so libSDL_mixer.so libSDL_ttf.so libSDL_image.so libSDL.so libGLEW.a libGLU.so libGL.so libopenvr_api.so
 DEF =
 EXE = xwingrev
-VERSION = 0.1.6
+VERSION = $(shell grep 'define VERSION' Sources/Main.cpp | grep -oh '[0-9.]*')
 GAMEDIR = /Games/X-Wing Revival
 SERVERDIR = /srv/xwingrev
 SERVERUSER = xwingrev
-MAC_CODESIGN = Raptor007
+MAC_CODESIGN = $(shell whoami)
 MAC_FRAMEWORKS = OpenGL Cocoa AudioUnit AudioToolbox IOKit Carbon
 MAC_INSTALL_NAME_TOOL = /opt/local/bin/install_name_tool
 MAC_BUNDLE_LIBS = /opt/local/lib/libgcc/libstdc++.6.dylib /opt/local/lib/libgcc/libgcc_s.1.dylib /usr/local/lib/libopenvr_api.dylib
@@ -189,7 +189,7 @@ AFLAGS += -mtune=$(MTUNE)
 endif
 
 
-.PHONY: default exe objects clean install uninstall play server-install ppc i32 i64 universal lipo
+.PHONY: default exe objects clean install server-install ppc i32 i64 universal lipo
 
 default: $(TARGET)
 
@@ -204,6 +204,7 @@ default: $(TARGET)
 	$(foreach lib,$(MAC_BUNDLE_LIBS),$(MAC_INSTALL_NAME_TOOL) -change "$(lib)" "@loader_path/$(notdir $(lib))" "$(EXE)";)
 	$(foreach lib1,$(MAC_BUNDLE_LIBS),$(foreach lib2,$(MAC_BUNDLE_LIBS),$(MAC_INSTALL_NAME_TOOL) -change "$(lib1)" "@loader_path/$(notdir $(lib1))" "$@/Contents/MacOS/$(notdir $(lib2))";))
 	-codesign -s "$(MAC_CODESIGN)" "$@"
+	-if [ -L "$@/Contents/CodeResources" ]; then rm "$@/Contents/CodeResources"; rsync -ax "$@/Contents/_CodeSignature/CodeResources" "$@/Contents/"; fi
 
 exe: $(SOURCES) $(GAME_HEADERS) $(ENGINE_HEADERS) $(EXE)
 
@@ -228,17 +229,9 @@ clean:
 
 install:
 	mkdir -p "$(GAMEDIR)"
+	-rsync -ax --exclude=".*" build/Debug/* "$(GAMEDIR)/"
+	-rsync -ax --exclude=".*" Data/* "$(GAMEDIR)/"
 	rsync -ax "$(PRODUCT)" "$(GAMEDIR)/"
-	cp -p build/Debug/README.txt "$(GAMEDIR)/"
-	rsync -ax --exclude=".*" build/Debug/Fonts "$(GAMEDIR)/"
-	rsync -ax --exclude=".*" build/Debug/Textures "$(GAMEDIR)/"
-	rsync -ax --exclude=".*" build/Debug/Models "$(GAMEDIR)/"
-	rsync -ax --exclude=".*" build/Debug/Shaders "$(GAMEDIR)/"
-	rsync -ax --exclude=".*" build/Debug/Sounds "$(GAMEDIR)/"
-	rsync -ax --exclude=".*" build/Debug/Music "$(GAMEDIR)/"
-	rsync -ax --exclude=".*" build/Debug/Screensaver "$(GAMEDIR)/"
-	rsync -ax --exclude=".*" build/Debug/Tools "$(GAMEDIR)/"
-	rsync -ax --exclude=".*" build/Debug/Docs "$(GAMEDIR)/"
 
 server-install:
 	mkdir -p "$(SERVERDIR)"
@@ -246,6 +239,8 @@ server-install:
 	-"$(SERVERDIR)/xwingctl" stop
 	cp "$(EXE)" "$(SERVERDIR)/$(EXE)-$(VERSION)"
 	cd "$(SERVERDIR)" && ln -sf "$(EXE)-$(VERSION)" "$(EXE)"
+	-rsync -ax --exclude=".*" Data/Ships "$(SERVERDIR)/"
+	-rsync -ax --exclude=".*" build/Debug/Models "$(SERVERDIR)/"
 	-chown -R $(SERVERUSER):wheel "$(SERVERDIR)"
 	-chmod 775 "$(SERVERDIR)/$(EXE)-$(VERSION)"
 	-ln -sf "$(SERVERDIR)/xwingctl" /usr/local/bin/xwingctl

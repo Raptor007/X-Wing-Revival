@@ -158,7 +158,7 @@ void RenderLayer::SetWorldLights( float ambient_scale, const std::vector<const V
 		color[ 2 ].Set( 0.2, 0.29, 0.41, 1.f );
 		wrap_around[ 2 ] = 0.25;
 		
-		dir[ 3 ].Set( 0.2, 0., 0.98 );
+		dir[ 3 ].Set( 0.2, 0.1, 0.9 );
 		dir[ 3 ].ScaleTo( 1. );
 		color[ 3 ].Set( 0.25, 0.125, 0.2, 1.f );
 		wrap_around[ 3 ] = 0.125;
@@ -347,11 +347,11 @@ void RenderLayer::Draw( void )
 	
 	// Build a list of all ships, because we'll refer to it often.
 	// Also build a list of shots for use when determining dynamic lights.
-	// And keep track of the Death Star trench location for darkening world lights.
+	// And keep track of the Death Star trench location for chase camera and darkening world lights.
 	
 	std::list<Ship*> ships;
 	std::list<Shot*> shots;
-	DeathStar *death_star = NULL;
+	DeathStar *deathstar = NULL;
 	for( std::map<uint32_t,GameObject*>::iterator obj_iter = Raptor::Game->Data.GameObjects.begin(); obj_iter != Raptor::Game->Data.GameObjects.end(); obj_iter ++ )
 	{
 		if( obj_iter->second->Type() == XWing::Object::SHIP )
@@ -359,7 +359,7 @@ void RenderLayer::Draw( void )
 		else if( obj_iter->second->Type() == XWing::Object::SHOT )
 			shots.push_back( (Shot*) obj_iter->second );
 		else if( obj_iter->second->Type() == XWing::Object::DEATH_STAR )
-			death_star = (DeathStar*) obj_iter->second;
+			deathstar = (DeathStar*) obj_iter->second;
 	}
 	
 	
@@ -401,7 +401,7 @@ void RenderLayer::Draw( void )
 			for( std::list<Ship*>::iterator ship_iter = ships.begin(); ship_iter != ships.end(); ship_iter ++ )
 			{
 				// Don't spectate the Death Star exhaust port.
-				if( (*ship_iter)->ShipType == Ship::TYPE_EXHAUST_PORT )
+				if( (*ship_iter)->Category() == ShipClass::CATEGORY_TARGET )
 					continue;
 				
 				// Don't observe long-dead ships.
@@ -423,7 +423,7 @@ void RenderLayer::Draw( void )
 			for( std::list<Ship*>::iterator ship_iter = ships.begin(); ship_iter != ships.end(); ship_iter ++ )
 			{
 				// Don't spectate the Death Star exhaust port.
-				if( (*ship_iter)->ShipType == Ship::TYPE_EXHAUST_PORT )
+				if( (*ship_iter)->Category() == ShipClass::CATEGORY_TARGET )
 					continue;
 				
 				// Don't observe long-dead ships.
@@ -445,7 +445,7 @@ void RenderLayer::Draw( void )
 			for( std::list<Ship*>::iterator ship_iter = ships.begin(); ship_iter != ships.end(); ship_iter ++ )
 			{
 				// Don't spectate the Death Star exhaust port.
-				if( (*ship_iter)->ShipType == Ship::TYPE_EXHAUST_PORT )
+				if( (*ship_iter)->Category() == ShipClass::CATEGORY_TARGET )
 					continue;
 				
 				// Don't start observing dead ships.
@@ -467,7 +467,7 @@ void RenderLayer::Draw( void )
 			for( std::list<Ship*>::iterator ship_iter = ships.begin(); ship_iter != ships.end(); ship_iter ++ )
 			{
 				// Don't spectate the Death Star exhaust port.
-				if( (*ship_iter)->ShipType == Ship::TYPE_EXHAUST_PORT )
+				if( (*ship_iter)->Category() == ShipClass::CATEGORY_TARGET )
 					continue;
 				
 				// Don't start observing dead ships.
@@ -489,7 +489,7 @@ void RenderLayer::Draw( void )
 			for( std::list<Ship*>::iterator ship_iter = ships.begin(); ship_iter != ships.end(); ship_iter ++ )
 			{
 				// Don't spectate the Death Star exhaust port.
-				if( (*ship_iter)->ShipType == Ship::TYPE_EXHAUST_PORT )
+				if( (*ship_iter)->Category() == ShipClass::CATEGORY_TARGET )
 					continue;
 				
 				// Don't observe long-dead ships.
@@ -511,7 +511,7 @@ void RenderLayer::Draw( void )
 			for( std::list<Ship*>::iterator ship_iter = ships.begin(); ship_iter != ships.end(); ship_iter ++ )
 			{
 				// Don't spectate the Death Star exhaust port.
-				if( (*ship_iter)->ShipType == Ship::TYPE_EXHAUST_PORT )
+				if( (*ship_iter)->Category() == ShipClass::CATEGORY_TARGET )
 					continue;
 				
 				// Don't observe dead ships.
@@ -533,7 +533,7 @@ void RenderLayer::Draw( void )
 			for( std::list<Ship*>::iterator ship_iter = ships.begin(); ship_iter != ships.end(); ship_iter ++ )
 			{
 				// Don't spectate the Death Star exhaust port.
-				if( (*ship_iter)->ShipType == Ship::TYPE_EXHAUST_PORT )
+				if( (*ship_iter)->Category() == ShipClass::CATEGORY_TARGET )
 					continue;
 				
 				// Don't observe dead ships.
@@ -555,7 +555,7 @@ void RenderLayer::Draw( void )
 			for( std::list<Ship*>::iterator ship_iter = ships.begin(); ship_iter != ships.end(); ship_iter ++ )
 			{
 				// Don't spectate the Death Star exhaust port.
-				if( (*ship_iter)->ShipType == Ship::TYPE_EXHAUST_PORT )
+				if( (*ship_iter)->Category() == ShipClass::CATEGORY_TARGET )
 					continue;
 				
 				// Don't observe dead ships.
@@ -573,7 +573,7 @@ void RenderLayer::Draw( void )
 			for( std::list<Ship*>::iterator ship_iter = ships.begin(); ship_iter != ships.end(); ship_iter ++ )
 			{
 				// Don't spectate the Death Star exhaust port.
-				if( (*ship_iter)->ShipType == Ship::TYPE_EXHAUST_PORT )
+				if( (*ship_iter)->Category() == ShipClass::CATEGORY_TARGET )
 					continue;
 				
 				// Don't observe long-dead ships.
@@ -696,7 +696,10 @@ void RenderLayer::Draw( void )
 		}
 		
 		
-		Cam.Copy( observed_ship );
+		if( view == VIEW_COCKPIT )
+			Cam = observed_ship->HeadPos();
+		else
+			Cam.Copy( observed_ship );
 		
 		if( view == VIEW_FIXED )
 		{
@@ -706,12 +709,9 @@ void RenderLayer::Draw( void )
 			Cam.FixVectors();
 		}
 		
-		if( (view != VIEW_COCKPIT) || Raptor::Game->Cfg.SettingAsBool("g_3d_cockpit",true) )
-		{
-			// Apply camera angle change.
-			Cam.Yaw( ((XWingGame*)( Raptor::Game ))->LookYaw );
-			Cam.Pitch( ((XWingGame*)( Raptor::Game ))->LookPitch );
-		}
+		// Apply camera angle change.
+		Cam.Yaw( ((XWingGame*)( Raptor::Game ))->LookYaw );
+		Cam.Pitch( ((XWingGame*)( Raptor::Game ))->LookPitch );
 		
 		if( (view == VIEW_CINEMA) || (view == VIEW_CINEMA2) )
 		{
@@ -739,7 +739,7 @@ void RenderLayer::Draw( void )
 			
 			// Point the camera at the mid-point (in 3D space) between the two ships.
 			Vec3D mid_point( (cinema_view_with->X + observed_ship->X) / 2., (cinema_view_with->Y + observed_ship->Y) / 2., (cinema_view_with->Z + observed_ship->Z) / 2. );
-			Vec3D vec_to_mid( mid_point.X - Cam.X, mid_point.Y - Cam.Y, mid_point.Z - Cam.Z);
+			Vec3D vec_to_mid( mid_point.X - Cam.X, mid_point.Y - Cam.Y, mid_point.Z - Cam.Z );
 			vec_to_mid.ScaleTo( 1. );
 			Cam.Fwd = vec_to_mid;
 			Cam.FixVectors();
@@ -753,6 +753,17 @@ void RenderLayer::Draw( void )
 		{
 			// Camera is centered in the observed ship, so move it backwards.
 			Cam.MoveAlong( &(Cam.Fwd), -20. - observed_ship->Shape.GetTriagonal() );
+			
+			if( deathstar )
+			{
+				double dist_horizontal = fabs( observed_ship->DistAlong( &(deathstar->Right), deathstar ) );
+				double dist_above = observed_ship->DistAlong( &(deathstar->Up), deathstar );
+				double min_height = 10.;
+				if( dist_horizontal < deathstar->TrenchWidth / 2. - 5. )
+					min_height -= deathstar->TrenchDepth;
+				if( dist_above < min_height )
+					Cam.MoveAlong( &(deathstar->Up), min_height - dist_above );
+			}
 		}
 	}
 	else
@@ -791,7 +802,44 @@ void RenderLayer::Draw( void )
 				// Render hull and shield status.
 				
 				changed_framebuffer = true;
-				Raptor::Game->Gfx.Clear();
+				
+				float r = 0.f, g = 0.f, b = 0.f;
+				
+				// See if a missile/torpedo is already seeking us.
+				bool incoming = false;
+				for( std::list<Shot*>::iterator shot_iter = shots.begin(); shot_iter != shots.end(); shot_iter ++ )
+				{
+					if( (*shot_iter)->Seeking == observed_ship->ID )
+					{
+						incoming = true;
+						break;
+					}
+				}
+				
+				if( incoming )
+				{
+					if( (int) observed_ship->Lifetime.ElapsedMilliseconds() % 200 <= 50 )
+						r = 0.5f;
+				}
+				else
+				{
+					// See if anyone is locking onto us with missiles/torpedos.
+					float lock = 0.f;
+					for( std::list<Ship*>::iterator ship_iter = ships.begin(); ship_iter != ships.end(); ship_iter ++ )
+					{
+						if( ((*ship_iter)->Health > 0.) && ((*ship_iter)->Target == observed_ship->ID) && ((*ship_iter)->TargetLock > lock) )
+						{
+							lock = (*ship_iter)->TargetLock;
+							if( lock >= 2.f )
+								break;
+						}
+					}
+					
+					if( lock && ((int) observed_ship->Lifetime.ElapsedMilliseconds() % ((lock >= 1.f) ? 200 : 600) <= 50) )
+						r = g = 0.25f;
+				}
+				
+				Raptor::Game->Gfx.Clear( r, g, b );
 				
 				
 				// Render shield display.
@@ -1091,7 +1139,7 @@ void RenderLayer::Draw( void )
 				// Render intercept display.
 				
 				changed_framebuffer = true;
-				bool lock_display = (observed_ship->SelectedWeapon == Shot::TYPE_TORPEDO);
+				bool lock_display = (observed_ship->SelectedWeapon == Shot::TYPE_TORPEDO) || (observed_ship->SelectedWeapon == Shot::TYPE_MISSILE);
 				
 				if( lock_display )
 				{
@@ -1184,7 +1232,7 @@ void RenderLayer::Draw( void )
 							glVertex2d( cx - 50, cy - 30 );
 						glEnd();
 					}
-					else if( target && (target->ShipType == Ship::TYPE_EXHAUST_PORT) && (lock_wait > 0.f) )
+					else if( target && (target->Category() == ShipClass::CATEGORY_TARGET) && (lock_wait > 0.f) )
 					{
 						// Draw Death Star trench grid lines.
 						
@@ -1313,40 +1361,40 @@ void RenderLayer::Draw( void )
 						glVertex2d( 1.3, 2. );
 						
 						// Left
-						glVertex2d( -2., -1.3 );
+						glVertex2d( -2., -1.2 );
 						glVertex2d( -0.25, 0. );
 						glVertex2d( -0.25, 0. );
-						glVertex2d( -2., 1.3 );
+						glVertex2d( -2., 1.2 );
 						
 						// Right
-						glVertex2d( 2., -1.3 );
+						glVertex2d( 2., -1.2 );
 						glVertex2d( 0.25, 0. );
 						glVertex2d( 0.25, 0. );
-						glVertex2d( 2., 1.3 );
+						glVertex2d( 2., 1.2 );
 						
 						// Top-Left
-						glVertex2d( -0.35, 0.71 );
-						glVertex2d( -0.59, 0.59 );
-						glVertex2d( -0.59, 0.59 );
-						glVertex2d( -0.71, 0.35 );
+						glVertex2d( -0.07, 0.33 );
+						glVertex2d( -0.22, 0.22 );
+						glVertex2d( -0.22, 0.22 );
+						glVertex2d( -0.33, 0.07 );
 						
 						// Top-Right
-						glVertex2d( 0.35, 0.71 );
-						glVertex2d( 0.59, 0.59 );
-						glVertex2d( 0.59, 0.59 );
-						glVertex2d( 0.71, 0.35 );
+						glVertex2d( 0.07, 0.33 );
+						glVertex2d( 0.22, 0.22 );
+						glVertex2d( 0.22, 0.22 );
+						glVertex2d( 0.33, 0.07 );
 						
 						// Bottom-Right
-						glVertex2d( 0.35, -0.71 );
-						glVertex2d( 0.59, -0.59 );
-						glVertex2d( 0.59, -0.59 );
-						glVertex2d( 0.71, -0.35 );
+						glVertex2d( 0.07, -0.33 );
+						glVertex2d( 0.22, -0.22 );
+						glVertex2d( 0.22, -0.22 );
+						glVertex2d( 0.33, -0.07 );
 						
 						// Bottom-Left
-						glVertex2d( -0.35, -0.71 );
-						glVertex2d( -0.59, -0.59 );
-						glVertex2d( -0.59, -0.59 );
-						glVertex2d( -0.71, -0.35 );
+						glVertex2d( -0.07, -0.33 );
+						glVertex2d( -0.22, -0.22 );
+						glVertex2d( -0.22, -0.22 );
+						glVertex2d( -0.33, -0.07 );
 						
 					glEnd();
 					
@@ -1484,7 +1532,7 @@ void RenderLayer::Draw( void )
 	Raptor::Game->Gfx.Setup3D( &(Raptor::Game->Cam) );
 	Raptor::Game->Gfx.Clear();
 	
-	int dynamic_lights = Raptor::Game->Cfg.SettingAsInt("g_dynamic_lights");
+	int dynamic_lights = Raptor::Game->Cfg.SettingAsInt("g_shader_point_lights");
 	
 	float crosshair_red = 0.5f;
 	float crosshair_green = 0.75f;
@@ -1542,44 +1590,10 @@ void RenderLayer::Draw( void )
 		}
 		
 		
-		// Load cockpits.
+		// Cockpit.
 		
-		bool g_3d_cockpit = Raptor::Game->Cfg.SettingAsBool("g_3d_cockpit",true);
-		bool g_hq_cockpit = Raptor::Game->Cfg.SettingAsBool("g_hq_cockpit");
-		
-		if( observed_ship->ShipType == Ship::TYPE_XWING )
-		{
-			if( g_3d_cockpit )
-			{
-				if( g_hq_cockpit )
-					cockpit_3d = Raptor::Game->Res.GetModel("x-wing_cockpit_hq.obj");
-				if( ! cockpit_3d )
-					cockpit_3d = Raptor::Game->Res.GetModel("x-wing_cockpit.obj");
-			}
-			cockpit_2d = Raptor::Game->Res.GetAnimation("cockpit_xwing.ani");
-		}
-		else if( observed_ship->ShipType == Ship::TYPE_YWING )
-		{
-			if( g_3d_cockpit )
-			{
-				if( g_hq_cockpit )
-					cockpit_3d = Raptor::Game->Res.GetModel("y-wing_cockpit_hq.obj");
-				if( ! cockpit_3d )
-					cockpit_3d = Raptor::Game->Res.GetModel("y-wing_cockpit.obj");
-			}
-		}
-		else if( observed_ship->ShipType == Ship::TYPE_TIE_FIGHTER )
-		{
-			if( g_3d_cockpit )
-			{
-				if( g_hq_cockpit )
-					cockpit_3d = Raptor::Game->Res.GetModel("tie-fighter_cockpit_hq.obj");
-				if( ! cockpit_3d )
-					cockpit_3d = Raptor::Game->Res.GetModel("tie-fighter_cockpit.obj");
-			}
-			cockpit_2d = Raptor::Game->Res.GetAnimation("cockpit_tie.ani");
-		}
-		
+		if( observed_ship->Class )
+			cockpit_3d = Raptor::Game->Res.GetModel(observed_ship->Class->CockpitModel);
 		
 		if( cockpit_3d && cockpit_3d->Objects.size() )
 		{
@@ -1596,13 +1610,13 @@ void RenderLayer::Draw( void )
 			{
 				float ambient_scale = 1.f;
 				std::vector<const Vec3D*> obstructions;
-				if( death_star )
+				if( deathstar )
 				{
 					// Reduce cockpit ambient light if we're in the trench.
-					double dist_in_trench = -1. * observed_ship->DistAlong( &(death_star->Up), death_star );
+					double dist_in_trench = -1. * observed_ship->DistAlong( &(deathstar->Up), deathstar );
 					if( dist_in_trench > 0. )
 					{
-						ambient_scale = std::max<float>( 0.2f, 1. - dist_in_trench * 1.5 / death_star->TrenchDepth );
+						ambient_scale = std::max<float>( 0.2f, 1. - dist_in_trench * 1.5 / deathstar->TrenchDepth );
 						change_light_for_cockpit = true;
 					}
 				}
@@ -1640,32 +1654,23 @@ void RenderLayer::Draw( void )
 				}
 			}
 			
-			// Technically the correct scale is 0.022, but we'll probably need to make it higher to avoid near-plane clipping.
-			double cockpit_scale = vr ? 0.022 : std::max<double>( 0.022, Raptor::Game->Gfx.ZNear * 0.25 );
+			// Technically the correct scale is 0.022, but we may need to make it higher to avoid near-plane clipping.
+			double model_scale = observed_ship->Class ? observed_ship->Class->ModelScale : 0.022;
+			double cockpit_scale = vr ? model_scale : std::max<double>( model_scale, Raptor::Game->Gfx.ZNear * 0.25 );
 			double cockpit_fwd = 0.;
 			double cockpit_up = 0.;
 			double cockpit_right = 0.;
 			
-			if( observed_ship->ShipType == Ship::TYPE_XWING )
+			if( observed_ship->Class )
 			{
-				cockpit_fwd = (g_hq_cockpit ? 32. : 12.);
-				cockpit_up = (g_hq_cockpit ? -37. : -27.);
-				cockpit_right = (g_hq_cockpit ? 0. : -0.75);
-			}
-			else if( observed_ship->ShipType == Ship::TYPE_YWING )
-			{
-				cockpit_fwd = (g_hq_cockpit ? -190. : -300.);
-				cockpit_up = (g_hq_cockpit ? -38.: -38.);
-				cockpit_right = (g_hq_cockpit ? 0. : 1.5);
-			}
-			else if( observed_ship->ShipType == Ship::TYPE_TIE_FIGHTER )
-			{
-				cockpit_fwd = (g_hq_cockpit ? -14. : 0.);
+				cockpit_fwd   = -1. * observed_ship->Class->CockpitPos.X / model_scale;
+				cockpit_up    = -1. * observed_ship->Class->CockpitPos.Y / model_scale;
+				cockpit_right = -1. * observed_ship->Class->CockpitPos.Z / model_scale;
 			}
 			
 			// Show acceleration and shot hits by moving the cockpit.
-			cockpit_fwd += observed_ship->CockpitOffset.X;
-			cockpit_up += observed_ship->CockpitOffset.Y;
+			cockpit_fwd   += observed_ship->CockpitOffset.X;
+			cockpit_up    += observed_ship->CockpitOffset.Y;
 			cockpit_right += observed_ship->CockpitOffset.Z;
 			
 			// Draw the cockpit as though it were at 0,0,0 to avoid Z-fighting issues.
@@ -1678,8 +1683,11 @@ void RenderLayer::Draw( void )
 			Raptor::Game->Gfx.Setup3D( &(Raptor::Game->Cam) );
 			if( use_shaders )
 				Raptor::Game->ShaderMgr.Set3f( "CamPos", Raptor::Game->Cam.X, Raptor::Game->Cam.Y, Raptor::Game->Cam.Z );
-			cockpit_pos.MoveAlong( &(cockpit_pos.Fwd), cockpit_fwd * cockpit_scale );
-			cockpit_pos.MoveAlong( &(cockpit_pos.Up), cockpit_up * cockpit_scale );
+			cockpit_pos.Yaw(   observed_ship->YawRate   * 0.01 );
+			cockpit_pos.Pitch( observed_ship->PitchRate * 0.005 );
+			cockpit_pos.Roll(  observed_ship->RollRate  * 0.015 );
+			cockpit_pos.MoveAlong( &(cockpit_pos.Fwd),   cockpit_fwd   * cockpit_scale );
+			cockpit_pos.MoveAlong( &(cockpit_pos.Up),    cockpit_up    * cockpit_scale );
 			cockpit_pos.MoveAlong( &(cockpit_pos.Right), cockpit_right * cockpit_scale );
 			cockpit_3d->DrawAt( &cockpit_pos, cockpit_scale );
 			
@@ -1704,6 +1712,7 @@ void RenderLayer::Draw( void )
 			cockpit_3d = NULL;
 			
 			// If we loaded a 2D cockpit, make sure it's valid.
+			// FIXME: There aren't 2D cockpits anymore, so all cockpit_2d should be cleaned up.
 			if( cockpit_2d && ! cockpit_2d->Frames.size() )
 				cockpit_2d = NULL;
 		}
@@ -1728,7 +1737,7 @@ void RenderLayer::Draw( void )
 			Ship *ship = (Ship*) obj_iter->second;
 			
 			if( ship->Health <= 0. )
-				ship->Explode( Raptor::Game->FrameTime );
+				; //ship->Explode( Raptor::Game->FrameTime );
 			
 			// Don't draw an external view of a ship whose cockpit we're in.
 			else if( (view == VIEW_COCKPIT) && (ship == observed_ship) )
@@ -1918,7 +1927,7 @@ void RenderLayer::Draw( void )
 			glDisable( GL_DEPTH_TEST );
 			glDisable( GL_TEXTURE_2D );
 			
-			Pos3D crosshair_pos( observed_ship );
+			Pos3D crosshair_pos = observed_ship->HeadPos();
 			crosshair_pos.MoveAlong( &(crosshair_pos.Fwd), 100. );
 			glColor4f( crosshair_red, crosshair_green, crosshair_blue, 1.f );
 			
@@ -2013,7 +2022,7 @@ void RenderLayer::Draw( void )
 				}
 			glEnd();
 			
-			if( ammo >= 0 )
+			if( observed_ship->SelectedWeapon && (ammo >= 0) )
 			{
 				crosshair_pos.MoveAlong( &up, -1. );
 				ScreenFont->DrawText3D( Num::ToString(ammo), &crosshair_pos, Font::ALIGN_TOP_CENTER, 0.05 );
@@ -2313,16 +2322,51 @@ void RenderLayer::DrawDebris( void )
 }
 
 
+class PlayerScore
+{
+public:
+	int Kills;
+	int CapitalKills;
+	int TurretKills;
+	int Deaths;
+	Player *PlayerData;
+	
+	PlayerScore( Player *p )
+	{
+		PlayerData = p;
+		Kills = atoi( p->Properties["kills"].c_str() );
+		CapitalKills = atoi( p->Properties["kills_c"].c_str() );
+		TurretKills = atoi( p->Properties["kills_t"].c_str() );
+		Deaths = atoi( p->Properties["deaths"].c_str() );
+	}
+	
+	virtual ~PlayerScore(){}
+	
+	bool operator < ( const PlayerScore &other ) const
+	{
+		if( CapitalKills != other.CapitalKills )
+			return (CapitalKills < other.CapitalKills);
+		if( Kills != other.Kills )
+			return (Kills < other.Kills);
+		if( TurretKills != other.TurretKills )
+			return (TurretKills < other.TurretKills);
+		if( Deaths != other.Deaths )
+			return (Deaths > other.Deaths);
+		return (PlayerData->ID > other.PlayerData->ID);
+	}
+};
+
+
 void RenderLayer::DrawScores( void )
 {
 	glPushMatrix();
 	Raptor::Game->Gfx.Setup2D();
 	
-	std::map< int, std::list<Player*> > scores;
+	std::set<PlayerScore> scores;
 	for( std::map<uint16_t,Player*>::iterator player_iter = Raptor::Game->Data.Players.begin(); player_iter != Raptor::Game->Data.Players.end(); player_iter ++ )
 	{
-		if( (! player_iter->second->Properties["assigned_team"].empty()) && (player_iter->second->Properties["assigned_team"] != "Spectator") )
-			scores[ atoi( player_iter->second->Properties["kills"].c_str() ) ].push_back( player_iter->second );
+		if( (! player_iter->second->Properties["team"].empty()) && (player_iter->second->Properties["team"] != "Spectator") )
+			scores.insert( player_iter->second );
 	}
 	
 	double remaining_secs = ((XWingGame*)( Raptor::Game ))->RoundTimer.RemainingSeconds();
@@ -2339,16 +2383,18 @@ void RenderLayer::DrawScores( void )
 	
 	int y = Rect.y + 100;
 	
-	bool ffa = ( Raptor::Game->Data.Properties["gametype"].find("ffa_") == 0 );
+	const char *gametype = Raptor::Game->Data.Properties["gametype"].c_str();
+	bool ffa = (strncmp( gametype, "ffa_", 4 ) == 0);
+	bool objective = (! strstr( gametype, "_dm" ) && ! strstr( gametype, "_elim" ));
 	
 	if( ! ffa )
 	{
-		BigFont->DrawText( "Rebels", Rect.x + Rect.w/2 - 298, y + 2, Font::ALIGN_MIDDLE_LEFT, 0.f, 0.f, 0.f, 0.8f );
-		BigFont->DrawText( "Rebels", Rect.x + Rect.w/2 - 300, y, Font::ALIGN_MIDDLE_LEFT, 1.f, 0.25f, 0.25f, 1.f );
+		BigFont->DrawText( "Rebels", Rect.x + Rect.w/2 - 318, y + 2, Font::ALIGN_MIDDLE_LEFT, 0.f, 0.f, 0.f, 0.8f );
+		BigFont->DrawText( "Rebels", Rect.x + Rect.w/2 - 320, y, Font::ALIGN_MIDDLE_LEFT, 1.f, 0.25f, 0.25f, 1.f );
 		BigFont->DrawText( "vs", Rect.x + Rect.w/2 + 2, y + 2, Font::ALIGN_MIDDLE_CENTER, 0.f, 0.f, 0.f, 0.8f );
 		BigFont->DrawText( "vs", Rect.x + Rect.w/2, y, Font::ALIGN_MIDDLE_CENTER, 0.75f, 0.75f, 0.75f, 1.f );
-		BigFont->DrawText( "Empire", Rect.x + Rect.w/2 + 302, y + 2, Font::ALIGN_MIDDLE_RIGHT, 0.f, 0.f, 0.f, 0.8f );
-		BigFont->DrawText( "Empire", Rect.x + Rect.w/2 + 300, y, Font::ALIGN_MIDDLE_RIGHT, 0.25f, 0.25f, 1.f, 1.f );
+		BigFont->DrawText( "Empire", Rect.x + Rect.w/2 + 322, y + 2, Font::ALIGN_MIDDLE_RIGHT, 0.f, 0.f, 0.f, 0.8f );
+		BigFont->DrawText( "Empire", Rect.x + Rect.w/2 + 320, y, Font::ALIGN_MIDDLE_RIGHT, 0.25f, 0.25f, 1.f, 1.f );
 		
 		if( Raptor::Game->Data.Properties["gametype"] == "team_dm" )
 		{
@@ -2359,76 +2405,92 @@ void RenderLayer::DrawScores( void )
 		}
 		
 		y += BigFont->GetHeight() - 8;
-		Raptor::Game->Gfx.DrawLine2D( Raptor::Game->Gfx.W / 2 - 298, y + 2, Rect.x + Rect.w/2 + 302, y + 2, 1.f, 0.f, 0.f, 0.f, 0.8f );
-		Raptor::Game->Gfx.DrawLine2D( Raptor::Game->Gfx.W / 2 - 300, y, Rect.x + Rect.w/2 + 300, y, 1.f, 1.f, 1.f, 1.f, 1.f );
+		Raptor::Game->Gfx.DrawLine2D( Raptor::Game->Gfx.W / 2 - 318, y + 2, Rect.x + Rect.w/2 + 322, y + 2, 1.f, 0.f, 0.f, 0.f, 0.8f );
+		Raptor::Game->Gfx.DrawLine2D( Raptor::Game->Gfx.W / 2 - 320, y, Rect.x + Rect.w/2 + 320, y, 1.f, 1.f, 1.f, 1.f, 1.f );
 		y += 16;
 	}
 	
-	SmallFont->DrawText( "Player", Rect.x + Rect.w/2 - 298, y + 2, Font::ALIGN_MIDDLE_LEFT, 0.f, 0.f, 0.f, 0.8f );
-	SmallFont->DrawText( "Player", Rect.x + Rect.w/2 - 300, y, Font::ALIGN_MIDDLE_LEFT, 1.f, 1.f, 1.f, 1.f );
-	SmallFont->DrawText( "Kills", Rect.x + Rect.w/2 + 202, y + 2, Font::ALIGN_MIDDLE_RIGHT, 0.f, 0.f, 0.f, 0.8f );
-	SmallFont->DrawText( "Kills", Rect.x + Rect.w/2 + 200, y, Font::ALIGN_MIDDLE_RIGHT, 1.f, 1.f, 1.f, 1.f );
-	SmallFont->DrawText( "Deaths", Rect.x + Rect.w/2 + 302, y + 2, Font::ALIGN_MIDDLE_RIGHT, 0.f, 0.f, 0.f, 0.8f );
-	SmallFont->DrawText( "Deaths", Rect.x + Rect.w/2 + 300, y, Font::ALIGN_MIDDLE_RIGHT, 1.f, 1.f, 1.f, 1.f );
+	SmallFont->DrawText( "Player", Rect.x + Rect.w/2 - 318, y + 2, Font::ALIGN_MIDDLE_LEFT, 0.f, 0.f, 0.f, 0.8f );
+	SmallFont->DrawText( "Player", Rect.x + Rect.w/2 - 320, y, Font::ALIGN_MIDDLE_LEFT, 1.f, 1.f, 1.f, 1.f );
+	if( objective )
+	{
+		SmallFont->DrawText( "Objective", Rect.x + Rect.w/2 + 82, y + 2, Font::ALIGN_MIDDLE_RIGHT, 0.f, 0.f, 0.f, 0.8f );
+		SmallFont->DrawText( "Objective", Rect.x + Rect.w/2 + 80, y, Font::ALIGN_MIDDLE_RIGHT, 1.f, 1.f, 1.f, 1.f );
+		SmallFont->DrawText( "Fighters", Rect.x + Rect.w/2 + 162, y + 2, Font::ALIGN_MIDDLE_RIGHT, 0.f, 0.f, 0.f, 0.8f );
+		SmallFont->DrawText( "Fighters", Rect.x + Rect.w/2 + 160, y, Font::ALIGN_MIDDLE_RIGHT, 1.f, 1.f, 1.f, 1.f );
+		SmallFont->DrawText( "Turrets", Rect.x + Rect.w/2 + 242, y + 2, Font::ALIGN_MIDDLE_RIGHT, 0.f, 0.f, 0.f, 0.8f );
+		SmallFont->DrawText( "Turrets", Rect.x + Rect.w/2 + 240, y, Font::ALIGN_MIDDLE_RIGHT, 1.f, 1.f, 1.f, 1.f );
+	}
+	else
+	{
+		SmallFont->DrawText( "Kills", Rect.x + Rect.w/2 + 242, y + 2, Font::ALIGN_MIDDLE_RIGHT, 0.f, 0.f, 0.f, 0.8f );
+		SmallFont->DrawText( "Kills", Rect.x + Rect.w/2 + 240, y, Font::ALIGN_MIDDLE_RIGHT, 1.f, 1.f, 1.f, 1.f );
+	}
+	SmallFont->DrawText( "Deaths", Rect.x + Rect.w/2 + 322, y + 2, Font::ALIGN_MIDDLE_RIGHT, 0.f, 0.f, 0.f, 0.8f );
+	SmallFont->DrawText( "Deaths", Rect.x + Rect.w/2 + 320, y, Font::ALIGN_MIDDLE_RIGHT, 1.f, 1.f, 1.f, 1.f );
 	y += SmallFont->GetHeight();
 	
-	for( std::map< int, std::list<Player*> >::reverse_iterator score_iter = scores.rbegin(); score_iter != scores.rend(); score_iter ++ )
+	for( std::set<PlayerScore>::reverse_iterator score_iter = scores.rbegin(); score_iter != scores.rend(); score_iter ++ )
 	{
-		for( std::list<Player*>::iterator player_iter = score_iter->second.begin(); player_iter != score_iter->second.end(); player_iter ++ )
+		float red = 1.f, green = 1.f, blue = 1.f;
+		
+		if( ! ffa )
 		{
-			float red = 1.f, green = 1.f, blue = 1.f;
-			
-			if( ! ffa )
+			if( score_iter->PlayerData->Properties["team"] == "Rebel" )
 			{
-				if( (*player_iter)->Properties["assigned_team"] == "Rebel" )
+				red = 1.f;
+				
+				if( score_iter->PlayerData->ID == Raptor::Game->PlayerID )
 				{
-					red = 1.f;
-					
-					if( (*player_iter)->ID == Raptor::Game->PlayerID )
-					{
-						green = 0.f;
-						blue = 0.f;
-					}
-					else
-					{
-						green = 0.25f;
-						blue = 0.25f;
-					}
+					green = 0.f;
+					blue = 0.f;
 				}
-				else if( (*player_iter)->Properties["assigned_team"] == "Empire" )
+				else
 				{
-					blue = 1.f;
-					
-					if( (*player_iter)->ID == Raptor::Game->PlayerID )
-					{
-						red = 0.f;
-						green = 0.f;
-					}
-					else
-					{
-						red = 0.25f;
-						green = 0.25f;
-					}
+					green = 0.25f;
+					blue = 0.25f;
 				}
 			}
-			else if( (*player_iter)->ID == Raptor::Game->PlayerID )
-				blue = 0.f;
-			
-			std::string str = (*player_iter)->Name;
-			if( (*player_iter)->Properties["assigned_team"] != "" )
-				str += std::string(" [") + (*player_iter)->Properties["assigned_team"] + std::string("]");
-			
-			BigFont->DrawText( str, Rect.x + Rect.w/2 - 298, y + 2, Font::ALIGN_MIDDLE_LEFT, 0.f, 0.f, 0.f, 0.8f );
-			BigFont->DrawText( str, Rect.x + Rect.w/2 - 300, y, Font::ALIGN_MIDDLE_LEFT, red, green, blue, 1.f );
-			BigFont->DrawText( Num::ToString(score_iter->first), Rect.x + Rect.w/2 + 202, y + 2, Font::ALIGN_MIDDLE_RIGHT, 0.f, 0.f, 0.f, 0.8f );
-			BigFont->DrawText( Num::ToString(score_iter->first), Rect.x + Rect.w/2 + 200, y, Font::ALIGN_MIDDLE_RIGHT, red, green, blue, 1.f );
-			BigFont->DrawText( (*player_iter)->Properties["deaths"], Rect.x + Rect.w/2 + 302, y + 2, Font::ALIGN_MIDDLE_RIGHT, 0.f, 0.f, 0.f, 0.8f );
-			BigFont->DrawText( (*player_iter)->Properties["deaths"], Rect.x + Rect.w/2 + 300, y, Font::ALIGN_MIDDLE_RIGHT, red, green, blue, 1.f );
-			
-			y += BigFont->GetLineSkip();
+			else if( score_iter->PlayerData->Properties["team"] == "Empire" )
+			{
+				blue = 1.f;
+				
+				if( score_iter->PlayerData->ID == Raptor::Game->PlayerID )
+				{
+					red = 0.f;
+					green = 0.f;
+				}
+				else
+				{
+					red = 0.25f;
+					green = 0.25f;
+				}
+			}
 		}
+		else if( score_iter->PlayerData->ID == Raptor::Game->PlayerID )
+			blue = 0.f;
+		
+		BigFont->DrawText( score_iter->PlayerData->Name, Rect.x + Rect.w/2 - 318, y + 2, Font::ALIGN_MIDDLE_LEFT, 0.f, 0.f, 0.f, 0.8f );
+		BigFont->DrawText( score_iter->PlayerData->Name, Rect.x + Rect.w/2 - 320, y, Font::ALIGN_MIDDLE_LEFT, red, green, blue, 1.f );
+		if( objective )
+		{
+			BigFont->DrawText( Num::ToString(score_iter->CapitalKills), Rect.x + Rect.w/2 + 82, y + 2, Font::ALIGN_MIDDLE_RIGHT, 0.f, 0.f, 0.f, 0.8f );
+			BigFont->DrawText( Num::ToString(score_iter->CapitalKills), Rect.x + Rect.w/2 + 80, y, Font::ALIGN_MIDDLE_RIGHT, red, green, blue, 1.f );
+			BigFont->DrawText( Num::ToString(score_iter->Kills), Rect.x + Rect.w/2 + 162, y + 2, Font::ALIGN_MIDDLE_RIGHT, 0.f, 0.f, 0.f, 0.8f );
+			BigFont->DrawText( Num::ToString(score_iter->Kills), Rect.x + Rect.w/2 + 160, y, Font::ALIGN_MIDDLE_RIGHT, red, green, blue, 1.f );
+			BigFont->DrawText( Num::ToString(score_iter->TurretKills), Rect.x + Rect.w/2 + 242, y + 2, Font::ALIGN_MIDDLE_RIGHT, 0.f, 0.f, 0.f, 0.8f );
+			BigFont->DrawText( Num::ToString(score_iter->TurretKills), Rect.x + Rect.w/2 + 240, y, Font::ALIGN_MIDDLE_RIGHT, red, green, blue, 1.f );
+		}
+		else
+		{
+			BigFont->DrawText( Num::ToString(score_iter->Kills), Rect.x + Rect.w/2 + 242, y + 2, Font::ALIGN_MIDDLE_RIGHT, 0.f, 0.f, 0.f, 0.8f );
+			BigFont->DrawText( Num::ToString(score_iter->Kills), Rect.x + Rect.w/2 + 240, y, Font::ALIGN_MIDDLE_RIGHT, red, green, blue, 1.f );
+		}
+		BigFont->DrawText( Num::ToString(score_iter->Deaths), Rect.x + Rect.w/2 + 322, y + 2, Font::ALIGN_MIDDLE_RIGHT, 0.f, 0.f, 0.f, 0.8f );
+		BigFont->DrawText( Num::ToString(score_iter->Deaths), Rect.x + Rect.w/2 + 320, y, Font::ALIGN_MIDDLE_RIGHT, red, green, blue, 1.f );
+		
+		y += BigFont->GetLineSkip();
 	}
-	
 	
 	glPopMatrix();
 }
@@ -2524,13 +2586,13 @@ void RenderLayer::UpdateSaitek( const Ship *ship, bool is_player, int view )
 				glColor4f( 1.f, 1.f, 1.f, 1.f );
 				
 				Raptor::Game->Gfx.Clear();
-				Raptor::Game->Gfx.DrawRect2D( 120, 0, 300, 240, Raptor::Game->Res.GetTexture("*target") );
-				Raptor::Game->Gfx.DrawRect2D( 0, 40, 120, 200, Raptor::Game->Res.GetTexture("*health") );
-				Raptor::Game->Gfx.DrawRect2D( 300, 0, 320, 240, Raptor::Game->Res.GetTexture("*throttle") );
+				Raptor::Game->Gfx.DrawRect2D( 0, 0, 320, 240, Raptor::Game->Res.GetTexture("*intercept") );
 				Raptor::Game->Saitek.SetFIPImage( fb, 0 );
 				
 				Raptor::Game->Gfx.Clear();
-				Raptor::Game->Gfx.DrawRect2D( 0, 0, 320, 240, Raptor::Game->Res.GetTexture("*intercept") );
+				Raptor::Game->Gfx.DrawRect2D( 120, 0, 300, 240, Raptor::Game->Res.GetTexture("*target") );
+				Raptor::Game->Gfx.DrawRect2D( 0, 40, 120, 200, Raptor::Game->Res.GetTexture("*health") );
+				Raptor::Game->Gfx.DrawRect2D( 300, 0, 320, 240, Raptor::Game->Res.GetTexture("*throttle") );
 				Raptor::Game->Saitek.SetFIPImage( fb, 1 );
 				
 				Raptor::Game->Gfx.SelectDefaultFramebuffer();

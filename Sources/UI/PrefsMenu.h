@@ -18,6 +18,7 @@ class PrefsMenuDefaultsButton;
 
 #include "Window.h"
 #include <list>
+#include <map>
 #include "Font.h"
 #include "Layer.h"
 #include "CheckBox.h"
@@ -31,11 +32,13 @@ class PrefsMenu : public Window
 {
 public:
 	Font *LabelFont, *TitleFont, *ItemFont, *ButtonFont;
-	int PrevFullscreenX, PrevFullscreenY, PrevBPP, PrevFSAA, PrevAF, PrevTextureMaxres, PrevLightQuality;
-	bool PrevFullscreen, PrevMipmap, PrevFramebuffers, PrevShaderEnable;
+	std::map<std::string,std::string> Previous;
 	
 	PrefsMenu( void );
 	virtual ~PrefsMenu();
+	
+	void WatchSetting( const std::string &name );
+	bool WatchedSettingsChanged( void );
 	
 	void UpdateContents( void );
 	void Draw( void );

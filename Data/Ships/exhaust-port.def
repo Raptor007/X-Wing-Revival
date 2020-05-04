@@ -1,0 +1,18 @@
+id Exhaust
+name Exhaust Port
+category target
+team empire
+radius 1
+speed 0
+accel 0
+roll 0
+pitch 0
+yaw 0
+health 0.1
+shield 149.8
+recover 0
+recharge 9999
+ramming 0
+explode 0
+model deathstar_exhaust_port.obj
+model_scale 1

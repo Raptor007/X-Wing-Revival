@@ -19,10 +19,11 @@ class Turret : public GameObject
 public:
 	uint32_t ParentID;
 	Vec3D Offset;
-	Vec3D RelativeUp;
+	Vec3D RelativeUp, RelativeFwd;
 	bool ParentControl;
 	double MinGunPitch, MaxGunPitch;
 	uint32_t Team;
+	bool Visible;
 	Model *BodyShape, *GunShape;
 	double GunPitch, GunPitchRate;
 	
@@ -47,7 +48,7 @@ public:
 	virtual ~Turret();
 	
 	void ClientInit( void );
-	void Attach( const GameObject *parent, const Vec3D *offset = NULL, const Vec3D *relative_up = NULL, bool parent_control = false );
+	void Attach( const GameObject *parent, const Vec3D *offset = NULL, const Vec3D *relative_up = NULL, const Vec3D *relative_fwd = NULL, bool parent_control = false );
 	void UpdatePos( const GameObject *parent );
 	void Reset( void );
 	void SetHealth( double health );

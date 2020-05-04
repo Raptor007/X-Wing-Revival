@@ -43,6 +43,7 @@ namespace XWing
 		enum
 		{
 			SHIP = 'Ship',
+			SHIP_CLASS = 'ShpC',
 			SHOT = 'Shot',
 			ASTEROID = 'Rock',
 			TURRET = 'Turr',
@@ -56,10 +57,8 @@ namespace XWing
 		enum
 		{
 			NONE = 0,
-			AUTO = 'Auto',
 			REBEL = 'Rebl',
-			EMPIRE = 'Empr',
-			SPECTATOR = 'Spec'
+			EMPIRE = 'Empr'
 		};
 	}
 	

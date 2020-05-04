@@ -1,0 +1,30 @@
+id B/W
+name B-Wing
+squadron Blue
+category bomber
+team rebel
+radius 5.5
+speed 140
+accel 60
+roll 120
+pitch 75
+yaw 60
+health 135
+shield 175
+recover 5
+recharge 4.5
+ramming 1000
+explode 1
+weapon laser_red 5 -1.2 0
+weapon laser_red 0 -11.3 0
+weapon laser_red -5 -1.2 0
+firetime laser_red 0.25
+weapon torpedo 0.6 -1.3 0
+weapon torpedo -0.6 -1.3 0
+firetime torpedo 1
+ammo torpedo 12
+model b-wing.obj
+cockpit b-wing_cockpit.obj 0 4.55 1.15
+model_scale 0.022
+flyby 20 xwing_slow.wav
+flyby 200 xwing_fast.wav

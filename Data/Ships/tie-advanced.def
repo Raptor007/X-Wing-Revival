@@ -1,0 +1,25 @@
+id T/A
+name TIE Advanced
+squadron Beta
+category fighter
+team empire
+radius 4.7
+speed 190
+accel 80
+roll 170
+pitch 95
+yaw 75
+health 100
+shield 85
+recover 5
+recharge 3
+ramming 1000
+explode 1
+weapon laser_green 0.2 -0.9 0
+weapon laser_green -0.2 -0.9 0
+firetime laser_green 0.25
+model tie-advanced.obj
+cockpit tie-fighter_cockpit_hq.obj 0 0 0.308
+model_scale 0.022
+flyby 22 tie_slow.wav
+flyby 220 tie_fast.wav

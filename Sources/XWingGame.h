@@ -36,7 +36,5 @@ public:
 	void ShowLobby( void );
 	void BeginFlying( void );
 	
-	void AddedObject( GameObject *obj );
-	
 	GameObject *NewObject( uint32_t id, uint32_t type );
 };

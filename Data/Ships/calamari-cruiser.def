@@ -1,0 +1,24 @@
+id CRS
+name Mon Calamari Cruiser
+category capital
+team rebel
+radius 650
+speed 25
+accel 12.5
+roll 0.5
+pitch 0.5
+yaw 0.5
+health 9000
+shield 50000
+recover 5
+recharge 0
+ramming 500000
+explode 0.015
+subsystem ShieldGenerator 1199
+subsystem CriticalBridge 999
+turret turbolaser 0 70 320 dir 0 0 1 arc 160 pitch -40 60 hidden linked firetime 0.75
+firetime turbolaser 0.75
+model calamari-cruiser.obj
+model_collision calamari-cruiser.obj
+cockpit calamari-cruiser.obj 0 32.4 -163.3
+model_scale 0.022

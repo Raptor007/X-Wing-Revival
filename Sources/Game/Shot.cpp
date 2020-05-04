@@ -6,7 +6,7 @@
 
 #include <cmath>
 #include "XWingDefs.h"
-#include "RaptorGame.h"
+#include "XWingGame.h"
 #include "Rand.h"
 #include "Math3D.h"
 #include "Num.h"
@@ -27,24 +27,56 @@ Shot::~Shot()
 }
 
 
-void Shot::SetType( uint32_t shot_type )
+void Shot::ClientInit( void )
 {
-	ShotType = shot_type;
+	if( ShotType == TYPE_LASER_RED )
+		Anim.BecomeInstance( Raptor::Game->Res.GetAnimation("laser_red.ani") );
+	else if( ShotType == TYPE_LASER_GREEN )
+		Anim.BecomeInstance( Raptor::Game->Res.GetAnimation("laser_green.ani") );
+	else if( ShotType == TYPE_TURBO_LASER_RED )
+		Anim.BecomeInstance( Raptor::Game->Res.GetAnimation("laser_red.ani") );
+	else if( ShotType == TYPE_TURBO_LASER_GREEN )
+		Anim.BecomeInstance( Raptor::Game->Res.GetAnimation("laser_green.ani") );
+	else if( ShotType == TYPE_ION_CANNON )
+		Anim.BecomeInstance( Raptor::Game->Res.GetAnimation("ion_cannon.ani") );
+	else if( ShotType == TYPE_TORPEDO )
+		Anim.BecomeInstance( Raptor::Game->Res.GetAnimation("torpedo.ani") );
+	else if( ShotType == TYPE_MISSILE )
+		Anim.BecomeInstance( Raptor::Game->Res.GetAnimation("missile.ani") );
+	else
+		Anim.BecomeInstance( Raptor::Game->Res.GetAnimation("laser_unknown.ani") );
 	
-	if( Data == &(Raptor::Game->Data) )
+	if( Raptor::Game->State >= XWing::State::FLYING )
 	{
 		if( ShotType == TYPE_LASER_RED )
-			Anim.BecomeInstance( Raptor::Game->Res.GetAnimation("laser_red.ani") );
+			Raptor::Game->Snd.PlayAt( Raptor::Game->Res.GetSound("laser_red.wav"), X, Y, Z );
 		else if( ShotType == TYPE_LASER_GREEN )
-			Anim.BecomeInstance( Raptor::Game->Res.GetAnimation("laser_green.ani") );
+			Raptor::Game->Snd.PlayAt( Raptor::Game->Res.GetSound("laser_green.wav"), X, Y, Z );
 		else if( ShotType == TYPE_TURBO_LASER_RED )
-			Anim.BecomeInstance( Raptor::Game->Res.GetAnimation("laser_red.ani") );
+			Raptor::Game->Snd.PlayAt( Raptor::Game->Res.GetSound("laser_red.wav"), X, Y, Z, 1.5 );
 		else if( ShotType == TYPE_TURBO_LASER_GREEN )
-			Anim.BecomeInstance( Raptor::Game->Res.GetAnimation("laser_green.ani") );
+			Raptor::Game->Snd.PlayAt( Raptor::Game->Res.GetSound("turbolaser_green.wav"), X, Y, Z, 1.5 );
 		else if( ShotType == TYPE_TORPEDO )
-			Anim.BecomeInstance( Raptor::Game->Res.GetAnimation("torpedo.ani") );
-		else
-			Anim.BecomeInstance( Raptor::Game->Res.GetAnimation("laser_unknown.ani") );
+			Raptor::Game->Snd.PlayAt( Raptor::Game->Res.GetSound("torpedo.wav"), X, Y, Z, 0.75 );
+		else if( ShotType == TYPE_MISSILE )
+			Raptor::Game->Snd.PlayAt( Raptor::Game->Res.GetSound("torpedo.wav"), X, Y, Z, 0.75 );
+		
+		if( Seeking && (Seeking == ((XWingGame*)( Raptor::Game ))->ObservedShipID) )
+			Raptor::Game->Snd.Play( Raptor::Game->Res.GetSound("incoming.wav") );
+		
+		GameObject *obj = Data->GetObject( FiredFrom );
+		if( obj && (obj->Type() == XWing::Object::SHIP) )
+		{
+			Ship *ship = (Ship*) obj;
+			if( (ship->PlayerID != Raptor::Game->PlayerID) && (ship->SelectedWeapon != ShotType) )
+			{
+				ship->SelectedWeapon = ShotType;
+				ship->WeaponIndex = 0;
+			}
+			ship->JustFired( ShotType, 1 );
+			if( ship->PlayerID != Raptor::Game->PlayerID )
+				ship->FiringMode = ship->FiredThisFrame;
+		}
 	}
 }
 
@@ -185,7 +217,7 @@ void Shot::AddToInitPacket( Packet *packet, int8_t precision )
 void Shot::ReadFromInitPacket( Packet *packet, int8_t precision )
 {
 	GameObject::ReadFromInitPacket( packet, -127 );
-	SetType( packet->NextUInt() );
+	ShotType = packet->NextUInt();
 	FiredFrom = packet->NextUInt();
 }
 

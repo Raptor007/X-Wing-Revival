@@ -25,7 +25,7 @@ public:
 	Shot( uint32_t id = 0 );
 	virtual ~Shot();
 	
-	void SetType( uint32_t shot_type );
+	void ClientInit( void );
 	
 	double Damage( void ) const;
 	double AsteroidDamage( void ) const;

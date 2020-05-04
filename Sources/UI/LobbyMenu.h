@@ -6,9 +6,7 @@
 class LobbyMenu;
 class LobbyMenuFlyButton;
 class LobbyMenuLeaveButton;
-class LobbyMenuTeamButton;
-class LobbyMenuGroupButton;
-class LobbyMenuShipButton;
+class LobbyMenuPlayerDropDown;
 class LobbyMenuConfiguration;
 class LobbyMenuConfigChangeButton;
 
@@ -23,6 +21,7 @@ class LobbyMenuConfigChangeButton;
 #include "LabelledButton.h"
 #include "ListBox.h"
 #include "TextBox.h"
+#include "DropDown.h"
 
 
 class LobbyMenu : public Layer
@@ -32,9 +31,8 @@ public:
 	Font *TitleFont;
 	LobbyMenuFlyButton *FlyButton;
 	LobbyMenuLeaveButton *LeaveButton;
-	LobbyMenuTeamButton *TeamButton;
-	LobbyMenuGroupButton *GroupButton;
-	LobbyMenuShipButton *ShipButton;
+	LobbyMenuPlayerDropDown *ShipDropDown;
+	LobbyMenuPlayerDropDown *GroupDropDown;
 	ListBox *PlayerList, *MessageList;
 	TextBox *PlayerName, *MessageInput;
 	std::map<std::string,LobbyMenuConfiguration*> Configs;
@@ -71,30 +69,14 @@ public:
 };
 
 
-class LobbyMenuTeamButton : public LabelledButton
+class LobbyMenuPlayerDropDown : public DropDown
 {
 public:
-	LobbyMenuTeamButton( int font_size = 17 );
-	virtual ~LobbyMenuTeamButton();
-	void Clicked( Uint8 button = SDL_BUTTON_LEFT );
-};
-
-
-class LobbyMenuGroupButton : public LabelledButton
-{
-public:
-	LobbyMenuGroupButton( int font_size = 17 );
-	virtual ~LobbyMenuGroupButton();
-	void Clicked( Uint8 button = SDL_BUTTON_LEFT );
-};
-
-
-class LobbyMenuShipButton : public LabelledButton
-{
-public:
-	LobbyMenuShipButton( int font_size = 17 );
-	virtual ~LobbyMenuShipButton();
-	void Clicked( Uint8 button = SDL_BUTTON_LEFT );
+	std::string Variable;
+	
+	LobbyMenuPlayerDropDown( SDL_Rect *rect, Font *font, uint8_t align, int scroll_bar_size, std::string variable );
+	virtual ~LobbyMenuPlayerDropDown();
+	void Changed( void );
 };
 
 

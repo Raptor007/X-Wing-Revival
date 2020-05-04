@@ -68,7 +68,7 @@ void DeathStar::ClientInit( void )
 		for( std::map<std::string,ModelMaterial>::iterator mtl_iter = DetailSide.Materials.begin(); mtl_iter != DetailSide.Materials.end(); mtl_iter ++ )
 		{
 			// We want to match the most-used material of the model.
-			if( mtl_iter->second.Arrays.VertexCount > best_vertex_count )
+			if( (int) mtl_iter->second.Arrays.VertexCount > best_vertex_count )
 			{
 				Texture.BecomeInstance( &(mtl_iter->second.Texture) );
 				Ambient = mtl_iter->second.Ambient;
@@ -94,7 +94,7 @@ void DeathStar::ClientInit( void )
 		for( std::map<std::string,ModelMaterial>::iterator mtl_iter = DetailBottom.Materials.begin(); mtl_iter != DetailBottom.Materials.end(); mtl_iter ++ )
 		{
 			// We want to match the most-used material of the model.
-			if( mtl_iter->second.Arrays.VertexCount > best_vertex_count )
+			if( (int) mtl_iter->second.Arrays.VertexCount > best_vertex_count )
 			{
 				BottomAmbient = mtl_iter->second.Ambient;
 				BottomDiffuse = mtl_iter->second.Diffuse;
@@ -154,18 +154,6 @@ void DeathStar::ReadFromInitPacket( Packet *packet, int8_t precision )
 }
 
 
-void DeathStar::AddToUpdatePacketFromServer( Packet *packet, int8_t precision )
-{
-	GameObject::AddToUpdatePacketFromServer( packet, precision );
-}
-
-
-void DeathStar::ReadFromUpdatePacketFromServer( Packet *packet, int8_t precision )
-{
-	GameObject::ReadFromUpdatePacketFromServer( packet, precision );
-}
-
-
 bool DeathStar::WillCollide( const GameObject *other, double dt, std::string *this_object, std::string *other_object ) const
 {
 	if( other->Type() == XWing::Object::SHOT )
@@ -193,7 +181,7 @@ bool DeathStar::WillCollide( const GameObject *other, double dt, std::string *th
 			return false;
 		
 		// Don't destroy the exhaust port.
-		if( ship->ShipType == Ship::TYPE_EXHAUST_PORT )
+		if( ship->Category() == ShipClass::CATEGORY_TARGET )
 			return false;
 		
 		// Use per-vertex checking for capital ship near Death Star.
@@ -214,7 +202,7 @@ bool DeathStar::WillCollide( const GameObject *other, double dt, std::string *th
 				{
 					array_inst.BecomeInstance( &(array_iter->second), false );
 					array_inst.MakeWorldSpace( ship );
-					for( int i = 0; i < array_inst.VertexCount; i ++ )
+					for( size_t i = 0; i < array_inst.VertexCount; i ++ )
 					{
 						Pos3D vertex( array_inst.WorldSpaceVertexArray[ i*3 ], array_inst.WorldSpaceVertexArray[ i*3 + 1 ], array_inst.WorldSpaceVertexArray[ i*3 + 2 ] );
 						double bottom = 0.;
@@ -257,12 +245,16 @@ void DeathStar::Update( double dt )
 void DeathStar::Draw( void )
 {
 	bool use_shaders = Raptor::Game->ShaderMgr.Active();
+	Shader *prev_shader = Raptor::Game->ShaderMgr.Selected;
+	bool change_shaders = use_shaders && (Raptor::Game->Cfg.SettingAsInt("g_shader_light_quality") >= 1);
+	if( change_shaders )
+		Raptor::Game->ShaderMgr.SelectAndCopyVars( Raptor::Game->Res.GetShader("deathstar") );
 	
 	double cam_up = Raptor::Game->Cam.DistAlong(&Up,this);
 	double cam_right = Raptor::Game->Cam.DistAlong(&Right,this);
 	double cam_fwd = Raptor::Game->Cam.DistAlong(&Fwd,this);
 	
-	double trench_fwd = 0.7 * Raptor::Game->Cfg.SettingAsDouble( "g_bg_dist", 50000. );
+	double trench_fwd = Raptor::Game->Gfx.ZFar;
 	double textures_fwd = trench_fwd * 2. / TextureSize;
 	double texture_fwd_offset = -0.5 - Num::FPart( cam_fwd / TextureSize );
 	if( texture_fwd_offset < -0.5 )
@@ -439,7 +431,9 @@ void DeathStar::Draw( void )
 		
 	glEnd();
 	
-	if( Raptor::Game->ShaderMgr.Active() )
+	if( change_shaders )
+		Raptor::Game->ShaderMgr.Select( prev_shader );
+	else if( use_shaders )
 	{
 		Raptor::Game->ShaderMgr.Set3f( "AmbientColor", 1.f, 1.f, 1.f );
 		Raptor::Game->ShaderMgr.Set3f( "DiffuseColor", 0.f, 0.f, 0.f );

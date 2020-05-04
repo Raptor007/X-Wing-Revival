@@ -7,6 +7,7 @@
 #include <cstddef>
 #include <cmath>
 #include <stdint.h>
+#include <dirent.h>
 #include <list>
 #include "XWingDefs.h"
 #include "Packet.h"
@@ -42,8 +43,33 @@ XWingServer::~XWingServer()
 
 void XWingServer::Started( void )
 {
+	ShipClasses.clear();
+	if( DIR *dir_p = opendir("Ships") )
+	{
+		while( struct dirent *dir_entry_p = readdir(dir_p) )
+		{
+			if( ! dir_entry_p->d_name )
+				continue;
+			if( dir_entry_p->d_name[ 0 ] == '.' )
+				continue;
+			
+			// FIXME: Look for a specific file extension.
+			
+			ShipClass sc;
+			if( sc.Load( std::string("Ships/") + std::string(dir_entry_p->d_name) ) )
+				ShipClasses.insert( sc );
+		}
+		closedir( dir_p );
+	}
+	
+	ResetToStartingObjects();
+	
 	Data.Properties["gametype"] = "yavin";
 	Data.Properties["ai_waves"] = "3";
+	Data.Properties["ai_rebel_fighter"] = "X/W";
+	Data.Properties["ai_rebel_bomber"] = "Y/W";
+	Data.Properties["ai_empire_fighter"] = "T/F";
+	Data.Properties["ai_empire_bomber"] = "T/B";
 	Data.Properties["ai_empire_ratio"] = "1";
 	Data.Properties["ai_flock"] = "false";
 	Data.Properties["bg"] = "stars";
@@ -54,8 +80,8 @@ void XWingServer::Started( void )
 	Data.Properties["yavin_turrets"] = "120";
 	Data.Properties["hunt_time_limit"] = "7";
 	Data.Properties["defending_team"] = "empire";
-	Data.Properties["empire_ship"] = "isd2";
-	Data.Properties["rebel_ship"] = "frg";
+	Data.Properties["empire_ship"] = "ISD2";
+	Data.Properties["rebel_ship"] = "FRG";
 	Data.Properties["asteroids"] = "32";
 	Data.Properties["permissions"] = "all";
 	Alerts.clear();
@@ -63,6 +89,16 @@ void XWingServer::Started( void )
 	Squadrons.clear();
 	
 	State = XWing::State::LOBBY;
+}
+
+
+void XWingServer::Stopped( void )
+{
+	Data.Clear();
+	ShipClasses.clear();
+	Alerts.clear();
+	Waypoints.clear();
+	Squadrons.clear();
 }
 
 
@@ -419,6 +455,9 @@ void XWingServer::Update( double dt )
 					shot_hit.AddDouble( (shot->X + shot->PrevPos.X) / 2. );
 					shot_hit.AddDouble( (shot->Y + shot->PrevPos.Y) / 2. );
 					shot_hit.AddDouble( (shot->Z + shot->PrevPos.Z) / 2. );
+					shot_hit.AddFloat( shot->MotionVector.X );
+					shot_hit.AddFloat( shot->MotionVector.Y );
+					shot_hit.AddFloat( shot->MotionVector.Z );
 					Net.SendAll( &shot_hit );
 					
 					if( (subsystem_iter != ship->Subsystems.end()) && (subsystem_iter->second <= 0.) )
@@ -453,7 +492,7 @@ void XWingServer::Update( double dt )
 				// This ship just died.
 				if( (ship->Health <= 0.) && (prev_health > 0.) )
 				{
-					if( ship->ShipType != Ship::TYPE_EXHAUST_PORT )
+					if( ship->ExplosionRate() )
 					{
 						// Show an explosion to players.
 						Packet explosion( XWing::Packet::EXPLOSION );
@@ -478,18 +517,12 @@ void XWingServer::Update( double dt )
 						send_scores = true;
 						
 						int add_score = 0;
+						std::string score_type = "kills";
 						if( killer_ship && ((! ship->Team) || (killer_ship->Team != ship->Team)) )
 						{
-							if( ship->ShipType == Ship::TYPE_EXHAUST_PORT )
-								add_score = 1000000;
-							else if( ship->ShipType == Ship::TYPE_ISD2 )
-								add_score = 37000;
-							else if( ship->ShipType == Ship::TYPE_CORVETTE )
-								add_score = 100;
-							else if( ship->ShipType == Ship::TYPE_CALAMARI_CRUISER )
-								add_score = 5400;
-							else
-								add_score = 1;
+							add_score = 1;
+							if( ship->Class && ((ship->Class->Category == ShipClass::CATEGORY_CAPITAL) || (ship->Class->Category == ShipClass::CATEGORY_TARGET)) )
+								score_type = "kills_c";
 						}
 						
 						// Adjust individual scores.
@@ -498,34 +531,23 @@ void XWingServer::Update( double dt )
 						if( add_score )
 						{
 							if( killer )
-								killer->Properties["kills"] = Num::ToString( atoi( killer->Properties["kills"].c_str() ) + add_score );
+								killer->Properties[score_type] = Num::ToString( atoi( killer->Properties[score_type].c_str() ) + add_score );
 							else if( killer_ship )
 								ShipScores[ killer_ship->ID ] += add_score;
 						}
 						
 						// Adjust TDM scores.
-						if( GameType == XWing::GameType::TEAM_DEATHMATCH )
-						{
-							uint32_t team = XWing::Team::NONE;
-							
-							if( killer )
-							{
-								if( killer->Properties["assigned_team"] == "Rebel" )
-									team = XWing::Team::REBEL;
-								else if( killer->Properties["assigned_team"] == "Empire" )
-									team = XWing::Team::EMPIRE;
-							}
-							else if( killer_ship )
-								team = killer_ship->Team;
-							
-							if( add_score && (team != XWing::Team::NONE) )
-								TeamScores[ team ] ++;
-						}
+						if( (GameType == XWing::GameType::TEAM_DEATHMATCH) && add_score && killer_ship )
+							TeamScores[ killer_ship->Team ] ++;
 						
 						// Notify players.
-						const char *victim_name = victim ? victim->Name.c_str() : ship->Name.c_str();
-						if( ship->ShipType == Ship::TYPE_EXHAUST_PORT )
+						const char *victim_name = NULL;
+						if( victim )
+							victim_name = victim->Name.c_str();
+						else if( ship->Name == "Exhaust Port" )
 							victim_name = "The Death Star";
+						else
+							victim_name = ship->Name.c_str();
 						
 						char cstr[ 1024 ] = "";
 						if( killer || killer_ship )
@@ -596,6 +618,9 @@ void XWingServer::Update( double dt )
 					shot_hit.AddDouble( (shot->X + shot->PrevPos.X) / 2. );
 					shot_hit.AddDouble( (shot->Y + shot->PrevPos.Y) / 2. );
 					shot_hit.AddDouble( (shot->Z + shot->PrevPos.Z) / 2. );
+					shot_hit.AddFloat( shot->MotionVector.X );
+					shot_hit.AddFloat( shot->MotionVector.Y );
+					shot_hit.AddFloat( shot->MotionVector.Z );
 					Net.SendAll( &shot_hit );
 					
 					if( (subsystem_iter != ship->Subsystems.end()) && (subsystem_iter->second <= 0.) )
@@ -630,7 +655,7 @@ void XWingServer::Update( double dt )
 				// This ship just died.
 				if( (ship->Health <= 0.) && (prev_health > 0.) )
 				{
-					if( ship->ShipType != Ship::TYPE_EXHAUST_PORT )
+					if( ship->ExplosionRate() )
 					{
 						// Show an explosion to players.
 						Packet explosion( XWing::Packet::EXPLOSION );
@@ -655,12 +680,12 @@ void XWingServer::Update( double dt )
 						send_scores = true;
 						
 						int add_score = 0;
+						std::string score_type = "kills";
 						if( killer_ship && ((! ship->Team) || (killer_ship->Team != ship->Team)) )
 						{
-							if( ship->ShipType == Ship::TYPE_EXHAUST_PORT )
-								add_score = 1000000;
-							else
-								add_score = 1;
+							add_score = 1;
+							if( ship->Class && ((ship->Class->Category == ShipClass::CATEGORY_CAPITAL) || (ship->Class->Category == ShipClass::CATEGORY_TARGET)) )
+								score_type = "kills_c";
 						}
 						
 						// Adjust individual scores.
@@ -669,34 +694,23 @@ void XWingServer::Update( double dt )
 						if( add_score )
 						{
 							if( killer )
-								killer->Properties["kills"] = Num::ToString( atoi( killer->Properties["kills"].c_str() ) + add_score );
+								killer->Properties[score_type] = Num::ToString( atoi( killer->Properties[score_type].c_str() ) + add_score );
 							else if( killer_ship )
 								ShipScores[ killer_ship->ID ] += add_score;
 						}
 						
 						// Adjust TDM scores.
-						if( GameType == XWing::GameType::TEAM_DEATHMATCH )
-						{
-							uint32_t team = XWing::Team::NONE;
-							
-							if( killer )
-							{
-								if( killer->Properties["assigned_team"] == "Rebel" )
-									team = XWing::Team::REBEL;
-								else if( killer->Properties["assigned_team"] == "Empire" )
-									team = XWing::Team::EMPIRE;
-							}
-							else if( killer_ship )
-								team = killer_ship->Team;
-							
-							if( add_score && (team != XWing::Team::NONE) )
-								TeamScores[ team ] ++;
-						}
+						if( (GameType == XWing::GameType::TEAM_DEATHMATCH) && add_score && killer_ship )
+							TeamScores[ killer_ship->Team ] ++;
 						
 						// Notify players.
-						const char *victim_name = victim ? victim->Name.c_str() : ship->Name.c_str();
-						if( ship->ShipType == Ship::TYPE_EXHAUST_PORT )
+						const char *victim_name = NULL;
+						if( victim )
+							victim_name = victim->Name.c_str();
+						else if( ship->Name == "Exhaust Port" )
 							victim_name = "The Death Star";
+						else
+							victim_name = ship->Name.c_str();
 						
 						char cstr[ 1024 ] = "";
 						if( killer || killer_ship )
@@ -756,6 +770,15 @@ void XWingServer::Update( double dt )
 					explosion.AddFloat( 15.f );
 					explosion.AddFloat( 2.f );
 					Net.SendAll( &explosion );
+					
+					// Update turret kill score.
+					Player *killer = Data.GetPlayer( shot->PlayerID );
+					Ship *killer_ship = (Ship*) Data.GetObject( shot->FiredFrom );
+					if( (State < XWing::State::ROUND_ENDED) && killer && killer_ship && ((! turret->Team) || (killer_ship->Team != turret->Team)) )
+					{
+						send_scores = true;
+						killer->Properties["kills_t"] = Num::ToString( atoi( killer->Properties["kills_t"].c_str() ) + 1 );
+					}
 				}
 			}
 			
@@ -804,6 +827,15 @@ void XWingServer::Update( double dt )
 					explosion.AddFloat( 15.f );
 					explosion.AddFloat( 2.f );
 					Net.SendAll( &explosion );
+					
+					// Update turret kill score.
+					Player *killer = Data.GetPlayer( shot->PlayerID );
+					Ship *killer_ship = (Ship*) Data.GetObject( shot->FiredFrom );
+					if( (State < XWing::State::ROUND_ENDED) && killer && killer_ship && ((! turret->Team) || (killer_ship->Team != turret->Team)) )
+					{
+						send_scores = true;
+						killer->Properties["kills_t"] = Num::ToString( atoi( killer->Properties["kills_t"].c_str() ) + 1 );
+					}
 				}
 			}
 			
@@ -1150,15 +1182,17 @@ void XWingServer::Update( double dt )
 			Player *player = player_iter->second;
 			if( player_ships.find( player->ID ) == player_ships.end() )
 			{
-				if( player->Properties["assigned_team"] == "Rebel" )
+				if( player->Properties["team"] == "Rebel" )
 					players_waiting[ XWing::Team::REBEL ].push_back( player );
-				else if( player->Properties["assigned_team"] == "Empire" )
+				else if( player->Properties["team"] == "Empire" )
 					players_waiting[ XWing::Team::EMPIRE ].push_back( player );
 			}
 		}
 		
 		
 		// Determine pilot reassignments and control AI ships.
+		
+		bool ai_ceasefire = (Data.Properties.find("ai_ceasefire") != Data.Properties.end());
 		
 		for( std::map<uint32_t,Ship*>::reverse_iterator ship_iter = ships.rbegin(); ship_iter != ships.rend(); ship_iter ++ )
 		{
@@ -1200,13 +1234,15 @@ void XWingServer::Update( double dt )
 					update_packet.AddUInt( 1 );
 					update_packet.AddUInt( ship->ID );
 					ship->AddToUpdatePacketFromServer( &update_packet, precision );
-					Net.SendAll( &update_packet );
+					Net.SendToPlayer( &update_packet, ship->PlayerID );
 				}
 			}
 			
+			/*
 			// For ships with a complex collision model, apply explosion to server-side model when dead.
 			if( ship->Health <= 0. )
 				ship->Explode( dt );
+			*/
 			
 			
 			// If this ship has no player, use AI control.
@@ -1220,9 +1256,9 @@ void XWingServer::Update( double dt )
 				
 				GameObject *target = NULL;
 				
-				if( ship->Radius() > 500. )
+				if( ship->Category() == ShipClass::CATEGORY_CAPITAL )
 				{
-					// Big ships shoot asteroids out of their way.
+					// Capital ships shoot asteroids out of their way.
 					
 					double dist_fwd = 0., dist_up = 0., dist_right = 0.;
 					double l = ship->Shape.GetLength(), h = ship->Shape.GetHeight(), w = ship->Shape.GetWidth();
@@ -1233,7 +1269,7 @@ void XWingServer::Update( double dt )
 						dist_up = asteroid_iter->second->DistAlong( &(ship->Up), ship );
 						dist_right = asteroid_iter->second->DistAlong( &(ship->Right), ship );
 						
-						if( (dist_fwd < l * 0.6) && (dist_fwd > l * -0.5) && (fabs(dist_up) < h * 0.55) && (fabs(dist_right) < w * 0.55) )
+						if( (dist_fwd < l) && (dist_fwd > l * -0.5) && (fabs(dist_up) < h * 0.75) && (fabs(dist_right) < w * 0.75) )
 						{
 							target = asteroid_iter->second;
 							break;
@@ -1241,7 +1277,7 @@ void XWingServer::Update( double dt )
 					}
 				}
 				
-				if( (! target) && (ship->ShipType != Ship::TYPE_EXHAUST_PORT) )
+				if( (! target) && (ship->Category() != ShipClass::CATEGORY_TARGET) )
 				{
 					// Build a list of all the things this AI ship might want to target.
 					std::vector<GameObject*> potential_targets;
@@ -1281,7 +1317,7 @@ void XWingServer::Update( double dt )
 								continue;
 							
 							// Don't attack the exhaust port when out of torpedos.
-							if( (potential_target->ShipType == Ship::TYPE_EXHAUST_PORT) && ! ship->Ammo[ Shot::TYPE_TORPEDO ] )
+							if( (GameType == XWing::GameType::BATTLE_OF_YAVIN) && potential_target->IsMissionObjective && ! ship->Ammo[ Shot::TYPE_TORPEDO ] )
 								continue;
 							
 							potential_targets.push_back( potential_target );
@@ -1300,6 +1336,23 @@ void XWingServer::Update( double dt )
 						potential_targets = trench_targets;
 					}
 					
+					// Bombers should always go after primary targets.
+					if( (ship->Category() == ShipClass::CATEGORY_BOMBER) && (GameType != XWing::GameType::BATTLE_OF_YAVIN) )
+					{
+						std::vector<GameObject*> primary_targets;
+						for( std::vector<GameObject*>::iterator target_iter = potential_targets.begin(); target_iter != potential_targets.end(); target_iter ++ )
+						{
+							if( (*target_iter)->Type() == XWing::Object::SHIP )
+							{
+								Ship *potential_ship = (Ship*) *target_iter;
+								if( potential_ship->IsMissionObjective )
+									primary_targets.push_back( *target_iter );
+							}
+						}
+						if( primary_targets.size() )
+							potential_targets = primary_targets;
+					}
+					
 					// Make sure we don't go chasing distant targets when there are nearby ones.
 					std::vector<GameObject*> close_targets;
 					for( std::vector<GameObject*>::iterator target_iter = potential_targets.begin(); target_iter != potential_targets.end(); target_iter ++ )
@@ -1310,7 +1363,7 @@ void XWingServer::Update( double dt )
 						else if( (*target_iter)->Type() == XWing::Object::SHIP )
 						{
 							Ship *potential_ship = (Ship*) *target_iter;
-							if( (dist < 3000.) && (potential_ship->ShipType == Ship::TYPE_EXHAUST_PORT) )
+							if( (dist < 3000.) && (GameType == XWing::GameType::BATTLE_OF_YAVIN) && potential_ship->IsMissionObjective )
 							{
 								// If the exhaust port is close, go for that.
 								close_targets.clear();
@@ -1327,7 +1380,7 @@ void XWingServer::Update( double dt )
 					{
 						int num = ship->ID;
 						if( AIFlock )
-							num = ship->Lifetime.ElapsedSeconds() / (5. + ship->ShipType % 3);
+							num = ship->Lifetime.ElapsedSeconds() / (5. + ((size_t)(ship->Class) / 8) % 3); // FIXME?
 						target = potential_targets.at( num % potential_targets.size() );
 					}
 					else if( potential_targets.size() )
@@ -1339,34 +1392,31 @@ void XWingServer::Update( double dt )
 				
 				if( target )
 				{
-					// Make AI ships select torpedos when attacking appropriate targets.
-					if( (ship->ShipType == Ship::TYPE_XWING) || (ship->ShipType == Ship::TYPE_YWING) )
+					uint32_t heavy_weapon = 0;
+					if( ship->WeaponCount(Shot::TYPE_TORPEDO) )
+						heavy_weapon = Shot::TYPE_TORPEDO;
+					else if( ship->WeaponCount(Shot::TYPE_MISSILE) )
+						heavy_weapon = Shot::TYPE_MISSILE;
+					
+					// Make AI ships select torpedos/missiles when attacking appropriate targets.
+					if( heavy_weapon )
 					{
-						if( (target->Type() == XWing::Object::SHIP) && (((Ship*)( target ))->ShipType == Ship::TYPE_EXHAUST_PORT) )
+						if( (target->Type() == XWing::Object::SHIP) && ((Ship*)( target ))->IsMissionObjective && (ship->Ammo[ heavy_weapon ] || (GameType == XWing::GameType::BATTLE_OF_YAVIN)) )
 						{
-							if( ship->SelectedWeapon != Shot::TYPE_TORPEDO )
+							if( ship->SelectedWeapon != heavy_weapon )
 								ship->NextWeapon();
-							if( ship->FiringMode < 2 )
+							int desired_mode = (GameType == XWing::GameType::BATTLE_OF_YAVIN) ? 2 : 1;
+							if( ship->FiringMode != desired_mode )
 								ship->NextFiringMode();
 						}
-						else if( ship->Ammo[ Shot::TYPE_TORPEDO ] && (target->Type() == XWing::Object::SHIP) && ! ((Ship*)( target ))->PlayersCanFly() )
-						{
-							if( ship->SelectedWeapon != Shot::TYPE_TORPEDO )
-								ship->NextWeapon();
-							if( ship->FiringMode > 1 )
-								ship->NextFiringMode();
-						}
-						else
-						{
-							if( ship->SelectedWeapon == Shot::TYPE_TORPEDO )
-								ship->NextWeapon();
-						}
+						else if( ship->SelectedWeapon == heavy_weapon )
+							ship->NextWeapon();
 					}
 					
 					Vec3D vec_to_target( target->X - ship->X, target->Y - ship->Y, target->Z - ship->Z );
 					double dist_to_target = vec_to_target.Length();
 					Vec3D shot_vec = ship->Fwd;
-					shot_vec.ScaleTo( 600. );
+					shot_vec.ScaleTo( 700. );
 					shot_vec -= target->MotionVector;
 					double time_to_target = dist_to_target / shot_vec.Length();
 					Vec3D vec_to_intercept = vec_to_target;
@@ -1382,15 +1432,14 @@ void XWingServer::Update( double dt )
 					double i_dot_right = vec_to_intercept.Dot( &(ship->Right) );
 					
 					double dodge_dist = 100. + ship->Radius();
-					double firing_dist = 1000.;
 					if( target->Type() == XWing::Object::SHIP )
 						dodge_dist += ((Ship*)( target ))->Radius();
-					else if( target->Type() == XWing::Object::TURRET )
-						firing_dist = 2000.;
+					double run_dist = (ship->Category() == ShipClass::CATEGORY_BOMBER) ? (dodge_dist * 6.) : (dodge_dist * 3.);
+					double firing_dist = (target->Type() == XWing::Object::TURRET) ? 2000. : (900. + dodge_dist);
 					ship->Firing = (i_dot_fwd > 0.9) && (dist_to_intercept < firing_dist);
 					
 					// Capital ships use their turrets to fire regardless of heading.
-					if( (ship->ShipType != Ship::TYPE_EXHAUST_PORT) && ! ship->PlayersCanFly() )
+					if( (ship->SelectedWeapon == Shot::TYPE_TURBO_LASER_RED) || (ship->SelectedWeapon == Shot::TYPE_TURBO_LASER_GREEN) )
 						ship->Firing = (dist_to_target < ship->Radius() + 1000.);
 					
 					// Don't shoot at dead things.
@@ -1399,72 +1448,46 @@ void XWingServer::Update( double dt )
 					else if( (target->Type() == XWing::Object::TURRET) && (((Turret*)( target ))->Health <= 0.) )
 						ship->Firing = false;
 					
-					if( target->Type() == XWing::Object::ASTEROID )
+					if( (t_dot_fwd >= 0.) && (dist_to_intercept < dodge_dist) )
 					{
+						// Damn close ahead: Avoid collision!
+						pitch = (i_dot_up >= 0.) ? -1. : 1.;
+						yaw = (i_dot_right >= 0.) ? -1. : 1.;
+						roll = (i_dot_right >= 0.) ? -1. : 1.;
+						throttle = 0.75;
+					}
+					else if( target->Type() == XWing::Object::ASTEROID )
+					{
+						// Other than immediate avoidance, don't change course for asteroids.
 						pitch = 0.;
 						yaw = 0.;
 						roll = 0.;
 						throttle = 1.;
 					}
-					else if( t_dot_fwd >= 0. )
+					else if( t_dot_fwd >= 0.25 )
 					{
-						if( dist_to_intercept < dodge_dist )
-						{
-							// Damn close ahead: Avoid collision!
-							pitch = (i_dot_up >= 0.) ? -1. : 1.;
-							yaw = (i_dot_right >= 0.) ? -1. : 1.;
-							roll = (i_dot_right >= 0.) ? -1. : 1.;
-							throttle = 0.75;
-							//ship->SetShieldPos( Ship::SHIELD_CENTER );
-						}
-						else if( (dist_to_target < dodge_dist + 500.) && (t_dot_fwd < 0.25) )
-						{
-							// Off to the side, but too close to turn towards: Get some distance.
-							pitch = 0.;
-							yaw = i_dot_right / 4.;
-							roll = i_dot_right / 2.;
-							throttle = 1.;
-							//ship->SetShieldPos( Ship::SHIELD_CENTER );
-						}
-						else
-						{
-							// Generally ahead of us: Aim at enemy.
-							pitch = (fabs(i_dot_up) > 0.2) ? Num::Sign(i_dot_up) : (i_dot_up*5.);
-							yaw = (fabs(i_dot_right) >= 0.5) ? Num::Sign(i_dot_right) : (i_dot_right*2.);
-							roll = (fabs(i_dot_right) > 0.333) ? Num::Sign(i_dot_right) : (i_dot_right*3.);
-							throttle = ((dist_to_target < 300.) && (i_dot_fwd > 0.5)) ? (dist_to_target/300.) : 1.;
-							//ship->SetShieldPos( Ship::SHIELD_FRONT );
-							facing_target = (t_dot_fwd > 0.95);
-						}
+						// Enemy generally ahead of us: Aim at them.
+						pitch = (fabs(i_dot_up) > 0.2) ? Num::Sign(i_dot_up) : (i_dot_up*5.);
+						yaw = (fabs(i_dot_right) >= 0.5) ? Num::Sign(i_dot_right) : (i_dot_right*2.);
+						roll = (fabs(i_dot_right) > 0.333) ? Num::Sign(i_dot_right) : (i_dot_right*3.);
+						throttle = ((dist_to_target < 300.) && (i_dot_fwd > 0.5)) ? (dist_to_target/300.) : 1.;
+						facing_target = (t_dot_fwd > 0.95);
 					}
-					/*
-					else if( (dist_to_target < dodge_dist + 150.) && (t_dot_fwd < -0.25) && (vec_to_target.Dot( &(ship->Fwd) ) < -0.25) )
+					else if( dist_to_target < run_dist )
 					{
-						// Behind and aiming at us: Shake 'em!
-						pitch = cos( ship->Lifetime.ElapsedSeconds() * 3. ) * 0.4 + 0.6;
-						yaw = sin( ship->Lifetime.ElapsedSeconds() );
-						roll = sin( ship->Lifetime.ElapsedSeconds() );
-						throttle = 1.;
-						//ship->SetShieldPos( Ship::SHIELD_REAR );
-					}
-					*/
-					else if( dist_to_target < dodge_dist + 200. )
-					{
-						// Behind, not aiming at us, but too close to turn towards: Get some distance.
+						// Enemy behind us but too close to turn towards: Get some distance.
 						pitch = 0.;
 						yaw = i_dot_right / 4.;
 						roll = i_dot_right / 2.;
 						throttle = 1.;
-						//ship->SetShieldPos( Ship::SHIELD_REAR );
 					}
 					else
 					{
-						// Generally behind us: Turn towards enemy.
+						// Enemy behind us and far away: Turn towards them.
 						pitch = (i_dot_up >= 0.) ? 1. : -1.;
 						yaw = i_dot_right;
 						roll = i_dot_right;
 						throttle = 1. - i_dot_up/2.;
-						//ship->SetShieldPos( Ship::SHIELD_CENTER );
 					}
 				}
 				else
@@ -1492,9 +1515,9 @@ void XWingServer::Update( double dt )
 						if( (trench_runners == Data.Properties.end()) || (Str::FindInsensitive( trench_runners->second, "default" ) >= 0) )
 						{
 							// The default behavior is to select trench runners based on count-down (Y-Wings always run the trench). 
-							if( ship->ShipType == Ship::TYPE_ISD2 || ship->ShipType == Ship::TYPE_CORVETTE )
+							if( ship->Category() == ShipClass::CATEGORY_CAPITAL )
 								;
-							else if( ship->ShipType == Ship::TYPE_YWING )
+							else if( (ship->Category() == ShipClass::CATEGORY_BOMBER) && (ship->Team == XWing::Team::REBEL) )
 								waypoint_list = &(Waypoints[ 0 ]);
 							else if( (round_time_remaining <= 5. * 60. - 2.) && (ship->ID % 4 >= 1) )
 								waypoint_list = &(Waypoints[ 0 ]);
@@ -1510,26 +1533,18 @@ void XWingServer::Update( double dt )
 								waypoint_list = &(Waypoints[ 0 ]);
 							if( (Str::FindInsensitive( trench_runners->second, "empire" ) >= 0) && (ship->Team == XWing::Team::EMPIRE) )
 								waypoint_list = &(Waypoints[ 0 ]);
-							if( (Str::FindInsensitive( trench_runners->second, "x/w" ) >= 0) && (ship->ShipType == Ship::TYPE_XWING) )
-								waypoint_list = &(Waypoints[ 0 ]);
-							if( (Str::FindInsensitive( trench_runners->second, "y/w" ) >= 0) && (ship->ShipType == Ship::TYPE_YWING) )
-								waypoint_list = &(Waypoints[ 0 ]);
-							if( (Str::FindInsensitive( trench_runners->second, "t/f" ) >= 0) && (ship->ShipType == Ship::TYPE_TIE_FIGHTER) )
-								waypoint_list = &(Waypoints[ 0 ]);
-							if( (Str::FindInsensitive( trench_runners->second, "isd2" ) >= 0) && (ship->ShipType == Ship::TYPE_ISD2) )
-								waypoint_list = &(Waypoints[ 0 ]);
-							if( (Str::FindInsensitive( trench_runners->second, "crv" ) >= 0) && (ship->ShipType == Ship::TYPE_CORVETTE) )
+							if( ship->Class && (Str::FindInsensitive( trench_runners->second, ship->Class->ShortName ) >= 0) )
 								waypoint_list = &(Waypoints[ 0 ]);
 							if( Str::FindInsensitive( trench_runners->second, "all" ) >= 0 )
 								waypoint_list = &(Waypoints[ 0 ]);
 						}
 						
-						if( waypoint_list )
+						if( waypoint_list && (ship->Team == XWing::Team::REBEL) )
 						{
 							// X-Wings and Y-Wings should follow slightly different paths so they don't collide.
-							if( (ship->ShipType == Ship::TYPE_XWING) && (Waypoints[ 1 ].size()) )
+							if( (ship->Category() == ShipClass::CATEGORY_FIGHTER) && (Waypoints[ 1 ].size()) )
 								waypoint_list = &(Waypoints[ 1 ]);
-							else if( (ship->ShipType == Ship::TYPE_YWING) && (Waypoints[ 2 ].size()) )
+							else if( (ship->Category() == ShipClass::CATEGORY_BOMBER) && (Waypoints[ 2 ].size()) )
 								waypoint_list = &(Waypoints[ 2 ]);
 						}
 					}
@@ -1581,7 +1596,7 @@ void XWingServer::Update( double dt )
 					double w_dot_up = vec_to_waypoint.Dot( &(ship->Up) );
 					double w_dot_right = vec_to_waypoint.Dot( &(ship->Right) );
 					
-					bool target_is_exhaust_port = ( target && (target->Type() == XWing::Object::SHIP) && ( ((Ship*)( target ))->ShipType == Ship::TYPE_EXHAUST_PORT ) );
+					bool target_is_exhaust_port = (target && (target->Type() == XWing::Object::SHIP) && (GameType == XWing::GameType::BATTLE_OF_YAVIN) && ((Ship*)( target ))->IsMissionObjective);
 					
 					// Allow override for shooting at targets ahead of us near the waypoint.
 					if( target && facing_target && (ship->Dist(target) < 1000.) && (w_dot_fwd > 0.9) && (! target_is_exhaust_port) )
@@ -1620,6 +1635,9 @@ void XWingServer::Update( double dt )
 						throttle = (d_dot_fwd < 0.) ? (2.*time) : 1.;
 					}
 				}
+				
+				if( ai_ceasefire )
+					ship->Firing = false;
 				
 				// Apply AI's desired controls.
 				ship->SetPitch( pitch, dt );
@@ -1788,7 +1806,7 @@ void XWingServer::Update( double dt )
 							update_packet.AddUInt( 1 );
 							update_packet.AddUInt( ship->ID );
 							ship->AddToUpdatePacketFromServer( &update_packet, precision );
-							Net.SendAll( &update_packet );
+							Net.SendToPlayer( &update_packet, ship->PlayerID );
 						}
 					}
 					else
@@ -1918,6 +1936,9 @@ void XWingServer::Update( double dt )
 						turret->Firing = false;
 					}
 					
+					if( ai_ceasefire )
+						turret->Firing = false;
+					
 					if( turret->Firing && (turret->FiringClock.ElapsedSeconds() >= turret->ShotDelay()) )
 					{
 						GameObject *target = Data.GetObject( turret->Target );
@@ -1952,14 +1973,12 @@ void XWingServer::Update( double dt )
 		{
 			Packet objects_add( Raptor::Packet::OBJECTS_ADD );
 			objects_add.AddUInt( add_objects.size() );
-			
 			for( std::list<GameObject*>::iterator obj_iter = add_objects.begin(); obj_iter != add_objects.end(); obj_iter ++ )
 			{
 				objects_add.AddUInt( (*obj_iter)->ID );
 				objects_add.AddUInt( (*obj_iter)->Type() );
 				(*obj_iter)->AddToInitPacket( &objects_add );
 			}
-			
 			Net.SendAll( &objects_add );
 		}
 		
@@ -1970,13 +1989,11 @@ void XWingServer::Update( double dt )
 		{
 			Packet objects_remove( Raptor::Packet::OBJECTS_REMOVE );
 			objects_remove.AddUInt( remove_object_ids.size() );
-			
 			for( std::set<uint32_t>::iterator id_iter = remove_object_ids.begin(); id_iter != remove_object_ids.end(); id_iter ++ )
 			{
 				objects_remove.AddUInt( *id_iter );
 				Data.RemoveObject( *id_iter );
 			}
-			
 			Net.SendAll( &objects_remove );
 		}
 		
@@ -2291,10 +2308,7 @@ void XWingServer::Update( double dt )
 			Packet lobby( XWing::Packet::LOBBY );
 			Net.SendAll( &lobby );
 			
-			Data.ClearObjects();
-			
-			Packet objects_clear( Raptor::Packet::OBJECTS_CLEAR );
-			Net.SendAll( &objects_clear );
+			ResetToStartingObjects();
 		}
 	}
 	
@@ -2316,6 +2330,45 @@ void XWingServer::Update( double dt )
 			}
 			else
 				BeginFlying();
+		}
+	}
+}
+
+
+void XWingServer::ResetToStartingObjects( void )
+{
+	Data.ClearObjects();
+	
+	Packet objects_clear( Raptor::Packet::OBJECTS_CLEAR );
+	Net.SendAll( &objects_clear );
+	
+	// Restore ship classes.
+	Packet objects_add( Raptor::Packet::OBJECTS_ADD );
+	objects_add.AddUInt( ShipClasses.size() );
+	for( std::set<ShipClass>::iterator class_iter = ShipClasses.begin(); class_iter != ShipClasses.end(); class_iter ++ )
+	{
+		ShipClass *copy = new ShipClass( *class_iter );
+		Data.AddObject( copy );
+		
+		objects_add.AddUInt( copy->ID );
+		objects_add.AddUInt( copy->Type() );
+		copy->AddToInitPacket( &objects_add );
+	}
+	Net.SendAll( &objects_add );
+	
+	// Clear assigned teams.
+	for( std::map<uint16_t,Player*>::iterator player_iter = Data.Players.begin(); player_iter != Data.Players.end(); player_iter ++ )
+	{
+		if( player_iter->second->Properties["team"].length() )
+		{
+			player_iter->second->Properties["team"] = "";
+			
+			Packet player_properties( Raptor::Packet::PLAYER_PROPERTIES );
+			player_properties.AddUShort( player_iter->second->ID );
+			player_properties.AddUInt( 1 );
+			player_properties.AddString( "team" );
+			player_properties.AddString( "" );
+			Net.SendAll( &player_properties );
 		}
 	}
 }
@@ -2346,7 +2399,7 @@ void XWingServer::BeginFlying( void )
 	if( State > XWing::State::FLYING )
 		return;
 	
-	if( State != XWing::State::FLYING )
+	if( State < XWing::State::FLYING )
 	{
 		// Starting a new round.
 		
@@ -2357,8 +2410,6 @@ void XWingServer::BeginFlying( void )
 		bool ffa = false;
 		KillLimit = 0;
 		TimeLimit = 0;
-		uint32_t empire_ship_type = Ship::TYPE_ISD2;
-		uint32_t rebel_ship_type = Ship::TYPE_CORVETTE;
 		Alerts.clear();
 		Waypoints.clear();
 		Squadrons.clear();
@@ -2424,45 +2475,10 @@ void XWingServer::BeginFlying( void )
 			RespawnDelay = 15.;
 		}
 		
-		if( Data.Properties["rebel_ship"] == "crv" )
-			rebel_ship_type = Ship::TYPE_CORVETTE;
-		else if( Data.Properties["rebel_ship"] == "frg" )
-			rebel_ship_type = Ship::TYPE_NEBULON_B;
-		else if( Data.Properties["rebel_ship"] == "crs" )
-			rebel_ship_type = Ship::TYPE_CALAMARI_CRUISER;
-		else if( Data.Properties["rebel_ship"] == "isd2" )
-			rebel_ship_type = Ship::TYPE_ISD2;
-		else if( Data.Properties["rebel_ship"] == "x/w" )
-			rebel_ship_type = Ship::TYPE_XWING;
-		else if( Data.Properties["rebel_ship"] == "y/w" )
-			rebel_ship_type = Ship::TYPE_YWING;
-		else if( Data.Properties["rebel_ship"] == "t/f" )
-			rebel_ship_type = Ship::TYPE_TIE_FIGHTER;
-		
-		if( Data.Properties["empire_ship"] == "crv" )
-			empire_ship_type = Ship::TYPE_CORVETTE;
-		else if( Data.Properties["empire_ship"] == "frg" )
-			empire_ship_type = Ship::TYPE_NEBULON_B;
-		else if( Data.Properties["empire_ship"] == "crs" )
-			empire_ship_type = Ship::TYPE_CALAMARI_CRUISER;
-		else if( Data.Properties["empire_ship"] == "isd2" )
-			empire_ship_type = Ship::TYPE_ISD2;
-		else if( Data.Properties["empire_ship"] == "x/w" )
-			empire_ship_type = Ship::TYPE_XWING;
-		else if( Data.Properties["empire_ship"] == "y/w" )
-			empire_ship_type = Ship::TYPE_YWING;
-		else if( Data.Properties["empire_ship"] == "t/f" )
-			empire_ship_type = Ship::TYPE_TIE_FIGHTER;
-		
 		if( Data.Properties["ai_flock"] == "true" )
 			AIFlock = true;
 		else
 			AIFlock = false;
-		
-		// Clear all objects and tell the clients to do likewise.
-		Data.ClearObjects();
-		Packet obj_clear = Packet( Raptor::Packet::OBJECTS_CLEAR );
-		Net.SendAll( &obj_clear );
 		
 		// Add gametype objects.
 		if( GameType == XWing::GameType::BATTLE_OF_YAVIN )
@@ -2495,12 +2511,10 @@ void XWingServer::BeginFlying( void )
 			Data.AddObject( exhaust_box );
 			
 			// Exhaust port.
-			Ship *exhaust_port = new Ship();
+			Ship *exhaust_port = SpawnShip( GetShipClass("Exhaust"), XWing::Team::EMPIRE );
 			exhaust_port->Copy( exhaust_box );
-			exhaust_port->SetType( Ship::TYPE_EXHAUST_PORT );
 			exhaust_port->IsMissionObjective = true;
 			exhaust_port->CanRespawn = false;
-			exhaust_port->Team = XWing::Team::EMPIRE;
 			exhaust_port->Name = "Exhaust Port";
 			exhaust_port->MoveAlong( &(exhaust_port->Up), exhaust_box->H / 2. );
 			Data.AddObject( exhaust_port );
@@ -2778,7 +2792,7 @@ void XWingServer::BeginFlying( void )
 			{
 				if( DefendingTeam == XWing::Team::EMPIRE )
 				{
-					Ship *ship = SpawnShip( empire_ship_type, DefendingTeam );
+					Ship *ship = SpawnShip( GetShipClass(Data.Properties["empire_ship"]), DefendingTeam );
 					ship->IsMissionObjective = true;
 					ship->CanRespawn = false;
 					ship->X = Rand::Double( -3500., -2500. );
@@ -2787,16 +2801,16 @@ void XWingServer::BeginFlying( void )
 					ship->SetFwdVec( 1., 0., 0. );
 					ship->SetUpVec( 0., 0., 1. );
 					ship->SetThrottle( 0.1, 120. );
-					if( empire_ship_type == Ship::TYPE_ISD2 )
+					if( strcasecmp( Data.Properties["empire_ship"].c_str(), "ISD2" ) == 0 )
 						ship->Name = "Devastator";
-					else if( empire_ship_type == Ship::TYPE_NEBULON_B )
+					else if( strcasecmp( Data.Properties["empire_ship"].c_str(), "FRG" ) == 0 )
 						ship->Name = "Warspite";
 					else
 						ship->Name = "Empire Flagship";
 				}
 				else
 				{
-					Ship *ship = SpawnShip( rebel_ship_type, DefendingTeam );
+					Ship *ship = SpawnShip( GetShipClass(Data.Properties["rebel_ship"]), DefendingTeam );
 					ship->IsMissionObjective = true;
 					ship->CanRespawn = false;
 					ship->X = Rand::Double( 2500., 3500. );
@@ -2805,11 +2819,11 @@ void XWingServer::BeginFlying( void )
 					ship->SetFwdVec( -1., 0., 0. );
 					ship->SetUpVec( 0., 0., 1. );
 					ship->SetThrottle( 0.1, 120. );
-					if( rebel_ship_type == Ship::TYPE_CORVETTE )
+					if( strcasecmp( Data.Properties["rebel_ship"].c_str(), "CRV" ) == 0 )
 						ship->Name = "Tantive IV";
-					else if( rebel_ship_type == Ship::TYPE_NEBULON_B )
+					else if( strcasecmp( Data.Properties["rebel_ship"].c_str(), "FRG" ) == 0 )
 						ship->Name = "Redemption";
-					else if( rebel_ship_type == Ship::TYPE_CALAMARI_CRUISER )
+					else if( strcasecmp( Data.Properties["rebel_ship"].c_str(), "CRS" ) == 0 )
 						ship->Name = "Independence";
 					else
 						ship->Name = "Rebel Flagship";
@@ -2819,7 +2833,7 @@ void XWingServer::BeginFlying( void )
 			// Add Defend/Destroy base ships and their circular route.
 			else if( GameType == XWing::GameType::DEFEND_DESTROY )
 			{
-				Ship *rebel_ship = SpawnShip( rebel_ship_type, XWing::Team::REBEL );
+				Ship *rebel_ship = SpawnShip( GetShipClass(Data.Properties["rebel_ship"]), XWing::Team::REBEL );
 				rebel_ship->IsMissionObjective = true;
 				rebel_ship->CanRespawn = false;
 				rebel_ship->X = 2000.;
@@ -2828,16 +2842,16 @@ void XWingServer::BeginFlying( void )
 				rebel_ship->SetFwdVec( 0., -1., 0. );
 				rebel_ship->SetUpVec( 0., 0., 1. );
 				rebel_ship->SetThrottle( 1., 120. );
-				if( rebel_ship_type == Ship::TYPE_CORVETTE )
+				if( strcasecmp( Data.Properties["rebel_ship"].c_str(), "CRV" ) == 0 )
 					rebel_ship->Name = "Korolev";
-				else if( rebel_ship_type == Ship::TYPE_NEBULON_B )
+				else if( strcasecmp( Data.Properties["rebel_ship"].c_str(), "FRG" ) == 0 )
 					rebel_ship->Name = "Redemption";
-				else if( rebel_ship_type == Ship::TYPE_CALAMARI_CRUISER )
+				else if( strcasecmp( Data.Properties["rebel_ship"].c_str(), "CRS" ) == 0 )
 					rebel_ship->Name = "Independence";
 				else
 					rebel_ship->Name = "Rebel Flagship";
 				
-				Ship *empire_ship = SpawnShip( empire_ship_type, XWing::Team::EMPIRE );
+				Ship *empire_ship = SpawnShip( GetShipClass(Data.Properties["empire_ship"]), XWing::Team::EMPIRE );
 				empire_ship->IsMissionObjective = true;
 				empire_ship->CanRespawn = false;
 				empire_ship->X = -2000.;
@@ -2846,9 +2860,9 @@ void XWingServer::BeginFlying( void )
 				empire_ship->SetFwdVec( 0., 1., 0. );
 				empire_ship->SetUpVec( 0., 0., 1. );
 				empire_ship->SetThrottle( 1., 120. );
-				if( empire_ship_type == Ship::TYPE_ISD2 )
+				if( strcasecmp( Data.Properties["empire_ship"].c_str(), "ISD2" ) == 0 )
 					empire_ship->Name = "Devastator";
-				else if( empire_ship_type == Ship::TYPE_NEBULON_B )
+				else if( strcasecmp( Data.Properties["empire_ship"].c_str(), "FRG" ) == 0 )
 					empire_ship->Name = "Warspite";
 				else
 					empire_ship->Name = "Empire Flagship";
@@ -2864,12 +2878,31 @@ void XWingServer::BeginFlying( void )
 		uint32_t spectator_count = 0;
 		for( std::map<uint16_t,Player*>::iterator player_iter = Data.Players.begin(); player_iter != Data.Players.end(); player_iter ++ )
 		{
-			if( player_iter->second->Properties["team"] == "Rebel" )
-				rebel_count ++;
-			else if( player_iter->second->Properties["team"] == "Empire" )
-				empire_count ++;
-			else if( player_iter->second->Properties["team"] == "Spectator" )
+			if( strcasecmp( player_iter->second->Properties["ship"].c_str(), "Spectator" ) == 0 )
+			{
+				player_iter->second->Properties["team"] = "Spectator";
 				spectator_count ++;
+			}
+			else if( player_iter->second->Properties["ship"].length() )
+			{
+				const ShipClass *ship_class = GetShipClass( player_iter->second->Properties["ship"] );
+				if( ship_class && (ship_class->Team == XWing::Team::REBEL) )
+				{
+					player_iter->second->Properties["team"] = "Rebel";
+					rebel_count ++;
+				}
+				else if( ship_class && (ship_class->Team == XWing::Team::EMPIRE) )
+				{
+					player_iter->second->Properties["team"] = "Empire";
+					empire_count ++;
+				}
+			}
+			else
+			{
+				// Auto-Assign
+				player_iter->second->Properties["team"] = "";
+				player_iter->second->Properties["group"] = "0";
+			}
 		}
 		
 		std::map< uint32_t, std::map<uint8_t,Pos3D> > group_spawns;
@@ -2878,13 +2911,12 @@ void XWingServer::BeginFlying( void )
 		for( std::map<uint16_t,Player*>::iterator player_iter = Data.Players.begin(); player_iter != Data.Players.end(); player_iter ++ )
 		{
 			player_iter->second->Properties["kills"] = "0";
+			player_iter->second->Properties["kills_c"] = "0";
+			player_iter->second->Properties["kills_t"] = "0";
 			player_iter->second->Properties["deaths"] = "0";
 			
 			if( player_iter->second->Properties["team"] == "Spectator" )
-			{
-				player_iter->second->Properties["assigned_team"] = "Spectator";
 				continue;
-			}
 			
 			bool rebel = Rand::Bool();
 			if( (Data.Players.size() - spectator_count) == 1 )
@@ -2915,37 +2947,25 @@ void XWingServer::BeginFlying( void )
 			else
 				empire_count ++;
 			
-			player_iter->second->Properties["assigned_team"] = rebel ? "Rebel" : "Empire";
-			
-			uint32_t ship_type = rebel ? Ship::TYPE_XWING : Ship::TYPE_TIE_FIGHTER;
-			if( player_iter->second->Properties["ship"] == "X/W" )
-				ship_type = Ship::TYPE_XWING;
-			else if( player_iter->second->Properties["ship"] == "Y/W" )
-				ship_type = Ship::TYPE_YWING;
-			else if( player_iter->second->Properties["ship"] == "T/F" )
-				ship_type = Ship::TYPE_TIE_FIGHTER;
-			else if( player_iter->second->Properties["ship"] == "ISD2" )
-				ship_type = Ship::TYPE_ISD2;
-			else if( player_iter->second->Properties["ship"] == "CRV" )
-				ship_type = Ship::TYPE_CORVETTE;
-			
-			if( ! ffa )
-			{
-				if( rebel && (ship_type == Ship::TYPE_TIE_FIGHTER) )
-					ship_type = Ship::TYPE_XWING;
-				else if( (! rebel) && ((ship_type == Ship::TYPE_XWING) || (ship_type == Ship::TYPE_YWING)) )
-					ship_type = Ship::TYPE_TIE_FIGHTER;
-			}
-			
-			int group = ffa ? 0 : atoi( player_iter->second->Properties["group"].c_str() );
+			player_iter->second->Properties["team"] = rebel ? "Rebel" : "Empire";
 			std::string squadron = rebel ? "Rogue" : "Omega";
 			
-			Ship *ship = new Ship();
+			uint32_t team = XWing::Team::NONE;
+			int group = 0;
+			if( ! ffa )
+			{
+				team = (rebel ? XWing::Team::REBEL : XWing::Team::EMPIRE);
+				group = atoi( player_iter->second->Properties["group"].c_str() );
+			}
+			
+			const ShipClass *ship_class = GetShipClass( player_iter->second->Properties["ship"] );
+			if( ! ship_class )
+				ship_class = rebel ? GetShipClass(Data.Properties["ai_rebel_fighter"]) : GetShipClass(Data.Properties["ai_empire_fighter"]);
+			
+			Ship *ship = SpawnShip( ship_class, team );
 			ship->PlayerID = player_iter->second->ID;
-			ship->Team = (ffa ? XWing::Team::NONE : (rebel ? XWing::Team::REBEL : XWing::Team::EMPIRE));
 			ship->Group = group;
 			ship->CanRespawn = Respawn;
-			ship->SetType( ship_type );
 			ship->Name = squadron + std::string(" ") + Num::ToString( (int) Squadrons[ squadron ].size() + 1 );
 			ship->X = Rand::Double( -100., 100. ) + (rebel ? 1500. : -1500.);
 			ship->Y = Rand::Double( -100., 100. ) * (ffa ? 10. : 1.);
@@ -2988,17 +3008,27 @@ void XWingServer::BeginFlying( void )
 		int ai_waves = atoi( Data.Properties["ai_waves"].c_str() );
 		double ai_empire_ratio = atof( Data.Properties["ai_empire_ratio"].c_str() );
 		
+		bool rebel_use_bombers = (GameType == XWing::GameType::BATTLE_OF_YAVIN) || (GameType == XWing::GameType::DEFEND_DESTROY) || ((GameType == XWing::GameType::CAPITAL_SHIP_HUNT) && (DefendingTeam == XWing::Team::EMPIRE));
+		bool empire_use_bombers = (GameType == XWing::GameType::DEFEND_DESTROY) || ((GameType == XWing::GameType::CAPITAL_SHIP_HUNT) && (DefendingTeam == XWing::Team::REBEL));
+		
 		for( int wave = 0; wave < ai_waves; wave ++ )
 		{
-			uint32_t rebel_ship_type = Ship::TYPE_XWING;
-			std::string rebel_squadron = "Red";
-			if( GameType == XWing::GameType::BATTLE_OF_YAVIN )
+			const ShipClass *rebel_fighter_class = GetShipClass(Data.Properties["ai_rebel_fighter"]);
+			const ShipClass *rebel_ship_class = rebel_fighter_class;
+			if( rebel_use_bombers && rebel_fighter_class )
 			{
-				if( Squadrons[ "Red" ].size() > Squadrons[ "Gold" ].size() * 2 )
-				{
-					rebel_ship_type = Ship::TYPE_YWING;
-					rebel_squadron = "Gold";
-				}
+				const ShipClass *rebel_bomber_class = GetShipClass(Data.Properties["ai_rebel_bomber"]);
+				if( rebel_bomber_class && (Squadrons[ rebel_fighter_class->Squadron ].size() > Squadrons[ rebel_bomber_class->Squadron ].size() * 2) )
+					rebel_ship_class = rebel_bomber_class;
+			}
+			
+			const ShipClass *empire_fighter_class = GetShipClass(Data.Properties["ai_empire_fighter"]);
+			const ShipClass *empire_ship_class = empire_fighter_class;
+			if( empire_use_bombers && empire_fighter_class )
+			{
+				const ShipClass *empire_bomber_class = GetShipClass(Data.Properties["ai_empire_bomber"]);
+				if( empire_bomber_class && (Squadrons[ empire_fighter_class->Squadron ].size() > Squadrons[ empire_bomber_class->Squadron ].size() * 2) )
+					empire_ship_class = empire_bomber_class;
 			}
 			
 			int ai_ships = wave ? ai_in_other_waves : (ai_in_first_wave - (rebel_count + empire_count)%2);
@@ -3020,14 +3050,13 @@ void XWingServer::BeginFlying( void )
 				else
 					empire_count ++;
 				
-				uint32_t ship_type = rebel ? rebel_ship_type : (uint32_t) Ship::TYPE_TIE_FIGHTER;
-				std::string squadron = rebel ? rebel_squadron : "Alpha";
+				const ShipClass *ship_class = rebel ? rebel_ship_class : empire_ship_class;
+				std::string squadron = (ship_class && ship_class->Squadron.length()) ? ship_class->Squadron : (rebel ? "Rebel" : "Imperial");
+				uint32_t team = (ffa ? XWing::Team::NONE : (rebel ? XWing::Team::REBEL : XWing::Team::EMPIRE));
 				
-				Ship *ship = new Ship();
+				Ship *ship = SpawnShip( ship_class, team );
 				ship->PlayerID = 0;
-				ship->Team = (ffa ? XWing::Team::NONE : (rebel ? XWing::Team::REBEL : XWing::Team::EMPIRE));
 				ship->CanRespawn = Respawn;
-				ship->SetType( ship_type );
 				ship->Name = squadron + std::string(" ") + Num::ToString( (int) Squadrons[ squadron ].size() + 1 );
 				if( GameType == XWing::GameType::BATTLE_OF_YAVIN )
 				{
@@ -3059,65 +3088,22 @@ void XWingServer::BeginFlying( void )
 			std::list<std::string> spawn_list = Str::SplitToList( spawn->second, "," );
 			for( std::list<std::string>::iterator spawn_iter = spawn_list.begin(); spawn_iter != spawn_list.end(); spawn_iter ++ )
 			{
-				if( *spawn_iter == "isd2" )
+				const ShipClass *sc = GetShipClass(*spawn_iter);
+				if( sc )
 				{
-					Ship *ship = SpawnShip( Ship::TYPE_ISD2, XWing::Team::EMPIRE );
+					uint32_t team = sc->Team;
+					if( !( team || ffa ) )
+						team = XWing::Team::REBEL;
+					Ship *ship = SpawnShip( sc, team );
+					bool rebel = (team == XWing::Team::REBEL);
 					ship->CanRespawn = false;
 					ship->X = Rand::Double( -1000., 1000. );
-					ship->Y = Rand::Double( -2500., -1500. );
+					ship->Y = Rand::Double( 1500., 2500. ) * (rebel ? 1. : -1);
 					ship->Z = Rand::Double( -1000., 1000. ) + ((GameType == XWing::GameType::BATTLE_OF_YAVIN) ? 2500. : 0.);
-					ship->SetFwdVec( 0., 1., 0. );
+					ship->SetFwdVec( 0., rebel ? -1. : 1., 0. );
 					ship->SetUpVec( 0., 0., 1. );
 					ship->SetThrottle( 0.1, 120. );
-					ship->Name = "Imperator";
-				}
-				else if( *spawn_iter == "crv" )
-				{
-					Ship *ship = SpawnShip( Ship::TYPE_CORVETTE, XWing::Team::REBEL );
-					ship->CanRespawn = false;
-					ship->X = Rand::Double( -500., 500. );
-					ship->Y = Rand::Double( 1500., 2500. );
-					ship->Z = Rand::Double( -500., 500. ) + ((GameType == XWing::GameType::BATTLE_OF_YAVIN) ? 2000. : 0.);
-					ship->SetFwdVec( 0., -1., 0. );
-					ship->SetUpVec( 0., 0., 1. );
-					ship->SetThrottle( 0.1, 120. );
-					ship->Name = "Korolev";
-				}
-				else if( *spawn_iter == "frg" )
-				{
-					Ship *ship = SpawnShip( Ship::TYPE_NEBULON_B, XWing::Team::REBEL );
-					ship->CanRespawn = false;
-					ship->X = Rand::Double( -500., 500. );
-					ship->Y = Rand::Double( 1500., 2500. );
-					ship->Z = Rand::Double( -500., 500. ) + ((GameType == XWing::GameType::BATTLE_OF_YAVIN) ? 2000. : 0.);
-					ship->SetFwdVec( 0., -1., 0. );
-					ship->SetUpVec( 0., 0., 1. );
-					ship->SetThrottle( 0.1, 120. );
-					ship->Name = "Salvation";
-				}
-				else if( *spawn_iter == "frg-i" )
-				{
-					Ship *ship = SpawnShip( Ship::TYPE_NEBULON_B, XWing::Team::EMPIRE );
-					ship->CanRespawn = false;
-					ship->X = Rand::Double( -500., 500. );
-					ship->Y = Rand::Double( -2500., -1500. );
-					ship->Z = Rand::Double( -500., 500. ) + ((GameType == XWing::GameType::BATTLE_OF_YAVIN) ? 2000. : 0.);
-					ship->SetFwdVec( 0., -1., 0. );
-					ship->SetUpVec( 0., 0., 1. );
-					ship->SetThrottle( 0.1, 120. );
-					ship->Name = "Warspite";
-				}
-				else if( *spawn_iter == "crs" )
-				{
-					Ship *ship = SpawnShip( Ship::TYPE_CALAMARI_CRUISER, XWing::Team::REBEL );
-					ship->CanRespawn = false;
-					ship->X = Rand::Double( -1000., 1000. );
-					ship->Y = Rand::Double( 1500., 2500. );
-					ship->Z = Rand::Double( -1000., 1000. ) + ((GameType == XWing::GameType::BATTLE_OF_YAVIN) ? 2500. : 0.);
-					ship->SetFwdVec( 0., -1., 0. );
-					ship->SetUpVec( 0., 0., 1. );
-					ship->SetThrottle( 0.1, 120. );
-					ship->Name = "Defiance";
+					ship->Name = sc->LongName;
 				}
 			}
 		}
@@ -3130,7 +3116,7 @@ void XWingServer::BeginFlying( void )
 		TeamScores[ XWing::Team::EMPIRE ] = 0;
 		ShipScores.clear();
 	}
-	else
+	else if( State == XWing::State::FLYING )
 	{
 		// Late joiners want to Fly.
 		
@@ -3141,9 +3127,9 @@ void XWingServer::BeginFlying( void )
 		
 		for( std::map<uint16_t,Player*>::iterator player_iter = Data.Players.begin(); player_iter != Data.Players.end(); player_iter ++ )
 		{
-			if( player_iter->second->Properties["assigned_team"] == "Rebel" )
+			if( player_iter->second->Properties["team"] == "Rebel" )
 				rebel_count ++;
-			else if( player_iter->second->Properties["assigned_team"] == "Empire" )
+			else if( player_iter->second->Properties["team"] == "Empire" )
 				empire_count ++;
 		}
 		
@@ -3152,36 +3138,44 @@ void XWingServer::BeginFlying( void )
 		
 		for( std::map<uint16_t,Player*>::iterator player_iter = Data.Players.begin(); player_iter != Data.Players.end(); player_iter ++ )
 		{
-			if( player_iter->second->Properties["assigned_team"].empty() )
+			if( player_iter->second->Properties["team"].empty() )
 			{
 				player_iter->second->Properties["kills"] = "0";
+				player_iter->second->Properties["kills_c"] = "0";
+				player_iter->second->Properties["kills_t"] = "0";
 				player_iter->second->Properties["deaths"] = "0";
 				
-				if( player_iter->second->Properties["team"] == "Spectator" )
-				{
-					player_iter->second->Properties["assigned_team"] = "Spectator";
-					continue;
-				}
-				
 				bool rebel = Rand::Bool();
-				if( player_iter->second->Properties["team"] == "Rebel" )
-					rebel = true;
-				else if( player_iter->second->Properties["team"] == "Empire" )
-					rebel = false;
-				else if( rebel_count < empire_count )
+				if( rebel_count < empire_count )
 					rebel = true;
 				else if( rebel_count > empire_count )
 					rebel = false;
+				
+				if( player_iter->second->Properties["ship"] == "Spectator" )
+				{
+					player_iter->second->Properties["team"] = "Spectator";
+					continue;
+				}
+				else if( player_iter->second->Properties["ship"].length() )
+				{
+					const ShipClass *ship_class = GetShipClass( player_iter->second->Properties["ship"] );
+					if( ship_class && (ship_class->Team == XWing::Team::REBEL) )
+						rebel = true;
+					else if( ship_class && (ship_class->Team == XWing::Team::EMPIRE) )
+						rebel = false;
+				}
+				else
+					// Auto-Assign
+					player_iter->second->Properties["group"] = "0";
 				
 				if( rebel )
 					rebel_count ++;
 				else
 					empire_count ++;
 				
-				player_iter->second->Properties["assigned_team"] = rebel ? "Rebel" : "Empire";
-				
 				bool ffa = (GameType == XWing::GameType::FFA_DEATHMATCH);
 				uint32_t team = (ffa ? XWing::Team::NONE : (rebel ? XWing::Team::REBEL : XWing::Team::EMPIRE));
+				player_iter->second->Properties["team"] = rebel ? "Rebel" : "Empire";
 				
 				// By default, the global Respawn variable allows respawn, and the position is randomized.
 				bool ready_to_spawn = Respawn;
@@ -3222,27 +3216,24 @@ void XWingServer::BeginFlying( void )
 				
 				if( ready_to_spawn )
 				{
-					uint32_t ship_type = rebel ? Ship::TYPE_XWING : Ship::TYPE_TIE_FIGHTER;
-					if( player_iter->second->Properties["ship"] == "X/W" )
-						ship_type = Ship::TYPE_XWING;
-					else if( player_iter->second->Properties["ship"] == "Y/W" )
-						ship_type = Ship::TYPE_YWING;
-					else if( player_iter->second->Properties["ship"] == "T/F" )
-						ship_type = Ship::TYPE_TIE_FIGHTER;
-					else if( player_iter->second->Properties["ship"] == "ISD2" )
-						ship_type = Ship::TYPE_ISD2;
-					else if( player_iter->second->Properties["ship"] == "CRV" )
-						ship_type = Ship::TYPE_CORVETTE;
+					const ShipClass *ship_class = GetShipClass( player_iter->second->Properties["ship"] );
+					if( ship_class && ! ffa )
+					{
+						if( rebel && (ship_class->Team == XWing::Team::EMPIRE) )
+							ship_class = NULL;
+						else if( (! rebel) && (ship_class->Team == XWing::Team::REBEL) )
+							ship_class = NULL;
+					}
+					if( ! ship_class )
+						ship_class = rebel ? GetShipClass(Data.Properties["ai_rebel_fighter"]) : GetShipClass(Data.Properties["ai_empire_fighter"]);
 					
 					int group = ffa ? 0 : atoi( player_iter->second->Properties["group"].c_str() );
 					std::string squadron = rebel ? "Rogue" : "Omega";
 					
-					Ship *ship = new Ship();
+					Ship *ship = SpawnShip( ship_class, team );
 					ship->PlayerID = player_iter->second->ID;
-					ship->Team = team;
 					ship->Group = group;
 					ship->CanRespawn = true;
-					ship->SetType( ship_type );
 					ship->Name = squadron + std::string(" ") + Num::ToString( (int) Squadrons[ squadron ].size() + 1 );
 					if( fixed_spawn )
 					{
@@ -3275,9 +3266,11 @@ void XWingServer::BeginFlying( void )
 	
 	// Send list of objects to the clients.
 	Packet obj_list = Packet( Raptor::Packet::OBJECTS_ADD );
-	obj_list.AddUInt( Data.GameObjects.size() );
+	obj_list.AddUInt( Data.GameObjects.size() - ShipClasses.size() );
 	for( std::map<uint32_t,GameObject*>::iterator obj_iter = Data.GameObjects.begin(); obj_iter != Data.GameObjects.end(); obj_iter ++ )
 	{
+		if( obj_iter->second->Type() == XWing::Object::SHIP_CLASS )
+			continue;
 		obj_list.AddUInt( obj_iter->second->ID );
 		obj_list.AddUInt( obj_iter->second->Type() );
 		obj_iter->second->AddToInitPacket( &obj_list );
@@ -3296,21 +3289,26 @@ void XWingServer::BeginFlying( void )
 
 void XWingServer::SendScores( void )
 {
+	// FIXME: Is there a cleaner way to store and transmit this information?
+	
 	for( std::map<uint16_t,Player*>::iterator player_iter = Data.Players.begin(); player_iter != Data.Players.end(); player_iter ++ )
 	{
 		Packet player_properties( Raptor::Packet::PLAYER_PROPERTIES );
 		player_properties.AddUShort( player_iter->second->ID );
-		player_properties.AddUInt( 3 );
+		player_properties.AddUInt( 5 );
 		player_properties.AddString( "kills" );
 		player_properties.AddString( player_iter->second->Properties["kills"] );
+		player_properties.AddString( "kills_c" );
+		player_properties.AddString( player_iter->second->Properties["kills_c"] );
+		player_properties.AddString( "kills_t" );
+		player_properties.AddString( player_iter->second->Properties["kills_t"] );
 		player_properties.AddString( "deaths" );
 		player_properties.AddString( player_iter->second->Properties["deaths"] );
-		player_properties.AddString( "assigned_team" );
-		player_properties.AddString( player_iter->second->Properties["assigned_team"] );
+		player_properties.AddString( "team" );
+		player_properties.AddString( player_iter->second->Properties["team"] );
 		Net.SendAll( &player_properties );
 	}
 	
-	// FIXME
 	Data.Properties[ "team_score_rebel" ] = Num::ToString( TeamScores[ XWing::Team::REBEL ] );
 	Data.Properties[ "team_score_empire" ] = Num::ToString( TeamScores[ XWing::Team::EMPIRE ] );
 	Packet info( Raptor::Packet::INFO );
@@ -3336,30 +3334,75 @@ double XWingServer::RoundTimeRemaining( void )
 }
 
 
-Ship *XWingServer::SpawnShip( uint32_t ship_type, uint32_t team )
+const ShipClass *XWingServer::GetShipClass( const std::string &name )
 {
-	Ship *ship = new Ship();
-	ship->Data = &Data;
+	for( std::map<uint32_t,GameObject*>::const_iterator obj_iter = Data.GameObjects.begin(); obj_iter != Data.GameObjects.end(); obj_iter ++ )
+	{
+		if( obj_iter->second->Type() == XWing::Object::SHIP_CLASS )
+		{
+			const ShipClass *sc = (const ShipClass*) obj_iter->second;
+			if( strcasecmp( sc->ShortName.c_str(), name.c_str() ) == 0 )
+				return sc;
+		}
+	}
+	
+	return NULL;
+}
+
+
+Ship *XWingServer::SpawnShip( const ShipClass *ship_class, uint32_t team )
+{
+	Ship *ship = new Ship( ship_class );
 	ship->Team = team;
-	ship->SetType( ship_type );
+	ship->Data = &Data;
 	Data.AddObject( ship );
 	ShipScores[ ship->ID ] = 0;
 	
-	std::map<std::string,ModelObject>::const_iterator turret_iter = ship->Shape.Objects.find( "Turrets" );
-	if( turret_iter != ship->Shape.Objects.end() )
+	if( ship_class )
+	{
+		for( std::vector<ShipClassTurret>::const_iterator turret_iter = ship_class->Turrets.begin(); turret_iter != ship_class->Turrets.end(); turret_iter ++ )
+		{
+			Turret *turret = new Turret();
+			turret->Data = &Data;
+			turret->Visible = turret_iter->Visible;
+			turret->ParentControl = turret_iter->ParentControl;
+			turret->Weapon = turret_iter->Weapon;
+			if( team == XWing::Team::EMPIRE )
+			{
+				if( turret->Weapon == Shot::TYPE_TURBO_LASER_RED )
+					turret->Weapon = Shot::TYPE_TURBO_LASER_GREEN;
+				else if( turret->Weapon == Shot::TYPE_LASER_RED )
+					turret->Weapon = Shot::TYPE_LASER_GREEN;
+			}
+			turret->SingleShotDelay = turret_iter->SingleShotDelay;
+			turret->FiringMode = turret_iter->FiringMode;
+			if( ! turret->FiringMode )
+				turret->FiringMode = (team == XWing::Team::EMPIRE) ? 2 : 1;
+			turret->TargetArc = turret_iter->TargetArc;
+			turret->MinGunPitch = turret_iter->MinGunPitch;
+			turret->MaxGunPitch = turret_iter->MaxGunPitch;
+			Vec3D center( turret_iter->X, turret_iter->Y, turret_iter->Z );
+			turret->Attach( ship, &center, &(turret_iter->Up), &(turret_iter->Fwd), turret_iter->ParentControl );
+			Data.AddObject( turret );
+		}
+	}
+	
+	std::map<std::string,ModelObject>::const_iterator model_turrets = ship->Shape.Objects.find( "Turrets" );
+	if( model_turrets != ship->Shape.Objects.end() )
 	{
 		Vec3D up( 0., 1., 0. );
-		for( std::vector<Vec3D>::const_iterator point_iter = turret_iter->second.Points.begin(); point_iter != turret_iter->second.Points.end(); point_iter ++ )
+		Vec3D fwd( 1., 0., 0. );
+		for( std::vector<Vec3D>::const_iterator point_iter = model_turrets->second.Points.begin(); point_iter != model_turrets->second.Points.end(); point_iter ++ )
 		{
 			Turret *turret = new Turret();
 			turret->Data = &Data;
 			turret->Weapon = (team == XWing::Team::EMPIRE) ? Shot::TYPE_TURBO_LASER_GREEN : Shot::TYPE_TURBO_LASER_RED;
 			if( turret->Weapon == Shot::TYPE_TURBO_LASER_RED )
 				turret->FiringMode = 1;
-			turret->Attach( ship, &(*point_iter), &up, false );
+			turret->Attach( ship, &(*point_iter), &up, &fwd, false );
 			Data.AddObject( turret );
 		}
-		for( std::vector< std::vector<Vec3D> >::const_iterator line_iter = turret_iter->second.Lines.begin(); line_iter != turret_iter->second.Lines.end(); line_iter ++ )
+		for( std::vector< std::vector<Vec3D> >::const_iterator line_iter = model_turrets->second.Lines.begin(); line_iter != model_turrets->second.Lines.end(); line_iter ++ )
 		{
 			if( line_iter->size() >= 2 )
 			{
@@ -3372,11 +3415,11 @@ Ship *XWingServer::SpawnShip( uint32_t ship_type, uint32_t team )
 					turret->FiringMode = 1;
 				if( line_iter->size() >= 3 )
 				{
-					turret->Fwd = (*line_iter).at( 2 ) - (*line_iter).at( 0 );
-					turret->Fwd.ScaleTo( 1. );
+					fwd = (*line_iter).at( 2 ) - (*line_iter).at( 0 );
+					fwd.ScaleTo( 1. );
 					turret->TargetArc = 180.;
 				}
-				turret->Attach( ship, &((*line_iter).at( 0 )), &up, false );
+				turret->Attach( ship, &((*line_iter).at( 0 )), &up, &fwd, false );
 				Data.AddObject( turret );
 			}
 		}

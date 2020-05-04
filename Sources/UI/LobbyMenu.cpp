@@ -7,6 +7,7 @@
 #include "XWingDefs.h"
 #include "XWingGame.h"
 #include "Num.h"
+#include "ShipClass.h"
 
 
 LobbyMenu::LobbyMenu( void )
@@ -31,9 +32,36 @@ LobbyMenu::LobbyMenu( void )
 	
 	AddElement( LeaveButton = new LobbyMenuLeaveButton() );
 	AddElement( FlyButton = new LobbyMenuFlyButton() );
-	AddElement( TeamButton = new LobbyMenuTeamButton( tiny ? 12 : 17 ) );
-	AddElement( GroupButton = new LobbyMenuGroupButton( tiny ? 12 : 17 ) );
-	AddElement( ShipButton = new LobbyMenuShipButton( tiny ? 12 : 17 ) );
+	
+	ShipDropDown = new LobbyMenuPlayerDropDown( NULL, Raptor::Game->Res.GetFont( "Verdana.ttf", tiny ? 13 : 19 ), Font::ALIGN_TOP_LEFT, 0, "ship" );
+	ShipDropDown->AddItem( "", "[Auto-Assign]" );
+	for( std::map<uint32_t,GameObject*>::const_iterator obj_iter = Raptor::Game->Data.GameObjects.begin(); obj_iter != Raptor::Game->Data.GameObjects.end(); obj_iter ++ )
+	{
+		if( obj_iter->second->Type() == XWing::Object::SHIP_CLASS )
+		{
+			const ShipClass *sc = (const ShipClass*) obj_iter->second;
+			if( sc->PlayersCanFly() )
+				ShipDropDown->AddItem( sc->ShortName, sc->LongName );
+		}
+	}
+	ShipDropDown->AddItem( "Spectator", "[Spectator]" );
+	Player *player = Raptor::Game->Data.GetPlayer( Raptor::Game->PlayerID );
+	if( player )
+		ShipDropDown->Value = player->Properties["ship"];
+	ShipDropDown->Update();
+	AddElement( ShipDropDown );
+	
+	GroupDropDown = new LobbyMenuPlayerDropDown( NULL, Raptor::Game->Res.GetFont( "Verdana.ttf", tiny ? 13 : 19 ), Font::ALIGN_TOP_LEFT, 0, "group" );
+	GroupDropDown->AddItem( "0", "Solo" );
+	GroupDropDown->AddItem( "1", "Group 1" );
+	GroupDropDown->AddItem( "2", "Group 2" );
+	GroupDropDown->AddItem( "3", "Group 3" );
+	GroupDropDown->AddItem( "4", "Group 4" );
+	GroupDropDown->Value = "0";
+	if( player )
+		ShipDropDown->Value = player->Properties["group"];
+	GroupDropDown->Update();
+	AddElement( GroupDropDown );
 	
 	AddElement( PlayerName = new TextBox( NULL, Raptor::Game->Res.GetFont( "Verdana.ttf", tiny ? 13 : 19 ), Font::ALIGN_MIDDLE_LEFT ) );
 	PlayerName->ReturnDeselects = false;
@@ -140,7 +168,7 @@ void LobbyMenu::UpdateRects( void )
 	if( Rect.w >= 1024 )
 		LeaveButton->Rect.w = 384;
 	else
-		LeaveButton->Rect.w = Rect.w / 2 - TeamButton->Rect.w / 2 - LeaveButton->Rect.x * 2;
+		LeaveButton->Rect.w = Rect.w / 2 - LeaveButton->Rect.x * 2;
 	FlyButton->Rect.w = LeaveButton->Rect.w;
 	
 	LeaveButton->Rect.y = Rect.h - LeaveButton->Rect.h - 32;
@@ -152,82 +180,31 @@ void LobbyMenu::UpdateRects( void )
 	PlayerName->Rect.w = (FlyButton->Rect.x + FlyButton->Rect.w - PlayerList->Rect.x) / 2 - 5;
 	PlayerName->Rect.y = TitleFont->GetHeight() + 20;
 	
-	TeamButton->Rect.x = LeaveButton->Rect.x;
-	TeamButton->Rect.y = PlayerName->Rect.y + PlayerName->Rect.h + 10;
-	TeamButton->Rect.w = tiny ? 100 : 140;
-	TeamButton->Rect.h = TeamButton->LabelFont->GetHeight() + 6;
+	ShipDropDown->Rect.x = LeaveButton->Rect.x;
+	ShipDropDown->Rect.y = PlayerName->Rect.y + PlayerName->Rect.h + 10;
+	ShipDropDown->Rect.w = tiny ? 200 : 300;
+	ShipDropDown->Rect.h = ShipDropDown->LabelFont->GetHeight() + 6;
 	
-	GroupButton->Rect.x = TeamButton->Rect.x + TeamButton->Rect.w + 10;
-	GroupButton->Rect.y = TeamButton->Rect.y;
-	GroupButton->Rect.w = TeamButton->Rect.w;
-	GroupButton->Rect.h = TeamButton->Rect.h;
+	GroupDropDown->Rect.x = ShipDropDown->Rect.x + ShipDropDown->Rect.w + 10;
+	GroupDropDown->Rect.y = ShipDropDown->Rect.y;
+	GroupDropDown->Rect.w = tiny ? 80 : 100;
+	GroupDropDown->Rect.h = GroupDropDown->LabelFont->GetHeight() + 6;
 	
-	ShipButton->Rect.x = GroupButton->Rect.x + GroupButton->Rect.w + 10;
-	ShipButton->Rect.y = GroupButton->Rect.y;
-	ShipButton->Rect.w = GroupButton->Rect.w;
-	ShipButton->Rect.h = GroupButton->Rect.h;
-	
-	GroupButton->Enabled = true;
-	ShipButton->Enabled = true;
-	Player *player = Raptor::Game->Data.GetPlayer( Raptor::Game->PlayerID );
-	if( player )
+	if( ShipDropDown->Value.length() && (ShipDropDown->Value != "Spectator") )
 	{
-		bool ffa = ( Raptor::Game->Data.Properties["gametype"].find("ffa_") == 0 );
-		if( (player->Properties["team"] == "Spectator") || ((! ffa) && (player->Properties["team"] == "")) )
-		{
-			GroupButton->Enabled = false;
-			ShipButton->Enabled = false;
-		}
-		else if( ffa )
-			GroupButton->Enabled = false;
-		
-		// FIXME: Remove this when there are more Empire ships to choose from.
-		if( (! ffa) && (player->Properties["team"] == "Empire") )
-			ShipButton->Enabled = false;
-	}
-	
-	if( GroupButton->Enabled )
-	{
-		GroupButton->Alpha = TeamButton->Alpha;
-		GroupButton->AlphaNormal = TeamButton->AlphaNormal;
-		GroupButton->RedOver = TeamButton->RedOver;
-		GroupButton->BlueOver = TeamButton->BlueOver;
-		GroupButton->GreenOver = TeamButton->GreenOver;
-		GroupButton->AlphaOver = TeamButton->AlphaOver;
+		GroupDropDown->Visible = true;
+		GroupDropDown->Enabled = true;
 	}
 	else
 	{
-		GroupButton->Alpha = 0.5f;
-		GroupButton->AlphaNormal = 0.5f;
-		GroupButton->RedOver = TeamButton->RedNormal;
-		GroupButton->BlueOver = TeamButton->BlueNormal;
-		GroupButton->GreenOver = TeamButton->GreenNormal;
-		GroupButton->AlphaOver = 0.5f;
-	}
-	
-	if( ShipButton->Enabled )
-	{
-		ShipButton->Alpha = TeamButton->Alpha;
-		ShipButton->AlphaNormal = TeamButton->AlphaNormal;
-		ShipButton->RedOver = TeamButton->RedOver;
-		ShipButton->BlueOver = TeamButton->BlueOver;
-		ShipButton->GreenOver = TeamButton->GreenOver;
-		ShipButton->AlphaOver = TeamButton->AlphaOver;
-	}
-	else
-	{
-		ShipButton->Alpha = 0.5f;
-		ShipButton->AlphaNormal = 0.5f;
-		ShipButton->RedOver = TeamButton->RedNormal;
-		ShipButton->BlueOver = TeamButton->BlueNormal;
-		ShipButton->GreenOver = TeamButton->GreenNormal;
-		ShipButton->AlphaOver = 0.5f;
+		GroupDropDown->Visible = false;
+		GroupDropDown->Enabled = false;
 	}
 	
 	PlayerList->Rect.x = LeaveButton->Rect.x;
 	PlayerList->Rect.w = (FlyButton->Rect.x + FlyButton->Rect.w - PlayerList->Rect.x) / 2 - 5;
-	PlayerList->Rect.y = TeamButton->Rect.y + TeamButton->Rect.h + 10;
-	PlayerList->Rect.h = 400 - (PlayerName->Rect.h + TeamButton->Rect.h + 20);
+	PlayerList->Rect.y = ShipDropDown->Rect.y + ShipDropDown->Rect.h + 10;
+	PlayerList->Rect.h = 400 - (PlayerName->Rect.h + ShipDropDown->Rect.h + 20);
 	if( PlayerList->Rect.h > Rect.h / 3 )
 		PlayerList->Rect.h = Rect.h / 3;
 	
@@ -308,30 +285,55 @@ void LobbyMenu::UpdatePlayerList( void )
 	std::string prev_selected = PlayerList->SelectedValue();
 	PlayerList->Clear();
 	
-	bool ffa = ( Raptor::Game->Data.Properties["gametype"].find("ffa_") == 0 );
+	bool ffa = (Raptor::Game->Data.Properties["gametype"].find("ffa_") == 0);
 	
 	for( std::map<uint16_t,Player*>::iterator player_iter = Raptor::Game->Data.Players.begin(); player_iter != Raptor::Game->Data.Players.end(); player_iter ++ )
 	{
 		std::string display_name = player_iter->second->Name;
 		
+		std::string ship = player_iter->second->Properties["ship"];
 		std::string team = player_iter->second->Properties["team"];
-		int group = ffa ? 0 : atoi( player_iter->second->Properties["group"].c_str() );
-		bool spectator = (team == "Spectator");
-		if( (! ffa) || spectator )
-		{
-			if( team.empty() )
-				display_name += " [Auto-Team]";
-			else if( group && ! spectator )
-				display_name += " [" + team + " group " + Num::ToString(group) + "]";
-			else
-				display_name += " [" + team + "]";
-		}
+		if( ship.length() )
+			display_name += " [" + ship + "]";
+		else if( team.length() )
+			display_name += " [" + team + "]";  // Auto-Assigned
+		else if( ! ffa )
+			display_name += " [Auto-Assign]";
 		
-		if( team != "Spectator" )
+		if( ship.length() && (ship != "Spectator") && ! ffa )
 		{
-			std::string ship = player_iter->second->Properties["ship"];
-			if( ! ship.empty() )
-				display_name += " [" + ship + "]";
+			if( ! team.length() )
+			{
+				// Ship selected in a team game, but not playing yet.
+				
+				const ShipClass *ship_class = NULL;
+				for( std::map<uint32_t,GameObject*>::const_iterator obj_iter = Raptor::Game->Data.GameObjects.begin(); obj_iter != Raptor::Game->Data.GameObjects.end(); obj_iter ++ )
+				{
+					if( obj_iter->second->Type() == XWing::Object::SHIP_CLASS )
+					{
+						const ShipClass *sc = (const ShipClass*) obj_iter->second;
+						if( ship == sc->ShortName )
+						{
+							ship_class = sc;
+							break;
+						}
+					}
+				}
+				
+				if( ship_class && (ship_class->Team == XWing::Team::REBEL) )
+					team = "Rebel";
+				else if( ship_class && (ship_class->Team == XWing::Team::EMPIRE) )
+					team = "Empire";
+			}
+			
+			if( team.length() )
+			{
+				int group = atoi( player_iter->second->Properties["group"].c_str() );
+				if( group )
+					display_name += " [" + team + " group " + Num::ToString(group) + "]";
+				else
+					display_name += " [" + team + "]";
+			}
 		}
 		
 		PlayerList->AddItem( Num::ToString( player_iter->second->ID ), display_name );
@@ -495,26 +497,30 @@ void LobbyMenu::UpdateInfoBoxes( void )
 		Configs["defending_team"]->Value->LabelText = defending_team;
 	
 	std::string rebel_ship = Raptor::Game->Data.Properties["rebel_ship"];
-	if( rebel_ship == "isd2" )
-		Configs["rebel_ship"]->Value->LabelText = "Imperial Star Destroyer";
-	else if( rebel_ship == "crv" )
-		Configs["rebel_ship"]->Value->LabelText = "Corellian Corvette";
-	else if( rebel_ship == "frg" )
-		Configs["rebel_ship"]->Value->LabelText = "Nebulon B Frigate";
-	else if( rebel_ship == "crs" )
-		Configs["rebel_ship"]->Value->LabelText = "Mon Calamari Cruiser";
+	std::string empire_ship = Raptor::Game->Data.Properties["empire_ship"];
+	const ShipClass *rebel_class = NULL;
+	const ShipClass *empire_class = NULL;
+	for( std::map<uint32_t,GameObject*>::const_iterator obj_iter = Raptor::Game->Data.GameObjects.begin(); obj_iter != Raptor::Game->Data.GameObjects.end(); obj_iter ++ )
+	{
+		if( obj_iter->second->Type() == XWing::Object::SHIP_CLASS )
+		{
+			const ShipClass *sc = (const ShipClass*) obj_iter->second;
+			if( sc->ShortName == rebel_ship )
+				rebel_class = sc;
+			if( sc->ShortName == empire_ship )
+				empire_class = sc;
+			if( rebel_class && empire_class )
+				break;
+		}
+	}
+	
+	if( rebel_class )
+		Configs["rebel_ship"]->Value->LabelText = rebel_class->LongName;
 	else
 		Configs["rebel_ship"]->Value->LabelText = rebel_ship;
 	
-	std::string empire_ship = Raptor::Game->Data.Properties["empire_ship"];
-	if( empire_ship == "isd2" )
-		Configs["empire_ship"]->Value->LabelText = "Imperial Star Destroyer";
-	else if( empire_ship == "crv" )
-		Configs["empire_ship"]->Value->LabelText = "Corellian Corvette";
-	else if( empire_ship == "frg" )
-		Configs["empire_ship"]->Value->LabelText = "Nebulon B Frigate";
-	else if( empire_ship == "crs" )
-		Configs["empire_ship"]->Value->LabelText = "Mon Calamari Cruiser";
+	if( empire_class )
+		Configs["empire_ship"]->Value->LabelText = empire_class->LongName;
 	else
 		Configs["empire_ship"]->Value->LabelText = empire_ship;
 	
@@ -530,7 +536,15 @@ void LobbyMenu::UpdateInfoBoxes( void )
 	Player *player = Raptor::Game->Data.GetPlayer( Raptor::Game->PlayerID );
 	bool admin = (player && player->Properties["admin"] == "true");
 	bool permissions_all = (Raptor::Game->Data.Properties["permissions"] == "all");
-	bool flying = Raptor::Game->Data.GameObjects.size();
+	bool flying = false;
+	for( std::map<uint32_t,GameObject*>::const_iterator obj = Raptor::Game->Data.GameObjects.begin(); obj != Raptor::Game->Data.GameObjects.end(); obj ++ )
+	{
+		if( obj->second->Type() != XWing::Object::SHIP_CLASS )
+		{
+			flying = true;
+			break;
+		}
+	}
 	
 	// Show "Fly" button for admin or late joiners.
 	FlyButton->Enabled = (admin || permissions_all || flying);
@@ -694,9 +708,16 @@ void LobbyMenu::Draw( void )
 	
 	Layer::Draw();
 	
-	std::string title = "Pre-Game Lobby";
-	if( Raptor::Game->Data.GameObjects.size() )
-		title = "Game-In-Progress Lobby";
+	bool flying = false;
+	for( std::map<uint32_t,GameObject*>::const_iterator obj = Raptor::Game->Data.GameObjects.begin(); obj != Raptor::Game->Data.GameObjects.end(); obj ++ )
+	{
+		if( obj->second->Type() != XWing::Object::SHIP_CLASS )
+		{
+			flying = true;
+			break;
+		}
+	}
+	std::string title = flying ? "Game-In-Progress Lobby" : "Pre-Game Lobby";
 	
 	TitleFont->DrawText( title, Rect.w/2 + 2, 12, Font::ALIGN_TOP_CENTER, 0.f,0.f,0.f,0.8f );
 	TitleFont->DrawText( title, Rect.w/2, 10, Font::ALIGN_TOP_CENTER );
@@ -829,194 +850,34 @@ void LobbyMenuLeaveButton::Clicked( Uint8 button )
 // ---------------------------------------------------------------------------
 
 
-LobbyMenuTeamButton::LobbyMenuTeamButton( int font_size )
-: LabelledButton( NULL, Raptor::Game->Res.GetFont( "Verdana.ttf", font_size ), "Change Team", Font::ALIGN_MIDDLE_CENTER, Raptor::Game->Res.GetAnimation("button.ani"), Raptor::Game->Res.GetAnimation("button_mdown.ani") )
+LobbyMenuPlayerDropDown::LobbyMenuPlayerDropDown( SDL_Rect *rect, Font *font, uint8_t align, int scroll_bar_size, std::string variable ) : DropDown( rect, font, align, scroll_bar_size, NULL, NULL )
 {
-	Red = 1.f;
-	Green = 1.f;
-	Blue = 1.f;
-	Alpha = 1.f;
-}
-
-
-LobbyMenuTeamButton::~LobbyMenuTeamButton()
-{
-}
-
-
-void LobbyMenuTeamButton::Clicked( Uint8 button )
-{
+	Red = 0.f;
+	Green = 0.f;
+	Blue = 0.f;
+	Alpha = 0.75f;
+	
+	Variable = variable;
+	
 	Player *player = Raptor::Game->Data.GetPlayer( Raptor::Game->PlayerID );
-	if( ! player )
-		return;
-	
-	std::string team = player->Properties["team"];
-	
-	bool ffa = ( Raptor::Game->Data.Properties["gametype"].find("ffa_") == 0 );
-	
-	if( ! ffa )
-	{
-		bool go_prev = ((button == SDL_BUTTON_RIGHT) || (button == SDL_BUTTON_WHEELUP));
-		
-		if( player && (player->Properties["team"] == "Rebel") )
-			team = go_prev ? "" : "Empire";
-		else if( player && (player->Properties["team"] == "Empire") )
-			team = go_prev ? "Rebel" : "Spectator";
-		else if( player && (player->Properties["team"] == "Spectator") )
-			team = go_prev ? "Empire" : "";
-		else if( player )
-			team = go_prev ? "Spectator" : "Rebel";
-	}
-	else
-	{
-		if( team == "Spectator" )
-			team = "";
-		else
-			team = "Spectator";
-	}
-	
-	std::string ship = "";
-	if( team == "Rebel" )
-		ship = "X/W";
-	else if( team == "Empire" )
-		ship = "T/F";
-	
+	if( player )
+		Value = player->Properties[ Variable ];
+}
+
+
+LobbyMenuPlayerDropDown::~LobbyMenuPlayerDropDown()
+{
+}
+
+
+void LobbyMenuPlayerDropDown::Changed( void )
+{
 	Packet player_properties = Packet( Raptor::Packet::PLAYER_PROPERTIES );
 	player_properties.AddUShort( Raptor::Game->PlayerID );
-	player_properties.AddUInt( 2 );
-	player_properties.AddString( "team" );
-	player_properties.AddString( team );
-	player_properties.AddString( "ship" );
-	player_properties.AddString( ship );
+	player_properties.AddUInt( 1 );
+	player_properties.AddString( Variable );
+	player_properties.AddString( Value );
 	Raptor::Game->Net.Send( &player_properties );
-}
-
-
-// ---------------------------------------------------------------------------
-
-
-LobbyMenuGroupButton::LobbyMenuGroupButton( int font_size )
-: LabelledButton( NULL, Raptor::Game->Res.GetFont( "Verdana.ttf", font_size ), "Change Group", Font::ALIGN_MIDDLE_CENTER, Raptor::Game->Res.GetAnimation("button.ani"), Raptor::Game->Res.GetAnimation("button_mdown.ani") )
-{
-	Red = 1.f;
-	Green = 1.f;
-	Blue = 1.f;
-	Alpha = 1.f;
-}
-
-
-LobbyMenuGroupButton::~LobbyMenuGroupButton()
-{
-}
-
-
-void LobbyMenuGroupButton::Clicked( Uint8 button )
-{
-	Player *player = Raptor::Game->Data.GetPlayer( Raptor::Game->PlayerID );
-	if( ! player )
-		return;
-	
-	std::string team = player->Properties["team"];
-	
-	if( team != "Spectator" )
-	{
-		bool ffa = ( Raptor::Game->Data.Properties["gametype"].find("ffa_") == 0 );
-		int group = atoi( player->Properties["group"].c_str() );
-		
-		if( ffa )
-		{
-			team = "";
-			group = 0;
-		}
-		else
-		{
-			bool go_prev = ((button == SDL_BUTTON_RIGHT) || (button == SDL_BUTTON_WHEELUP));
-			group += go_prev ? -1 : 1;
-			
-			if( group < 0 )
-				group = 4;
-			else if( group > 4 )
-				group = 0;
-		}
-		
-		Packet player_properties = Packet( Raptor::Packet::PLAYER_PROPERTIES );
-		player_properties.AddUShort( Raptor::Game->PlayerID );
-		player_properties.AddUInt( 2 );
-		player_properties.AddString( "team" );
-		player_properties.AddString( team );
-		player_properties.AddString( "group" );
-		player_properties.AddString( Num::ToString(group).c_str() );
-		Raptor::Game->Net.Send( &player_properties );
-	}
-}
-
-
-// ---------------------------------------------------------------------------
-
-
-LobbyMenuShipButton::LobbyMenuShipButton( int font_size )
-: LabelledButton( NULL, Raptor::Game->Res.GetFont( "Verdana.ttf", font_size ), "Change Ship", Font::ALIGN_MIDDLE_CENTER, Raptor::Game->Res.GetAnimation("button.ani"), Raptor::Game->Res.GetAnimation("button_mdown.ani") )
-{
-	Red = 1.f;
-	Green = 1.f;
-	Blue = 1.f;
-	Alpha = 1.f;
-}
-
-
-LobbyMenuShipButton::~LobbyMenuShipButton()
-{
-}
-
-
-void LobbyMenuShipButton::Clicked( Uint8 button )
-{
-	Player *player = Raptor::Game->Data.GetPlayer( Raptor::Game->PlayerID );
-	if( ! player )
-		return;
-	
-	std::string team = player->Properties["team"];
-	
-	if( team != "Spectator" )
-	{
-		bool ffa = ( Raptor::Game->Data.Properties["gametype"].find("ffa_") == 0 );
-		
-		std::string ship = "";
-		
-		if( ffa )
-		{
-			team = "";
-			
-			bool go_prev = ((button == SDL_BUTTON_RIGHT) || (button == SDL_BUTTON_WHEELUP));
-			
-			if( player->Properties["ship"] == "X/W" )
-				ship = go_prev ? "T/F" : "Y/W";
-			else if( player->Properties["ship"] == "Y/W" )
-				ship = go_prev ? "X/W" : "T/F";
-			else
-				ship = go_prev ? "Y/W" : "X/W";
-		}
-		else if( player->Properties["team"] == "Rebel" )
-		{
-			if( player->Properties["ship"] == "X/W" )
-				ship = "Y/W";
-			else
-				ship = "X/W";
-		}
-		else if( player->Properties["team"] == "Empire" )
-		{
-			ship = "T/F";
-		}
-		
-		Packet player_properties = Packet( Raptor::Packet::PLAYER_PROPERTIES );
-		player_properties.AddUShort( Raptor::Game->PlayerID );
-		player_properties.AddUInt( 2 );
-		player_properties.AddString( "team" );
-		player_properties.AddString( team );
-		player_properties.AddString( "ship" );
-		player_properties.AddString( ship );
-		Raptor::Game->Net.Send( &player_properties );
-	}
 }
 
 
@@ -1263,26 +1124,84 @@ void LobbyMenuConfigChangeButton::Clicked( Uint8 button )
 	
 	else if( config->Property == "empire_ship" )
 	{
-		if( value == "isd2" )
-			value = go_prev ? "frg" : "crv";
-		else if( value == "crv" )
-			value = go_prev ? "isd2" : "frg";
-		else if( value == "frg" )
-			value = go_prev ? "crv" : "isd2";
-		else
-			value = "isd2";
+		std::set<const ShipClass*> classes;
+		const ShipClass *class_ptr = NULL;
+		for( std::map<uint32_t,GameObject*>::const_iterator obj_iter = Raptor::Game->Data.GameObjects.begin(); obj_iter != Raptor::Game->Data.GameObjects.end(); obj_iter ++ )
+		{
+			if( obj_iter->second->Type() == XWing::Object::SHIP_CLASS )
+			{
+				const ShipClass *sc = (const ShipClass*) obj_iter->second;
+				if( (sc->Category == ShipClass::CATEGORY_CAPITAL) && (sc->Team != XWing::Team::REBEL) )
+				{
+					classes.insert( sc );
+					if( strcasecmp( sc->ShortName.c_str(), value.c_str() ) == 0 )
+						class_ptr = sc;
+				}
+			}
+		}
+		
+		if( classes.size() )
+		{
+			std::set<const ShipClass*>::const_iterator current = classes.find( class_ptr );
+			if( current == classes.end() )
+				value = (*(classes.begin()))->ShortName;
+			else if( go_prev && (current == classes.begin()) )
+				value = (*(classes.rbegin()))->ShortName;
+			else if( go_prev )
+			{
+				current --;
+				value = (*current)->ShortName;
+			}
+			else
+			{
+				current ++;
+				if( current == classes.end() )
+					value = (*(classes.begin()))->ShortName;
+				else
+					value = (*current)->ShortName;
+			}
+		}
 	}
 	
 	else if( config->Property == "rebel_ship" )
 	{
-		if( value == "crs" )
-			value = go_prev ? "frg" : "crv";
-		else if( value == "crv" )
-			value = go_prev ? "crs" : "frg";
-		else if( value == "frg" )
-			value = go_prev ? "crv" : "crs";
-		else
-			value = "crs";
+		std::set<const ShipClass*> classes;
+		const ShipClass *class_ptr = NULL;
+		for( std::map<uint32_t,GameObject*>::const_iterator obj_iter = Raptor::Game->Data.GameObjects.begin(); obj_iter != Raptor::Game->Data.GameObjects.end(); obj_iter ++ )
+		{
+			if( obj_iter->second->Type() == XWing::Object::SHIP_CLASS )
+			{
+				const ShipClass *sc = (const ShipClass*) obj_iter->second;
+				if( (sc->Category == ShipClass::CATEGORY_CAPITAL) && (sc->Team != XWing::Team::EMPIRE) )
+				{
+					classes.insert( sc );
+					if( strcasecmp( sc->ShortName.c_str(), value.c_str() ) == 0 )
+						class_ptr = sc;
+				}
+			}
+		}
+		
+		if( classes.size() )
+		{
+			std::set<const ShipClass*>::const_iterator current = classes.find( class_ptr );
+			if( current == classes.end() )
+				value = (*(classes.begin()))->ShortName;
+			else if( go_prev && (current == classes.begin()) )
+				value = (*(classes.rbegin()))->ShortName;
+			else if( go_prev )
+			{
+				current --;
+				value = (*current)->ShortName;
+			}
+			else
+			{
+				current ++;
+				if( current == classes.end() )
+					value = (*(classes.begin()))->ShortName;
+				else
+					value = (*current)->ShortName;
+			}
+		}
 	}
 	
 	else if( config->Property == "permissions" )

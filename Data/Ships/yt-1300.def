@@ -1,0 +1,24 @@
+id YT1300
+name YT-1300 Freighter
+category fighter
+team rebel
+radius 11.5
+speed 160
+accel 85
+roll 110
+pitch 80
+yaw 55
+health 300
+shield 250
+recover 5
+recharge 3
+ramming 1000
+explode 0.1
+weapon turbolaser 0 2.53 -2.09
+weapon turbolaser 0 -2.53 -2.09
+firetime turbolaser 0.3
+model yt-1300.obj
+cockpit yt-1300_cockpit.obj 10 1.25 7.64
+model_scale 0.022
+flyby 20 xwing_slow.wav
+flyby 200 xwing_fast.wav

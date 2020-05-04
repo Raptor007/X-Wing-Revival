@@ -7,9 +7,10 @@ class Ship;
 
 #include "PlatformSpecific.h"
 
+#include "GameObject.h"
 #include <string>
 #include <map>
-#include "GameObject.h"
+#include "ShipClass.h"
 #include "Model.h"
 #include "Shot.h"
 
@@ -17,8 +18,8 @@ class Ship;
 class Ship : public GameObject
 {
 public:
+	const ShipClass *Class;
 	uint32_t Team;
-	uint32_t ShipType;
 	Model Shape;
 	std::string Name;
 	bool CanRespawn;
@@ -49,14 +50,18 @@ public:
 	
 	
 	Ship( uint32_t id = 0 );
+	Ship( const ShipClass *ship_class );
 	virtual ~Ship();
 	
-	void SetType( uint32_t ship_type );
+	void Clear( void );
+	void ClientInit( void );
+	bool SetClass( uint32_t ship_class_id );
+	void SetClass( const ShipClass *ship_class );
 	void Reset( void );
+	
 	void SetHealth( double health );
 	void AddDamage( double front, double rear, const char *subsystem = NULL );
 	void KnockCockpit( const Vec3D *dir, double force );
-	void Explode( double dt );
 	
 	void SetRoll( double roll, double dt );
 	void SetPitch( double pitch, double dt );
@@ -71,20 +76,29 @@ public:
 	double MaxRoll( void ) const;
 	double MaxPitch( void ) const;
 	double MaxYaw( void ) const;
+	double MaxRollChange( void ) const;
+	double MaxPitchChange( void ) const;
+	double MaxYawChange( void ) const;
 	double MaxHealth( void ) const;
 	double MaxShield( void ) const;
 	double ShieldRechargeDelay( void ) const;
 	double ShieldRechargeRate( void ) const;
+	double ExplosionRate( void ) const;
 	double PiecesDangerousTime( void ) const;
 	int WeaponCount( int weapon_type ) const;
+	uint8_t Category( void ) const;
 	bool PlayersCanFly( void ) const;
+	
+	Pos3D HeadPos( void ) const;
+	double Exploded( void ) const;
+	const char *FlybySound( double speed ) const;
 	
 	std::map<int,Shot*> NextShots( GameObject *target = NULL ) const;
 	std::map<int,Shot*> AllShots( GameObject *target = NULL );
 	void JustFired( void );
 	void JustFired( uint32_t weapon, uint8_t mode );
-	void NextWeapon( void );
-	void NextFiringMode( void );
+	bool NextWeapon( void );
+	bool NextFiringMode( void );
 	double ShotDelay( void ) const;
 	float LockingOn( const GameObject *target ) const;
 	void UpdateTarget( const GameObject *target, double dt = 0. );
@@ -113,7 +127,13 @@ public:
 	{
 		TYPE_XWING = 'X/W ',
 		TYPE_YWING = 'Y/W ',
+		TYPE_AWING = 'A/W ',
+		TYPE_BWING = 'B/W ',
 		TYPE_TIE_FIGHTER = 'T/F ',
+		TYPE_TIE_ADVANCED = 'T/A ',
+		TYPE_TIE_INTERCEPTOR = 'T/I ',
+		TYPE_TIE_BOMBER = 'T/B ',
+		TYPE_YT1300 = 'YT13',
 		TYPE_ISD2 = 'ISD2',
 		TYPE_CORVETTE = 'CRV ',
 		TYPE_NEBULON_B = 'FRG ',

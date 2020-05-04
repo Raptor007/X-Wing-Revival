@@ -1,0 +1,26 @@
+id T/B
+name TIE Bomber
+squadron Delta
+category bomber
+team empire
+radius 5
+speed 160
+accel 50
+roll 140
+pitch 85
+yaw 70
+health 125
+shield 0
+ramming 1000
+explode 1
+weapon laser_green 0 -0.33 0
+weapon laser_green 0 -0.5 0
+firetime laser_green 0.25
+weapon missile -1.45 0 0
+firetime missile 1
+ammo missile 10
+model tie-bomber.obj
+cockpit tie-bomber_cockpit.obj 1.474 0 2.0812
+model_scale 0.022
+flyby 20 tie_slow.wav
+flyby 200 tie_fast.wav

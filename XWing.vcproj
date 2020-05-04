@@ -1002,18 +1002,6 @@
 				RelativePath=".\XWing.rc"
 				>
 			</File>
-			<Filter
-				Name="Shaders"
-				>
-				<File
-					RelativePath=".\build\Debug\Shaders\model.frag"
-					>
-				</File>
-				<File
-					RelativePath=".\build\Debug\Shaders\model.vert"
-					>
-				</File>
-			</Filter>
 		</Filter>
 		<Filter
 			Name="XWing"
@@ -1083,6 +1071,14 @@
 				</File>
 				<File
 					RelativePath=".\Sources\Game\Ship.h"
+					>
+				</File>
+				<File
+					RelativePath=".\Sources\Game\ShipClass.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\Sources\Game\ShipClass.h"
 					>
 				</File>
 				<File

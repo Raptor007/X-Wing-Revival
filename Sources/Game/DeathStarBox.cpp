@@ -96,7 +96,7 @@ bool DeathStarBox::WillCollide( const GameObject *other, double dt, std::string 
 			return false;
 		
 		// Don't destroy the exhaust port.
-		if( ship->ShipType == Ship::TYPE_EXHAUST_PORT )
+		if( ship->Category() == ShipClass::CATEGORY_TARGET )
 			return false;
 		
 		// Don't worry about capital ship hitting these.
@@ -118,6 +118,14 @@ void DeathStarBox::Update( double dt )
 
 void DeathStarBox::Draw( void )
 {
+	bool change_shaders = (Raptor::Game->Cfg.SettingAsInt("g_shader_light_quality") >= 2) && Raptor::Game->ShaderMgr.Active();
+	Shader *prev_shader = Raptor::Game->ShaderMgr.Selected;
+	if( change_shaders )
+		Raptor::Game->ShaderMgr.SelectAndCopyVars( Raptor::Game->Res.GetShader("deathstar") );
+	
 	if( Shape )
 		Shape->DrawAt( this, 1., L, H, W );
+	
+	if( change_shaders )
+		Raptor::Game->ShaderMgr.Select( prev_shader );
 }
