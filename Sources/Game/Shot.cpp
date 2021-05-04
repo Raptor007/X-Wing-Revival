@@ -84,13 +84,13 @@ void Shot::ClientInit( void )
 double Shot::Damage( void ) const
 {
 	if( ShotType == TYPE_TURBO_LASER_GREEN )
-		return 35.;
+		return 33.;
 	else if( ShotType == TYPE_TURBO_LASER_RED )
-		return 34.;
+		return 32.;
 	else if( ShotType == TYPE_TORPEDO )
-		return 150.;
+		return 200.;
 	else if( ShotType == TYPE_MISSILE )
-		return 100.;
+		return 95.;
 	
 	return 30.;
 }
@@ -114,15 +114,15 @@ double Shot::AsteroidDamage( void ) const
 double Shot::Speed( void ) const
 {
 	if( ShotType == TYPE_TURBO_LASER_GREEN )
-		return 550.;
+		return 600.;
 	else if( ShotType == TYPE_TURBO_LASER_RED )
-		return 550.;
+		return 600.;
 	else if( ShotType == TYPE_TORPEDO )
 		return 400.;
 	else if( ShotType == TYPE_MISSILE )
-		return 450.;
+		return 500.;
 	
-	return 700.;
+	return 800.;
 }
 
 
@@ -152,6 +152,8 @@ double Shot::MaxLifetime( void ) const
 {
 	if( ShotType == TYPE_TORPEDO )
 		return 8.;
+	else if( ShotType == TYPE_MISSILE )
+		return 6.;
 	
 	return 4.;
 }
@@ -209,7 +211,7 @@ bool Shot::CanCollideWithOtherTypes( void ) const
 void Shot::AddToInitPacket( Packet *packet, int8_t precision )
 {
 	GameObject::AddToInitPacket( packet, -127 );
-	packet->AddUInt( ShotType );
+	packet->AddUChar( ShotType );
 	packet->AddUInt( FiredFrom );
 }
 
@@ -217,7 +219,7 @@ void Shot::AddToInitPacket( Packet *packet, int8_t precision )
 void Shot::ReadFromInitPacket( Packet *packet, int8_t precision )
 {
 	GameObject::ReadFromInitPacket( packet, -127 );
-	ShotType = packet->NextUInt();
+	ShotType = packet->NextUChar();
 	FiredFrom = packet->NextUInt();
 }
 

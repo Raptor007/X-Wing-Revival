@@ -30,6 +30,7 @@ public:
 	
 	double Health;
 	Clock HitClock;
+	uint32_t HitByID;
 	Vec3D CockpitOffset;
 	Clock DeathClock;
 	std::map<std::string,double> Subsystems;
@@ -38,9 +39,9 @@ public:
 	uint8_t ShieldPos;
 	
 	bool Firing;
-	uint32_t SelectedWeapon;
-	std::map<uint32_t,Clock> FiringClocks;
-	std::map<uint32_t,int8_t> Ammo;
+	uint8_t SelectedWeapon;
+	std::map<uint8_t,Clock> FiringClocks;
+	std::map<uint8_t,int8_t> Ammo;
 	uint8_t FiringMode;
 	uint8_t WeaponIndex;
 	uint8_t FiredThisFrame;
@@ -60,7 +61,7 @@ public:
 	void Reset( void );
 	
 	void SetHealth( double health );
-	void AddDamage( double front, double rear, const char *subsystem = NULL );
+	void AddDamage( double front, double rear, const char *subsystem = NULL, uint32_t hit_by_id = 0 );
 	void KnockCockpit( const Vec3D *dir, double force );
 	
 	void SetRoll( double roll, double dt );
@@ -73,6 +74,7 @@ public:
 	double Radius( void ) const;
 	double MaxSpeed( void ) const;
 	double Acceleration( void ) const;
+	double MaxGeneric( double slow, double fast, double exponent ) const;
 	double MaxRoll( void ) const;
 	double MaxPitch( void ) const;
 	double MaxYaw( void ) const;
@@ -96,7 +98,7 @@ public:
 	std::map<int,Shot*> NextShots( GameObject *target = NULL ) const;
 	std::map<int,Shot*> AllShots( GameObject *target = NULL );
 	void JustFired( void );
-	void JustFired( uint32_t weapon, uint8_t mode );
+	void JustFired( uint8_t weapon, uint8_t mode );
 	bool NextWeapon( void );
 	bool NextFiringMode( void );
 	double ShotDelay( void ) const;
@@ -125,26 +127,8 @@ public:
 	
 	enum
 	{
-		TYPE_XWING = 'X/W ',
-		TYPE_YWING = 'Y/W ',
-		TYPE_AWING = 'A/W ',
-		TYPE_BWING = 'B/W ',
-		TYPE_TIE_FIGHTER = 'T/F ',
-		TYPE_TIE_ADVANCED = 'T/A ',
-		TYPE_TIE_INTERCEPTOR = 'T/I ',
-		TYPE_TIE_BOMBER = 'T/B ',
-		TYPE_YT1300 = 'YT13',
-		TYPE_ISD2 = 'ISD2',
-		TYPE_CORVETTE = 'CRV ',
-		TYPE_NEBULON_B = 'FRG ',
-		TYPE_CALAMARI_CRUISER = 'CRS ',
-		TYPE_EXHAUST_PORT = 'Hole'
-	};
-	
-	enum
-	{
-		SHIELD_CENTER = 'C',
-		SHIELD_FRONT = 'F',
-		SHIELD_REAR = 'R'
+		SHIELD_CENTER = 0,
+		SHIELD_FRONT,
+		SHIELD_REAR
 	};
 };

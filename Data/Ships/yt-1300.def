@@ -5,18 +5,20 @@ team rebel
 radius 11.5
 speed 160
 accel 85
-roll 110
-pitch 80
-yaw 55
+roll 80 65
+pitch 55 45
+yaw 45 35
+roll_change 110 90
+pitch_change 80 60
+yaw_change 80 60
 health 300
 shield 250
 recover 5
 recharge 3
-ramming 1000
+ramming 900
 explode 0.1
-weapon turbolaser 0 2.53 -2.09
-weapon turbolaser 0 -2.53 -2.09
-firetime turbolaser 0.3
+turret turbolaser 0 2.53 -2.09 up 0 1 0 pitch -5 90 dir 0 1 0 arc 360 hidden linked firetime 0.22
+turret turbolaser 0 -2.53 -2.09 up 0 -1 0 pitch -5 90 dir 0 -1 0 arc 360 hidden linked firetime 0.22
 model yt-1300.obj
 cockpit yt-1300_cockpit.obj 10 1.25 7.64
 model_scale 0.022

@@ -6,14 +6,17 @@ team rebel
 radius 4
 speed 220
 accel 100
-roll 220
-pitch 110
-yaw 90
+roll 140 130
+pitch 85 65
+yaw 65 50
+roll_change 440 400
+pitch_change 220 160
+yaw_change 200 150
 health 55
 shield 75
 recover 5
 recharge 3
-ramming 1000
+ramming 500
 explode 1
 weapon laser_red 1.7 -0.07 0
 weapon laser_red -1.7 -0.07 0
@@ -21,9 +24,9 @@ firetime laser_red 0.25
 weapon missile 0.8 -0.054 0
 weapon missile -0.8 -0.054 0
 firetime missile 1
-ammo missile 6
+ammo missile 8
 model a-wing.obj
 cockpit a-wing_cockpit.obj 0 0.56 -0.4
 model_scale 0.022
-flyby 25 xwing_slow.wav
-flyby 250 xwing_fast.wav
+flyby 20 xwing_slow.wav
+flyby 200 xwing_fast.wav

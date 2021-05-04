@@ -59,7 +59,8 @@ public:
 	double RoundTimeRemaining( void );
 	
 	const ShipClass *GetShipClass( const std::string &name );
-	Ship *SpawnShip( const ShipClass *ship_class, uint32_t team );
+	Ship *SpawnShip( const ShipClass *ship_class, uint32_t team, std::set<uint32_t> *add_object_ids = NULL );
+	void SpawnShipTurrets( const Ship *ship, std::set<uint32_t> *add_object_ids = NULL );
 };
 
 

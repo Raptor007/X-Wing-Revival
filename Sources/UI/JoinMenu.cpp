@@ -72,9 +72,11 @@ JoinMenu::JoinMenu( void )
 	rect.x = 10;
 	AddElement( new JoinMenuBackButton( &rect, ButtonFont ) );
 	
+	rect.w = 250;
 	rect.x = (Rect.w - rect.w) / 2;
 	AddElement( new JoinMenuHostButton( &rect, ButtonFont ) );
 	
+	rect.w = 150;
 	rect.x = Rect.w - rect.w - 10;
 	AddElement( new JoinMenuGoButton( &rect, ButtonFont ) );
 	
@@ -309,7 +311,7 @@ void JoinMenuGoButton::Clicked( Uint8 button )
 // ---------------------------------------------------------------------------
 
 
-JoinMenuHostButton::JoinMenuHostButton( SDL_Rect *rect, Font *button_font ) : LabelledButton( rect, button_font, "Host", Font::ALIGN_MIDDLE_CENTER, Raptor::Game->Res.GetAnimation("button.ani"), Raptor::Game->Res.GetAnimation("button_mdown.ani") )
+JoinMenuHostButton::JoinMenuHostButton( SDL_Rect *rect, Font *button_font ) : LabelledButton( rect, button_font, "Host / Solo", Font::ALIGN_MIDDLE_CENTER, Raptor::Game->Res.GetAnimation("button.ani"), Raptor::Game->Res.GetAnimation("button_mdown.ani") )
 {
 	Red = 1.f;
 	Green = 1.f;

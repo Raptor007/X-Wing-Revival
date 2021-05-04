@@ -441,3 +441,15 @@ void DeathStar::Draw( void )
 		Raptor::Game->ShaderMgr.Set1f( "Shininess", 0.f );
 	}
 }
+
+
+bool DeathStar::WithinTrenchH( const Pos3D *pos ) const
+{
+	return pos && (pos->DistAlong( &Up, this ) < 0.);
+}
+
+
+bool DeathStar::WithinTrenchW( const Pos3D *pos ) const
+{
+	return pos && (fabs( pos->DistAlong( &Right, this ) ) < TrenchWidth / 2.);
+}

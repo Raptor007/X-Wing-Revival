@@ -17,6 +17,7 @@
 #include "IngameMenu.h"
 #include "DeathStar.h"
 #include "DeathStarBox.h"
+#include "Asteroid.h"
 
 #ifdef WIN32
 #include "SaitekX52Pro.h"
@@ -25,12 +26,15 @@
 
 enum
 {
+	VIEW_AUTO = 0,
 	VIEW_COCKPIT,
 	VIEW_CHASE,
 	VIEW_CINEMA,
 	VIEW_CINEMA2,
 	VIEW_FIXED,
-	VIEW_STATIONARY
+	VIEW_STATIONARY,
+	VIEW_INSTRUMENTS,
+	VIEW_CYCLE
 };
 
 
@@ -108,7 +112,7 @@ void RenderLayer::SetBackground( void )
 }
 
 
-void RenderLayer::SetWorldLights( float ambient_scale, const std::vector<const Vec3D*> *obstructions )
+void RenderLayer::SetWorldLights( float ambient_scale, const std::vector<Vec3D> *obstructions )
 {
 	Color ambient;
 	Vec3D dir[ 4 ];
@@ -196,26 +200,18 @@ void RenderLayer::SetWorldLights( float ambient_scale, const std::vector<const V
 	{
 		if( obstructions )
 		{
-			for( std::vector<const Vec3D*>::const_iterator obst_iter = obstructions->begin(); obst_iter != obstructions->end(); obst_iter ++ )
+			for( std::vector<Vec3D>::const_iterator obst_iter = obstructions->begin(); obst_iter != obstructions->end(); obst_iter ++ )
 			{
-				double obst_length = (*obst_iter)->Length();
+				double obst_length = obst_iter->Length();
 				if( ! obst_length )
 					continue;
 				
-				Vec3D obst( *obst_iter );
-				if( obst_length > 1. )
-					obst.ScaleTo( 1. );
-				double similarity = dir[ i ].Dot( &obst );
+				Vec3D obst_dir = obst_iter->Unit();
+				double similarity = dir[ i ].Dot( &obst_dir );
 				if( similarity < 0. )
 					continue;
 				
-				wrap_around[ i ] -= similarity;
-				if( wrap_around[ i ] < 0. )
-					wrap_around[ i ] = 0.;
-				
-				dir[ i ] -= obst * similarity;
-				color[ i ] *= dir[ i ].Length();
-				dir[ i ].ScaleTo( 1. );
+				color[ i ] /= pow( obst_length, sqrt(similarity) );
 			}
 		}
 		
@@ -225,6 +221,68 @@ void RenderLayer::SetWorldLights( float ambient_scale, const std::vector<const V
 		Raptor::Game->ShaderMgr.Set3f( uniform_name, color[ i ].Red, color[ i ].Green, color[ i ].Blue );
 		snprintf( uniform_name, 128, "DirectionalLight%iWrapAround", i );
 		Raptor::Game->ShaderMgr.Set1f( uniform_name, wrap_around[ i ] );
+	}
+}
+
+
+void RenderLayer::SetDynamicLights( Pos3D *pos, Pos3D *offset, int dynamic_lights, std::list<Shot*> *shots, std::list<Effect*> *effects )
+{
+	char uniform_name[ 128 ] = "";
+	
+	ClearDynamicLights();
+	
+	std::multimap<double,Pos3D*> nearest_shots   = pos->Nearest( (std::list<Pos3D*> *) shots,   dynamic_lights );
+	std::multimap<double,Pos3D*> nearest_effects = pos->Nearest( (std::list<Pos3D*> *) effects, dynamic_lights );
+	
+	for( int i = 0; i < dynamic_lights; i ++ )
+	{
+		Shot *shot     = (Shot*)(   nearest_shots.size()   ? nearest_shots.begin()->second   : NULL );
+		Effect *effect = (Effect*)( nearest_effects.size() ? nearest_effects.begin()->second : NULL );
+		Pos3D *nearest = NULL;
+		Color color( 1.f, 1.f, 1.f, 15.f );
+		
+		#define EXPLOSION_LIGHT_RADIUS (effect->Size * 4.5)
+		
+		if( shot && effect )
+		{
+			if( nearest_shots.begin()->first - shot->LightColor().Alpha < nearest_effects.begin()->first - EXPLOSION_LIGHT_RADIUS )
+				effect = NULL;
+			else
+				shot = NULL;
+		}
+		
+		if( shot )
+		{
+			nearest = (Pos3D*) shot;
+			color = shot->LightColor();
+			nearest_shots.erase( nearest_shots.begin() );
+		}
+		else if( effect )
+		{
+			nearest = (Pos3D*) effect;
+			float animation_time = effect->Anim.LoopTime() * effect->Anim.PlayCount;
+			if( animation_time )
+			{
+				float progress = effect->Anim.Timer.ElapsedSeconds() / animation_time;
+				color.Green = std::max<float>( 0.f, 1.f - 2.f * progress * progress );
+				color.Blue = std::max<float>( 0.f, 1.f - 3.f * progress );
+				color.Alpha = EXPLOSION_LIGHT_RADIUS * sinf( sqrtf( progress ) * M_PI );
+			}
+			nearest_effects.erase( nearest_effects.begin() );
+		}
+		else
+			break;
+		
+		snprintf( uniform_name, 128, "PointLight%iPos", i );
+		if( offset )
+			Raptor::Game->ShaderMgr.Set3f( uniform_name, nearest->X - offset->X, nearest->Y - offset->Y, nearest->Z - offset->Z );
+		else
+			Raptor::Game->ShaderMgr.Set3f( uniform_name, nearest->X, nearest->Y, nearest->Z );
+		
+		snprintf( uniform_name, 128, "PointLight%iColor", i );
+		Raptor::Game->ShaderMgr.Set3f( uniform_name, color.Red, color.Green, color.Blue );
+		snprintf( uniform_name, 128, "PointLight%iRadius", i );
+		Raptor::Game->ShaderMgr.Set1f( uniform_name, color.Alpha );
 	}
 }
 
@@ -351,6 +409,7 @@ void RenderLayer::Draw( void )
 	
 	std::list<Ship*> ships;
 	std::list<Shot*> shots;
+	std::list<Asteroid*> asteroids;
 	DeathStar *deathstar = NULL;
 	for( std::map<uint32_t,GameObject*>::iterator obj_iter = Raptor::Game->Data.GameObjects.begin(); obj_iter != Raptor::Game->Data.GameObjects.end(); obj_iter ++ )
 	{
@@ -358,18 +417,22 @@ void RenderLayer::Draw( void )
 			ships.push_back( (Ship*) obj_iter->second );
 		else if( obj_iter->second->Type() == XWing::Object::SHOT )
 			shots.push_back( (Shot*) obj_iter->second );
+		else if( obj_iter->second->Type() == XWing::Object::ASTEROID )
+			asteroids.push_back( (Asteroid*) obj_iter->second );
 		else if( obj_iter->second->Type() == XWing::Object::DEATH_STAR )
 			deathstar = (DeathStar*) obj_iter->second;
 	}
 	
+	std::list<Effect*> effects;
+	for( std::list<Effect>::iterator effect_iter = Raptor::Game->Data.Effects.begin(); effect_iter != Raptor::Game->Data.Effects.end(); effect_iter ++ )
+		effects.push_back( &*effect_iter );
 	
-	// Determine which ship we're observing.
+	
+	// Determine which ship we're observing, and in what view.
 	
 	Ship *observed_ship = NULL;
 	Ship *player_ship = NULL;
-	GameObject *target_obj = NULL;
-	Ship *target = NULL;
-	int view = vr ? VIEW_FIXED : VIEW_CINEMA2;
+	int view = VIEW_AUTO;
 	
 	
 	// Look for the player's ship.
@@ -380,10 +443,10 @@ void RenderLayer::Draw( void )
 		{
 			player_ship = *ship_iter;
 			
-			// Only observe this if the ship is alive or recently dead.
-			if( ((*ship_iter)->Health > 0.) || ((*ship_iter)->DeathClock.ElapsedSeconds() < 6.) )
+			// Only observe the player's ship if alive or recently dead.
+			if( (player_ship->Health > 0.) || (player_ship->DeathClock.ElapsedSeconds() < 6.) )
 			{
-				observed_ship = *ship_iter;
+				observed_ship = player_ship;
 				view = VIEW_COCKPIT;
 			}
 			break;
@@ -391,9 +454,30 @@ void RenderLayer::Draw( void )
 	}
 	
 	
+	// Determine the selected view.
+	
+	std::string view_str = Raptor::Game->Cfg.SettingAsString( (view == VIEW_COCKPIT) ? "view" : "spectator_view" );
+	if( view_str == "cockpit" )
+		view = VIEW_COCKPIT;
+	else if( view_str == "chase" )
+		view = VIEW_CHASE;
+	else if( view_str == "cinema" )
+		view = VIEW_CINEMA;
+	else if( view_str == "cinema2" )
+		view = VIEW_CINEMA2;
+	else if( view_str == "fixed" )
+		view = VIEW_FIXED;
+	else if( view_str == "stationary" )
+		view = VIEW_STATIONARY;
+	else if( view_str == "instruments" )
+		view = VIEW_INSTRUMENTS;
+	else if( view_str == "cycle" )
+		view = VIEW_CYCLE;
+	
+	
 	if( ! observed_ship )
 	{
-		// This player has no ship, let's watch somebody else.
+		// This player has no ship alive, let's watch somebody else.
 		
 		// First try to observe a specific ship ID (who we were watching before).
 		if( ((XWingGame*)( Raptor::Game ))->ObservedShipID )
@@ -405,7 +489,7 @@ void RenderLayer::Draw( void )
 					continue;
 				
 				// Don't observe long-dead ships.
-				if( ((*ship_iter)->Health <= 0.) && ((*ship_iter)->DeathClock.ElapsedSeconds() >= 6.) )
+				if( ((*ship_iter)->Health <= 0.) && ((*ship_iter)->DeathClock.ElapsedSeconds() >= 6.) && (view != VIEW_INSTRUMENTS) )
 					continue;
 				
 				// If we'd selected a specific ship to watch, keep going until we find it.
@@ -427,7 +511,7 @@ void RenderLayer::Draw( void )
 					continue;
 				
 				// Don't observe long-dead ships.
-				if( ((*ship_iter)->Health <= 0.) && ((*ship_iter)->DeathClock.ElapsedSeconds() >= 6.) )
+				if( ((*ship_iter)->Health <= 0.) && ((*ship_iter)->DeathClock.ElapsedSeconds() >= 6.) && (view != VIEW_INSTRUMENTS) )
 					continue;
 				
 				// If our spawn group has other ships, watch them.
@@ -493,7 +577,7 @@ void RenderLayer::Draw( void )
 					continue;
 				
 				// Don't observe long-dead ships.
-				if( ((*ship_iter)->Health <= 0.) && ((*ship_iter)->DeathClock.ElapsedSeconds() >= 6.) )
+				if( ((*ship_iter)->Health <= 0.) && ((*ship_iter)->DeathClock.ElapsedSeconds() >= 6.) && (view != VIEW_INSTRUMENTS) )
 					continue;
 				
 				// If our team has other ships, watch them.
@@ -577,7 +661,7 @@ void RenderLayer::Draw( void )
 					continue;
 				
 				// Don't observe long-dead ships.
-				if( ((*ship_iter)->Health <= 0.) && ((*ship_iter)->DeathClock.ElapsedSeconds() >= 6.) )
+				if( ((*ship_iter)->Health <= 0.) && ((*ship_iter)->DeathClock.ElapsedSeconds() >= 6.) && (view != VIEW_INSTRUMENTS) )
 					continue;
 				
 				observed_ship = *ship_iter;
@@ -587,24 +671,14 @@ void RenderLayer::Draw( void )
 	}
 	
 	
-	// Determine which view we'll render.
+	// Determine which view we'll actually render.
 	
-	std::string view_str = Raptor::Game->Cfg.SettingAsString( (view == VIEW_COCKPIT) ? "view" : "spectator_view" );
-	if( view_str == "cockpit" )
-		view = VIEW_COCKPIT;
-	else if( view_str == "chase" )
-		view = VIEW_CHASE;
-	else if( view_str == "cinema" )
-		view = VIEW_CINEMA;
-	else if( view_str == "cinema2" )
-		view = VIEW_CINEMA2;
-	else if( view_str == "fixed" )
-		view = VIEW_FIXED;
-	else if( view_str == "stationary" )
-		view = VIEW_STATIONARY;
-	else if( view_str == "cycle" )
+	if( view == VIEW_AUTO )
+		view = vr ? VIEW_FIXED : VIEW_CINEMA2;
+	
+	if( view == VIEW_CYCLE )
 	{
-		double cycle_time = Raptor::Game->Cfg.SettingAsDouble("view_cycle_time");
+		double cycle_time = Raptor::Game->Cfg.SettingAsDouble("view_cycle_time",7.);
 		if( cycle_time <= 0. )
 			cycle_time = 7.;
 		
@@ -629,6 +703,8 @@ void RenderLayer::Draw( void )
 	
 	
 	Player *observed_player = NULL;
+	GameObject *target_obj = NULL;
+	Ship *target = NULL;
 	
 	
 	if( observed_ship )
@@ -794,7 +870,7 @@ void RenderLayer::Draw( void )
 	{
 		bool changed_framebuffer = false;
 		
-		if( observed_ship && (observed_ship->Health > 0.) && ((view == VIEW_COCKPIT) || Raptor::Game->Cfg.SettingAsBool("saitek_enable")) )
+		if( observed_ship && (observed_ship->Health > 0.) && ((view == VIEW_COCKPIT) || (view == VIEW_INSTRUMENTS) || Raptor::Game->Cfg.SettingAsBool("saitek_enable")) )
 		{
 			Framebuffer *health_framebuffer = Raptor::Game->Res.GetFramebuffer( "health" );
 			if( health_framebuffer && health_framebuffer->Select() )
@@ -1526,6 +1602,63 @@ void RenderLayer::Draw( void )
 	#endif
 	
 	
+	// Special case "spectator_view instruments" to draw instrument panel on a second PC.
+	
+	if( view == VIEW_INSTRUMENTS )
+	{
+		glColor4f( 1.f, 1.f, 1.f, 1.f );
+		Raptor::Game->Gfx.Clear();
+		
+		if( observed_ship && (observed_ship->Health > 0.) )
+		{
+			if( Raptor::Game->Gfx.AspectRatio < 1.5 )
+			{
+				Raptor::Game->Gfx.Setup2D( 0., 1. );
+				Raptor::Game->Gfx.DrawRect2D( -0.5, 0.,   1.5,  1.,   Raptor::Game->Res.GetAnimation("brushed.ani")->CurrentFrame() );
+				Raptor::Game->Gfx.DrawRect2D( 0.1,  0.65, 0.9,  0.05, Raptor::Game->Res.GetTexture("*intercept") );
+				Raptor::Game->Gfx.DrawRect2D( 0.1,  0.99, 0.35, 0.66, Raptor::Game->Res.GetTexture("*health") );
+				Raptor::Game->Gfx.DrawRect2D( 0.65, 0.99, 0.9,  0.66, Raptor::Game->Res.GetTexture("*target") );
+				Raptor::Game->Gfx.DrawRect2D( 0.45, 0.95, 0.55, 0.7,  Raptor::Game->Res.GetTexture("*throttle") );
+			}
+			else
+			{
+				Raptor::Game->Gfx.Setup2D( -1., 1. );
+				Raptor::Game->Gfx.DrawRect2D( -2., -1., 2., 1., Raptor::Game->Res.GetAnimation("brushed.ani")->CurrentFrame() );
+				double side_w = std::max<double>( 0.72, std::min<double>( 1.5, Raptor::Game->Gfx.AspectRatio - 1.3 ) );
+				double side_h = side_w * 4. / 3.;
+				double mid_w = std::min<double>( 2., 2. * (Raptor::Game->Gfx.AspectRatio - side_w) - 0.05 );
+				double mid_h = mid_w * 0.75;
+				Raptor::Game->Gfx.DrawRect2D( mid_w * -0.5, mid_h - 0.9, mid_w * 0.5, -0.9, Raptor::Game->Res.GetTexture("*intercept") );
+				Raptor::Game->Gfx.DrawRect2D( 0.02 - Raptor::Game->Gfx.AspectRatio, 0.98, side_w + 0.02 - Raptor::Game->Gfx.AspectRatio, 0.98 - side_h, Raptor::Game->Res.GetTexture("*health") );
+				Raptor::Game->Gfx.DrawRect2D( Raptor::Game->Gfx.AspectRatio - side_w - 0.02, 0.98, Raptor::Game->Gfx.AspectRatio - 0.02, 0.98 - side_h, Raptor::Game->Res.GetTexture("*target") );
+				Raptor::Game->Gfx.DrawRect2D( -0.1, 0.95, 0.1, mid_h - 0.85, Raptor::Game->Res.GetTexture("*throttle") );
+			}
+		}
+		
+		if( (observed_player || observed_ship) && ! MessageInput->Visible )
+		{
+			Raptor::Game->Gfx.Setup2D();
+			int x = Rect.x + Rect.w/2;
+			int y = Rect.y + 2;
+			Font *font = (Rect.h >= 600) ? BigFont : SmallFont;
+			if( observed_ship && (observed_ship->Health > 0.) )
+			{
+				font->DrawText( observed_player ? observed_player->Name : observed_ship->Name, x    , y - 1, Font::ALIGN_TOP_CENTER, 0.0f,0.0f,0.0f,0.7f );
+				font->DrawText( observed_player ? observed_player->Name : observed_ship->Name, x - 1, y - 1, Font::ALIGN_TOP_CENTER, 0.0f,0.0f,0.0f,0.7f );
+				font->DrawText( observed_player ? observed_player->Name : observed_ship->Name, x    , y + 1, Font::ALIGN_TOP_CENTER, 1.0f,1.0f,1.0f,0.7f );
+				font->DrawText( observed_player ? observed_player->Name : observed_ship->Name, x + 1, y + 1, Font::ALIGN_TOP_CENTER, 1.0f,1.0f,1.0f,0.7f );
+			}
+			font->DrawText( observed_player ? observed_player->Name : observed_ship->Name, x, y, Font::ALIGN_TOP_CENTER, 0.4f,0.4f,0.4f,0.9f );
+		}
+		
+		MessageOutput->Visible = MessageInput->Visible;
+		
+		glColor4f( 1.f, 1.f, 1.f, 1.f );
+		glPopMatrix();
+		return;
+	}
+	
+	
 	// Set up 3D rendering for the scene.
 	
 	Raptor::Game->Cam.FOV = vr ? Raptor::Game->Cfg.SettingAsDouble("vr_fov") : Raptor::Game->Cfg.SettingAsDouble("g_fov");
@@ -1539,7 +1672,11 @@ void RenderLayer::Draw( void )
 	float crosshair_blue = 1.f;
 	int ammo = -1;
 	if( observed_ship )
-		ammo = observed_ship->Ammo[ observed_ship->SelectedWeapon ];
+	{
+		std::map<uint8_t,int8_t>::const_iterator ammo_iter = observed_ship->Ammo.find( observed_ship->SelectedWeapon );
+		if( ammo_iter != observed_ship->Ammo.end() )
+			ammo = ammo_iter->second;
+	}
 	
 	Model *cockpit_3d = NULL;
 	Animation *cockpit_2d = NULL;
@@ -1609,7 +1746,8 @@ void RenderLayer::Draw( void )
 			if( Raptor::Game->ShaderMgr.Active() )
 			{
 				float ambient_scale = 1.f;
-				std::vector<const Vec3D*> obstructions;
+				std::vector<Vec3D> obstructions;
+				
 				if( deathstar )
 				{
 					// Reduce cockpit ambient light if we're in the trench.
@@ -1621,37 +1759,39 @@ void RenderLayer::Draw( void )
 					}
 				}
 				
+				for( std::list<Ship*>::iterator ship_iter = ships.begin(); ship_iter != ships.end(); ship_iter ++ )
+				{
+					// Look for light obstructions from large ships nearby.
+					if( (*ship_iter)->Radius() < observed_ship->Radius() * 2. )
+						continue;
+					double obstructed = (*ship_iter)->Radius() / (*ship_iter)->Dist( observed_ship );
+					if( obstructed > 1. )
+					{
+						Vec3D obstruction = **ship_iter - *observed_ship;
+						obstruction.ScaleTo( obstructed );
+						obstructions.push_back( obstruction );
+						change_light_for_cockpit = true;
+					}
+				}
+				
+				for( std::list<Asteroid*>::iterator asteroid_iter = asteroids.begin(); asteroid_iter != asteroids.end(); asteroid_iter ++ )
+				{
+					// Look for light obstructions from asteroids nearby.
+					double obstructed = (*asteroid_iter)->Radius * 2. / (*asteroid_iter)->Dist( observed_ship );
+					if( obstructed > 1. )
+					{
+						Vec3D obstruction = **asteroid_iter - *observed_ship;
+						obstruction.ScaleTo( obstructed );
+						obstructions.push_back( obstruction );
+						change_light_for_cockpit = true;
+					}
+				}
+				
 				if( change_light_for_cockpit )
 					SetWorldLights( ambient_scale, obstructions.size() ? &obstructions : NULL );
 				
 				if( dynamic_lights )
-				{
-					Shot *nearest_shot = NULL;
-					std::set<Pos3D*> used_lights;
-					char uniform_name[ 128 ] = "";
-					
-					ClearDynamicLights();
-					
-					for( int i = 0; i < dynamic_lights; i ++ )
-					{
-						nearest_shot = (Shot*) observed_ship->Nearest( (std::list<Pos3D*> *) &shots, i ? &used_lights : NULL );
-						if( nearest_shot )
-						{
-							snprintf( uniform_name, 128, "PointLight%iPos", i );
-							Raptor::Game->ShaderMgr.Set3f( uniform_name, nearest_shot->X - observed_ship->X, nearest_shot->Y - observed_ship->Y, nearest_shot->Z - observed_ship->Z );
-							
-							Color dynamic_light_color = nearest_shot->LightColor();
-							snprintf( uniform_name, 128, "PointLight%iColor", i );
-							Raptor::Game->ShaderMgr.Set3f( uniform_name, dynamic_light_color.Red, dynamic_light_color.Green, dynamic_light_color.Blue );
-							snprintf( uniform_name, 128, "PointLight%iRadius", i );
-							Raptor::Game->ShaderMgr.Set1f( uniform_name, dynamic_light_color.Alpha );
-							
-							used_lights.insert( nearest_shot );
-						}
-						else
-							break;
-					}
-				}
+					SetDynamicLights( observed_ship, observed_ship, dynamic_lights, &shots, &effects );
 			}
 			
 			// Technically the correct scale is 0.022, but we may need to make it higher to avoid near-plane clipping.
@@ -1777,39 +1917,8 @@ void RenderLayer::Draw( void )
 
 		if( dynamic_lights && Raptor::Game->ShaderMgr.Active() )
 		{
-			// Recast the list of Shot pointers to a list of Pos3D pointers.
-			std::list<Pos3D*> *shot_list = (std::list<Pos3D*> *) &shots;
-			Shot *nearest_shot = NULL;
-			std::set<Pos3D*> used_lights;
-			char uniform_name[ 128 ] = "";
-			
-			ClearDynamicLights();
-			
-			for( int i = 0; i < dynamic_lights; i ++ )
-			{
-				// If we're drawing the Death Star, the dynamic light should be the nearest shot to the camera.
-				if( obj_iter->second->Type() == XWing::Object::DEATH_STAR )
-					nearest_shot = (Shot*) Raptor::Game->Cam.Nearest( shot_list, i ? &used_lights : NULL );
-				else
-					nearest_shot = (Shot*) obj_iter->second->Nearest( shot_list, i ? &used_lights : NULL );
-				
-				if( nearest_shot )
-				{
-					snprintf( uniform_name, 128, "PointLight%iPos", i );
-					Raptor::Game->ShaderMgr.Set3f( uniform_name, nearest_shot->X, nearest_shot->Y, nearest_shot->Z );
-					
-					Color dynamic_light_color = nearest_shot->LightColor();
-					snprintf( uniform_name, 128, "PointLight%iColor", i );
-					Raptor::Game->ShaderMgr.Set3f( uniform_name, dynamic_light_color.Red, dynamic_light_color.Green, dynamic_light_color.Blue );
-					
-					snprintf( uniform_name, 128, "PointLight%iRadius", i );
-					Raptor::Game->ShaderMgr.Set1f( uniform_name, dynamic_light_color.Alpha );
-					
-					used_lights.insert( nearest_shot );
-				}
-				else
-					break;
-			}
+			Pos3D *pos = (obj_iter->second->Type() == XWing::Object::DEATH_STAR) ? (Pos3D*) &(Raptor::Game->Cam) : (Pos3D*) obj_iter->second;
+			SetDynamicLights( pos, NULL, dynamic_lights, &shots, &effects );
 		}
 		
 		glPushMatrix();
@@ -1832,25 +1941,22 @@ void RenderLayer::Draw( void )
 	
 	// Draw anything with alpha back-to-front.
 	
-	std::map< double, std::list<Renderable> > sorted_renderables;
+	std::multimap<double,Renderable> sorted_renderables;
 	
 	for( std::list<Shot*>::iterator shot_iter = shots.begin(); shot_iter != shots.end(); shot_iter ++ )
-		sorted_renderables[ (*shot_iter)->DistAlong( &(Raptor::Game->Cam.Fwd), &(Raptor::Game->Cam) ) ].push_back( *shot_iter );
+		sorted_renderables.insert( std::pair<double,Renderable>( (*shot_iter)->DistAlong( &(Raptor::Game->Cam.Fwd), &(Raptor::Game->Cam) ), *shot_iter ) );
 	
-	for( std::list<Effect>::iterator effect_iter = Raptor::Game->Data.Effects.begin(); effect_iter != Raptor::Game->Data.Effects.end(); effect_iter ++ )
-		sorted_renderables[ effect_iter->DistAlong( &(Raptor::Game->Cam.Fwd), &(Raptor::Game->Cam) ) ].push_back( &(*effect_iter) );
+	for( std::list<Effect*>::iterator effect_iter = effects.begin(); effect_iter != effects.end(); effect_iter ++ )
+		sorted_renderables.insert( std::pair<double,Renderable>( (*effect_iter)->DistAlong( &(Raptor::Game->Cam.Fwd), &(Raptor::Game->Cam) ), *effect_iter ) );
 	
-	for( std::map< double, std::list<Renderable> >::reverse_iterator renderable_iter1 = sorted_renderables.rbegin(); renderable_iter1 != sorted_renderables.rend(); renderable_iter1 ++ )
+	for( std::multimap<double,Renderable>::reverse_iterator renderable = sorted_renderables.rbegin(); renderable != sorted_renderables.rend(); renderable ++ )
 	{
-		for( std::list<Renderable>::iterator renderable_iter2 = renderable_iter1->second.begin(); renderable_iter2 != renderable_iter1->second.end(); renderable_iter2 ++ )
-		{
-			glPushMatrix();
-			if( renderable_iter2->ShotPtr )
-				renderable_iter2->ShotPtr->Draw();
-			else if( renderable_iter2->EffectPtr )
-				renderable_iter2->EffectPtr->Draw();
-			glPopMatrix();
-		}
+		glPushMatrix();
+		if( renderable->second.ShotPtr )
+			renderable->second.ShotPtr->Draw();
+		else if( renderable->second.EffectPtr )
+			renderable->second.EffectPtr->Draw();
+		glPopMatrix();
 	}
 	
 	
@@ -1980,8 +2086,6 @@ void RenderLayer::Draw( void )
 					weapon_pos.MoveAlong( &right, relative_weapon_vec.X * 2. );
 					weapon_pos.MoveAlong( &up, relative_weapon_vec.Y * 2. );
 					glVertex3d( weapon_pos.X, weapon_pos.Y, weapon_pos.Z );
-					
-					//delete shot_iter->second;
 				}
 			glEnd();
 			
@@ -2004,7 +2108,7 @@ void RenderLayer::Draw( void )
 			glEnd();
 			
 			// Draw big dots for the next shots to fire.
-			glPointSize( 4.f );
+			glPointSize( 5.f );
 			glBegin( GL_POINTS );
 				std::map<int,Shot*> next_weapons = observed_ship->NextShots();
 				for( std::map<int,Shot*>::iterator shot_iter = next_weapons.begin(); shot_iter != next_weapons.end(); shot_iter ++ )
@@ -2513,7 +2617,7 @@ void RenderLayer::UpdateSaitek( const Ship *ship, bool is_player, int view )
 				target = (Ship*) target_obj;
 		}
 		
-		std::map<uint32_t,int8_t>::const_iterator ammo_iter = ship->Ammo.find( ship->SelectedWeapon );
+		std::map<uint8_t,int8_t>::const_iterator ammo_iter = ship->Ammo.find( ship->SelectedWeapon );
 		if( (ammo_iter != ship->Ammo.end()) && (ammo_iter->second == 0) )
 			Raptor::Game->Saitek.SetX52ProLED( SaitekX52ProLED::Fire, (fmod( ship->Lifetime.ElapsedSeconds(), 0.5 ) >= 0.25) );
 		else
@@ -2652,7 +2756,7 @@ bool RenderLayer::KeyDown( SDLKey key )
 		
 		return MessageInput->KeyDown( key );
 	}
-	else if( (key == SDLK_RETURN) || (key == SDLK_KP_ENTER) )
+	else if( ((key == SDLK_RETURN) || (key == SDLK_KP_ENTER)) && IsTop() )
 	{
 		((XWingGame*)( Raptor::Game ))->ReadKeyboard = false;
 		

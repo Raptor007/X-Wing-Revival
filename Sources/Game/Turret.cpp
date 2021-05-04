@@ -17,12 +17,13 @@ Turret::Turret( uint32_t id ) : GameObject( id, XWing::Object::TURRET )
 {
 	ParentID = 0;
 	RelativeUp.Set( 0., 1., 0. );
+	RelativeFwd.Set( 1., 0., 0. );
 	ParentControl = false;
 	Team = XWing::Team::NONE;
 	
 	MinGunPitch = 0.;
 	MaxGunPitch = 80.;
-	Health = 100.;
+	Health = 95.;
 	Weapon = Shot::TYPE_TURBO_LASER_GREEN;
 	FiringMode = 2;
 	SingleShotDelay = 0.5;
@@ -131,7 +132,7 @@ void Turret::SetPitch( double pitch )
 	else if( pitch < -1. )
 		pitch = -1.;
 	
-	GunPitchRate = pitch * 45.;
+	GunPitchRate = pitch * (Visible ? 45. : 90.);
 }
 
 void Turret::SetYaw( double yaw )
@@ -141,7 +142,7 @@ void Turret::SetYaw( double yaw )
 	else if( yaw < -1. )
 		yaw = -1.;
 	
-	YawRate = yaw * 45.;
+	YawRate = yaw * (Visible ? 45. : 120.);
 }
 
 
@@ -159,17 +160,19 @@ Pos3D Turret::GunPos( void )
 }
 
 
-double Turret::MaxHealth( void )
-{
-	return 200.;
-}
-
-
 std::map<int,Shot*> Turret::NextShots( GameObject *target )
 {
 	std::map<int,Shot*> shots;
 	
 	Pos3D gun = GunPos();
+	
+	uint16_t player_id = PlayerID;
+	if( ParentID && ! PlayerID )
+	{
+		Ship *parent = (Ship*) Data->GetObject( ParentID );
+		if( parent )
+			player_id = parent->PlayerID;
+	}
 	
 	for( int num = 0; num < FiringMode; num ++ )
 	{
@@ -178,7 +181,7 @@ std::map<int,Shot*> Turret::NextShots( GameObject *target )
 		Shot *shot = new Shot();
 		shot->Copy( &gun );
 		shot->FiredFrom = ParentID ? ParentID : 0;
-		shot->PlayerID = PlayerID;
+		shot->PlayerID = player_id;
 		shot->ShotType = Weapon;
 		shot->MotionVector.Set( shot->Fwd.X, shot->Fwd.Y, shot->Fwd.Z );
 		shot->MotionVector.ScaleTo( shot->Speed() );

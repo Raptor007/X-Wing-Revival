@@ -31,7 +31,7 @@ public:
 	
 	bool Firing;
 	Clock FiringClock;
-	uint32_t Weapon;
+	uint8_t Weapon;
 	int WeaponIndex;
 	int FiringMode;
 	double SingleShotDelay;
@@ -58,8 +58,6 @@ public:
 	void SetPitch( double pitch );
 	void SetYaw( double yaw );
 	Pos3D GunPos( void );
-	
-	double MaxHealth( void );
 	
 	std::map<int,Shot*> NextShots( GameObject *target = NULL );
 	void JustFired( void );

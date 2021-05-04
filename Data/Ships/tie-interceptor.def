@@ -4,23 +4,26 @@ squadron Gamma
 category fighter
 team empire
 radius 4.5
-speed 210
+speed 220
 accel 125
-roll 240
-pitch 120
-yaw 100
+roll 135 125
+pitch 85 70
+yaw 65 50
+roll_change 385 360
+pitch_change 350 280
+yaw_change 335 270
 health 85
 shield 0
-ramming 1000
+ramming 500
 explode 1
 weapon laser_green 2.7775 1.056 0
-weapon laser_green -2.7775 1.056 0
 weapon laser_green -2.7775 -1.056 0
+weapon laser_green -2.7775 1.056 0
 weapon laser_green 2.7775 -1.056 0
 firetime laser_green 0.25
 model tie-interceptor.obj
 //cockpit tie-interceptor_cockpit.obj 0 0 0.308
 cockpit tie-fighter_cockpit_hq.obj 0 0 0.308
 model_scale 0.022
-flyby 25 tie_slow.wav
-flyby 250 tie_fast.wav
+flyby 20 tie_slow.wav
+flyby 240 tie_fast.wav

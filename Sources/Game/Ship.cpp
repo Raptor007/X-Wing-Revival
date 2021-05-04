@@ -24,7 +24,6 @@ Ship::Ship( uint32_t id ) : GameObject( id, XWing::Object::SHIP )
 Ship::Ship( const ShipClass *ship_class ) : GameObject( 0, XWing::Object::SHIP )
 {
 	Clear();
-	
 	Class = ship_class;
 	Reset();
 	
@@ -57,6 +56,7 @@ void Ship::Clear( void )
 	ShieldF = 0.;
 	ShieldR = 0.;
 	ShieldPos = SHIELD_CENTER;
+	HitByID = 0;
 	
 	Firing = false;
 	SelectedWeapon = 0;
@@ -94,7 +94,6 @@ bool Ship::SetClass( uint32_t ship_class_id )
 void Ship::SetClass( const ShipClass *ship_class )
 {
 	Class = ship_class;
-	
 	Reset();
 }
 
@@ -106,7 +105,8 @@ void Ship::Reset( void )
 	ShieldR = ShieldF;
 	ShieldPos = SHIELD_CENTER;
 	Subsystems.clear();
-	CollisionPotential = 1000.;
+	CollisionPotential = 500.;
+	HitByID = 0;
 	
 	Target = 0;
 	TargetLock = 0.f;
@@ -122,7 +122,7 @@ void Ship::Reset( void )
 		CollisionPotential = Class->CollisionDamage;
 		Ammo = Class->Ammo;
 		SelectedWeapon = Class->Weapons.size() ? Class->Weapons.begin()->first : 0;
-		for( std::map< uint32_t, std::vector<Pos3D> >::const_iterator weapon_iter = Class->Weapons.begin(); weapon_iter != Class->Weapons.end(); weapon_iter ++ )
+		for( std::map< uint8_t, std::vector<Pos3D> >::const_iterator weapon_iter = Class->Weapons.begin(); weapon_iter != Class->Weapons.end(); weapon_iter ++ )
 			FiringClocks[ weapon_iter->first ].Reset();
 	}
 }
@@ -143,7 +143,7 @@ void Ship::SetHealth( double health )
 }
 
 
-void Ship::AddDamage( double front, double rear, const char *subsystem )
+void Ship::AddDamage( double front, double rear, const char *subsystem, uint32_t hit_by_id )
 {
 	// Damage to shield towers can't be blocked by shields, and doesn't carry to the hull.
 	if( subsystem && (strncmp( subsystem, "ShieldGenerator", strlen("ShieldGenerator") ) == 0) && (Subsystems.find(subsystem) != Subsystems.end()) )
@@ -154,20 +154,27 @@ void Ship::AddDamage( double front, double rear, const char *subsystem )
 		{
 			Subsystems[ subsystem ] = 0.;
 			
-			int num_shield_towers = 0;
+			int num_shield_towers = 0, intact_shield_towers = 0;
 			for( std::map<std::string,double>::const_iterator subsystem_iter = Subsystems.begin(); subsystem_iter != Subsystems.end(); subsystem_iter ++ )
 			{
 				if( strncmp( subsystem_iter->first.c_str(), "ShieldGenerator", strlen("ShieldGenerator") ) == 0 )
+				{
 					num_shield_towers ++;
+					if( subsystem_iter->second > 0. )
+						intact_shield_towers ++;
+				}
 			}
 			
-			ShieldF -= MaxShield() / num_shield_towers;
-			ShieldR -= MaxShield() / num_shield_towers;
-			
-			if( ShieldF < 0. )
+			if( intact_shield_towers )
+			{
+				ShieldF *= intact_shield_towers / (double) num_shield_towers;
+				ShieldR *= intact_shield_towers / (double) num_shield_towers;
+			}
+			else
+			{
 				ShieldF = 0.;
-			if( ShieldR < 0. )
 				ShieldR = 0.;
+			}
 		}
 		
 		front = 0.;
@@ -207,11 +214,28 @@ void Ship::AddDamage( double front, double rear, const char *subsystem )
 		{
 			Subsystems[ subsystem ] = 0.;
 			
-			// Destroying the bridge destroys the whole ship.
 			if( strncmp( subsystem, "Critical", strlen("Critical") ) == 0 )
-				hull_damage = Health + 1.;
+			{
+				int num_critical = 0, intact_critical = 0;
+				for( std::map<std::string,double>::const_iterator subsystem_iter = Subsystems.begin(); subsystem_iter != Subsystems.end(); subsystem_iter ++ )
+				{
+					if( strncmp( subsystem_iter->first.c_str(), "Critical", strlen("Critical") ) == 0 )
+					{
+						num_critical ++;
+						if( subsystem_iter->second > 0. )
+							intact_critical ++;
+					}
+				}
+				
+				// Destroying all critical components destroys the whole ship.
+				if( ! intact_critical )
+					hull_damage += Health;
+			}
 		}
 	}
+	
+	if( hit_by_id )
+		HitByID = hit_by_id;
 	
 	SetHealth( Health - hull_damage );
 	
@@ -237,6 +261,10 @@ void Ship::SetRoll( double roll, double dt )
 	double max_change = dt * MaxRollChange();
 	double desired = roll * MaxRoll();
 	
+	int8_t sign1 = Num::Sign(desired), sign2 = Num::Sign(RollRate);
+	if( sign1 && sign2 && (sign1 != sign2) )
+		max_change *= 2.;
+	
 	if( fabs( desired - RollRate ) > max_change )
 		RollRate += max_change * Num::Sign( desired - RollRate );
 	else
@@ -254,6 +282,10 @@ void Ship::SetPitch( double pitch, double dt )
 	double max_change = dt * MaxPitchChange();
 	double desired = pitch * MaxPitch();
 	
+	int8_t sign1 = Num::Sign(desired), sign2 = Num::Sign(PitchRate);
+	if( sign1 && sign2 && (sign1 != sign2) )
+		max_change *= 2.;
+	
 	if( fabs( desired - PitchRate ) > max_change )
 		PitchRate += max_change * Num::Sign( desired - PitchRate );
 	else
@@ -270,6 +302,10 @@ void Ship::SetYaw( double yaw, double dt )
 	
 	double max_change = dt * MaxYawChange();
 	double desired = yaw * MaxYaw();
+	
+	int8_t sign1 = Num::Sign(desired), sign2 = Num::Sign(YawRate);
+	if( sign1 && sign2 && (sign1 != sign2) )
+		max_change *= 2.;
 	
 	if( fabs( desired - YawRate ) > max_change )
 		YawRate += max_change * Num::Sign( desired - YawRate );
@@ -376,10 +412,17 @@ double Ship::Acceleration( void ) const
 }
 
 
+double Ship::MaxGeneric( double slow, double fast, double exponent ) const
+{
+	double speed = pow( GetThrottle(), exponent );
+	return slow * (1. - speed) + fast * speed;
+}
+
+
 double Ship::MaxRoll( void ) const
 {
 	if( Class )
-		return Class->MaxRoll;
+		return MaxGeneric( Class->RollSlow, Class->RollFast, Class->RollExponent );
 	
 	return 180.;
 }
@@ -388,7 +431,7 @@ double Ship::MaxRoll( void ) const
 double Ship::MaxPitch( void ) const
 {
 	if( Class )
-		return Class->MaxPitch;
+		return MaxGeneric( Class->PitchSlow, Class->PitchFast, Class->PitchExponent );
 	
 	return 100.;
 }
@@ -397,7 +440,7 @@ double Ship::MaxPitch( void ) const
 double Ship::MaxYaw( void ) const
 {
 	if( Class )
-		return Class->MaxYaw;
+		return MaxGeneric( Class->YawSlow, Class->YawFast, Class->YawExponent );
 	
 	return 80.;
 }
@@ -405,19 +448,28 @@ double Ship::MaxYaw( void ) const
 
 double Ship::MaxRollChange( void ) const
 {
-	return MaxRoll() * 8.; // FIXME
+	if( Class )
+		return MaxGeneric( Class->RollChangeSlow, Class->RollChangeFast, Class->RollChangeExponent );
+	
+	return MaxRoll() * 8.;
 }
 
 
 double Ship::MaxPitchChange( void ) const
 {
-	return MaxYaw() * 8.; // FIXME
+	if( Class )
+		return MaxGeneric( Class->PitchChangeSlow, Class->PitchChangeFast, Class->PitchChangeExponent );
+	
+	return MaxPitch() * 8.;
 }
 
 
 double Ship::MaxYawChange( void ) const
 {
-	return MaxYaw() * 8.; // FIXME
+	if( Class )
+		return MaxGeneric( Class->YawChangeSlow, Class->YawChangeFast, Class->YawChangeExponent );
+	
+	return MaxYaw() * 8.;
 }
 
 
@@ -479,7 +531,7 @@ int Ship::WeaponCount( int weapon_type ) const
 {
 	if( Class )
 	{
-		std::map< uint32_t, std::vector<Pos3D> >::const_iterator weapon_iter = Class->Weapons.find( weapon_type );
+		std::map< uint8_t, std::vector<Pos3D> >::const_iterator weapon_iter = Class->Weapons.find( weapon_type );
 		return (weapon_iter != Class->Weapons.end()) ? weapon_iter->second.size() : 0;
 	}
 	
@@ -551,7 +603,7 @@ std::map<int,Shot*> Ship::NextShots( GameObject *target ) const
 	
 	// If ammo is limited, don't fire more than the ammo we have.
 	int firing_mode = FiringMode;
-	std::map<uint32_t,int8_t>::const_iterator ammo_iter = Ammo.find(SelectedWeapon);
+	std::map<uint8_t,int8_t>::const_iterator ammo_iter = Ammo.find(SelectedWeapon);
 	if( (ammo_iter != Ammo.end()) && (ammo_iter->second >= 0) && (ammo_iter->second < firing_mode) )
 		firing_mode = ammo_iter->second;
 	
@@ -571,7 +623,7 @@ std::map<int,Shot*> Ship::NextShots( GameObject *target ) const
 		
 		if( Class )
 		{
-			std::map< uint32_t, std::vector<Pos3D> >::const_iterator weapon_iter = Class->Weapons.find( SelectedWeapon );
+			std::map< uint8_t, std::vector<Pos3D> >::const_iterator weapon_iter = Class->Weapons.find( SelectedWeapon );
 			if( (weapon_iter != Class->Weapons.end()) && weapon_iter->second.size() )
 			{
 				size_t weapon_count = weapon_iter->second.size();
@@ -592,13 +644,20 @@ std::map<int,Shot*> Ship::NextShots( GameObject *target ) const
 		
 		shots[ weapon_index ] = shot;
 		
-		// For ships that could be either team, make Empire lasers green.
+		// For ships that could be either team, make Empire lasers green and Rebel lasers red.
 		if( Team == XWing::Team::EMPIRE )
 		{
 			if( shot->ShotType == Shot::TYPE_LASER_RED )
 				shot->ShotType = Shot::TYPE_LASER_GREEN;
 			else if( shot->ShotType == Shot::TYPE_TURBO_LASER_RED )
 				shot->ShotType = Shot::TYPE_TURBO_LASER_GREEN;
+		}
+		else if( Team == XWing::Team::REBEL )
+		{
+			if( shot->ShotType == Shot::TYPE_LASER_GREEN )
+				shot->ShotType = Shot::TYPE_LASER_RED;
+			else if( shot->ShotType == Shot::TYPE_TURBO_LASER_GREEN )
+				shot->ShotType = Shot::TYPE_TURBO_LASER_RED;
 		}
 		
 		// If we had a lock for a seeking weapon, give the shot its target.
@@ -654,13 +713,14 @@ void Ship::JustFired( void )
 }
 
 
-void Ship::JustFired( uint32_t weapon, uint8_t mode )
+void Ship::JustFired( uint8_t weapon, uint8_t mode )
 {
 	FiringClocks[ weapon ].Reset();
 	
-	if( Ammo[ weapon ] > 0 )
+	std::map<uint8_t,int8_t>::const_iterator ammo_iter = Ammo.find( weapon );
+	if( (ammo_iter != Ammo.end()) && (ammo_iter->second > 0) )
 	{
-		if( Ammo[ weapon ] > mode )
+		if( ammo_iter->second > mode )
 			Ammo[ weapon ] -= mode;
 		else
 			Ammo[ weapon ] = 0;
@@ -679,11 +739,11 @@ void Ship::JustFired( uint32_t weapon, uint8_t mode )
 
 bool Ship::NextWeapon( void )
 {
-	uint32_t prev = SelectedWeapon;
+	uint8_t prev = SelectedWeapon;
 	
 	if( Class )
 	{
-		std::map< uint32_t, int8_t >::const_iterator ammo_iter = Class->Ammo.find( SelectedWeapon );
+		std::map< uint8_t, int8_t >::const_iterator ammo_iter = Class->Ammo.find( SelectedWeapon );
 		if( ammo_iter != Class->Ammo.end() )
 			ammo_iter ++;
 		if( ammo_iter == Class->Ammo.end() )
@@ -692,10 +752,13 @@ bool Ship::NextWeapon( void )
 			SelectedWeapon = ammo_iter->first;
 	}
 	
-	FiringMode = 1;
-	WeaponIndex = 0;
-	
-	return (SelectedWeapon != prev);
+	if( SelectedWeapon != prev )
+	{
+		FiringMode = 1;
+		WeaponIndex = 0;
+		return true;
+	}
+	return false;
 }
 
 
@@ -729,7 +792,7 @@ double Ship::ShotDelay( void ) const
 {
 	if( Class )
 	{
-		std::map<uint32_t,double>::const_iterator firetime_iter = Class->FireTime.find( SelectedWeapon );
+		std::map<uint8_t,double>::const_iterator firetime_iter = Class->FireTime.find( SelectedWeapon );
 		if( firetime_iter != Class->FireTime.end() )
 			return firetime_iter->second * FiringMode;
 	}
@@ -748,7 +811,7 @@ float Ship::LockingOn( const GameObject *target ) const
 	
 	if( (SelectedWeapon != Shot::TYPE_TORPEDO) && (SelectedWeapon != Shot::TYPE_MISSILE) )
 		return 0.f;
-	std::map<uint32_t,int8_t>::const_iterator ammo_iter = Ammo.find( SelectedWeapon );
+	std::map<uint8_t,int8_t>::const_iterator ammo_iter = Ammo.find( SelectedWeapon );
 	if( ammo_iter == Ammo.end() )
 		return 0.f;
 	if( ammo_iter->second == 0 )
@@ -828,7 +891,7 @@ bool Ship::ServerShouldUpdateOthers( void ) const
 
 bool Ship::CanCollideWithOwnType( void ) const
 {
-	return true;
+	return (Category() != ShipClass::CATEGORY_TARGET);
 }
 
 bool Ship::CanCollideWithOtherTypes( void ) const
@@ -869,7 +932,8 @@ void Ship::AddToUpdatePacketFromServer( Packet *packet, int8_t precision )
 {
 	GameObject::AddToUpdatePacketFromServer( packet, precision );
 	packet->AddFloat( Health );
-	packet->AddUChar( ShieldPos );
+	packet->AddUChar( SelectedWeapon | (ShieldPos << 6) );
+	packet->AddUChar( FiringMode | (WeaponIndex << 4) );
 	packet->AddUInt( Target );
 	packet->AddChar( Num::UnitFloatTo8( (Target && LockingOn(Data->GetObject(Target))) ? (TargetLock / 2.f) : 0.f ) );
 	
@@ -881,7 +945,12 @@ void Ship::ReadFromUpdatePacketFromServer( Packet *packet, int8_t precision )
 {
 	GameObject::ReadFromUpdatePacketFromServer( packet, precision );
 	SetHealth( packet->NextFloat() );
-	SetShieldPos( packet->NextUChar() );
+	uint8_t weapon_shield = packet->NextUChar();
+	SetShieldPos(   (weapon_shield & 0xC0) >> 6 );
+	SelectedWeapon = weapon_shield & 0x3F;
+	uint8_t firing_mode = packet->NextUChar();
+	FiringMode  =  firing_mode & 0x0F;
+	WeaponIndex = (firing_mode & 0xF0) >> 4;
 	Target = packet->NextUInt();
 	TargetLock = Num::UnitFloatFrom8( packet->NextChar() ) * 2.f;
 }
@@ -890,11 +959,9 @@ void Ship::ReadFromUpdatePacketFromServer( Packet *packet, int8_t precision )
 void Ship::AddToUpdatePacketFromClient( Packet *packet, int8_t precision )
 {
 	GameObject::AddToUpdatePacketFromClient( packet, precision );
-	packet->AddUChar( Firing );
-	packet->AddUChar( ShieldPos );
+	packet->AddUChar( SelectedWeapon | (ShieldPos << 6) );
+	packet->AddUChar( Firing ? (FiringMode | 0x80) : FiringMode );
 	packet->AddUInt( Target );
-	packet->AddUInt( SelectedWeapon );
-	packet->AddUChar( FiringMode );
 	packet->AddChar( Num::UnitFloatTo8( TargetLock / 2.f ) );
 }
 
@@ -911,14 +978,16 @@ void Ship::ReadFromUpdatePacketFromClient( Packet *packet, int8_t precision )
 		return;
 	}
 	
-	uint32_t prev_selected_weapon = SelectedWeapon;
+	uint8_t prev_selected_weapon = SelectedWeapon;
 	
 	GameObject::ReadFromUpdatePacketFromClient( packet, precision );
-	Firing = packet->NextUChar();
-	SetShieldPos( packet->NextUChar() );
+	uint8_t weapon_shield = packet->NextUChar();
+	SetShieldPos(   (weapon_shield & 0xC0) >> 6 );
+	SelectedWeapon = weapon_shield & 0x3F;
+	uint8_t firing_mode = packet->NextUChar();
+	Firing     = firing_mode & 0x80;
+	FiringMode = firing_mode & 0x7F;
 	Target = packet->NextUInt();
-	SelectedWeapon = packet->NextUInt();
-	FiringMode = packet->NextUChar();
 	TargetLock = Num::UnitFloatFrom8( packet->NextChar() ) * 2.f;
 	
 	if( SelectedWeapon != prev_selected_weapon )

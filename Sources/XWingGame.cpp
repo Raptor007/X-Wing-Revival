@@ -50,9 +50,10 @@ void XWingGame::SetDefaults( void )
 	
 	Cfg.Settings[ "name" ] = "Rookie One";
 	
+	Cfg.Settings[ "host_address" ] = "fiber.raptor007.com";
+	
 	Cfg.Settings[ "view" ] = "cockpit";
 	Cfg.Settings[ "spectator_view" ] = "auto";
-	Cfg.Settings[ "view_cycle_time" ] = "7";
 	
 	Cfg.Settings[ "g_bg" ] = "true";
 	Cfg.Settings[ "g_stars" ] = "0";
@@ -79,7 +80,7 @@ void XWingGame::SetDefaults( void )
 	Cfg.Settings[ "mouse_mode" ] = "disabled";
 	Cfg.Settings[ "mouse_invert" ] = "true";
 	Cfg.Settings[ "mouse_smooth" ] = "0.25";
-
+	
 	#ifdef APPLE_POWERPC
 		Cfg.Settings[ "g_dynamic_lights" ] = "1";
 		Cfg.Settings[ "g_debris" ] = "200";
@@ -98,7 +99,15 @@ void XWingGame::Setup( int argc, char **argv )
 		Cfg.Settings[ "s_game_music" ] = "false";
 		Cfg.Settings[ "saitek_enable" ] = "false";
 		Cfg.Settings[ "spectator_view" ] = "cinema2";
-		Cfg.Settings[ "sv_netrate" ] = "60";
+		int maxfps = Cfg.SettingAsInt( "maxfps", 60 );
+		Cfg.Settings[ "sv_netrate" ] = Cfg.Settings[ "sv_maxfps" ] = (maxfps > 60) ? Num::ToString(maxfps) : "60";
+	}
+	
+	bool safemode = false;
+	for( int i = 1; i < argc; i ++ )
+	{
+		if( strcasecmp( argv[ i ], "-safe" ) == 0 )
+			safemode = true;
 	}
 	
 	// Set music to shuffle.
@@ -134,8 +143,14 @@ void XWingGame::Setup( int argc, char **argv )
 		AddScreensaverLayer();
 	}
 	
+	if( ! screensaver )
+	{
+		// Load other shaders.
+		Res.GetShader("model_hud");
+		Res.GetShader("deathstar");
+	}
+	
 	// Load and select the model shader, but don't activate it yet.
-	Res.GetShader("model_hud");
 	ShaderMgr.Select( Res.GetShader("model") );
 	
 	// Generate all framebuffers for render-to-texture.
@@ -145,7 +160,8 @@ void XWingGame::Setup( int argc, char **argv )
 	Res.GetFramebuffer( "throttle", 32, 256 );
 	
 	// Precache resources while the loading screen is still being shown.
-	Precache();
+	if( ! safemode )
+		Precache();
 }
 
 
@@ -372,27 +388,29 @@ void XWingGame::Update( double dt )
 						yaw = z;
 				}
 			}
-			else if( Str::FindInsensitive( joy_iter->second.Name, "Throttle" ) >= 0 )
+			else if( (Str::FindInsensitive( joy_iter->second.Name, "Throttle" ) >= 0) && joy_iter->second.HasAxis(0) )
 			{
 				throttle = joy_iter->second.AxisScaled( 0, 1.,0., 0.,deadzone );
 				throttle_unit = true;
 			}
 			else if( Str::FindInsensitive( joy_iter->second.Name, "Xbox" ) >= 0 )
 			{
-				//stick = true;
 				double deadzone_thumbsticks = Cfg.SettingAsDouble( "joy_deadzone_thumbsticks", 0.1 );
 				double deadzone_triggers = Cfg.SettingAsDouble( "joy_deadzone_triggers", 0.02 );
 				
 				// Read controller's triggers for roll.
-				roll = -1. * joy_iter->second.Axis( 2, deadzone_triggers );
-				roll = fabs(pow( fabs(roll), Cfg.SettingAsDouble("joy_smooth_triggers") + 1. )) * Num::Sign(roll);
+				double z = -1. * joy_iter->second.Axis( 2, deadzone_triggers );
+				z = fabs(pow( fabs(z), Cfg.SettingAsDouble("joy_smooth_triggers") + 1. )) * Num::Sign(z);
+				roll += z;
 				
 				// Read controller's thumbsticks.
 				double smooth = Cfg.SettingAsDouble( "joy_smooth_thumbsticks", 1. );
-				pitch = joy_iter->second.Axis( 1, deadzone_thumbsticks );
-				pitch = fabs(pow( fabs(pitch), smooth + 1. )) * Num::Sign(pitch);
-				yaw = joy_iter->second.Axis( 0, deadzone_thumbsticks );
-				yaw = fabs(pow( fabs(yaw), smooth + 1. )) * Num::Sign(yaw);
+				double x = joy_iter->second.Axis( 0, deadzone_thumbsticks );
+				x = fabs(pow( fabs(x), smooth + 1. )) * Num::Sign(x);
+				yaw += x;
+				double y = joy_iter->second.Axis( 1, deadzone_thumbsticks );
+				y = fabs(pow( fabs(y), smooth + 1. )) * Num::Sign(y);
+				pitch += y;
 				double look_yaw = joy_iter->second.Axis( 4, deadzone_thumbsticks );
 				double look_pitch = joy_iter->second.Axis( 3, deadzone_thumbsticks );
 				if( (fabs(look_yaw) > 0.5) || (fabs(look_pitch) > 0.5) )
@@ -1328,6 +1346,31 @@ bool XWingGame::HandleEvent( SDL_Event *event )
 }
 
 
+bool XWingGame::HandleCommand( std::string cmd, std::vector<std::string> *params )
+{
+	if( cmd == "pew" )
+	{
+		if( Raptor::Game->Res.SearchPath.front() == "Sounds/Silly" )
+		{
+			Raptor::Game->Res.SearchPath.pop_front();
+			Raptor::Game->Console.Print( "Silly sounds disabled." );
+		}
+		else
+		{
+			Raptor::Game->Res.SearchPath.push_front( "Sounds/Silly" );
+			Raptor::Game->Console.Print( "Silly sounds enabled!" );
+		}
+		
+		Raptor::Game->Snd.StopSounds();
+		Raptor::Game->Res.DeleteSounds();
+		
+		return true;
+	}
+	
+	return false;
+}
+
+
 bool XWingGame::ProcessPacket( Packet *packet )
 {
 	packet->Rewind();
@@ -1382,10 +1425,8 @@ bool XWingGame::ProcessPacket( Packet *packet )
 		double shield_f = packet->NextFloat();
 		double shield_r = packet->NextFloat();
 		const char *subsystem = packet->NextString();
-		double subsystem_health = 0.;
-		if( strlen(subsystem) )
-			subsystem_health = packet->NextFloat();
-		uint32_t shot_type = packet->NextUInt();
+		double subsystem_health = subsystem[0] ? packet->NextFloat() : 0.;
+		uint8_t shot_type = packet->NextUChar();
 		double x = packet->NextDouble();
 		double y = packet->NextDouble();
 		double z = packet->NextDouble();
@@ -1396,6 +1437,7 @@ bool XWingGame::ProcessPacket( Packet *packet )
 		Ship *ship = NULL;
 		double old_health = 0.;
 		double old_shields = 0.;
+		double old_subsystem_health = 0.;
 		double ship_dx = 0., ship_dy = 0., ship_dz = 0.;
 		
 		GameObject *ship_obj = Data.GetObject( ship_id );
@@ -1411,8 +1453,11 @@ bool XWingGame::ProcessPacket( Packet *packet )
 			ship->SetHealth( health );
 			ship->ShieldF = shield_f;
 			ship->ShieldR = shield_r;
-			if( strlen(subsystem) )
+			if( subsystem[0] )
+			{
+				old_subsystem_health = ship->Subsystems[ subsystem ];
 				ship->Subsystems[ subsystem ] = subsystem_health;
+			}
 		}
 		
 		if( State >= XWing::State::FLYING )
@@ -1434,7 +1479,7 @@ bool XWingGame::ProcessPacket( Packet *packet )
 				}
 				else if( ship->ID == ObservedShipID )
 				{
-					if( ship->Health < old_health )
+					if( (ship->Health < old_health) || (subsystem_health < old_subsystem_health) )
 						sound = Res.GetSound("damage_hull.wav");
 					else if( ship->ShieldF + ship->ShieldR < old_shields )
 						sound = Res.GetSound("damage_shield.wav");
@@ -1442,7 +1487,7 @@ bool XWingGame::ProcessPacket( Packet *packet )
 				}
 				else
 				{
-					if( ship->Health < old_health )
+					if( (ship->Health < old_health) || (subsystem_health < old_subsystem_health) )
 						sound = Res.GetSound("hit_hull.wav");
 					else if( ship->ShieldF + ship->ShieldR < old_shields )
 						sound = Res.GetSound("hit_shield.wav");
@@ -1470,7 +1515,7 @@ bool XWingGame::ProcessPacket( Packet *packet )
 	{
 		uint32_t turret_id = packet->NextUInt();
 		double health = packet->NextFloat();
-		uint32_t shot_type = packet->NextUInt();
+		uint8_t shot_type = packet->NextUChar();
 		double x = packet->NextDouble();
 		double y = packet->NextDouble();
 		double z = packet->NextDouble();
@@ -1511,7 +1556,7 @@ bool XWingGame::ProcessPacket( Packet *packet )
 	
 	else if( type == XWing::Packet::SHOT_HIT_HAZARD )
 	{
-		uint32_t shot_type = packet->NextUInt();
+		uint8_t shot_type = packet->NextUChar();
 		double x = packet->NextDouble();
 		double y = packet->NextDouble();
 		double z = packet->NextDouble();
@@ -1539,9 +1584,7 @@ bool XWingGame::ProcessPacket( Packet *packet )
 		double shield_f = packet->NextFloat();
 		double shield_r = packet->NextFloat();
 		const char *subsystem = packet->NextString();
-		double subsystem_health = 0.;
-		if( strlen(subsystem) )
-			subsystem_health = packet->NextFloat();
+		double subsystem_health = subsystem[0] ? packet->NextFloat() : 0.;
 		double x = packet->NextDouble();
 		double y = packet->NextDouble();
 		double z = packet->NextDouble();
@@ -1560,7 +1603,7 @@ bool XWingGame::ProcessPacket( Packet *packet )
 			ship->SetHealth( health );
 			ship->ShieldF = shield_f;
 			ship->ShieldR = shield_r;
-			if( strlen(subsystem) )
+			if( subsystem[0] )
 				ship->Subsystems[ subsystem ] = subsystem_health;
 		}
 		

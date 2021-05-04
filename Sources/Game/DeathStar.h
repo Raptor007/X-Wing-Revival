@@ -40,4 +40,7 @@ public:
 	void Update( double dt );
 	
 	void Draw( void );
+	
+	bool WithinTrenchH( const Pos3D *pos ) const;
+	bool WithinTrenchW( const Pos3D *pos ) const;
 };

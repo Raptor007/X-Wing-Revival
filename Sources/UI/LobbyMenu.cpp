@@ -8,6 +8,7 @@
 #include "XWingGame.h"
 #include "Num.h"
 #include "ShipClass.h"
+#include <algorithm>
 
 
 LobbyMenu::LobbyMenu( void )
@@ -33,6 +34,7 @@ LobbyMenu::LobbyMenu( void )
 	AddElement( LeaveButton = new LobbyMenuLeaveButton() );
 	AddElement( FlyButton = new LobbyMenuFlyButton() );
 	
+	bool darkside = Raptor::Game->Cfg.SettingAsBool("darkside",false);
 	ShipDropDown = new LobbyMenuPlayerDropDown( NULL, Raptor::Game->Res.GetFont( "Verdana.ttf", tiny ? 13 : 19 ), Font::ALIGN_TOP_LEFT, 0, "ship" );
 	ShipDropDown->AddItem( "", "[Auto-Assign]" );
 	for( std::map<uint32_t,GameObject*>::const_iterator obj_iter = Raptor::Game->Data.GameObjects.begin(); obj_iter != Raptor::Game->Data.GameObjects.end(); obj_iter ++ )
@@ -40,7 +42,7 @@ LobbyMenu::LobbyMenu( void )
 		if( obj_iter->second->Type() == XWing::Object::SHIP_CLASS )
 		{
 			const ShipClass *sc = (const ShipClass*) obj_iter->second;
-			if( sc->PlayersCanFly() )
+			if( darkside || sc->PlayersCanFly() )
 				ShipDropDown->AddItem( sc->ShortName, sc->LongName );
 		}
 	}
@@ -1124,7 +1126,7 @@ void LobbyMenuConfigChangeButton::Clicked( Uint8 button )
 	
 	else if( config->Property == "empire_ship" )
 	{
-		std::set<const ShipClass*> classes;
+		std::vector<const ShipClass*> classes;
 		const ShipClass *class_ptr = NULL;
 		for( std::map<uint32_t,GameObject*>::const_iterator obj_iter = Raptor::Game->Data.GameObjects.begin(); obj_iter != Raptor::Game->Data.GameObjects.end(); obj_iter ++ )
 		{
@@ -1133,7 +1135,7 @@ void LobbyMenuConfigChangeButton::Clicked( Uint8 button )
 				const ShipClass *sc = (const ShipClass*) obj_iter->second;
 				if( (sc->Category == ShipClass::CATEGORY_CAPITAL) && (sc->Team != XWing::Team::REBEL) )
 				{
-					classes.insert( sc );
+					classes.push_back( sc );
 					if( strcasecmp( sc->ShortName.c_str(), value.c_str() ) == 0 )
 						class_ptr = sc;
 				}
@@ -1142,7 +1144,7 @@ void LobbyMenuConfigChangeButton::Clicked( Uint8 button )
 		
 		if( classes.size() )
 		{
-			std::set<const ShipClass*>::const_iterator current = classes.find( class_ptr );
+			std::vector<const ShipClass*>::const_iterator current = std::find( classes.begin(), classes.end(), class_ptr );
 			if( current == classes.end() )
 				value = (*(classes.begin()))->ShortName;
 			else if( go_prev && (current == classes.begin()) )
@@ -1165,7 +1167,7 @@ void LobbyMenuConfigChangeButton::Clicked( Uint8 button )
 	
 	else if( config->Property == "rebel_ship" )
 	{
-		std::set<const ShipClass*> classes;
+		std::vector<const ShipClass*> classes;
 		const ShipClass *class_ptr = NULL;
 		for( std::map<uint32_t,GameObject*>::const_iterator obj_iter = Raptor::Game->Data.GameObjects.begin(); obj_iter != Raptor::Game->Data.GameObjects.end(); obj_iter ++ )
 		{
@@ -1174,7 +1176,7 @@ void LobbyMenuConfigChangeButton::Clicked( Uint8 button )
 				const ShipClass *sc = (const ShipClass*) obj_iter->second;
 				if( (sc->Category == ShipClass::CATEGORY_CAPITAL) && (sc->Team != XWing::Team::EMPIRE) )
 				{
-					classes.insert( sc );
+					classes.push_back( sc );
 					if( strcasecmp( sc->ShortName.c_str(), value.c_str() ) == 0 )
 						class_ptr = sc;
 				}
@@ -1183,7 +1185,7 @@ void LobbyMenuConfigChangeButton::Clicked( Uint8 button )
 		
 		if( classes.size() )
 		{
-			std::set<const ShipClass*>::const_iterator current = classes.find( class_ptr );
+			std::vector<const ShipClass*>::const_iterator current = std::find( classes.begin(), classes.end(), class_ptr );
 			if( current == classes.end() )
 				value = (*(classes.begin()))->ShortName;
 			else if( go_prev && (current == classes.begin()) )

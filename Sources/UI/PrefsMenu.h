@@ -60,10 +60,10 @@ public:
 class PrefsMenuVRCheckBox : public PrefsMenuCheckBox
 {
 public:
-	PrefsMenuCheckBox *FramebuffersCheckbox;
+	PrefsMenuCheckBox *FramebuffersCheckbox, *VSyncCheckbox;
 	PrefsMenuDropDown *FSAADropDown;
 	
-	PrefsMenuVRCheckBox( SDL_Rect *rect, Font *font, std::string label, PrefsMenuCheckBox *framebuffers_checkbox = NULL, PrefsMenuDropDown *fsaa_dropdown = NULL );
+	PrefsMenuVRCheckBox( SDL_Rect *rect, Font *font, std::string label, PrefsMenuCheckBox *framebuffers_checkbox = NULL, PrefsMenuCheckBox *vsync_checkbox = NULL, PrefsMenuDropDown *fsaa_dropdown = NULL );
 	virtual ~PrefsMenuVRCheckBox();
 	void Changed( void );
 };

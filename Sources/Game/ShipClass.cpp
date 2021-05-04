@@ -21,9 +21,14 @@ ShipClass::ShipClass( uint32_t id ) : GameObject( id, XWing::Object::SHIP_CLASS 
 	CollisionDamage = 1000.;
 	MaxSpeed = 170.;
 	Acceleration = 85.;
-	MaxRoll = 180.;
-	MaxPitch = 100.;
-	MaxYaw = 80.;
+	RollSlow = RollFast = 180.;
+	PitchSlow = PitchFast = 100.;
+	YawSlow = YawFast = 80.;
+	RollExponent = PitchExponent = YawExponent = 1.;
+	RollChangeSlow = RollChangeFast = 8. * RollSlow;
+	PitchChangeSlow = PitchChangeFast = 8. * PitchSlow;
+	YawChangeSlow = YawChangeFast = 8. * YawSlow;
+	RollChangeExponent = PitchChangeExponent = YawChangeExponent = 2.;
 	MaxHealth = 100.;
 	MaxShield = 0.;
 	ShieldRechargeDelay = 5.;
@@ -44,9 +49,24 @@ ShipClass::ShipClass( const ShipClass &other ) : GameObject( 0, XWing::Object::S
 	CollisionDamage = other.CollisionDamage;
 	MaxSpeed = other.MaxSpeed;
 	Acceleration = other.Acceleration;
-	MaxRoll = other.MaxRoll;
-	MaxPitch = other.MaxPitch;
-	MaxYaw = other.MaxYaw;
+	RollSlow = other.RollSlow;
+	PitchSlow = other.PitchSlow;
+	YawSlow = other.YawSlow;
+	RollFast = other.RollFast;
+	PitchFast = other.PitchFast;
+	YawFast = other.YawFast;
+	RollExponent = other.RollExponent;
+	PitchExponent = other.PitchExponent;
+	YawExponent = other.YawExponent;
+	RollChangeSlow = other.RollChangeSlow;
+	PitchChangeSlow = other.PitchChangeSlow;
+	YawChangeSlow = other.YawChangeSlow;
+	RollChangeFast = other.RollChangeFast;
+	PitchChangeFast = other.PitchChangeFast;
+	YawChangeFast = other.YawChangeFast;
+	RollChangeExponent = other.RollChangeExponent;
+	PitchChangeExponent = other.PitchChangeExponent;
+	YawChangeExponent = other.YawChangeExponent;
 	MaxHealth = other.MaxHealth;
 	MaxShield = other.MaxShield;
 	ShieldRechargeDelay = other.ShieldRechargeDelay;
@@ -71,17 +91,17 @@ ShipClass::~ShipClass()
 }
 
 
-static uint32_t ShotTypeFromString( std::string type, uint32_t team )
+static uint8_t ShotTypeFromString( std::string type, uint32_t team )
 {
 	std::transform( type.begin(), type.end(), type.begin(), tolower );
 	
-	if( type == "red_laser" )
+	if( (type == "red_laser") || (type == "laser_red") )
 		return Shot::TYPE_LASER_RED;
-	else if( type == "green_laser" )
+	else if( (type == "green_laser") || (type == "laser_green") )
 		return Shot::TYPE_LASER_GREEN;
-	else if( type == "red_turbolaser" )
+	else if( (type == "red_turbolaser") || (type == "turbolaser_red") )
 		return Shot::TYPE_TURBO_LASER_RED;
-	else if( type == "green_turbolaser" )
+	else if( (type == "green_turbolaser") || (type == "turbolaser_green") )
 		return Shot::TYPE_TURBO_LASER_GREEN;
 	else if( type == "ion_cannon" )
 		return Shot::TYPE_ION_CANNON;
@@ -172,15 +192,81 @@ bool ShipClass::Load( const std::string &filename )
 		}
 		else if( (var == "roll") && args.size() )
 		{
-			MaxRoll = atof( args.at(0).c_str() );
+			RollSlow = atof( args.at(0).c_str() );
+			if( args.size() >= 2 )
+				RollFast = atof( args.at(1).c_str() );
+			else
+				RollFast = RollSlow;
+			if( args.size() >= 3 )
+				RollExponent = atof( args.at(2).c_str() );
+			else
+				RollExponent = 2.;
+			RollChangeSlow = 8. * RollSlow;
+			RollChangeFast = 8. * RollFast;
 		}
 		else if( (var == "pitch") && args.size() )
 		{
-			MaxPitch = atof( args.at(0).c_str() );
+			PitchSlow = atof( args.at(0).c_str() );
+			if( args.size() >= 2 )
+				PitchFast = atof( args.at(1).c_str() );
+			else
+				PitchFast = PitchSlow;
+			if( args.size() >= 3 )
+				PitchExponent = atof( args.at(2).c_str() );
+			else
+				PitchExponent = 2.;
+			PitchChangeSlow = 8. * PitchSlow;
+			PitchChangeFast = 8. * PitchFast;
 		}
 		else if( (var == "yaw") && args.size() )
 		{
-			MaxYaw = atof( args.at(0).c_str() );
+			YawSlow = atof( args.at(0).c_str() );
+			if( args.size() >= 2 )
+				YawFast = atof( args.at(1).c_str() );
+			else
+				YawFast = YawSlow;
+			if( args.size() >= 3 )
+				YawExponent = atof( args.at(2).c_str() );
+			else
+				YawExponent = 2.;
+			YawChangeSlow = 8. * YawSlow;
+			YawChangeFast = 8. * YawFast;
+		}
+		else if( (var == "roll_change") && args.size() )
+		{
+			RollChangeSlow = atof( args.at(0).c_str() );
+			if( args.size() >= 2 )
+				RollChangeFast = atof( args.at(1).c_str() );
+			else
+				RollChangeFast = RollChangeSlow;
+			if( args.size() >= 3 )
+				RollChangeExponent = atof( args.at(2).c_str() );
+			else
+				RollChangeExponent = 2.;
+		}
+		else if( (var == "pitch_change") && args.size() )
+		{
+			PitchChangeSlow = atof( args.at(0).c_str() );
+			if( args.size() >= 2 )
+				PitchChangeFast = atof( args.at(1).c_str() );
+			else
+				PitchChangeFast = PitchChangeSlow;
+			if( args.size() >= 3 )
+				PitchChangeExponent = atof( args.at(2).c_str() );
+			else
+				PitchChangeExponent = 2.;
+		}
+		else if( (var == "yaw_change") && args.size() )
+		{
+			YawChangeSlow = atof( args.at(0).c_str() );
+			if( args.size() >= 2 )
+				YawChangeFast = atof( args.at(1).c_str() );
+			else
+				YawChangeFast = YawChangeSlow;
+			if( args.size() >= 3 )
+				YawChangeExponent = atof( args.at(2).c_str() );
+			else
+				YawChangeExponent = 2.;
 		}
 		else if( (var == "health") && args.size() )
 		{
@@ -208,25 +294,25 @@ bool ShipClass::Load( const std::string &filename )
 		}
 		else if( (var == "weapon") && (args.size() >= 4) )
 		{
-			uint32_t type = ShotTypeFromString( args.at(0), Team );
+			uint8_t type = ShotTypeFromString( args.at(0), Team );
 			double right = atof( args.at(1).c_str() );
 			double up    = atof( args.at(2).c_str() );
 			double fwd   = atof( args.at(3).c_str() );
-			Weapons[ type ].push_back( Pos3D(fwd,up,right) );
+			Weapons[ type ].push_back( Pos3D( fwd, up, right ) );
 		}
 		else if( (var == "firetime") && (args.size() >= 2) )
 		{
-			uint32_t type = ShotTypeFromString( args.at(0), Team );
+			uint8_t type = ShotTypeFromString( args.at(0), Team );
 			FireTime[ type ] = atof( args.at(1).c_str() );
 		}
 		else if( (var == "ammo") && (args.size() >= 2) )
 		{
-			uint32_t type = ShotTypeFromString( args.at(0), Team );
+			uint8_t type = ShotTypeFromString( args.at(0), Team );
 			Ammo[ type ] = atoi( args.at(1).c_str() );
 		}
 		else if( (var == "turret") && (args.size() >= 4) )
 		{
-			uint32_t type = ShotTypeFromString( args.at(0), Team );
+			uint8_t type = ShotTypeFromString( args.at(0), Team );
 			double right = atof( args.at(1).c_str() );
 			double up    = atof( args.at(2).c_str() );
 			double fwd   = atof( args.at(3).c_str() );
@@ -234,7 +320,7 @@ bool ShipClass::Load( const std::string &filename )
 			args.erase( args.begin() );
 			args.erase( args.begin() );
 			args.erase( args.begin() );
-			Turrets.push_back( ShipClassTurret( fwd,up,right, type ) );
+			Turrets.push_back( ShipClassTurret( fwd, up, right, type ) );
 			
 			while( args.size() )
 			{
@@ -250,7 +336,7 @@ bool ShipClass::Load( const std::string &filename )
 					args.erase( args.begin() );
 					args.erase( args.begin() );
 					args.erase( args.begin() );
-					Turrets.back().Up.Set( right, up, fwd );
+					Turrets.back().Up.Set( fwd, up, right );
 				}
 				else if( (subvar == "dir") && (args.size() >= 3) )
 				{
@@ -260,7 +346,7 @@ bool ShipClass::Load( const std::string &filename )
 					args.erase( args.begin() );
 					args.erase( args.begin() );
 					args.erase( args.begin() );
-					Turrets.back().Fwd.Set( right, up, fwd );
+					Turrets.back().Fwd.Set( fwd, up, right );
 				}
 				else if( (subvar == "arc") && args.size() )
 				{
@@ -327,7 +413,7 @@ bool ShipClass::Load( const std::string &filename )
 	}
 	input.close();
 	
-	for( std::map< uint32_t, std::vector<Pos3D> >::const_iterator weapon_iter = Weapons.begin(); weapon_iter != Weapons.end(); weapon_iter ++ )
+	for( std::map< uint8_t, std::vector<Pos3D> >::const_iterator weapon_iter = Weapons.begin(); weapon_iter != Weapons.end(); weapon_iter ++ )
 	{
 		if( Ammo.find( weapon_iter->first ) == Ammo.end() )
 			Ammo[ weapon_iter->first ] = -1;
@@ -346,37 +432,52 @@ void ShipClass::AddToInitPacket( Packet *packet, int8_t precision )
 	packet->AddString( LongName );
 	packet->AddChar( Category );
 	packet->AddUInt( Team );
-	packet->AddDouble( Radius );
-	packet->AddDouble( MaxSpeed );
-	packet->AddDouble( Acceleration );
-	packet->AddDouble( MaxRoll );
-	packet->AddDouble( MaxPitch );
-	packet->AddDouble( MaxYaw );
-	packet->AddDouble( MaxHealth );
+	packet->AddFloat( Radius );
+	packet->AddFloat( MaxSpeed );
+	packet->AddFloat( Acceleration );
+	packet->AddFloat( RollSlow );
+	packet->AddFloat( PitchSlow );
+	packet->AddFloat( YawSlow );
+	packet->AddFloat( RollFast );
+	packet->AddFloat( PitchFast );
+	packet->AddFloat( YawFast );
+	packet->AddFloat( RollExponent );
+	packet->AddFloat( PitchExponent );
+	packet->AddFloat( YawExponent );
+	packet->AddFloat( RollChangeSlow );
+	packet->AddFloat( PitchChangeSlow );
+	packet->AddFloat( YawChangeSlow );
+	packet->AddFloat( RollChangeFast );
+	packet->AddFloat( PitchChangeFast );
+	packet->AddFloat( YawChangeFast );
+	packet->AddFloat( RollChangeExponent );
+	packet->AddFloat( PitchChangeExponent );
+	packet->AddFloat( YawChangeExponent );
+	packet->AddFloat( MaxHealth );
 	
-	packet->AddDouble( MaxShield );
+	packet->AddFloat( MaxShield );
 	if( MaxShield )
 	{
-		packet->AddDouble( ShieldRechargeDelay );
-		packet->AddDouble( ShieldRechargeRate );
+		packet->AddFloat( ShieldRechargeDelay );
+		packet->AddFloat( ShieldRechargeRate );
 	}
 	
 	packet->AddFloat( ExplosionRate );
 	
 	packet->AddUChar( Weapons.size() );
-	for( std::map< uint32_t, std::vector<Pos3D> >::const_iterator weapon_iter = Weapons.begin(); weapon_iter != Weapons.end(); weapon_iter ++ )
+	for( std::map< uint8_t, std::vector<Pos3D> >::const_iterator weapon_iter = Weapons.begin(); weapon_iter != Weapons.end(); weapon_iter ++ )
 	{
 		packet->AddUInt( weapon_iter->first );
 		
-		std::map<uint32_t,int8_t>::const_iterator ammo_iter = Ammo.find( weapon_iter->first );
+		std::map<uint8_t,int8_t>::const_iterator ammo_iter = Ammo.find( weapon_iter->first );
 		packet->AddChar( (ammo_iter != Ammo.end()) ? ammo_iter->second : -1 );
 		
 		packet->AddUChar( weapon_iter->second.size() );
 		for( size_t i = 0; i < weapon_iter->second.size(); i ++ )
 		{
-			packet->AddDouble( weapon_iter->second[ i ].X );
-			packet->AddDouble( weapon_iter->second[ i ].Y );
-			packet->AddDouble( weapon_iter->second[ i ].Z );
+			packet->AddFloat( weapon_iter->second[ i ].X );
+			packet->AddFloat( weapon_iter->second[ i ].Y );
+			packet->AddFloat( weapon_iter->second[ i ].Z );
 		}
 	}
 	
@@ -384,11 +485,11 @@ void ShipClass::AddToInitPacket( Packet *packet, int8_t precision )
 	packet->AddString( ExternalModel );
 	
 	packet->AddString( CockpitModel );
-	packet->AddDouble( CockpitPos.X );
-	packet->AddDouble( CockpitPos.Y );
-	packet->AddDouble( CockpitPos.Z );
+	packet->AddFloat( CockpitPos.X );
+	packet->AddFloat( CockpitPos.Y );
+	packet->AddFloat( CockpitPos.Z );
 	
-	packet->AddDouble( ModelScale );
+	packet->AddFloat( ModelScale );
 	
 	packet->AddUChar( FlybySounds.size() );
 	for( std::map< double, std::string >::const_iterator flyby_iter = FlybySounds.begin(); flyby_iter != FlybySounds.end(); flyby_iter ++ )
@@ -401,23 +502,38 @@ void ShipClass::AddToInitPacket( Packet *packet, int8_t precision )
 
 void ShipClass::ReadFromInitPacket( Packet *packet, int8_t precision )
 {
-	ShortName    = packet->NextString();
-	LongName     = packet->NextString();
-	Category     = packet->NextChar();
-	Team         = packet->NextUInt();
-	Radius       = packet->NextDouble();
-	MaxSpeed     = packet->NextDouble();
-	Acceleration = packet->NextDouble();
-	MaxRoll      = packet->NextDouble();
-	MaxPitch     = packet->NextDouble();
-	MaxYaw       = packet->NextDouble();
-	MaxHealth    = packet->NextDouble();
+	ShortName           = packet->NextString();
+	LongName            = packet->NextString();
+	Category            = packet->NextChar();
+	Team                = packet->NextUInt();
+	Radius              = packet->NextFloat();
+	MaxSpeed            = packet->NextFloat();
+	Acceleration        = packet->NextFloat();
+	RollSlow            = packet->NextFloat();
+	PitchSlow           = packet->NextFloat();
+	YawSlow             = packet->NextFloat();
+	RollFast            = packet->NextFloat();
+	PitchFast           = packet->NextFloat();
+	YawFast             = packet->NextFloat();
+	RollExponent        = packet->NextFloat();
+	PitchExponent       = packet->NextFloat();
+	YawExponent         = packet->NextFloat();
+	RollChangeSlow      = packet->NextFloat();
+	PitchChangeSlow     = packet->NextFloat();
+	YawChangeSlow       = packet->NextFloat();
+	RollChangeFast      = packet->NextFloat();
+	PitchChangeFast     = packet->NextFloat();
+	YawChangeFast       = packet->NextFloat();
+	RollChangeExponent  = packet->NextFloat();
+	PitchChangeExponent = packet->NextFloat();
+	YawChangeExponent   = packet->NextFloat();
+	MaxHealth           = packet->NextFloat();
 	
-	MaxShield    = packet->NextDouble();
+	MaxShield           = packet->NextFloat();
 	if( MaxShield )
 	{
-		ShieldRechargeDelay = packet->NextDouble();
-		ShieldRechargeRate  = packet->NextDouble();
+		ShieldRechargeDelay = packet->NextFloat();
+		ShieldRechargeRate  = packet->NextFloat();
 	}
 	
 	ExplosionRate = packet->NextFloat();
@@ -425,7 +541,7 @@ void ShipClass::ReadFromInitPacket( Packet *packet, int8_t precision )
 	size_t num_weapons = packet->NextUChar();
 	for( size_t i = 0; i < num_weapons; i ++ )
 	{
-		uint32_t weapon_id = packet->NextUInt();
+		uint8_t weapon_id = packet->NextUInt();
 		
 		Ammo[ weapon_id ] = packet->NextChar();
 		
@@ -433,9 +549,9 @@ void ShipClass::ReadFromInitPacket( Packet *packet, int8_t precision )
 		Weapons[ weapon_id ] = std::vector<Pos3D>();
 		for( size_t j = 0; j < weapon_count; j ++ )
 		{
-			double x = packet->NextDouble();
-			double y = packet->NextDouble();
-			double z = packet->NextDouble();
+			double x = packet->NextFloat();
+			double y = packet->NextFloat();
+			double z = packet->NextFloat();
 			Weapons[ weapon_id ].push_back( Pos3D(x,y,z) );
 		}
 	}
@@ -444,11 +560,11 @@ void ShipClass::ReadFromInitPacket( Packet *packet, int8_t precision )
 	ExternalModel = packet->NextString();
 	
 	CockpitModel = packet->NextString();
-	CockpitPos.X = packet->NextDouble();
-	CockpitPos.Y = packet->NextDouble();
-	CockpitPos.Z = packet->NextDouble();
+	CockpitPos.X = packet->NextFloat();
+	CockpitPos.Y = packet->NextFloat();
+	CockpitPos.Z = packet->NextFloat();
 	
-	ModelScale = packet->NextDouble();
+	ModelScale = packet->NextFloat();
 	
 	size_t num_flyby = packet->NextUChar();
 	for( size_t i = 0; i < num_flyby; i ++ )
@@ -483,6 +599,15 @@ bool ShipClass::PlayersCanFly( void ) const
 
 bool ShipClass::operator < ( const ShipClass &other ) const
 {
+	if( (Category == CATEGORY_TARGET) && (other.Category != CATEGORY_TARGET) )
+		return false;
+	if( (Category != CATEGORY_TARGET) && (other.Category == CATEGORY_TARGET) )
+		return true;
+	if( (Category == CATEGORY_CAPITAL) && (other.Category != CATEGORY_CAPITAL) )
+		return false;
+	if( (Category != CATEGORY_CAPITAL) && (other.Category == CATEGORY_CAPITAL) )
+		return true;
+	
 	if( (Team == XWing::Team::NONE) && (other.Team != XWing::Team::NONE) )
 		return true;
 	if( (Team != XWing::Team::NONE) && (other.Team == XWing::Team::NONE) )
@@ -493,6 +618,7 @@ bool ShipClass::operator < ( const ShipClass &other ) const
 		return false;
 	
 	/*
+	// This section is disabled because YT-1300 is currently defined as a fighter.
 	if( (Category == CATEGORY_FIGHTER) && (other.Category != CATEGORY_FIGHTER) )
 		return true;
 	if( (Category != CATEGORY_FIGHTER) && (other.Category == CATEGORY_FIGHTER) )
@@ -505,8 +631,12 @@ bool ShipClass::operator < ( const ShipClass &other ) const
 	
 	if( Radius < other.Radius )
 		return true;
+	if( Radius > other.Radius )
+		return false;
 	if( CollisionDamage < other.CollisionDamage )
 		return true;
+	if( CollisionDamage > other.CollisionDamage )
+		return false;
 	
 	return (strcasecmp( ShortName.c_str(), other.ShortName.c_str() ) < 0);
 }
@@ -515,7 +645,7 @@ bool ShipClass::operator < ( const ShipClass &other ) const
 // ---------------------------------------------------------------------------
 
 
-ShipClassTurret::ShipClassTurret( double fwd, double up, double right, uint32_t weapon ) : Pos3D( fwd, up, right )
+ShipClassTurret::ShipClassTurret( double fwd, double up, double right, uint8_t weapon ) : Pos3D( fwd, up, right )
 {
 	Weapon = weapon;
 	

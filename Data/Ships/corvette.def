@@ -9,13 +9,13 @@ roll 5
 pitch 3
 yaw 3
 health 2500
-shield 1500
-recover 5
-recharge 0
-ramming 10000
+shield 3000
+recover 20
+recharge 2
+ramming 6000
 explode 0.05
 turret turbolaser 0 12 37.5 up 0 1 0 pitch -5 90 dir 0 1 0 arc 190 hidden independent firetime 0.4
-turret turbolaser 0 -12 37.5 up 0 -1 0 pitch -5 90 dir 0 1 0 arc 190 hidden independent firetime 0.4
+turret turbolaser 0 -12 37.5 up 0 -1 0 pitch -5 90 dir 0 -1 0 arc 190 hidden independent firetime 0.4
 firetime turbolaser 0.4
 model corvette.obj
 model_collision corvette.obj

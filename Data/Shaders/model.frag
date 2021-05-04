@@ -138,41 +138,42 @@ void main( void )
 	gl_FragColor = texture2D( Texture, gl_TexCoord[0].st );
 	
 	#if LIGHT_QUALITY >= 2
+		vec3 world_normal = normalize( WorldNormal );
 		vec3 vec_to_cam = normalize( WorldPos - CamPos );
 		vec3 diffuse = vec3( 0.0, 0.0, 0.0 );
 		vec3 specular = vec3( 0.0, 0.0, 0.0 );
 		
 		#if DIRECTIONAL_LIGHTS > 0
-			specular += pow( directional_light( vec_to_cam, reflect(DirectionalLight0Dir,WorldNormal), DirectionalLight0WrapAround ), SHININESS ) * DirectionalLight0Color;
+			specular += pow( directional_light( vec_to_cam, reflect(DirectionalLight0Dir,world_normal), DirectionalLight0WrapAround ), SHININESS ) * DirectionalLight0Color;
 		#endif
 		#if DIRECTIONAL_LIGHTS > 1
-			specular += pow( directional_light( vec_to_cam, reflect(DirectionalLight1Dir,WorldNormal), DirectionalLight1WrapAround ), SHININESS ) * DirectionalLight1Color;
+			specular += pow( directional_light( vec_to_cam, reflect(DirectionalLight1Dir,world_normal), DirectionalLight1WrapAround ), SHININESS ) * DirectionalLight1Color;
 		#endif
 		#if DIRECTIONAL_LIGHTS > 2
-			specular += pow( directional_light( vec_to_cam, reflect(DirectionalLight2Dir,WorldNormal), DirectionalLight2WrapAround ), SHININESS ) * DirectionalLight2Color;
+			specular += pow( directional_light( vec_to_cam, reflect(DirectionalLight2Dir,world_normal), DirectionalLight2WrapAround ), SHININESS ) * DirectionalLight2Color;
 		#endif
 		#if DIRECTIONAL_LIGHTS > 3
-			specular += pow( directional_light( vec_to_cam, reflect(DirectionalLight3Dir,WorldNormal), DirectionalLight3WrapAround ), SHININESS ) * DirectionalLight3Color;
+			specular += pow( directional_light( vec_to_cam, reflect(DirectionalLight3Dir,world_normal), DirectionalLight3WrapAround ), SHININESS ) * DirectionalLight3Color;
 		#endif
 		#if POINT_LIGHTS > 0
 			vec3 light_vec = PointLight0Pos - WorldPos;
-			diffuse += point_light( WorldNormal, light_vec, 0.0, PointLight0Radius ) * PointLight0Color;
-			specular += point_light_specular( WorldNormal, light_vec, vec_to_cam, 0.0, PointLight0Radius, SHININESS ) * PointLight0Color;
+			diffuse += point_light( world_normal, light_vec, 0.0, PointLight0Radius ) * PointLight0Color;
+			specular += point_light_specular( world_normal, light_vec, vec_to_cam, 0.0, PointLight0Radius, SHININESS ) * PointLight0Color;
 		#endif
 		#if POINT_LIGHTS > 1
 			light_vec = PointLight1Pos - WorldPos;
-			diffuse += point_light( WorldNormal, light_vec, 0.0, PointLight1Radius ) * PointLight1Color;
-			specular += point_light_specular( WorldNormal, light_vec, vec_to_cam, 0.0, PointLight1Radius, SHININESS ) * PointLight1Color;
+			diffuse += point_light( world_normal, light_vec, 0.0, PointLight1Radius ) * PointLight1Color;
+			specular += point_light_specular( world_normal, light_vec, vec_to_cam, 0.0, PointLight1Radius, SHININESS ) * PointLight1Color;
 		#endif
 		#if POINT_LIGHTS > 2
 			light_vec = PointLight2Pos - WorldPos;
-			diffuse += point_light( WorldNormal, light_vec, 0.0, PointLight2Radius ) * PointLight2Color;
-			specular += point_light_specular( WorldNormal, light_vec, vec_to_cam, 0.0, PointLight2Radius, SHININESS ) * PointLight2Color;
+			diffuse += point_light( world_normal, light_vec, 0.0, PointLight2Radius ) * PointLight2Color;
+			specular += point_light_specular( world_normal, light_vec, vec_to_cam, 0.0, PointLight2Radius, SHININESS ) * PointLight2Color;
 		#endif
 		#if POINT_LIGHTS > 3
 			light_vec = PointLight3Pos - WorldPos;
-			diffuse += point_light( WorldNormal, light_vec, 0.0, PointLight3Radius ) * PointLight3Color;
-			specular += point_light_specular( WorldNormal, light_vec, vec_to_cam, 0.0, PointLight3Radius, SHININESS ) * PointLight3Color;
+			diffuse += point_light( world_normal, light_vec, 0.0, PointLight3Radius ) * PointLight3Color;
+			specular += point_light_specular( world_normal, light_vec, vec_to_cam, 0.0, PointLight3Radius, SHININESS ) * PointLight3Color;
 		#endif
 		
 		// Apply per-pixel calculated color.

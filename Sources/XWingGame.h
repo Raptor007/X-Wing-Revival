@@ -29,6 +29,7 @@ public:
 	
 	void Update( double dt );
 	bool HandleEvent( SDL_Event *event );
+	bool HandleCommand( std::string cmd, std::vector<std::string> *params = NULL );
 	bool ProcessPacket( Packet *packet );
 	
 	void ChangeState( int state );

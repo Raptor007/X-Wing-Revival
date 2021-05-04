@@ -43,7 +43,8 @@ public:
 	virtual ~RenderLayer();
 	
 	void SetBackground( void );
-	void SetWorldLights( float ambient_scale = 1.f, const std::vector<const Vec3D*> *obstructions = NULL );
+	void SetWorldLights( float ambient_scale = 1.f, const std::vector<Vec3D> *obstructions = NULL );
+	void SetDynamicLights( Pos3D *pos, Pos3D *offset, int dynamic_lights, std::list<Shot*> *shots, std::list<Effect*> *effects );
 	void ClearWorldLights( void );
 	void ClearDynamicLights( void );
 	void ClearMaterial( void );

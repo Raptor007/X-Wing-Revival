@@ -29,18 +29,21 @@ public:
 	double CollisionDamage;
 	double MaxSpeed;
 	double Acceleration;
-	double MaxRoll;
-	double MaxPitch;
-	double MaxYaw;
+	double RollSlow, RollFast, RollExponent;
+	double PitchSlow, PitchFast, PitchExponent;
+	double YawSlow, YawFast, YawExponent;
+	double RollChangeSlow, RollChangeFast, RollChangeExponent;
+	double PitchChangeSlow, PitchChangeFast, PitchChangeExponent;
+	double YawChangeSlow, YawChangeFast, YawChangeExponent;
 	double MaxHealth;
 	double MaxShield;
 	double ShieldRechargeDelay;
 	double ShieldRechargeRate;
 	double ExplosionRate;
 	std::map< std::string, double > Subsystems;
-	std::map< uint32_t, std::vector<Pos3D> > Weapons;
-	std::map< uint32_t, double > FireTime;
-	std::map< uint32_t, int8_t > Ammo;
+	std::map< uint8_t, std::vector<Pos3D> > Weapons;
+	std::map< uint8_t, double > FireTime;
+	std::map< uint8_t, int8_t > Ammo;
 	std::vector<ShipClassTurret> Turrets;
 	std::string CollisionModel;
 	std::string ExternalModel;
@@ -68,10 +71,10 @@ public:
 	
 	enum
 	{
-		CATEGORY_FIGHTER = 'F',
-		CATEGORY_BOMBER = 'B',
-		CATEGORY_CAPITAL = 'C',
-		CATEGORY_TARGET = 'T'
+		CATEGORY_FIGHTER = 0,
+		CATEGORY_BOMBER,
+		CATEGORY_CAPITAL,
+		CATEGORY_TARGET
 	};
 };
 
@@ -81,12 +84,12 @@ class ShipClassTurret : public Pos3D
 public:
 	bool Visible;
 	bool ParentControl;
-	uint32_t Weapon;
+	uint8_t Weapon;
 	uint8_t FiringMode;
 	double SingleShotDelay;
 	double TargetArc;
 	double MinGunPitch;
 	double MaxGunPitch;
 	
-	ShipClassTurret( double fwd, double up, double right, uint32_t weapon );
+	ShipClassTurret( double fwd, double up, double right, uint8_t weapon );
 };

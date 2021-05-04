@@ -6,20 +6,27 @@ team empire
 radius 4.7
 speed 190
 accel 80
-roll 170
-pitch 95
-yaw 75
+roll 115 105
+pitch 75 55
+yaw 55 45
+roll_change 270 230
+pitch_change 210 120
+yaw_change 175 80
 health 100
 shield 85
 recover 5
 recharge 3
-ramming 1000
+ramming 500
 explode 1
 weapon laser_green 0.2 -0.9 0
 weapon laser_green -0.2 -0.9 0
 firetime laser_green 0.25
+weapon missile 1.5 0 0
+weapon missile -1.5 0 0
+firetime missile 1
+ammo missile 6
 model tie-advanced.obj
 cockpit tie-fighter_cockpit_hq.obj 0 0 0.308
 model_scale 0.022
-flyby 22 tie_slow.wav
-flyby 220 tie_fast.wav
+flyby 20 tie_slow.wav
+flyby 240 tie_fast.wav

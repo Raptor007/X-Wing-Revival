@@ -15,7 +15,7 @@ class Shot;
 class Shot : public GameObject
 {
 public:
-	uint32_t ShotType;
+	uint8_t ShotType;
 	Model Shape;
 	Animation Anim;
 	
@@ -53,12 +53,12 @@ public:
 	
 	enum
 	{
-		TYPE_LASER_RED = 'LRed',
-		TYPE_LASER_GREEN = 'LGrn',
-		TYPE_TURBO_LASER_RED = 'TLRd',
-		TYPE_TURBO_LASER_GREEN = 'TLGr',
-		TYPE_ION_CANNON = 'IonC',
-		TYPE_TORPEDO = 'Torp',
-		TYPE_MISSILE = 'Misl'
+		TYPE_LASER_RED = 1,
+		TYPE_LASER_GREEN,
+		TYPE_TURBO_LASER_RED,
+		TYPE_TURBO_LASER_GREEN,
+		TYPE_ION_CANNON,
+		TYPE_TORPEDO,
+		TYPE_MISSILE
 	};
 };

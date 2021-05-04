@@ -6,21 +6,24 @@ team rebel
 radius 4.5
 speed 160
 accel 65
-roll 130
-pitch 80
-yaw 70
+roll 90 80
+pitch 55 35
+yaw 45 25
+roll_change 140 115
+pitch_change 85 70
+yaw_change 90 70
 health 115
 shield 150
 recover 5
 recharge 4
-ramming 1000
+ramming 500
 explode 1
 weapon laser_red 0.2 0 4
 weapon laser_red -0.2 0 4
 firetime laser_red 0.25
 weapon torpedo 0.8 -0.2 4
 weapon torpedo -0.8 -0.2 4
-firetime torpedo 1
+firetime torpedo 1.5
 ammo torpedo 8
 model y-wing_hq2.obj
 cockpit y-wing_cockpit_hq.obj 0 0.836 4.18

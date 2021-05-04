@@ -128,6 +128,11 @@ endif
 # Override LIB specified above for Linux.
 LIB = libSDL_net.a libSDL_ttf.a libSDL_image.a libSDL_mixer.a libSDL.a libSDLmain.a libGLEW.a libmikmod.a libsmpeg.a libflac.a libpng.a libfreetype.a libvorbisfile.a libvorbis.a libogg.a libtiff.a libXrandr.a libXrender.a libXext.a libX11.a libxcb.a libXdmcp.a libXau.a libjpeg.a libbz2.a liblzma.a libz.a
 
+# For i64 also include libbrotli (dependency of newer libfreetype).
+ifneq (,$(findstring $(MAC_I64_ARCH),$(ARCH)))
+LIB += libbrotlidec-static.a libbrotlicommon-static.a
+endif
+
 # Macs don't have .so files, so replace with .a files.
 LIBRARIES := $(patsubst %.so,%.a,$(LIBRARIES))
 
@@ -170,8 +175,8 @@ ARCHDIR = arch-$(subst $(SPACE),-,$(ARCH))/
 else
 ARCHDIR = arch-native/
 endif
-OBJECTS = $(patsubst Sources/%.cpp,build/$(ARCHDIR)XWing/%.o,$(patsubst ../RaptorEngine/%.cpp,build/$(ARCHDIR)RaptorEngine/%.o,$(SOURCES)))
-OBJDIRS = $(dir $(OBJECTS))
+OBJECTS += $(patsubst Sources/%.cpp,build/$(ARCHDIR)XWing/%.o,$(patsubst ../RaptorEngine/%.cpp,build/$(ARCHDIR)RaptorEngine/%.o,$(SOURCES)))
+OBJDIRS += $(dir $(OBJECTS))
 
 # Build a list of architecture flags.
 AFLAGS =
@@ -201,7 +206,7 @@ default: $(TARGET)
 	rsync -ax --exclude=".*" "English.lproj" "$@/Contents/Resources/"
 	cp -p "xwing128.icns" "$@/Contents/Resources/"
 	$(foreach lib,$(MAC_BUNDLE_LIBS),cp -p "$(lib)" "$@/Contents/MacOS/"; chmod 644 "$@/Contents/MacOS/$(notdir $(lib))";)
-	$(foreach lib,$(MAC_BUNDLE_LIBS),$(MAC_INSTALL_NAME_TOOL) -change "$(lib)" "@loader_path/$(notdir $(lib))" "$(EXE)";)
+	$(foreach lib,$(MAC_BUNDLE_LIBS),$(MAC_INSTALL_NAME_TOOL) -change "$(lib)" "@loader_path/$(notdir $(lib))" "$@/Contents/MacOS/$(patsubst %.app,%,$@)";)
 	$(foreach lib1,$(MAC_BUNDLE_LIBS),$(foreach lib2,$(MAC_BUNDLE_LIBS),$(MAC_INSTALL_NAME_TOOL) -change "$(lib1)" "@loader_path/$(notdir $(lib1))" "$@/Contents/MacOS/$(notdir $(lib2))";))
 	-codesign -s "$(MAC_CODESIGN)" "$@"
 	-if [ -L "$@/Contents/CodeResources" ]; then rm "$@/Contents/CodeResources"; rsync -ax "$@/Contents/_CodeSignature/CodeResources" "$@/Contents/"; fi
@@ -231,6 +236,7 @@ install:
 	mkdir -p "$(GAMEDIR)"
 	-rsync -ax --exclude=".*" build/Debug/* "$(GAMEDIR)/"
 	-rsync -ax --exclude=".*" Data/* "$(GAMEDIR)/"
+	-rsync -ax README.txt "$(GAMEDIR)/"
 	rsync -ax "$(PRODUCT)" "$(GAMEDIR)/"
 
 server-install:
