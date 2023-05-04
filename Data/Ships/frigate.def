@@ -4,19 +4,18 @@ category capital
 team any
 radius 200
 speed 25
-accel 12.5
-roll 1
-pitch 1
-yaw 1.5
+accel 10
+roll 1.2 1
+pitch 1.1 1
+yaw 1.7 1.5
 health 3500
-shield 4000
+shield 4500
 recover 25
 recharge 1.5
 ramming 12000
 explode 0.03
-weapon turbolaser 0 -60 130
-weapon turbolaser 0 0 -70
 firetime turbolaser 0.42
+turret_health 149
 model nebulon-b.obj
 model_collision nebulon-b.obj
 cockpit nebulon-b.obj 0 25.6 -109.2

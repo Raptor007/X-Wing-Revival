@@ -66,30 +66,39 @@ void Turret::Attach( const GameObject *parent, const Vec3D *offset, const Vec3D 
 	if( offset )
 		Offset.Copy( offset );
 	if( relative_up )
-	{
-		RelativeUp.Copy( relative_up );
-		RelativeUp.ScaleTo( 1. );
-	}
+		RelativeUp = relative_up->Unit();
 	if( relative_fwd )
-	{
-		RelativeFwd.Copy( relative_fwd );
-		RelativeFwd.ScaleTo( 1. );
-	}
+		RelativeFwd = relative_fwd->Unit();
 	
 	ParentControl = parent_control;
 	
 	if( parent )
 	{
 		ParentID = parent->ID;
+		Fwd.Copy( &(parent->Fwd) );
 		UpdatePos( parent );
+		Fwd.Copy( &TargetDir );
+		FixVectorsKeepUp();
 	}
 	else
 		ParentID = 0;
 }
 
 
+Ship *Turret::ParentShip( void ) const
+{
+	GameObject *parent = (Data && ParentID) ? Data->GetObject( ParentID ) : NULL;
+	return (parent && (parent->Type() == XWing::Object::SHIP)) ? ((Ship*) parent) : NULL;
+}
+
+
 void Turret::UpdatePos( const GameObject *parent )
 {
+	if( ParentID && ! parent )
+		parent = Data->GetObject( ParentID );
+	if( ! parent )
+		return;
+	
 	X = parent->X;
 	Y = parent->Y;
 	Z = parent->Z;
@@ -99,7 +108,14 @@ void Turret::UpdatePos( const GameObject *parent )
 	MotionVector.Copy( &(parent->MotionVector) );
 	Up = (parent->Fwd * RelativeUp.X) + (parent->Up * RelativeUp.Y) + (parent->Right * RelativeUp.Z);
 	TargetDir = (parent->Fwd * RelativeFwd.X) + (parent->Up * RelativeFwd.Y) + (parent->Right * RelativeFwd.Z);
+	Vec3D prev_fwd( &Fwd );
 	FixVectorsKeepUp();
+	
+	// Correct gun pitch for ship motion.
+	double degrees = Fwd.AngleBetween( &prev_fwd );
+	if( Up.Dot( &prev_fwd ) < 0. )
+		degrees *= -1.;
+	PitchGun( degrees );
 }
 
 
@@ -118,11 +134,21 @@ void Turret::AddDamage( double damage )
 void Turret::PitchGun( double degrees )
 {
 	// Don't apply pitch to the position, but keep track for the guns.
-	GunPitch += degrees;
+	if( Num::Valid(degrees) )
+		GunPitch += degrees;
+	
 	if( GunPitch < MinGunPitch )
+	{
 		GunPitch = MinGunPitch;
+		if( GunPitchRate < 0. )
+			GunPitchRate = 0.;
+	}
 	else if( GunPitch > MaxGunPitch )
+	{
 		GunPitch = MaxGunPitch;
+		if( GunPitchRate > 0. )
+			GunPitchRate = 0.;
+	}
 }
 
 void Turret::SetPitch( double pitch )
@@ -146,7 +172,7 @@ void Turret::SetYaw( double yaw )
 }
 
 
-Pos3D Turret::GunPos( void )
+Pos3D Turret::GunPos( void ) const
 {
 	GameObject gun;
 	gun.Copy( this );
@@ -160,35 +186,62 @@ Pos3D Turret::GunPos( void )
 }
 
 
-std::map<int,Shot*> Turret::NextShots( GameObject *target )
+Pos3D Turret::HeadPos( void ) const
+{
+	Pos3D head = GunPos();
+	if( Visible )
+	{
+		head.MoveAlong( &(head.Up),  2. );
+		head.MoveAlong( &(head.Fwd), 5. );
+	}
+	else
+		head.MoveAlong( &(head.Up),  3. );
+	return head;
+}
+
+
+std::map<int,Shot*> Turret::NextShots( GameObject *target, uint8_t firing_mode ) const
 {
 	std::map<int,Shot*> shots;
 	
 	Pos3D gun = GunPos();
+
+	if( ! firing_mode )
+		firing_mode = FiringMode;
 	
 	uint16_t player_id = PlayerID;
 	if( ParentID && ! PlayerID )
 	{
-		Ship *parent = (Ship*) Data->GetObject( ParentID );
+		Ship *parent = ParentShip();
 		if( parent )
 			player_id = parent->PlayerID;
 	}
 	
-	for( int num = 0; num < FiringMode; num ++ )
+	for( int num = 0; num < firing_mode; num ++ )
 	{
 		int weapon_index = (WeaponIndex + num) % 2;
 		
 		Shot *shot = new Shot();
 		shot->Copy( &gun );
-		shot->FiredFrom = ParentID ? ParentID : 0;
+		shot->FiredFrom = (ParentID && ! PlayerID) ? ParentID : ID;
 		shot->PlayerID = player_id;
 		shot->ShotType = Weapon;
 		shot->MotionVector.Set( shot->Fwd.X, shot->Fwd.Y, shot->Fwd.Z );
 		shot->MotionVector.ScaleTo( shot->Speed() );
 		
+		// Apply ship motion to attached turrets.
+		double speed = MotionVector.Length();
+		if( speed && (speed < shot->Speed()) )
+		{
+			shot->MotionVector += MotionVector;
+			shot->MotionVector.ScaleTo( shot->Speed() );
+			shot->Fwd = shot->Fwd.Unit();
+			shot->FixVectors();
+		}
+		
 		double fwd = 0., up = 0., right = 0.;
 		
-		if( Visible || (FiringMode > 1) )
+		if( Visible || (firing_mode > 1) )
 			right = weapon_index ? -2.2 : 2.2;
 		
 		shot->MoveAlong( &Fwd, fwd );
@@ -199,6 +252,12 @@ std::map<int,Shot*> Turret::NextShots( GameObject *target )
 	}
 	
 	return shots;
+}
+
+
+std::map<int,Shot*> Turret::AllShots( GameObject *target ) const
+{
+	return NextShots( target, Visible ? 2 : 1 );
 }
 
 
@@ -220,12 +279,12 @@ double Turret::ShotDelay( void ) const
 
 bool Turret::PlayerShouldUpdateServer( void ) const
 {
-	return false;
+	return (Health > 0.);
 }
 
 bool Turret::ServerShouldUpdatePlayer( void ) const
 {
-	return true;
+	return false;
 }
 
 bool Turret::ServerShouldUpdateOthers( void ) const
@@ -240,6 +299,10 @@ bool Turret::CanCollideWithOwnType( void ) const
 
 bool Turret::CanCollideWithOtherTypes( void ) const
 {
+	const Ship *parent = ParentShip();
+	if( parent && (parent->JumpProgress < 1.) )
+		return false;
+	
 	return Visible;
 }
 
@@ -254,8 +317,7 @@ bool Turret::IsMoving( void ) const
 
 void Turret::AddToInitPacket( Packet *packet, int8_t precision )
 {
-	GameObject::AddToInitPacket( packet, precision );
-	packet->AddUInt( Team );
+	packet->AddUChar( Team );
 	packet->AddUInt( ParentID );
 	if( ParentID )
 	{
@@ -265,7 +327,12 @@ void Turret::AddToInitPacket( Packet *packet, int8_t precision )
 		packet->AddFloat( RelativeUp.X );
 		packet->AddFloat( RelativeUp.Y );
 		packet->AddFloat( RelativeUp.Z );
+		packet->AddShort( Num::UnitFloatTo16(Fwd.X) );
+		packet->AddShort( Num::UnitFloatTo16(Fwd.Y) );
+		packet->AddShort( Num::UnitFloatTo16(Fwd.Z) );
 	}
+	else
+		GameObject::AddToUpdatePacketFromServer( packet, -127 );
 	
 	// Compress GunPitch in range (-180,180) to int16.
 	double unit_gun_pitch = GunPitch / 180.;
@@ -275,14 +342,25 @@ void Turret::AddToInitPacket( Packet *packet, int8_t precision )
 		unit_gun_pitch += 2.;
 	packet->AddShort( Num::UnitFloatTo16(unit_gun_pitch) );
 	
-	packet->AddUChar( Visible ? 1 : 0 );
+	packet->AddChar( Num::Clamp( MinGunPitch, -127, 128 ) );
+	packet->AddChar( Num::Clamp( MaxGunPitch, -127, 128 ) );
+	
+	packet->AddFloat( Health );
+	
+	uint8_t flags = (Visible ? 0x01 : 0x00) | (ParentControl ? 0x02 : 0x00);
+	packet->AddUChar( flags );
+	
+	Vec3D target_dir = TargetDir.Unit();
+	packet->AddChar( Num::UnitFloatTo8( target_dir.X ) );
+	packet->AddChar( Num::UnitFloatTo8( target_dir.Y ) );
+	packet->AddChar( Num::UnitFloatTo8( target_dir.Z ) );
+	packet->AddUChar( Num::Clamp( TargetArc / 2. + 0.5, 0, 255 ) );
 }
 
 
 void Turret::ReadFromInitPacket( Packet *packet, int8_t precision )
 {
-	GameObject::ReadFromInitPacket( packet, precision );
-	Team = packet->NextUInt();
+	Team = packet->NextUChar();
 	ParentID = packet->NextUInt();
 	if( ParentID )
 	{
@@ -292,19 +370,44 @@ void Turret::ReadFromInitPacket( Packet *packet, int8_t precision )
 		RelativeUp.X = packet->NextFloat();
 		RelativeUp.Y = packet->NextFloat();
 		RelativeUp.Z = packet->NextFloat();
+		Fwd.X = Num::UnitFloatFrom16( packet->NextShort() );
+		Fwd.Y = Num::UnitFloatFrom16( packet->NextShort() );
+		Fwd.Z = Num::UnitFloatFrom16( packet->NextShort() );
+		UpdatePos();
+	}
+	else
+	{
+		bool smooth_pos = SmoothPos;
+		SmoothPos = false;
+		GameObject::ReadFromUpdatePacketFromServer( packet, -127 );
+		SmoothPos = smooth_pos;
 	}
 	
 	// Extact GunPitch in range (-180,180) from int16.
 	int16_t compressed_gun_pitch = packet->NextShort();
 	GunPitch = Num::UnitFloatFrom16(compressed_gun_pitch) * 180.;
 	
-	Visible = packet->NextUChar();
+	MinGunPitch = packet->NextChar();
+	MaxGunPitch = packet->NextChar();
+	
+	SetHealth( packet->NextFloat() );
+	
+	uint8_t flags = packet->NextUChar();
+	Visible       = flags & 0x01;
+	ParentControl = flags & 0x02;
+	
+	TargetDir.X = Num::UnitFloatFrom8( packet->NextChar() );
+	TargetDir.Y = Num::UnitFloatFrom8( packet->NextChar() );
+	TargetDir.Z = Num::UnitFloatFrom8( packet->NextChar() );
+	TargetArc = packet->NextUChar() * 2.;
 }
 
 
 void Turret::AddToUpdatePacketFromServer( Packet *packet, int8_t precision )
 {
-	GameObject::AddToUpdatePacketFromServer( packet, -127 );
+	packet->AddShort( Num::UnitFloatTo16(Fwd.X) );
+	packet->AddShort( Num::UnitFloatTo16(Fwd.Y) );
+	packet->AddShort( Num::UnitFloatTo16(Fwd.Z) );
 	
 	// Compress GunPitch in range (-180,180) to int16.
 	double unit_gun_pitch = GunPitch / 180.;
@@ -314,45 +417,102 @@ void Turret::AddToUpdatePacketFromServer( Packet *packet, int8_t precision )
 		unit_gun_pitch += 2.;
 	packet->AddShort( Num::UnitFloatTo16(unit_gun_pitch) );
 	
+	if( precision >= 0 )
+	{
+		packet->AddFloat( YawRate );
+		packet->AddFloat( GunPitchRate );
+	}
+	
 	packet->AddFloat( Health );
 	packet->AddUInt( Target );
+	
+	if( precision >= 126 )  // FIXME: Maybe this should be its own packet type?
+	{
+		packet->AddUShort( PlayerID );
+		packet->AddUChar( FiringMode );
+	}
 }
 
 
 void Turret::ReadFromUpdatePacketFromServer( Packet *packet, int8_t precision )
 {
-	GameObject::ReadFromUpdatePacketFromServer( packet, -127 );
+	Fwd.X = Num::UnitFloatFrom16( packet->NextShort() );
+	Fwd.Y = Num::UnitFloatFrom16( packet->NextShort() );
+	Fwd.Z = Num::UnitFloatFrom16( packet->NextShort() );
+	FixVectorsKeepUp();
 	
 	// Extact GunPitch in range (-180,180) from int16.
 	int16_t compressed_gun_pitch = packet->NextShort();
 	GunPitch = Num::UnitFloatFrom16(compressed_gun_pitch) * 180.;
 	
+	if( precision >= 0 )
+	{
+		YawRate      = packet->NextFloat();
+		GunPitchRate = packet->NextFloat();
+	}
+	
 	SetHealth( packet->NextFloat() );
 	Target = packet->NextUInt();
 	
-	if( ParentID && Data )
+	UpdatePos();
+	
+	if( precision >= 126 )  // FIXME: Maybe this should be its own packet type?
 	{
-		GameObject *parent = Data->GetObject( ParentID );
-		if( parent )
-			UpdatePos( parent );
+		PlayerID = packet->NextUShort();
+		FiringMode = packet->NextUChar();
+		
+		if( PlayerID == Raptor::Game->PlayerID )
+		{
+			const Ship *parent = ParentShip();
+			if( parent && (parent->JumpProgress < 1.) && (parent->PlayerID != PlayerID) )
+				Raptor::Game->Snd.Play( Raptor::Game->Res.GetSound("jump_in_cockpit.wav") );
+		}
 	}
 }
 
 
 void Turret::AddToUpdatePacketFromClient( Packet *packet, int8_t precision )
 {
-	GameObject::AddToUpdatePacketFromClient( packet, precision );
-	packet->AddDouble( GunPitch );
-	packet->AddUChar( Firing );
+	packet->AddFloat( Fwd.X );
+	packet->AddFloat( Fwd.Y );
+	packet->AddFloat( Fwd.Z );
+	
+	packet->AddFloat( GunPitch );
+	
+	if( precision >= 0 )
+	{
+		packet->AddFloat( YawRate );
+		packet->AddFloat( GunPitchRate );
+	}
+	
+	uint8_t firing_and_mode = FiringMode;
+	if( Firing )
+		firing_and_mode |= 0x80;
+	packet->AddUChar( firing_and_mode );
+	
 	packet->AddUInt( Target );
 }
 
 
 void Turret::ReadFromUpdatePacketFromClient( Packet *packet, int8_t precision )
 {
-	GameObject::ReadFromUpdatePacketFromClient( packet, precision );
-	GunPitch = packet->NextDouble();
-	Firing = packet->NextUChar();
+	Fwd.X = packet->NextFloat();
+	Fwd.Y = packet->NextFloat();
+	Fwd.Z = packet->NextFloat();
+	FixVectorsKeepUp();
+	
+	GunPitch = packet->NextFloat();
+	
+	if( precision >= 0 )
+	{
+		YawRate      = packet->NextFloat();
+		GunPitchRate = packet->NextFloat();
+	}
+	
+	uint8_t firing_and_mode = packet->NextUChar();
+	FiringMode = firing_and_mode & 0x7F;
+	Firing     = firing_and_mode & 0x80;
+	
 	Target = packet->NextUInt();
 }
 
@@ -414,24 +574,20 @@ bool Turret::WillCollide( const GameObject *other, double dt, std::string *this_
 
 void Turret::Update( double dt )
 {
-	GameObject *parent = Data ? Data->GetObject( ParentID ) : NULL;
+	const Ship *parent = ParentShip();
 	if( parent )
 	{
-		if( parent->Type() == XWing::Object::SHIP )
-		{
-			Ship *parent_ship = (Ship*) parent;
-			Team = parent_ship->Team;
-			if( parent_ship->Health <= 0. )
-				parent = NULL;
-		}
+		Team = parent->Team;
+		if( parent->Health <= 0. ) // Parent is dead.
+			parent = NULL;
 	}
-	if( ParentID && (! parent) )
+	if( ParentID && (! parent) && ! ClientSide() )
 	{
-		ParentID = 0;
-		Health = 0.;
+		ParentID = 0; // Forget dead parent.
+		Health = 0.;  // Commit sudoku.
 	}
 	
-	if( Health <= 0. )
+	if( (Health <= 0.) || (parent && (parent->JumpProgress < 1.)) )
 	{
 		// Dead turrets don't turn.
 		RollRate = 0.;
@@ -444,9 +600,7 @@ void Turret::Update( double dt )
 		PitchGun( GunPitchRate * dt );
 	
 	GameObject::Update( dt );
-	
-	if( parent )
-		UpdatePos( parent );
+	UpdatePos();
 }
 
 
@@ -459,12 +613,38 @@ void Turret::Draw( void )
 		if( change_shader )
 			Raptor::Game->ShaderMgr.SelectAndCopyVars( Raptor::Game->Res.GetShader("deathstar") );
 		
+		// If attached to a ship jumping in from hyperspace, the turrets jump in with it.
+		Vec3D offset;
+		const Ship *parent = ParentShip();
+		if( parent )
+		{
+			if( parent->Health > 0. )
+			{
+				if( parent->JumpProgress < 1. )
+					offset = parent->Fwd * pow( 1. - parent->JumpProgress, 1.1 ) * -200. * ((const Ship*)( parent ))->Radius();
+				else
+					parent = NULL;  // No need to offset turret position if parent ship is not jumping.
+			}
+			else
+				parent = NULL;
+		}
+		
 		if( BodyShape )
-			BodyShape->DrawAt( this, 0.022 );
+		{
+			if( parent )
+			{
+				Pos3D pos = *this + offset;
+				BodyShape->DrawAt( &pos, 0.022 );
+			}
+			else
+				BodyShape->DrawAt( this, 0.022 );
+		}
 		
 		if( GunShape )
 		{
 			Pos3D gun = GunPos();
+			if( parent )
+				gun += offset;
 			GunShape->DrawAt( &gun, 0.022 );
 		}
 		

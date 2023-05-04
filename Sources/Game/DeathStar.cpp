@@ -200,16 +200,17 @@ bool DeathStar::WillCollide( const GameObject *other, double dt, std::string *th
 				
 				for( std::map<std::string,ModelArrays>::const_iterator array_iter = obj_iter->second.Arrays.begin(); array_iter != obj_iter->second.Arrays.end(); array_iter ++ )
 				{
-					array_inst.BecomeInstance( &(array_iter->second), false );
+					array_inst.BecomeInstance( &(array_iter->second) );
 					array_inst.MakeWorldSpace( ship );
 					for( size_t i = 0; i < array_inst.VertexCount; i ++ )
 					{
 						Pos3D vertex( array_inst.WorldSpaceVertexArray[ i*3 ], array_inst.WorldSpaceVertexArray[ i*3 + 1 ], array_inst.WorldSpaceVertexArray[ i*3 + 2 ] );
+						
+						// Adjust for the trench depth.
 						double bottom = 0.;
-						/*
 						if( fabs( vertex.DistAlong(&Right,this) ) < TrenchWidth / 2. )
 							bottom -= TrenchDepth;
-						*/
+						
 						if( vertex.DistAlong(&Up,this) <= bottom )
 						{
 							if( other_object )

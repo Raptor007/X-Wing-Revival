@@ -28,7 +28,11 @@ weapon torpedo -0.5 -0.2 0
 firetime torpedo 1.5
 ammo torpedo 6
 model x-wing_hq.obj
-cockpit x-wing_cockpit_hq.obj 0  0.814 -0.704
+cockpit x-wing_cockpit_hq.obj 0 0.814 -0.704
+group_skin 2 x-wing_hq_gold.obj x-wing_cockpit_hq_gold.obj
+group_skin 3 x-wing_hq_green.obj x-wing_cockpit_hq_green.obj
+group_skin 4 x-wing_hq_blue.obj x-wing_cockpit_hq_blue.obj
 model_scale 0.022
 flyby 20 xwing_slow.wav
-flyby 200 xwing_fast.wav
+flyby 170 xwing_med.wav
+flyby 210 xwing_fast.wav

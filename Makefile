@@ -148,8 +148,8 @@ endif
 XFLAGS += -headerpad_max_install_names
 
 # Create application package.
-TARGET = X-Wing\ Revival.app
-PRODUCT = X-Wing Revival.app
+TARGET = Data/X-Wing\ Revival.app
+PRODUCT = Data/X-Wing Revival.app
 
 # End Mac OS X section.
 endif
@@ -163,7 +163,7 @@ LIB = SDL_ttf.lib SDL_image.lib SDL_mixer.lib SDL_net.lib SDL.lib openvr_api.lib
 MFLAGS += -mwindows
 LIBRARIES += -liphlpapi -ladvapi32
 EXE = xwingrev.exe
-OBJECTS += XWing.res
+OBJECTS += build/XWing.res
 endif
 
 
@@ -200,13 +200,13 @@ default: $(TARGET)
 
 %.app: universal
 	mkdir -p "$@/Contents/MacOS"
-	cp "$(EXE)" "$@/Contents/MacOS/$(patsubst %.app,%,$@)"
+	cp "$(EXE)" "$@/Contents/MacOS/$(notdir $(patsubst %.app,%,$@))"
 	mkdir -p "$@/Contents/Resources"
 	cp -p "Info.plist" "$@/Contents/"
 	rsync -ax --exclude=".*" "English.lproj" "$@/Contents/Resources/"
 	cp -p "xwing128.icns" "$@/Contents/Resources/"
 	$(foreach lib,$(MAC_BUNDLE_LIBS),cp -p "$(lib)" "$@/Contents/MacOS/"; chmod 644 "$@/Contents/MacOS/$(notdir $(lib))";)
-	$(foreach lib,$(MAC_BUNDLE_LIBS),$(MAC_INSTALL_NAME_TOOL) -change "$(lib)" "@loader_path/$(notdir $(lib))" "$@/Contents/MacOS/$(patsubst %.app,%,$@)";)
+	$(foreach lib,$(MAC_BUNDLE_LIBS),$(MAC_INSTALL_NAME_TOOL) -change "$(lib)" "@loader_path/$(notdir $(lib))" "$@/Contents/MacOS/$(notdir $(patsubst %.app,%,$@))";)
 	$(foreach lib1,$(MAC_BUNDLE_LIBS),$(foreach lib2,$(MAC_BUNDLE_LIBS),$(MAC_INSTALL_NAME_TOOL) -change "$(lib1)" "@loader_path/$(notdir $(lib1))" "$@/Contents/MacOS/$(notdir $(lib2))";))
 	-codesign -s "$(MAC_CODESIGN)" "$@"
 	-if [ -L "$@/Contents/CodeResources" ]; then rm "$@/Contents/CodeResources"; rsync -ax "$@/Contents/_CodeSignature/CodeResources" "$@/Contents/"; fi
@@ -224,17 +224,16 @@ build/$(ARCHDIR)RaptorEngine/%.o: ../RaptorEngine/%.cpp $(ENGINE_HEADERS)
 	@mkdir -p $(dir $@)
 	$(CC) -c $(AFLAGS) $(MFLAGS) $(OFLAGS) $(WFLAGS) $(XFLAGS) $(CFLAGS) $(foreach inc,$(INCLUDES),-I$(inc)) $(foreach def,$(DEF),-D$(def)) $< -o $@
 
-XWing.res:
+build/XWing.res: XWing.rc
 	windres XWing.rc -O coff -o $@
 
 objects: $(SOURCES) $(HEADERS) $(OBJECTS)
 
 clean:
-	rm -rf build/arch-* "$(PRODUCT)" "$(EXE)" "$(EXE)"_* XWing.res
+	rm -rf build/arch-* "$(PRODUCT)" "$(EXE)" "$(EXE)"_* build/XWing.res
 
 install:
 	mkdir -p "$(GAMEDIR)"
-	-rsync -ax --exclude=".*" build/Debug/* "$(GAMEDIR)/"
 	-rsync -ax --exclude=".*" Data/* "$(GAMEDIR)/"
 	-rsync -ax README.txt "$(GAMEDIR)/"
 	rsync -ax "$(PRODUCT)" "$(GAMEDIR)/"
@@ -246,7 +245,7 @@ server-install:
 	cp "$(EXE)" "$(SERVERDIR)/$(EXE)-$(VERSION)"
 	cd "$(SERVERDIR)" && ln -sf "$(EXE)-$(VERSION)" "$(EXE)"
 	-rsync -ax --exclude=".*" Data/Ships "$(SERVERDIR)/"
-	-rsync -ax --exclude=".*" build/Debug/Models "$(SERVERDIR)/"
+	-rsync -ax --exclude=".*" Data/Models "$(SERVERDIR)/"
 	-chown -R $(SERVERUSER):wheel "$(SERVERDIR)"
 	-chmod 775 "$(SERVERDIR)/$(EXE)-$(VERSION)"
 	-ln -sf "$(SERVERDIR)/xwingctl" /usr/local/bin/xwingctl

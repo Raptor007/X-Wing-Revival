@@ -6,6 +6,7 @@
 class LobbyMenu;
 class LobbyMenuFlyButton;
 class LobbyMenuLeaveButton;
+class LobbyMenuPlayerTextBox;
 class LobbyMenuPlayerDropDown;
 class LobbyMenuConfiguration;
 class LobbyMenuConfigChangeButton;
@@ -31,10 +32,11 @@ public:
 	Font *TitleFont;
 	LobbyMenuFlyButton *FlyButton;
 	LobbyMenuLeaveButton *LeaveButton;
+	LobbyMenuPlayerTextBox *PlayerName;
 	LobbyMenuPlayerDropDown *ShipDropDown;
 	LobbyMenuPlayerDropDown *GroupDropDown;
 	ListBox *PlayerList, *MessageList;
-	TextBox *PlayerName, *MessageInput;
+	TextBox *MessageInput;
 	std::map<std::string,LobbyMenuConfiguration*> Configs;
 	std::vector<LobbyMenuConfiguration*> ConfigOrder;
 	
@@ -46,6 +48,7 @@ public:
 	void UpdatePlayerList( void );
 	void UpdateMessageList( void );
 	void UpdateInfoBoxes( void );
+	bool HandleEvent( SDL_Event *event );
 	bool KeyDown( SDLKey key );
 	void Draw( void );
 };
@@ -66,6 +69,17 @@ public:
 	LobbyMenuLeaveButton( void );
 	virtual ~LobbyMenuLeaveButton();
 	void Clicked( Uint8 button = SDL_BUTTON_LEFT );
+};
+
+
+class LobbyMenuPlayerTextBox : public TextBox
+{
+public:
+	std::string Variable;
+	
+	LobbyMenuPlayerTextBox( SDL_Rect *rect, Font *font, uint8_t align, std::string variable );
+	virtual ~LobbyMenuPlayerTextBox();
+	void Deselected( void );
 };
 
 

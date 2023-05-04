@@ -50,7 +50,8 @@ void MainMenu::UpdateRects( void )
 	Rect.w = Raptor::Game->Gfx.W;
 	Rect.h = Raptor::Game->Gfx.H;
 	
-	if( Raptor::Game->Head.VR && Raptor::Game->Gfx.DrawTo )
+	bool vr = Raptor::Game->Head.VR && Raptor::Game->Gfx.DrawTo;
+	if( vr )
 	{
 		Rect.x = Raptor::Game->Gfx.W/2 - 640/2;
 		Rect.y = Raptor::Game->Gfx.H/2 - 480/2;
@@ -82,10 +83,17 @@ void MainMenu::Draw( void )
 {
 	UpdateRects();
 	
-	if( Raptor::Game->Head.VR && Raptor::Game->Gfx.DrawTo )
+	int title_x   = Rect.w / 2;
+	int title_y   = TitleFont->GetHeight() / 2;
+	int version_x = Rect.w - 10;
+	int version_y = Rect.h - 10;
+	uint8_t title_align   = Font::ALIGN_TOP_CENTER;
+	uint8_t version_align = Font::ALIGN_BOTTOM_RIGHT;
+	bool vr = Raptor::Game->Head.VR && Raptor::Game->Gfx.DrawTo;
+	
+	if( vr )
 	{
 		// In VR, show 3D background behind the menu.
-		// FIXME: Clean this up.
 		glPushMatrix();
 		Pos3D origin;
 		Raptor::Game->Cam.Copy( &origin );
@@ -96,6 +104,14 @@ void MainMenu::Draw( void )
 		double bg_dist = Raptor::Game->Cfg.SettingAsDouble( "g_bg_dist", std::min<double>( 50000., Raptor::Game->Gfx.ZFar * 0.875 ) );
 		Raptor::Game->Gfx.DrawSphere3D( 0,0,0, bg_dist, 32, bg.CurrentFrame(), Graphics::TEXTURE_MODE_Y_ASIN );
 		glPopMatrix();
+		DrawSetup();
+		
+		// Move title and version positions for VR.
+		title_y = PlayButton->Rect.y - VersionFont->GetHeight() - 10;
+		version_x = title_x;
+		version_y = title_y;
+		title_align   = Font::ALIGN_BOTTOM_CENTER;
+		version_align = Font::ALIGN_TOP_CENTER;
 	}
 	else
 	{
@@ -158,10 +174,19 @@ void MainMenu::Draw( void )
 	
 	FogTime += std::min<double>( Raptor::Game->FrameTime, 0.25 );
 	
-	if( IsTop() )
-		TitleFont->DrawText( Raptor::Game->Game, Rect.w / 2, TitleFont->GetHeight() / 2, Font::ALIGN_TOP_CENTER );
+	bool is_top = IsTop();
+	if( is_top )
+		TitleFont->DrawText( Raptor::Game->Game, title_x, title_y, title_align );
+	if( is_top || ! vr )
+		VersionFont->DrawText( std::string("Version ") + Raptor::Game->Version, version_x, version_y, version_align );
 	
-	VersionFont->DrawText( "Version " + Raptor::Game->Version, Rect.w - 10, Rect.h - 10, Font::ALIGN_BOTTOM_RIGHT );
+	// If the screensaver ended up at the main menu somehow, try restarting it.
+	// NOTE: Could use similar logic to have a demo play after some amount of idle time.
+	if( (FogTime > 5.) && (Raptor::Game->State == Raptor::State::DISCONNECTED) && Raptor::Game->Cfg.SettingAsBool("screensaver") && IsTop() && ! Raptor::Server->IsRunning() )
+	{
+		Raptor::Game->Host();
+		FogTime = 0.;
+	}
 }
 
 
@@ -175,7 +200,19 @@ void MainMenu::DrawElements( void )
 bool MainMenu::HandleEvent( SDL_Event *event )
 {
 	if( IsTop() )
+	{
+		if( (event->type == SDL_JOYBUTTONDOWN)
+		&&  Raptor::Game->Cfg.SettingAsBool("joy_enable")
+		&&  (Str::FindInsensitive( Raptor::Game->Joy.Joysticks[ event->jbutton.which ].Name, "Xbox" ) >= 0)
+		&&  (event->jbutton.button == 7) // Start
+		&&  PlayButton && PlayButton->Enabled && PlayButton->Visible )
+		{
+			PlayButton->Clicked();
+			return true;
+		}
+		
 		return Layer::HandleEvent( event );
+	}
 	else
 		return false;
 }

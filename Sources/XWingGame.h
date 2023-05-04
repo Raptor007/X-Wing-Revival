@@ -8,20 +8,24 @@ class XWingGame;
 #include "PlatformSpecific.h"
 
 #include "RaptorGame.h"
+#include "XWingDefs.h"
+#include "ShipClass.h"
 
 
 class XWingGame : public RaptorGame
 {
 public:
-	bool ReadKeyboard, ReadMouse;
 	Clock RoundTimer;
 	uint32_t ObservedShipID;
 	double LookYaw, LookPitch;
 	bool ThumbstickLook;
+	double AsteroidLOD;
+	uint8_t Controls[ XWing::Control::COUNT ];
 	
 	XWingGame( std::string version );
 	virtual ~XWingGame();
 	
+	void SetDefaultControls( void );
 	void SetDefaults( void );
 	void Setup( int argc, char **argv );
 	void Precache( void );
@@ -38,4 +42,6 @@ public:
 	void BeginFlying( void );
 	
 	GameObject *NewObject( uint32_t id, uint32_t type );
+	
+	const ShipClass *GetShipClass( const std::string &name ) const;
 };

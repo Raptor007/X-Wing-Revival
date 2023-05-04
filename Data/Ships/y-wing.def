@@ -18,15 +18,19 @@ recover 5
 recharge 4
 ramming 500
 explode 1
-weapon laser_red 0.2 0 4
-weapon laser_red -0.2 0 4
+weapon laser_red 0.2 0 4.5
+weapon laser_red -0.2 0 4.5
 firetime laser_red 0.25
-weapon torpedo 0.8 -0.2 4
-weapon torpedo -0.8 -0.2 4
+weapon torpedo 0.8 -0.2 4.5
+weapon torpedo -0.8 -0.2 4.5
 firetime torpedo 1.5
 ammo torpedo 8
 model y-wing_hq2.obj
 cockpit y-wing_cockpit_hq.obj 0 0.836 4.18
+group_skin 1 y-wing_hq2_red.obj y-wing_cockpit_hq_red.obj
+group_skin 3 y-wing_hq2_green.obj y-wing_cockpit_hq_green.obj
+group_skin 4 y-wing_hq2_blue.obj y-wing_cockpit_hq_blue.obj
 model_scale 0.022
 flyby 20 xwing_slow.wav
-flyby 200 xwing_fast.wav
+flyby 170 xwing_med.wav
+flyby 210 xwing_fast.wav

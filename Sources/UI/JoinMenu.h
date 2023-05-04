@@ -40,6 +40,7 @@ public:
 	virtual ~JoinMenu();
 	
 	void Draw( void );
+	bool HandleEvent( SDL_Event *event );
 	bool KeyUp( SDLKey key );
 };
 

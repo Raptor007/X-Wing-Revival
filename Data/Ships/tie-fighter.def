@@ -23,4 +23,5 @@ model tie-fighter_hq.obj
 cockpit tie-fighter_cockpit_hq.obj 0 0 0.308
 model_scale 0.022
 flyby 20 tie_slow.wav
-flyby 240 tie_fast.wav
+flyby 200 tie_med.wav
+flyby 250 tie_fast.wav

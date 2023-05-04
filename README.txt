@@ -1,6 +1,6 @@
 ----------------------------------------
 |            X-Wing Revival            |
-|       0.1.9 Alpha (2021-05-04)       |
+|        0.2 Alpha (2023-05-04)        |
 |     by Raptor007 (Blair Sherman)     |
 | http://raptor007.com/x-wing-revival/ |
 ----------------------------------------
@@ -8,153 +8,82 @@
 
 Welcome to X-Wing Revival!  I started making this because I wanted to have an X-Wing LAN
 party in 2011, and found that X-Wing Alliance (released in 2002) didn't run correctly on
-modern PCs.  This project has fallen lower in my list of priorities, but I still enjoy
-playing it and releasing a little update every May the Fourth.
+modern PCs.  We've come a long way since then!  The goal is still to recreate the feeling
+of a classic LucasArts X-Wing game, but X-Wing Revival has developed into its own unique
+take on the genre, with a focus on fun dogfighting, epic battles, multiplayer balance,
+and staying true to classic Star Wars ship designs.  (TIE Fighters don't have missiles!)
 
-There's finally a new official X-Wing game!  Check out Star Wars Squadrons:
+If you're looking for the official X-Wing title of 2020, check out Star Wars Squadrons:
   https://store.steampowered.com/app/1222730/STAR_WARS_Squadrons/
 
 
 == GETTING STARTED ==
 
-The quickest way to start is to click Play, then Host / Solo, adjust the game settings,
+The quickest way to start is to click Play, then Host/Solo, adjust the game settings,
 and click Fly when you're ready to launch.
+
+
+== GAME TYPES ==
+
+  Fleet Battle: Each team tries to destroy the enemy capital ships while defending
+    their own.  The last team with any surviving capital ship wins.  Respawn is only
+	possible while your main capital ship survives, so prioritize its protection.
+	Cruisers will respawn if their entire group is destroyed before the main ship,
+	but the more cruisers on a team, the longer it takes for their group to respawn.
+	Default cruisers are 2 Corvettes vs 3 Interdictors.  (If you set both to 0, this
+	is essentially the old "Defend/Destroy" mode.)
+
+  Battle of Yavin: Rebels must fly down the trench and try to hit the exhaust port
+    with a pair of proton torpedoes.  Imperials must try to prevent the Rebels from
+	doing this before the time limit runs out.  Harder AI skill effects turrets too!
+
+  Flagship Hunt: The attacking team must destroy the defending team's flagship before
+    the time limit runs out.  (This mode was previously called "Capital Ship Hunt".)
+
+  Team Deathmatch: The team to hit the kill limit first wins.  Respawn always enabled.
+
+  Team Elimination: The last team with any ships remaining wins.  Players can control
+    AI ships when the player's ship has been destroyed, but no new ships will be given
+    to either team once the match has started.
+
+  FFA Deathmatch: The player to hit the kill limit first wins.  Respawn always enabled.
+
+  FFA Elimination: Last man standing wins, and there's no respawn whatsoever.
 
 
 == TROUBLESHOOTING / FAQ ==
 
 Textures are blank.  Everything looks like white boxes!
 
-  Windows: This is a directory permissions problem.  This often happens on Windows 10 if
-    you attempt to unzip X-Wing Revival in your Downloads folder or on the desktop.
+  Windows: This is a directory permissions problem.  This often happens on Windows 10/11
+    if you attempt to unzip X-Wing Revival in your Downloads folder or on the desktop.
 
     The solution is to move the zip file to a different directory like "C:\Program Files"
-	before extracting it.
+    before extracting it.
 
   Mac: This is usually caused by the Quarantine file system attribute, which prevents a
     downloaded program from reading files, even if they were extracted from the same zip.
 
-	The solution is to open Utilities/Terminal and remove the Quarantine flag from the
-	directory you extracted X-Wing Revival to:
+    The solution is to open Utilities/Terminal and remove the Quarantine flag from the
+    directory you extracted X-Wing Revival to:
 
-	  xattr -dr com.apple.quarantine "/Applications/X-Wing Revival"
+      xattr -dr com.apple.quarantine "/Applications/X-Wing Revival"
 
-My Mac won't allow a downloaded or unsigned application to run.
+My OS warns about or won't allow a downloaded or unsigned application to run.
 
-  This is because Apple wants you to buy everything through their app store, and they've
-  deliberately made it difficult to distribute software by any other mechanism.
+  Apple and Microsoft have made it disappointingly onerous to distribute software for
+  their platforms without paying them for code-signing.  Fortunately for those of us
+  who still value running whatever we want on our own computers, there are workarounds.
 
-  The solution is to enable "allow apps downloaded from anywhere" in the Terminal:
+  Windows: In the SmartScreen popup, click "More Info" at bottom, then "Run Anyway".
+    The permanent fix is in Windows Security, "App & Browser Control", "Reputation-based
+    protection settings".  Turn off "Check apps and files".
 
-      sudo spctl --master-disable
+  Mac: You might be able to just right-click to run an unsigned app.  (Unconfirmed.)
+    The permanent fix to allow apps downloaded from anywhere is done in the Terminal:
+      sudo spctl --global-disable
 
-
-== CONTROLS ==
-
-  Joy X-Axis: Roll
-  Joy Y-Axis: Pitch
-  Joy Twist/Pedals: Yaw
-  Joy Throttle: Throttle
-  Joy Hat: Look Around
-  Joy Button 0: Fire
-  Joy Button 1: Change Weapon
-  Joy Button 2: Target Ahead
-  Joy Button 3: Target Nearest Enemy
-  Joy Button 4: Change Firing Mode
-  Joy Button 5: Look Center / VR Head Center
-  Joy Button 6: Change Shield Direction
-  Joy Button 7: Target Attacker
-  Joy Button 8: Target Previous
-  Joy Button 9: Target Next
-  Joy Button 10: Target Previous Friendly
-  Joy Button 11: Target Next Friendly
-  Joy Button 12: Target Previous Enemy
-  Joy Button 13: Target Next Enemy
-  Joy Button 19: Target Prev Friendly
-  Joy Button 20: Target Next Enemy
-  Joy Button 21: Target Next Friendly
-  Joy Button 22: Target Prev Enemy
-  Joy Button 23: Target Prev Friendly
-  Joy Button 24: Target Next Enemy
-  Joy Button 25: Target Next Friendly
-  Joy Button 26: Target Prev Enemy
-  Joy Button 30: Target Incoming Warhead
-
-  Xbox Left Stick: Yaw/Pitch
-  Xbox Right Stick: Look Around
-  Xbox Triggers: Roll
-  Xbox Left Bumper: Target Center
-  Xbox Right Bumper: Fire
-  Xbox A: Throttle Decrease
-  Xbox B: Change Firing Mode
-  Xbox X: Throttle Increase
-  Xbox Y: Change Weapon
-  Xbox Back: Change Shield Direction
-  Xbox Start: Change Shield Direction
-  Xbox D-Pad Up: Target Attacker
-  Xbox D-Pad Down: Target Nearest Enemy
-  Xbox D-Pad Left: Target Previous Enemy
-  Xbox D-Pad Right: Target Next Enemy
-
-  Mouse Left-Click: Fire
-  Mouse Right-Click: Target Center
-  Mouse Middle-Click: Change Weapon
-  Mouse Scroll Up: Target Previous
-  Mouse Scroll Down: Target Next
-  Mouse Thumb-Button Big (Back): Throttle Decrease
-  Mouse Thumb-Button Little (Forward): Throttle Increase
-
-  Arrows: Yaw/Pitch
-  D: Roll Left
-  F: Roll Right
-  Backslash: 0% Throttle
-  Left Bracket: 33% Throttle / Spectate Previous
-  Right Bracket: 67% Throttle / Spectate Next
-  Backspace: 100% Throttle
-  Plus: Throttle Increase
-  A: Throttle Increase
-  Minus: Throttle Decrease
-  Z: Throttle Decrease
-  Numeric Keypad: Look Around
-  Numeric Keypad 5: Look Center / VR Head Center
-  Space: Fire
-  W: Change Weapon
-  X: Change Firing Mode
-  S: Shield Direction
-  Ctrl: Target Center
-  E: Target Attacker
-  R: Target Nearest Enemy
-  T: Target Next
-  Y: Target Previous
-  F1: Target Next Friendly
-  F3: Target Next Enemy
-  Q: Target None
-  Tab: Show Scores
-  Return/Enter: Toggle/Send Chat
-  Backtick/Tilde: Toggle Console
-
-
-== GAME TYPES ==
-
-  Battle of Yavin: Rebels must fly down the trench and try to hit the exhaust port
-    with a proton torpedo.  Imperials must try to prevent the Rebels from doing this
-    until the time limit runs out.
-
-  Capital Ship Hunt: The attacking team must destroy the defending team's capital ship
-    before the time limit runs out.
-
-  Defend/Destroy: Each team tries to destroy the enemy capital ship while defending
-    their own.  The last team with a surviving capital ship wins.
-
-  Team Elimination: The last team with any ships remaining wins.  Players can control
-    AI ships when the player's ship has been destroyed, but no new ships will be given
-    to either team once the match has started.
-
-  Team Deathmatch: The team to hit the kill limit first wins.  Respawn always enabled.
-
-  FFA Elimination: Last man standing wins, and there's no respawn whatsoever.
-
-  FFA Deathmatch: The player to hit the kill limit first wins.  Respawn always enabled.
+  I recommend the permanent fixes for power users only, or anyone who misses the 90's.
 
 
 == PREFERENCES ==
@@ -162,7 +91,6 @@ My Mac won't allow a downloaded or unsigned application to run.
 --Graphics--
 
   Fullscreen: Toggle fullscreen, and set the resolution for fullscreen mode.
-    NOTE: 0 x 0 means use desktop resolution (may require re-launch).
     Windowed resolution can be changed by dragging the lower-right corner.
 
   FSAA (Antialiasing): Use multiple samples to reduce jagged edges.  Can be GPU-heavy,
@@ -170,7 +98,7 @@ My Mac won't allow a downloaded or unsigned application to run.
 
   Vertical Synchronization (VSync): Eliminate tearing by only drawing frames when the
     monitor is ready to refresh.  Recommended for fast systems, but turning this off is
-	an easy way to improve framerate and reduce stuttering.
+    an easy way to improve framerate and reduce stuttering.
 
   Texture Quality: Limit the maximum texture resolution; downsample anything too large.
     This may improve performance with very limited VRAM and is required on some ancient
@@ -182,11 +110,11 @@ My Mac won't allow a downloaded or unsigned application to run.
 
   Framebuffer Textures: Use framebuffer objects as live textures for the cockpit.
     This shouldn't hurt performance much, but some old video cards don't support it.
-	Framebuffers are also used for the VR eyes, so this is required for VR.
+    Framebuffers are also used for the VR eyes, so this is required for VR.
 
   Draw With Shaders: Use GLSL vertex and fragment shaders.  Recommended for performance
     and better appearance, but certain old motherboards perform better with this off
-	and some ancient video cards require this off.
+    and some ancient video cards require this off.
 
   Light Quality: Per-pixel can be GPU-heavy, especially in VR, but looks much better on
     large surfaces like capital ships and the Death Star trench.
@@ -200,9 +128,15 @@ My Mac won't allow a downloaded or unsigned application to run.
     be somewhat GPU-heavy and CPU-heavy.
     NOTE: This is even more CPU-heavy when shaders are disabled!
 
-  Virtual Reality (OpenVR/SteamVR): Enable VR HMD output and seated head tracking.
+  Asteroid Detail: Controls how far away asteroids render as model vs simple sphere.
+    Can be somewhat CPU-heavy and GPU-heavy with many asteroids, especially in VR.
+	NOTE: This is even more CPU-heavy when shaders are disabled!
+
+--Virtual Reality--
+
+  Enable VR Mode: Enable VR HMD output and seated head tracking, using OpenVR/SteamVR.
     Tested with the HTC Vive, and it should work for the Oculus Rift or any other HMD.
-	You might need to tweak vr_fov and vr_offset in the console.  VERY GPU-HEAVY!
+    You might need to tweak vr_fov and vr_offset in the console.  VERY GPU-HEAVY!
 
 --Sound--
 
@@ -210,38 +144,154 @@ My Mac won't allow a downloaded or unsigned application to run.
 
   Effects: Volume of sound effects.
 
-  Music: Volume of music.
+  Engines: Engine sound volume, relative to effect volume.
 
-  Menu Music: Play music in the menus and lobby.
+  Music: Volume of all music, including end-of-round victory/defeat music.
 
-  Game Music: Play music while flying.
+  Menu Music: Play background music in the menus and lobby.
 
---Joystick--
+  Game Music: Play background music while flying.
 
-  Deadzone: Ignore some stick/twist motion near the center to prevent drift.
+
+== CONTROLS ==
 
   Swap Yaw/Roll: Normally X = roll and twist/pedals = yaw.  This option swaps those
     controls so the joystick points your ship and twist/pedals change your ship's roll,
     which is how classic X-Wing games were controlled.
 
-  X / Y / Twist: Linear is most responsive while Smoothest is least twitchy.
+  Invert Turrets: Normally turrets pitch the same way ships do.  This reverses them.
+
+--Joystick--
+
+  Deadzone: Ignore some stick/twist motion near the center to prevent drift.
+
+  X / Y / Twist: Sharpest is most responsive while Smoothest is least twitchy.
 
 --Controller--
 
   Deadzone: Ignore some thumbstick motion near the center to prevent drift.
 
-  Sticks: Linear is most responsive while Smoothest is least twitchy.
+  Sticks: Sharpest is most responsive while Smoothest is least twitchy.
+
+  Triggers: Sharpest is most responsive while Smoothest is least twitchy.
 
 --Mouse--
 
   Mode: Disabled: Disable mouse input in game.
-  Mode: Yaw/Pitch: Mouse controls yaw and pitch in flight.
-  Mode: Roll/Pitch: Mouse controls roll and pitch.  Reassigns keys D and F to control yaw.
+  Mode: Turret Aim: Mouse does not control flight, but does aim for turret gunners.
+  Mode: Yaw/Pitch: Mouse controls yaw and pitch in flight, and aims turrets.
+  Mode: Roll/Pitch: Mouse controls roll and pitch in flight, and aims turrets.
   Mode: Freelook: Use mouse to look around the cockpit.
 
-  Invert: This makes mouse flying feel more like using a joystick (up = pitch down).
+  Invert Pitch: Make mouse flying feel more like using a joystick (up = pitch down).
 
-  Input: Linear is most responsive while Smoothest is least twitchy.
+  Input: Sharpest is most responsive while Smoothest is least twitchy.
+
+--Binds--
+
+  Show Only Connected Devices: Hide control binds for devices that were not found.
+
+  Refresh: Search again for connected joysticks.
+
+  Default Binds:
+
+   Joy X-Axis: Roll
+   Joy Y-Axis: Pitch
+   Joy Twist/Pedals: Yaw
+   Joy Throttle: Throttle
+   Joy Hat: Look Around
+   Joy Button 1 (Trigger): Fire
+   Joy Button 2: Change Weapon
+   Joy Button 3: Target Ahead
+   Joy Button 4: Target Nearest Enemy
+   Joy Button 5: Change Firing Mode
+   Joy Button 6: Look Center / VR Head Center
+   Joy Button 7: Change Shield Direction
+   Joy Button 8: Target Attacker
+   Joy Button 9: Target Incoming Warhead
+   Joy Button 10: Target None
+   Joy Button 11: Target Data-Link
+   Joy Button 12: Target Groupmate
+   Joy Button 13: Target Previous
+   Joy Button 14: Target Next
+   Joy Button 20 (Hat 2 Up): Target Previous Friendly
+   Joy Button 21 (Hat 2 Right): Target Next Enemy
+   Joy Button 22 (Hat 2 Down): Target Next Friendly
+   Joy Button 23 (Hat 2 Left): Target Previous Enemy
+   Joy Button 24 (Hat 3 Up): Target Data-Link
+   Joy Button 25 (Hat 3 Right): Target Objective
+   Joy Button 26 (Hat 3 Down): Target None
+   Joy Button 27 (Hat 3 Left): Target Groupmate
+   Joy Button 31 (Clutch): Target Incoming Warhead
+
+   Xbox Left Stick: Yaw/Pitch
+   Xbox Right Stick: Look Around
+   Xbox Right Stick Click: VR Head Center
+   Xbox Triggers: Roll
+   Xbox Left Bumper: Target Center
+   Xbox Right Bumper: Fire
+   Xbox A: Throttle Decrease
+   Xbox B: Change Firing Mode
+   Xbox X: Throttle Increase
+   Xbox Y: Change Weapon
+   Xbox Back: Show Scores
+   Xbox Start: Change Shield Direction
+   Xbox D-Pad Up: Target Nearest Enemy
+   Xbox D-Pad Down: Target Attacker
+   Xbox D-Pad Left: Target Previous Enemy / Spectate Previous
+   Xbox D-Pad Right: Target Next Enemy / Spectate Next
+
+   Mouse Left-Click: Fire
+   Mouse Right-Click: Target Center
+   Mouse Middle-Click: Change Weapon
+   Mouse Scroll Up: Target Previous
+   Mouse Scroll Down: Target Next
+   Mouse Thumb-Button Big (Back): Throttle Decrease
+   Mouse Thumb-Button Little (Forward): Throttle Increase
+
+   Arrows: Yaw/Pitch
+   D: Roll Left
+   F: Roll Right
+   Backslash: 0% Throttle
+   Left Bracket: 33% Throttle / Spectate Previous
+   Right Bracket: 67% Throttle / Spectate Next
+   Backspace: 100% Throttle
+   Plus: Throttle Increase
+   A: Throttle Increase
+   Minus: Throttle Decrease
+   Z: Throttle Decrease
+   Numeric Keypad: Look Around
+   Numeric Keypad 5: Look Center / VR Head Center
+   Space: Fire
+   W: Change Weapon
+   X: Change Firing Mode
+   S: Shield Direction
+   Ctrl: Target Center
+   Q: Target None
+   E: Target Attacker
+   R: Target Nearest Enemy
+   T: Target Next
+   Y: Target Previous
+   I: Target Incoming
+   O: Target Objective
+   G: Target Groupmate
+   V/CapsLock: Target Data-Link
+   F1: Cockpit Seat
+   F2: Gunner Seat 1
+   F3: Gunner Seat 2
+   F4: Toggle Co-Pilot (Chewie)
+   Tab: Show Scores
+   Return/Enter: Toggle/Send Chat
+   Esc/F10: Menu
+   Backtick/Tilde: Toggle Console
+
+  To rebind an analog axis, click the box and then move your joystick or controller
+  axis in the positive direction (pitch up, yaw right, roll right, throttle up, etc).
+  If the result is reversed from what you want, rebind it in the other direction.
+
+  To rebind a digital control, click the box and then press the desired button or key.
+
+  To unbind a control entirely, right-click its box; all of its binds will be cleared.
 
 
 == CONSOLE COMMANDS ==
@@ -250,7 +300,7 @@ X-Wing Revival features a Quake-style console which allows power users to tweak 
 game parameters.  Press backtick (tilde) to toggle the console.  If you mess anything
 up, quit and delete settings.cfg to restore defaults.
 
-Here are the commands currently implemented:
+Here are some of the commands currently implemented:
 
   status: Show the status of various game subsystems, including framerate and ping.
   show: Show all variables.
@@ -258,6 +308,8 @@ Here are the commands currently implemented:
   exec <file>: Load a config file.
   export <file>: Save a config file.
   g_restart: Apply video settings and restart video.
+  joy_refresh: Look for new joysticks that have been connected.
+  who: Show list of players connected.
   say <message>: Send chat message.
   echo <text>: Display text in the local console.
   host: Start a new game.
@@ -285,9 +337,11 @@ You can control X-Wing Revival's behavior with these command-line options:
 
   -host: Start a new game immediately.
   -connect <host>: Join a game immediately by IP/hostname.
+  -name <name>: Set player name.
   -dedicated: Host a dedicated server console instead of playing.
   -set <name> <value>: Change a variable's value.
-  -safe: Use old fixed pipeline OpenGL at 640x480 with minimal extensions.
+  -windowed: Start windowed, not fullscreen.
+  -safe: Use old fixed-pipeline OpenGL at 640x480 with minimal extensions.
   -screensaver: Load in screensaver mode.  Moving the mouse will quit.
 
 
@@ -298,8 +352,8 @@ online, you'll need to map this port from your firewall to your PC.  You can ove
 the server port by changing the "sv_port" variable.
 
 Local games are announced by sending LAN broadcasts on UDP port 7000.  If you have a
-software firewall enabled (such as Windows Firewall) make sure this port is allowed so
-you can discover local games.
+software firewall enabled (such as Windows Firewall) and want to play over LAN, make
+sure this port is allowed so you can discover local games.
 
 
 == VIRTUAL REALITY ==
@@ -327,10 +381,31 @@ C:\Windows and select "RaptorEngine" in the Screen Saver settings.  Before you c
 preview or activate it, you'll need to click "Settings...", browse to your copy of
 "X-Wing Revival.exe" (or x64), and click "OK".
 
-The RaptorEngine screensaver wrapper is only currently available for Windows.
+The RaptorEngine screensaver wrapper is only currently available for Windows.  You can
+also launch the game with "-screensaver" to watch screensaver mode on any platform.
+
+You can customize the screensaver by creating a text file "screensaver.cfg" with
+console commands to execute, such as "sv gametype yavin" or "sv rebel_fighter A/W".
 
 
 == VERSION HISTORY ==
+
+Alpha 0.2 (2023-05-04):
+ * AI ships now dodge obstacles, avoid friendly fire, and have selectable skill level.
+ * Improved capital ship collision detection to maintain performance in large fleets.
+ * Replaced "Defend/Destroy" with "Fleet Battle"; all AI ship types are customizable!
+ * Ship and weapon rebalancing, mostly of capital ships.  Added Interdictor Cruiser.
+ * Improved netcode makes other ships move more smoothly and corrects for jitter.
+ * Players can control turrets, change seats, and let an AI co-pilot fly the YT-1300.
+ * In-flight menu allows selecting a different ship or group for next respawn.
+ * Improved graphics.  Respawn jumps in from hyperspace.  Engines glow with throttle.
+ * Improved some sound effects.  Accelerating or decelerating makes engine sounds.
+ * Weapons remember mode.  Each action has a unique beep.  Lasers beep when on target.
+ * Deflector shield angled double-front or double-rear protects only that direction.
+ * If your target crashes after you shoot them, you get the kill.  TKs subtract score.
+ * Improved input curves, especially controllers.  Xbox 360 controllers now work great!
+ * Joystick, game controller, keyboard, and mouse binds are now fully customizable.
+ * Updated RaptorEngine.scr to keep multiple paths, such as X-Wing Revival and BTTT.
 
 Alpha 0.1.9 (2021-05-04):
  * Ships are now less twitchy, especially at full speed.  Slow down for tighter turns.

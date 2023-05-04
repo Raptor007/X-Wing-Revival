@@ -5,13 +5,20 @@
 *~
 *.suo
 *.ncb
+*.ilk
+*.pdb
 *.perspectivev3
 *.pbxuser
 *.xcuserstate
 *.o
 *.app
+build
 arch-*
 xwingrev
 xwingrev_*
 xwingrev.exe
 XWing.build
+X-Wing Revival*.exe
+X-Wing Revival*.map
+*.cfg
+std*.txt

@@ -182,10 +182,10 @@ void JoinMenu::Draw( void )
 						text += " [FFA DM]";
 					else if( properties["gametype"] == "yavin" )
 						text += " [Yavin]";
-					else if( properties["gametype"] == "def_des" )
-						text += " [Defend/Destroy]";
 					else if( properties["gametype"] == "hunt" )
-						text += " [CapShip Hunt]";
+						text += " [Flagship Hunt]";
+					else if( (properties["gametype"] == "fleet") || (properties["gametype"] == "def_des") )
+						text += " [Fleet Battle]";
 					else
 						text += " [" + properties["gametype"] + "]";
 				}
@@ -208,6 +208,34 @@ void JoinMenu::Draw( void )
 	Window::Draw();
 	TitleFont->DrawText( "Game Browser", Rect.w/2 + 2, 12, Font::ALIGN_TOP_CENTER, 0,0,0,0.8f );
 	TitleFont->DrawText( "Game Browser", Rect.w/2, 10, Font::ALIGN_TOP_CENTER );
+}
+
+
+bool JoinMenu::HandleEvent( SDL_Event *event )
+{
+	if( (event->type == SDL_JOYBUTTONDOWN)
+	&&  Raptor::Game->Cfg.SettingAsBool("joy_enable")
+	&&  (Str::FindInsensitive( Raptor::Game->Joy.Joysticks[ event->jbutton.which ].Name, "Xbox" ) >= 0) )
+	{
+		std::string button_name;
+		if( event->jbutton.button == 0 ) // A
+			button_name = "JoinMenuGoButton";
+		else if( event->jbutton.button == 1 ) // B
+			button_name = "JoinMenuBackButton";
+		else if( event->jbutton.button == 7 ) // Start
+			button_name = "JoinMenuHostButton";
+		else
+			return Layer::HandleEvent( event );
+		
+		LabelledButton *button = (LabelledButton*) FindElement( button_name, true );
+		if( button )
+		{
+			button->Clicked();
+			return true;
+		}
+	}
+	
+	return Layer::HandleEvent( event );
 }
 
 
@@ -274,6 +302,7 @@ void JoinMenuListBox::Changed( void )
 
 JoinMenuGoButton::JoinMenuGoButton( SDL_Rect *rect, Font *button_font ) : LabelledButton( rect, button_font, "Join", Font::ALIGN_MIDDLE_CENTER, Raptor::Game->Res.GetAnimation("button.ani"), Raptor::Game->Res.GetAnimation("button_mdown.ani") )
 {
+	Name = "JoinMenuGoButton";
 	Red = 1.f;
 	Green = 1.f;
 	Blue = 1.f;
@@ -313,6 +342,7 @@ void JoinMenuGoButton::Clicked( Uint8 button )
 
 JoinMenuHostButton::JoinMenuHostButton( SDL_Rect *rect, Font *button_font ) : LabelledButton( rect, button_font, "Host / Solo", Font::ALIGN_MIDDLE_CENTER, Raptor::Game->Res.GetAnimation("button.ani"), Raptor::Game->Res.GetAnimation("button_mdown.ani") )
 {
+	Name = "JoinMenuHostButton";
 	Red = 1.f;
 	Green = 1.f;
 	Blue = 1.f;
@@ -344,6 +374,7 @@ void JoinMenuHostButton::Clicked( Uint8 button )
 
 JoinMenuBackButton::JoinMenuBackButton( SDL_Rect *rect, Font *button_font ) : LabelledButton( rect, button_font, "Back", Font::ALIGN_MIDDLE_CENTER, Raptor::Game->Res.GetAnimation("button.ani"), Raptor::Game->Res.GetAnimation("button_mdown.ani") )
 {
+	Name = "JoinMenuBackButton";
 	Red = 1.f;
 	Green = 1.f;
 	Blue = 1.f;

@@ -13,26 +13,27 @@ class Ship;
 #include "ShipClass.h"
 #include "Model.h"
 #include "Shot.h"
+#include "Turret.h"
 
 
 class Ship : public GameObject
 {
 public:
 	const ShipClass *Class;
-	uint32_t Team;
+	uint8_t Team;
 	Model Shape;
 	std::string Name;
 	bool CanRespawn;
 	uint8_t Group;
 	bool IsMissionObjective;
 	
-	bool SpecialUpdate;
-	
 	double Health;
 	Clock HitClock;
 	uint32_t HitByID;
+	bool HitRear;
 	Vec3D CockpitOffset;
 	Clock DeathClock;
+	double JumpProgress;
 	std::map<std::string,double> Subsystems;
 	double CollisionPotential;
 	double ShieldF, ShieldR;
@@ -42,7 +43,7 @@ public:
 	uint8_t SelectedWeapon;
 	std::map<uint8_t,Clock> FiringClocks;
 	std::map<uint8_t,int8_t> Ammo;
-	uint8_t FiringMode;
+	std::map<uint8_t,uint8_t> FiringMode;
 	uint8_t WeaponIndex;
 	uint8_t FiredThisFrame;
 	
@@ -69,6 +70,7 @@ public:
 	void SetYaw( double yaw, double dt );
 	double GetThrottle( void ) const;
 	void SetThrottle( double throttle, double dt );
+	std::string SetThrottleGetSound( double throttle, double dt );
 	void SetShieldPos( uint8_t pos );
 	
 	double Radius( void ) const;
@@ -93,17 +95,26 @@ public:
 	
 	Pos3D HeadPos( void ) const;
 	double Exploded( void ) const;
+	int ExplosionSeed( void ) const;
 	const char *FlybySound( double speed ) const;
 	
-	std::map<int,Shot*> NextShots( GameObject *target = NULL ) const;
-	std::map<int,Shot*> AllShots( GameObject *target = NULL );
+	std::map<int,Shot*> NextShots( GameObject *target = NULL, uint8_t firing_mode = 0 ) const;
+	std::map<int,Shot*> AllShots( GameObject *target = NULL ) const;
 	void JustFired( void );
 	void JustFired( uint8_t weapon, uint8_t mode );
 	bool NextWeapon( void );
 	bool NextFiringMode( void );
+	uint8_t CurrentFiringMode( void ) const;
 	double ShotDelay( void ) const;
+	int8_t AmmoForWeapon( uint8_t weapon = 0 ) const;
 	float LockingOn( const GameObject *target ) const;
 	void UpdateTarget( const GameObject *target, double dt = 0. );
+	
+	void ResetTurrets( void ) const;
+	Turret *AttachedTurret( uint8_t index = 0 ) const;
+	std::list<Turret*> AttachedTurrets( void ) const;
+	std::set<Player*> PlayersInTurrets( void ) const;
+	Player *Owner( void ) const;
 	
 	bool PlayerShouldUpdateServer( void ) const;
 	bool ServerShouldUpdatePlayer( void ) const;
@@ -123,7 +134,7 @@ public:
 	void Update( double dt );
 	
 	void Draw( void );
-	void DrawWireframe( void );
+	void DrawWireframe( Color *color = NULL, double scale = 1. );
 	
 	enum
 	{

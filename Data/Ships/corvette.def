@@ -3,21 +3,21 @@ name Corellian Corvette
 category capital
 team any
 radius 80
-speed 25
-accel 12.5
-roll 5
-pitch 3
-yaw 3
+speed 31
+accel 10
+roll 6 5
+pitch 4 3
+yaw 4 3
 health 2500
 shield 3000
 recover 20
 recharge 2
 ramming 6000
 explode 0.05
-turret turbolaser 0 12 37.5 up 0 1 0 pitch -5 90 dir 0 1 0 arc 190 hidden independent firetime 0.4
-turret turbolaser 0 -12 37.5 up 0 -1 0 pitch -5 90 dir 0 -1 0 arc 190 hidden independent firetime 0.4
+turret turbolaser 0 12 37.5 up 0 1 0 pitch -5 90 dir 0 0 1 arc 300 hidden independent firetime 0.4
+turret turbolaser 0 -12 37.5 up 0 -1 0 pitch -5 90 dir 0 0 1 arc 300 hidden independent firetime 0.4
 firetime turbolaser 0.4
 model corvette.obj
 model_collision corvette.obj
-cockpit corvette.obj 0 14 -20.5
+cockpit corvette.obj 0 14 -20
 model_scale 0.022

@@ -17,6 +17,7 @@ class Asteroid : public GameObject
 {
 public:
 	double Radius;
+	double Health;
 	Model *Shape;
 	Animation Texture;
 	Color Ambient, Diffuse, Specular;

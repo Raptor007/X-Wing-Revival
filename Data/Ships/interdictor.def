@@ -1,0 +1,22 @@
+id INT
+name Interdictor Cruiser
+category capital
+team empire
+radius 350
+speed 32
+accel 10
+roll 1.5 1
+pitch 1.2 1
+yaw 2.5 2
+health 3000
+shield 4000
+recover 25
+recharge 1.5
+ramming 8000
+explode 0.015
+firetime turbolaser 0.27
+turret_health 179
+model interdictor.obj
+model_collision interdictor_col.obj
+cockpit interdictor.obj 0 45 -127
+model_scale 0.022

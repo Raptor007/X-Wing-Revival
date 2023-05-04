@@ -17,6 +17,7 @@ Asteroid::Asteroid( uint32_t id ) : GameObject( id, XWing::Object::ASTEROID )
 	Shape = NULL;
 	
 	Radius = Rand::Double( 20., 50. );
+	Health = (Radius * Radius) / 10.;  // 40 - 250
 	
 	Fwd.Set( Rand::Double( -1., 1 ), Rand::Double( -1., 1 ), Rand::Double( -1., 1 ) );
 	Up.Set( Rand::Double( -1., 1 ), Rand::Double( -1., 1 ), Rand::Double( -1., 1 ) );
@@ -144,8 +145,10 @@ bool Asteroid::WillCollide( const GameObject *other, double dt, std::string *thi
 
 void Asteroid::Draw( void )
 {
+	XWingGame *game = (XWingGame*) Raptor::Game;
+	
 	// Don't draw if the camera is within the asteroid.
-	double dist = Raptor::Game->Cam.Dist( this );
+	double dist = game->Cam.Dist( this );
 	if( dist < Radius )
 		return;
 	
@@ -153,11 +156,11 @@ void Asteroid::Draw( void )
 	double size = Radius;
 	if( Shape )
 		size = Shape->GetTriagonal();
-	if( DistAlong( &(Raptor::Game->Cam.Fwd), &(Raptor::Game->Cam) ) < -size )
+	if( DistAlong( &(game->Cam.Fwd), &(game->Cam) ) < -size )
 		return;
 	
 	// Calculate asteroid detail based on distance and screen resolution.
-	int detail = Raptor::Game->Gfx.H * Radius * 0.5 / dist;
+	int detail = game->AsteroidLOD * game->Gfx.H * Radius * 0.5 / dist;
 	
 	// If we decided to draw the model, draw it.
 	if( (detail >= 5) && Shape )
@@ -176,15 +179,15 @@ void Asteroid::Draw( void )
 		else if( detail < 3 )
 			detail = 3;
 		
-		if( Raptor::Game->ShaderMgr.Active() )
+		if( game->ShaderMgr.Active() )
 		{
 			// Match the color values in asteroid.mtl for shader lighting.
-			Raptor::Game->ShaderMgr.Set3f( "AmbientColor", Ambient.Red, Ambient.Green, Ambient.Blue );
-			Raptor::Game->ShaderMgr.Set3f( "DiffuseColor", Diffuse.Red, Diffuse.Green, Diffuse.Blue );
-			Raptor::Game->ShaderMgr.Set3f( "SpecularColor", Specular.Red, Specular.Green, Specular.Blue );
-			Raptor::Game->ShaderMgr.Set1f( "Shininess", Shininess );
+			game->ShaderMgr.Set3f( "AmbientColor", Ambient.Red, Ambient.Green, Ambient.Blue );
+			game->ShaderMgr.Set3f( "DiffuseColor", Diffuse.Red, Diffuse.Green, Diffuse.Blue );
+			game->ShaderMgr.Set3f( "SpecularColor", Specular.Red, Specular.Green, Specular.Blue );
+			game->ShaderMgr.Set1f( "Shininess", Shininess );
 		}
 		
-		Raptor::Game->Gfx.DrawSphere3D( X, Y, Z, Radius, detail, Texture.CurrentFrame(), Graphics::TEXTURE_MODE_X_DIV_R );
+		game->Gfx.DrawSphere3D( X, Y, Z, Radius, detail, Texture.CurrentFrame(), Graphics::TEXTURE_MODE_X_DIV_R );
 	}
 }

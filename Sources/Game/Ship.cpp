@@ -6,7 +6,7 @@
 
 #include <cmath>
 #include "XWingDefs.h"
-#include "RaptorGame.h"
+#include "XWingGame.h"
 #include "Num.h"
 #include "Rand.h"
 #include "Math3D.h"
@@ -49,19 +49,19 @@ void Ship::Clear( void )
 	Group = 0;
 	IsMissionObjective = false;
 	
-	SpecialUpdate = false;
-	
 	Health = 100.;
 	CollisionPotential = 0.;
 	ShieldF = 0.;
 	ShieldR = 0.;
 	ShieldPos = SHIELD_CENTER;
 	HitByID = 0;
+	HitRear = false;
+	JumpProgress = 0.;
 	
 	Firing = false;
 	SelectedWeapon = 0;
 	FiredThisFrame = 0;
-	FiringMode = 1;
+	FiringMode.clear();
 	WeaponIndex = 0;
 	
 	Target = 0;
@@ -73,15 +73,30 @@ void Ship::ClientInit( void )
 {
 	if( Class && Class->ExternalModel.length() )
 	{
-		Shape.BecomeInstance( Raptor::Game->Res.GetModel( Class->ExternalModel ) );
-		Shape.ScaleBy( Class->ModelScale );
+		Model *model = NULL;
+		
+		if( Group && Raptor::Game->Cfg.SettingAsBool("g_group_skins",true) )
+		{
+			std::map<uint8_t,std::string>::const_iterator skin_iter = Class->GroupSkins.find( Group );
+			if( (skin_iter != Class->GroupSkins.end()) && skin_iter->second.length() )
+				model = Raptor::Game->Res.GetModel( skin_iter->second );
+		}
+		
+		if( !( model && model->VertexCount() ) )
+			model = Raptor::Game->Res.GetModel( Class->ExternalModel );
+		
+		if( model )
+		{
+			Shape.BecomeInstance( model );
+			Shape.ScaleBy( Class->ModelScale );
+		}
 	}
 }
 
 
 bool Ship::SetClass( uint32_t ship_class_id )
 {
-	GameObject *obj = Raptor::Game->Data.GetObject( ship_class_id );
+	GameObject *obj = Data->GetObject( ship_class_id );
 	if( obj && (obj->Type() == XWing::Object::SHIP_CLASS) )
 	{
 		SetClass( (const ShipClass*) obj );
@@ -100,6 +115,11 @@ void Ship::SetClass( const ShipClass *ship_class )
 
 void Ship::Reset( void )
 {
+	// Reset typically clears JumpProgress, but clients that joined late or resynced should keep value of 1 from init packet.
+	if( (JumpProgress != 1.) || ! ClientSide() )
+		JumpProgress = 0.;
+	
+	Lifetime.Reset( (PlayerID || ! ClientSide()) ? 0.5 : Rand::Double( 0.4, 0.5 ) );
 	Health = MaxHealth();
 	ShieldF = MaxShield();
 	ShieldR = ShieldF;
@@ -112,7 +132,7 @@ void Ship::Reset( void )
 	TargetLock = 0.f;
 	Firing = false;
 	WeaponIndex = 0;
-	FiringMode = 1;
+	FiringMode.clear();
 	Ammo.clear();
 	SelectedWeapon = 0;
 	
@@ -123,7 +143,24 @@ void Ship::Reset( void )
 		Ammo = Class->Ammo;
 		SelectedWeapon = Class->Weapons.size() ? Class->Weapons.begin()->first : 0;
 		for( std::map< uint8_t, std::vector<Pos3D> >::const_iterator weapon_iter = Class->Weapons.begin(); weapon_iter != Class->Weapons.end(); weapon_iter ++ )
+		{
 			FiringClocks[ weapon_iter->first ].Reset();
+			FiringMode[ weapon_iter->first ] = 1;
+		}
+	}
+	
+	if( ClientSide() && (Category() != ShipClass::CATEGORY_TARGET) )
+	{
+		XWingGame *game = (XWingGame*) Raptor::Game;
+		if( PlayerID == game->PlayerID )
+			game->Snd.Play( game->Res.GetSound("jump_in_cockpit.wav") );
+		else if( Raptor::Game->State >= XWing::State::FLYING )
+		{
+			double loudness = Radius() / 4.5;
+			if( (ID == game->ObservedShipID) && (loudness < 10.) )
+				loudness = 10.;
+			game->Snd.PlayFromObject( game->Res.GetSound("jump_in.wav"), ID, loudness );
+		}
 	}
 }
 
@@ -240,6 +277,7 @@ void Ship::AddDamage( double front, double rear, const char *subsystem, uint32_t
 	SetHealth( Health - hull_damage );
 	
 	HitClock.Reset();
+	HitRear = (rear > front);
 }
 
 
@@ -253,7 +291,9 @@ void Ship::KnockCockpit( const Vec3D *dir, double force )
 
 void Ship::SetRoll( double roll, double dt )
 {
-	if( roll > 1. )
+	if( ! Num::Valid(roll) )
+		roll = 0.;
+	else if( roll > 1. )
 		roll = 1.;
 	else if( roll < -1. )
 		roll = -1.;
@@ -274,7 +314,9 @@ void Ship::SetRoll( double roll, double dt )
 
 void Ship::SetPitch( double pitch, double dt )
 {
-	if( pitch > 1. )
+	if( ! Num::Valid(pitch) )
+		pitch = 0.;
+	else if( pitch > 1. )
 		pitch = 1.;
 	else if( pitch < -1. )
 		pitch = -1.;
@@ -295,7 +337,9 @@ void Ship::SetPitch( double pitch, double dt )
 
 void Ship::SetYaw( double yaw, double dt )
 {
-	if( yaw > 1. )
+	if( ! Num::Valid(yaw) )
+		yaw = 0.;
+	else if( yaw > 1. )
 		yaw = 1.;
 	else if( yaw < -1. )
 		yaw = -1.;
@@ -317,13 +361,13 @@ void Ship::SetYaw( double yaw, double dt )
 double Ship::GetThrottle( void ) const
 {
 	double max_speed = MaxSpeed();
-	return max_speed ? MotionVector.Length() / max_speed : 0.;
+	return max_speed ? (MotionVector.Length() / max_speed) : 0.;
 }
 
 
 void Ship::SetThrottle( double throttle, double dt )
 {
-	if( throttle > 1. )
+	if( (throttle > 1.) || ! Num::Valid(throttle) )
 		throttle = 1.;
 	else if( throttle < 0. )
 		throttle = 0.;
@@ -335,10 +379,34 @@ void Ship::SetThrottle( double throttle, double dt )
 	if( fabs( new_speed - old_speed ) > max_change )
 		new_speed = old_speed + max_change * Num::Sign( new_speed - old_speed );
 	
-	MotionVector = Fwd;
+	MotionVector.Copy( &Fwd );
 	MotionVector.ScaleTo( new_speed );
 	
 	CockpitOffset.X += (new_speed - old_speed) * 3. * dt;
+}
+
+
+std::string Ship::SetThrottleGetSound( double throttle, double dt )
+{
+	double prev_throttle = GetThrottle();
+	SetThrottle( throttle, dt );
+	
+	if( Class && Class->FlybySounds.size() )
+	{
+		// Play flyby sounds for sudden acceleration/deceleration.
+		if( (throttle > prev_throttle) && (prev_throttle < 0.75) && (GetThrottle() >= 0.75) )
+			return Class->FlybySounds.rbegin()->second;
+		else if( (Class->FlybySounds.size() >= 2) && (throttle < prev_throttle) && (prev_throttle > 0.875) && (GetThrottle() <= 0.875) )
+			return Class->FlybySounds.begin()->second;
+		else if( (Class->FlybySounds.size() >= 3) && (throttle > prev_throttle) && (prev_throttle < 0.5) && (GetThrottle() >= 0.5) )
+		{
+			std::map<double,std::string>::const_reverse_iterator sound_iter = Class->FlybySounds.rbegin();
+			sound_iter ++;
+			return sound_iter->second;
+		}
+	}
+	
+	return "";
 }
 
 
@@ -579,6 +647,14 @@ double Ship::Exploded( void ) const
 }
 
 
+int Ship::ExplosionSeed( void ) const
+{
+	// Only use synchronized data that will not change as the dead ship continues forward!
+	// If this ship has complex collision detection, other ships can collide with the pieces.
+	return (ID + (int)(Fwd.X * 1024.)) % 32;
+}
+
+
 const char *Ship::FlybySound( double speed ) const
 {
 	const char *sound = NULL;
@@ -594,17 +670,19 @@ const char *Ship::FlybySound( double speed ) const
 }
 
 
-std::map<int,Shot*> Ship::NextShots( GameObject *target ) const
+std::map<int,Shot*> Ship::NextShots( GameObject *target, uint8_t firing_mode ) const
 {
 	std::map<int,Shot*> shots;
 	
 	if( ! SelectedWeapon )
 		return shots;
 	
+	if( ! firing_mode )
+		firing_mode = CurrentFiringMode();
+	
 	// If ammo is limited, don't fire more than the ammo we have.
-	int firing_mode = FiringMode;
 	std::map<uint8_t,int8_t>::const_iterator ammo_iter = Ammo.find(SelectedWeapon);
-	if( (ammo_iter != Ammo.end()) && (ammo_iter->second >= 0) && (ammo_iter->second < firing_mode) )
+	if( (ammo_iter != Ammo.end()) && (ammo_iter->second >= 0) && (ammo_iter->second < (int8_t)firing_mode) )
 		firing_mode = ammo_iter->second;
 	
 	for( int num = 0; num < firing_mode; num ++ )
@@ -616,33 +694,6 @@ std::map<int,Shot*> Ship::NextShots( GameObject *target ) const
 		shot->FiredFrom = ID;
 		shot->PlayerID = PlayerID;
 		shot->ShotType = SelectedWeapon;
-		shot->MotionVector.Set( Fwd.X, Fwd.Y, Fwd.Z );
-		shot->MotionVector.ScaleTo( shot->Speed() );
-		
-		double fwd = 0., up = 0., right = 0.;
-		
-		if( Class )
-		{
-			std::map< uint8_t, std::vector<Pos3D> >::const_iterator weapon_iter = Class->Weapons.find( SelectedWeapon );
-			if( (weapon_iter != Class->Weapons.end()) && weapon_iter->second.size() )
-			{
-				size_t weapon_count = weapon_iter->second.size();
-				if( num && (FiringMode > 1) && (FiringMode < weapon_count) )
-					weapon_index += weapon_count - FiringMode - 1;
-				
-				weapon_index %= weapon_iter->second.size();
-				
-				fwd   = weapon_iter->second.at( weapon_index ).X;
-				up    = weapon_iter->second.at( weapon_index ).Y;
-				right = weapon_iter->second.at( weapon_index ).Z;
-			}
-		}
-		
-		shot->MoveAlong( &Fwd, fwd );
-		shot->MoveAlong( &Up, up );
-		shot->MoveAlong( &Right, right );
-		
-		shots[ weapon_index ] = shot;
 		
 		// For ships that could be either team, make Empire lasers green and Rebel lasers red.
 		if( Team == XWing::Team::EMPIRE )
@@ -659,6 +710,34 @@ std::map<int,Shot*> Ship::NextShots( GameObject *target ) const
 			else if( shot->ShotType == Shot::TYPE_TURBO_LASER_GREEN )
 				shot->ShotType = Shot::TYPE_TURBO_LASER_RED;
 		}
+		
+		shot->MotionVector.Set( Fwd.X, Fwd.Y, Fwd.Z );
+		shot->MotionVector.ScaleTo( shot->Speed() );
+		
+		double fwd = 0., up = 0., right = 0.;
+		
+		if( Class )
+		{
+			std::map< uint8_t, std::vector<Pos3D> >::const_iterator weapon_iter = Class->Weapons.find( SelectedWeapon );
+			if( (weapon_iter != Class->Weapons.end()) && weapon_iter->second.size() )
+			{
+				size_t weapon_count = weapon_iter->second.size();
+				if( num && (firing_mode > 1) && (firing_mode < weapon_count) )
+					weapon_index += weapon_count - firing_mode - 1;
+				
+				weapon_index %= weapon_iter->second.size();
+				
+				fwd   = weapon_iter->second.at( weapon_index ).X;
+				up    = weapon_iter->second.at( weapon_index ).Y;
+				right = weapon_iter->second.at( weapon_index ).Z;
+			}
+		}
+		
+		shot->MoveAlong( &Fwd, fwd );
+		shot->MoveAlong( &Up, up );
+		shot->MoveAlong( &Right, right );
+		
+		shots[ weapon_index ] = shot;
 		
 		// If we had a lock for a seeking weapon, give the shot its target.
 		if( ((shot->ShotType == Shot::TYPE_TORPEDO) || (shot->ShotType == Shot::TYPE_MISSILE)) && target && (TargetLock >= 1.) )
@@ -696,20 +775,15 @@ std::map<int,Shot*> Ship::NextShots( GameObject *target ) const
 }
 
 
-std::map<int,Shot*> Ship::AllShots( GameObject *target )
+std::map<int,Shot*> Ship::AllShots( GameObject *target ) const
 {
-	uint8_t firing_mode = FiringMode;
-	FiringMode = WeaponCount( SelectedWeapon );
-	std::map<int,Shot*> shots = NextShots( target );
-	FiringMode = firing_mode;
-	
-	return shots;
+	return NextShots( target, WeaponCount(SelectedWeapon) );
 }
 
 
 void Ship::JustFired( void )
 {
-	JustFired( SelectedWeapon, FiringMode );
+	JustFired( SelectedWeapon, CurrentFiringMode() );
 }
 
 
@@ -754,8 +828,8 @@ bool Ship::NextWeapon( void )
 	
 	if( SelectedWeapon != prev )
 	{
-		FiringMode = 1;
 		WeaponIndex = 0;
+		FiringClocks[ SelectedWeapon ].Reset();
 		return true;
 	}
 	return false;
@@ -764,43 +838,72 @@ bool Ship::NextWeapon( void )
 
 bool Ship::NextFiringMode( void )
 {
-	uint8_t prev = FiringMode;
+	uint8_t firing_mode = CurrentFiringMode();
+	uint8_t prev = firing_mode;
 	
 	uint8_t count = WeaponCount(SelectedWeapon);
-	if( FiringMode < count )
+	if( firing_mode < count )
 	{
-		for( uint8_t next_mode = FiringMode + 1; next_mode <= count; next_mode ++ )
+		for( uint8_t next_mode = firing_mode + 1; next_mode <= count; next_mode ++ )
 		{
 			if( count % next_mode == 0 )
 			{
-				FiringMode = next_mode;
+				firing_mode = next_mode;
 				break;
 			}
 		}
 	}
 	else
-		FiringMode = 1;
+		firing_mode = 1;
 	
-	if( (Ammo[ SelectedWeapon ] >= 0) && (Ammo[ SelectedWeapon ] < FiringMode) )
-		FiringMode = Ammo[ SelectedWeapon ];
+	int ammo = AmmoForWeapon( SelectedWeapon );
+	if( (ammo >= 0) && (ammo < firing_mode) )
+		firing_mode = ammo;
 	
-	return (FiringMode != prev);
+	FiringMode[ SelectedWeapon ] = firing_mode;
+	
+	return (firing_mode != prev);
+}
+
+
+uint8_t Ship::CurrentFiringMode( void ) const
+{
+	std::map<uint8_t,uint8_t>::const_iterator mode_iter = FiringMode.find( SelectedWeapon );
+	uint8_t firing_mode = (mode_iter != FiringMode.end()) ? mode_iter->second : 1;
+	std::map<uint8_t,int8_t>::const_iterator ammo_iter = Ammo.find( SelectedWeapon );
+	if( (ammo_iter != Ammo.end()) && (ammo_iter->second >= 0) && (ammo_iter->second < (int8_t)firing_mode) )
+		return ammo_iter->second;
+	return firing_mode;
 }
 
 
 double Ship::ShotDelay( void ) const
 {
+	uint8_t firing_mode = CurrentFiringMode();
+	
 	if( Class )
 	{
 		std::map<uint8_t,double>::const_iterator firetime_iter = Class->FireTime.find( SelectedWeapon );
 		if( firetime_iter != Class->FireTime.end() )
-			return firetime_iter->second * FiringMode;
+			return firetime_iter->second * firing_mode;
 	}
 	
 	if( (SelectedWeapon == Shot::TYPE_TORPEDO) || (SelectedWeapon == Shot::TYPE_MISSILE) )
-		return 1. * FiringMode;
+		return 1. * firing_mode;
 	
-	return 0.25 * FiringMode;
+	return 0.25 * firing_mode;
+}
+
+
+int8_t Ship::AmmoForWeapon( uint8_t weapon ) const
+{
+	if( ! weapon )
+		weapon = SelectedWeapon;
+	if( ! weapon )
+		return -1;
+	
+	std::map<uint8_t,int8_t>::const_iterator ammo_iter = Ammo.find( weapon );
+	return (ammo_iter != Ammo.end()) ? ammo_iter->second : 0;
 }
 
 
@@ -874,6 +977,96 @@ void Ship::UpdateTarget( const GameObject *target, double dt )
 }
 
 
+void Ship::ResetTurrets( void ) const
+{
+	std::list<Turret*> turrets = AttachedTurrets();
+	for( std::list<Turret*>::iterator turret_iter = turrets.begin(); turret_iter != turrets.end(); turret_iter ++ )
+	{
+		Turret *turret = *turret_iter;
+		turret->Attach( this, &(turret->Offset), &(turret->RelativeUp), &(turret->RelativeFwd), turret->ParentControl );
+	}
+}
+
+
+Turret *Ship::AttachedTurret( uint8_t index ) const
+{
+	for( std::map<uint32_t,GameObject*>::iterator obj_iter = Data->GameObjects.begin(); obj_iter != Data->GameObjects.end(); obj_iter ++ )
+	{
+		if( obj_iter->second->Type() == XWing::Object::TURRET )
+		{
+			Turret *turret = (Turret*) obj_iter->second;
+			if( turret->ParentID == ID )
+			{
+				if( index )
+					index --;
+				else
+					return turret;
+			}
+		}
+	}
+	
+	return NULL;
+}
+
+
+std::list<Turret*> Ship::AttachedTurrets( void ) const
+{
+	std::list<Turret*> turrets;
+	
+	for( std::map<uint32_t,GameObject*>::iterator obj_iter = Data->GameObjects.begin(); obj_iter != Data->GameObjects.end(); obj_iter ++ )
+	{
+		if( obj_iter->second->Type() == XWing::Object::TURRET )
+		{
+			Turret *turret = (Turret*) obj_iter->second;
+			if( turret->ParentID == ID )
+				turrets.push_back( turret );
+		}
+	}
+	
+	return turrets;
+}
+
+
+std::set<Player*> Ship::PlayersInTurrets( void ) const
+{
+	std::set<Player*> players;
+	
+	for( std::map<uint32_t,GameObject*>::iterator obj_iter = Data->GameObjects.begin(); obj_iter != Data->GameObjects.end(); obj_iter ++ )
+	{
+		if( obj_iter->second->Type() == XWing::Object::TURRET )
+		{
+			Turret *turret = (Turret*) obj_iter->second;
+			if( turret->ParentID == ID )
+			{
+				Player *player = Data->GetPlayer( turret->PlayerID );
+				if( player )
+					players.insert( player );
+			}
+		}
+	}
+	
+	return players;
+}
+
+
+Player *Ship::Owner( void ) const
+{
+	Player *owner = Data->GetPlayer( PlayerID );
+	
+	if( (! owner) && (! IsMissionObjective) && (Group != 255) )
+	{
+		std::set<Player*> players_in_ship = PlayersInTurrets();
+		for( std::set<Player*>::iterator player_iter = players_in_ship.begin(); player_iter != players_in_ship.end(); player_iter ++ )
+		{
+			owner = *player_iter;
+			break;
+		}
+	}
+	
+	return owner;
+}
+
+
 bool Ship::PlayerShouldUpdateServer( void ) const
 {
 	return (Health > 0.);
@@ -881,7 +1074,7 @@ bool Ship::PlayerShouldUpdateServer( void ) const
 
 bool Ship::ServerShouldUpdatePlayer( void ) const
 {
-	return (Health <= 0.) || SpecialUpdate;
+	return (Health <= 0.);
 }
 
 bool Ship::ServerShouldUpdateOthers( void ) const
@@ -891,12 +1084,12 @@ bool Ship::ServerShouldUpdateOthers( void ) const
 
 bool Ship::CanCollideWithOwnType( void ) const
 {
-	return (Category() != ShipClass::CATEGORY_TARGET);
+	return (Category() != ShipClass::CATEGORY_TARGET) && (JumpProgress >= 1.);
 }
 
 bool Ship::CanCollideWithOtherTypes( void ) const
 {
-	return true;
+	return (JumpProgress >= 1.);
 }
 
 bool Ship::ComplexCollisionDetection( void ) const
@@ -911,48 +1104,109 @@ bool Ship::ComplexCollisionDetection( void ) const
 void Ship::AddToInitPacket( Packet *packet, int8_t precision )
 {
 	GameObject::AddToInitPacket( packet, precision );
-	packet->AddUInt( Team );
+	
+	packet->AddUChar( (Team & 0x0F) | (IsMissionObjective ? 0x80 : 0) | ((JumpProgress >= 1.) ? 0x40 : 0) );
+	
 	packet->AddUChar( Group );
 	packet->AddUInt( Class ? Class->ID : 0 );
 	packet->AddString( Name );
+	
+	packet->AddFloat( Health );
+	packet->AddFloat( ShieldF );
+	packet->AddFloat( ShieldR );
+	
+	packet->AddUChar( SelectedWeapon | (ShieldPos << 6) );
+	packet->AddUChar( CurrentFiringMode() | (WeaponIndex << 4) );
+	packet->AddUInt( Target );
+	packet->AddChar( Num::UnitFloatTo8( (Target && LockingOn(Data->GetObject(Target))) ? (TargetLock / 2.f) : 0.f ) );
+	
+	packet->AddUChar( Subsystems.size() );
+	for( std::map<std::string,double>::const_iterator subsystem_iter = Subsystems.begin(); subsystem_iter != Subsystems.end(); subsystem_iter ++ )
+	{
+		packet->AddString( subsystem_iter->first );
+		packet->AddDouble( subsystem_iter->second );
+	}
 }
 
 
 void Ship::ReadFromInitPacket( Packet *packet, int8_t precision )
 {
 	GameObject::ReadFromInitPacket( packet, precision );
-	Team = packet->NextUInt();
+	
+	uint8_t team_and_flags = packet->NextUChar();
+	Team               =  team_and_flags & 0x0F;
+	IsMissionObjective =  team_and_flags & 0x80;
+	JumpProgress       = (team_and_flags & 0x40) ? 1. : 0.;
+	
 	Group = packet->NextUChar();
 	SetClass( packet->NextUInt() );
 	Name = packet->NextString();
+	
+	SetHealth( packet->NextFloat() );
+	ShieldF = packet->NextFloat();
+	ShieldR = packet->NextFloat();
+	
+	uint8_t weapon_shield = packet->NextUChar();
+	SetShieldPos(   (weapon_shield & 0xC0) >> 6 );
+	SelectedWeapon = weapon_shield & 0x3F;
+	uint8_t firing_mode = packet->NextUChar();
+	FiringMode[ SelectedWeapon ] =  firing_mode & 0x0F;
+	WeaponIndex                  = (firing_mode & 0xF0) >> 4;
+	Target = packet->NextUInt();
+	TargetLock = Num::UnitFloatFrom8( packet->NextChar() ) * 2.f;
+	
+	uint8_t subsystem_count = packet->NextUChar();
+	for( uint8_t i = 0; i < subsystem_count; i ++ )
+	{
+		std::string subsystem   = packet->NextString();
+		Subsystems[ subsystem ] = packet->NextDouble();
+	}
 }
 
 
 void Ship::AddToUpdatePacketFromServer( Packet *packet, int8_t precision )
 {
 	GameObject::AddToUpdatePacketFromServer( packet, precision );
+	
 	packet->AddFloat( Health );
 	packet->AddUChar( SelectedWeapon | (ShieldPos << 6) );
-	packet->AddUChar( FiringMode | (WeaponIndex << 4) );
+	packet->AddUChar( CurrentFiringMode() | (WeaponIndex << 4) );
 	packet->AddUInt( Target );
 	packet->AddChar( Num::UnitFloatTo8( (Target && LockingOn(Data->GetObject(Target))) ? (TargetLock / 2.f) : 0.f ) );
 	
-	SpecialUpdate = false;
+	if( precision == 127 ) // Respawn  FIXME: Maybe this should be its own packet type?
+	{
+		packet->AddUChar( Team );
+		packet->AddUChar( Group );
+		packet->AddUInt( Class ? Class->ID : 0 );
+	}
 }
 
 
 void Ship::ReadFromUpdatePacketFromServer( Packet *packet, int8_t precision )
 {
 	GameObject::ReadFromUpdatePacketFromServer( packet, precision );
+	
 	SetHealth( packet->NextFloat() );
 	uint8_t weapon_shield = packet->NextUChar();
 	SetShieldPos(   (weapon_shield & 0xC0) >> 6 );
 	SelectedWeapon = weapon_shield & 0x3F;
 	uint8_t firing_mode = packet->NextUChar();
-	FiringMode  =  firing_mode & 0x0F;
-	WeaponIndex = (firing_mode & 0xF0) >> 4;
+	FiringMode[ SelectedWeapon ] =  firing_mode & 0x0F;
+	WeaponIndex                  = (firing_mode & 0xF0) >> 4;
 	Target = packet->NextUInt();
 	TargetLock = Num::UnitFloatFrom8( packet->NextChar() ) * 2.f;
+	
+	if( precision == 127 ) // Respawn  FIXME: Maybe this should be its own packet type?
+	{
+		Team = packet->NextUChar();
+		uint8_t prev_group = Group;
+		Group = packet->NextUChar();
+		const ShipClass *prev_class = Class;
+		SetClass( packet->NextUInt() ); // This also resets the ship and starts jump-in animation.
+		if( (Class != prev_class) || ((Group != prev_group) && Raptor::Game->Cfg.SettingAsBool("g_group_skins",true)) )
+			ClientInit(); // Load model for new ship class.
+	}
 }
 
 
@@ -960,7 +1214,7 @@ void Ship::AddToUpdatePacketFromClient( Packet *packet, int8_t precision )
 {
 	GameObject::AddToUpdatePacketFromClient( packet, precision );
 	packet->AddUChar( SelectedWeapon | (ShieldPos << 6) );
-	packet->AddUChar( Firing ? (FiringMode | 0x80) : FiringMode );
+	packet->AddUChar( Firing ? (CurrentFiringMode() | 0x80) : CurrentFiringMode() );
 	packet->AddUInt( Target );
 	packet->AddChar( Num::UnitFloatTo8( TargetLock / 2.f ) );
 }
@@ -968,7 +1222,7 @@ void Ship::AddToUpdatePacketFromClient( Packet *packet, int8_t precision )
 
 void Ship::ReadFromUpdatePacketFromClient( Packet *packet, int8_t precision )
 {
-	// Dirty hack so we don't get client position data for a dead ship.
+	// Ignore incoming position data from the client after their ship died.
 	if( Health <= 0. )
 	{
 		Ship temp_ship;
@@ -985,13 +1239,16 @@ void Ship::ReadFromUpdatePacketFromClient( Packet *packet, int8_t precision )
 	SetShieldPos(   (weapon_shield & 0xC0) >> 6 );
 	SelectedWeapon = weapon_shield & 0x3F;
 	uint8_t firing_mode = packet->NextUChar();
-	Firing     = firing_mode & 0x80;
-	FiringMode = firing_mode & 0x7F;
+	Firing                       = firing_mode & 0x80;
+	FiringMode[ SelectedWeapon ] = firing_mode & 0x7F;
 	Target = packet->NextUInt();
 	TargetLock = Num::UnitFloatFrom8( packet->NextChar() ) * 2.f;
 	
 	if( SelectedWeapon != prev_selected_weapon )
+	{
 		WeaponIndex = 0;
+		FiringClocks[ SelectedWeapon ].Reset();
+	}
 }
 
 
@@ -1002,6 +1259,19 @@ bool Ship::WillCollide( const GameObject *other, double dt, std::string *this_ob
 		return false;
 	
 	double exploded = Exploded();
+	int explosion_seed = ExplosionSeed();
+	
+	std::set<std::string> objects;
+	if( ComplexCollisionDetection() )
+	{
+		// Don't detect collisions with destroyed subsystems.
+		for( std::map<std::string,ModelObject>::const_iterator obj_iter = Shape.Objects.begin(); obj_iter != Shape.Objects.end(); obj_iter ++ )
+		{
+			std::map<std::string,double>::const_iterator subsystem_iter = Subsystems.find( obj_iter->first );
+			if( (subsystem_iter == Subsystems.end()) || (subsystem_iter->second >= 0.) )
+				objects.insert( obj_iter->first );
+		}
+	}
 	
 	if( other->Type() == XWing::Object::SHOT )
 	{
@@ -1009,6 +1279,11 @@ bool Ship::WillCollide( const GameObject *other, double dt, std::string *this_ob
 		
 		// Ships can't shoot themselves.
 		if( shot->FiredFrom == ID )
+			return false;
+		
+		// Ship turrets can't shoot the ship they're attached to.
+		GameObject *fired_from = Data->GetObject( shot->FiredFrom );
+		if( fired_from && (fired_from->Type() == XWing::Object::TURRET) && (((Turret*)( fired_from ))->ParentID == ID) )
 			return false;
 		
 		// Use face hit detection for capital ships.
@@ -1019,6 +1294,12 @@ bool Ship::WillCollide( const GameObject *other, double dt, std::string *this_ob
 			
 			Pos3D end( other );
 			end += (other->MotionVector * dt) - (MotionVector * dt);
+			
+//#define ALWAYS_BLOCKMAP_COLLISION 1
+#if ALWAYS_BLOCKMAP_COLLISION
+			return (Shape.DistanceFromLine( this, &objects, this_object, exploded, explosion_seed, other, &end ) < 0.01);
+#endif
+			
 			ModelArrays array_inst;
 			for( std::map<std::string,ModelObject>::const_iterator obj_iter = Shape.Objects.begin(); obj_iter != Shape.Objects.end(); obj_iter ++ )
 			{
@@ -1031,7 +1312,7 @@ bool Ship::WillCollide( const GameObject *other, double dt, std::string *this_ob
 				Pos3D modelspace_center = obj_iter->second.CenterPoint;
 				Vec3D offset = Fwd * modelspace_center.X + Up * modelspace_center.Y + Right * modelspace_center.Z;
 				if( exploded )
-					offset += obj_iter->second.GetExplosionMotion( ID ) * exploded;
+					offset += obj_iter->second.GetExplosionMotion( ExplosionSeed() ) * exploded;
 				Pos3D center = *this + offset;
 				
 				// If these two objects don't pass near each other, don't bother checking faces.
@@ -1041,22 +1322,22 @@ bool Ship::WillCollide( const GameObject *other, double dt, std::string *this_ob
 				
 				for( std::map<std::string,ModelArrays>::const_iterator array_iter = obj_iter->second.Arrays.begin(); array_iter != obj_iter->second.Arrays.end(); array_iter ++ )
 				{
-					array_inst.BecomeInstance( &(array_iter->second), false );
+					array_inst.BecomeInstance( &(array_iter->second) );
 					
 					if( exploded )
 					{
 						Pos3D draw_pos( this );
 						
 						// Convert explosion vectors to worldspace.
-						Vec3D explosion_motion = obj_iter->second.GetExplosionMotion( ID ) * exploded;
-						Vec3D modelspace_rotation_axis = obj_iter->second.GetExplosionRotationAxis( ID );
+						Vec3D explosion_motion = obj_iter->second.GetExplosionMotion( ExplosionSeed() ) * exploded;
+						Vec3D modelspace_rotation_axis = obj_iter->second.GetExplosionRotationAxis( ExplosionSeed() );
 						Vec3D explosion_rotation_axis = (Fwd * modelspace_rotation_axis.X) + (Up * modelspace_rotation_axis.Y) + (Right * modelspace_rotation_axis.Z);
 						
 						draw_pos.MoveAlong( &Fwd, explosion_motion.X );
 						draw_pos.MoveAlong( &Up, explosion_motion.Y );
 						draw_pos.MoveAlong( &Right, explosion_motion.Z );
 						
-						double explosion_rotation_rate = obj_iter->second.GetExplosionRotationRate( ID );
+						double explosion_rotation_rate = obj_iter->second.GetExplosionRotationRate( ExplosionSeed() );
 						draw_pos.Fwd.RotateAround( &explosion_rotation_axis, exploded * explosion_rotation_rate );
 						draw_pos.Up.RotateAround( &explosion_rotation_axis, exploded * explosion_rotation_rate );
 						draw_pos.Right.RotateAround( &explosion_rotation_axis, exploded * explosion_rotation_rate );
@@ -1111,6 +1392,7 @@ bool Ship::WillCollide( const GameObject *other, double dt, std::string *this_ob
 				// The other ship also has complex collision model!
 				
 				double other_exploded = ship->Exploded();
+				int other_explosion_seed = ship->ExplosionSeed();
 				
 				// If they're nowhere near each other, don't bother getting fancy.
 				if( Math3D::MinimumDistance( this, &MotionVector, other, &(other->MotionVector), dt ) > (Shape.MaxRadius * (1. + exploded * 0.25) + ship->Shape.MaxRadius * (1. + other_exploded * 0.25)) )
@@ -1119,6 +1401,23 @@ bool Ship::WillCollide( const GameObject *other, double dt, std::string *this_ob
 				// Let the bigger ship handle the collision.
 				if( ship->Shape.MaxRadius > Shape.MaxRadius )
 					return ship->WillCollide( this, dt, other_object, this_object );
+				
+				// Don't detect collisions with destroyed subsystems.
+				std::set<std::string> objects2;
+				for( std::map<std::string,ModelObject>::const_iterator other_obj_iter = ship->Shape.Objects.begin(); other_obj_iter != ship->Shape.Objects.end(); other_obj_iter ++ )
+				{
+					std::map<std::string,double>::const_iterator subsystem_iter = Subsystems.find( other_obj_iter->first );
+					if( (subsystem_iter == Subsystems.end()) || (subsystem_iter->second >= 0.) )
+						objects2.insert( other_obj_iter->first );
+				}
+				
+#if ! NEVER_BLOCKMAP_COLLISION
+				return Shape.CollidesWithModel( this, &objects, this_object, exploded, explosion_seed, &(ship->Shape), other, &objects2, other_object, other_exploded, other_explosion_seed );
+#endif
+				
+				// Do a quick vertex blockmap overlap check.
+				if( ! Shape.CollidesWithModel( this, &objects, NULL, exploded, explosion_seed, &(ship->Shape), other, &objects2, NULL, other_exploded, other_explosion_seed, 0., false ) )
+					return false;
 				
 				ModelArrays array_inst;
 				std::map<const ModelArrays*,ModelArrays> other_arrays;
@@ -1138,7 +1437,7 @@ bool Ship::WillCollide( const GameObject *other, double dt, std::string *this_ob
 					
 					if( exploded )
 					{
-						Vec3D modelspace_explosion_motion = obj_iter->second.GetExplosionMotion( ID );
+						Vec3D modelspace_explosion_motion = obj_iter->second.GetExplosionMotion( explosion_seed );
 						Vec3D worldspace_explosion_motion = Fwd * modelspace_explosion_motion.X + Up * modelspace_explosion_motion.Y + Right * modelspace_explosion_motion.Z;
 						center += worldspace_explosion_motion * exploded;
 					}
@@ -1159,7 +1458,7 @@ bool Ship::WillCollide( const GameObject *other, double dt, std::string *this_ob
 						
 						if( other_exploded )
 						{
-							Vec3D modelspace_explosion_motion = other_obj_iter->second.GetExplosionMotion( ID );
+							Vec3D modelspace_explosion_motion = other_obj_iter->second.GetExplosionMotion( other_explosion_seed );
 							Vec3D worldspace_explosion_motion = other->Fwd * modelspace_explosion_motion.X + other->Up * modelspace_explosion_motion.Y + other->Right * modelspace_explosion_motion.Z;
 							other_center += worldspace_explosion_motion * other_exploded;
 						}
@@ -1178,22 +1477,22 @@ bool Ship::WillCollide( const GameObject *other, double dt, std::string *this_ob
 						for( std::map<std::string,ModelArrays>::const_iterator array_iter = obj_iter->second.Arrays.begin(); array_iter != obj_iter->second.Arrays.end(); array_iter ++ )
 						{
 							// Make the worldspace arrays for this.
-							array_inst.BecomeInstance( &(array_iter->second), false );
+							array_inst.BecomeInstance( &(array_iter->second) );
 							
 							if( exploded )
 							{
 								Pos3D draw_pos( this );
 								
 								// Convert explosion vectors to worldspace.
-								Vec3D explosion_motion = obj_iter->second.GetExplosionMotion( ID ) * exploded;
-								Vec3D modelspace_rotation_axis = obj_iter->second.GetExplosionRotationAxis( ID );
+								Vec3D explosion_motion = obj_iter->second.GetExplosionMotion( explosion_seed ) * exploded;
+								Vec3D modelspace_rotation_axis = obj_iter->second.GetExplosionRotationAxis( explosion_seed );
 								Vec3D explosion_rotation_axis = (Fwd * modelspace_rotation_axis.X) + (Up * modelspace_rotation_axis.Y) + (Right * modelspace_rotation_axis.Z);
 								
 								draw_pos.MoveAlong( &Fwd, explosion_motion.X );
 								draw_pos.MoveAlong( &Up, explosion_motion.Y );
 								draw_pos.MoveAlong( &Right, explosion_motion.Z );
 								
-								double explosion_rotation_rate = obj_iter->second.GetExplosionRotationRate( ID );
+								double explosion_rotation_rate = obj_iter->second.GetExplosionRotationRate( explosion_seed );
 								draw_pos.Fwd.RotateAround( &explosion_rotation_axis, exploded * explosion_rotation_rate );
 								draw_pos.Up.RotateAround( &explosion_rotation_axis, exploded * explosion_rotation_rate );
 								draw_pos.Right.RotateAround( &explosion_rotation_axis, exploded * explosion_rotation_rate );
@@ -1219,7 +1518,7 @@ bool Ship::WillCollide( const GameObject *other, double dt, std::string *this_ob
 								
 								if( other_exploded )
 								{
-									Vec3D modelspace_explosion_motion = (*other_obj_iter)->GetExplosionMotion( other->ID );
+									Vec3D modelspace_explosion_motion = (*other_obj_iter)->GetExplosionMotion( other_explosion_seed );
 									Vec3D worldspace_explosion_motion = other->Fwd * modelspace_explosion_motion.X + other->Up * modelspace_explosion_motion.Y + other->Right * modelspace_explosion_motion.Z;
 									other_start += worldspace_explosion_motion * other_exploded;
 									other_end += worldspace_explosion_motion * (other_exploded + dt);
@@ -1243,22 +1542,22 @@ bool Ship::WillCollide( const GameObject *other, double dt, std::string *this_ob
 								{
 									if( other_arrays.find( &(other_array_iter->second) ) == other_arrays.end() )
 									{
-										other_arrays[ &(other_array_iter->second) ].BecomeInstance( &(other_array_iter->second), false );
-
+										other_arrays[ &(other_array_iter->second) ].BecomeInstance( &(other_array_iter->second) );
+										
 										if( other_exploded )
 										{
 											Pos3D draw_pos( other );
 											
 											// Convert explosion vectors to worldspace.
-											Vec3D explosion_motion = (*other_obj_iter)->GetExplosionMotion( other->ID ) * other_exploded;
-											Vec3D modelspace_rotation_axis = (*other_obj_iter)->GetExplosionRotationAxis( other->ID );
+											Vec3D explosion_motion = (*other_obj_iter)->GetExplosionMotion( other_explosion_seed ) * other_exploded;
+											Vec3D modelspace_rotation_axis = (*other_obj_iter)->GetExplosionRotationAxis( other_explosion_seed );
 											Vec3D explosion_rotation_axis = (other->Fwd * modelspace_rotation_axis.X) + (other->Up * modelspace_rotation_axis.Y) + (other->Right * modelspace_rotation_axis.Z);
 											
 											draw_pos.MoveAlong( &(other->Fwd), explosion_motion.X );
 											draw_pos.MoveAlong( &(other->Up), explosion_motion.Y );
 											draw_pos.MoveAlong( &(other->Right), explosion_motion.Z );
 											
-											double explosion_rotation_rate = (*other_obj_iter)->GetExplosionRotationRate( other->ID );
+											double explosion_rotation_rate = (*other_obj_iter)->GetExplosionRotationRate( other_explosion_seed );
 											draw_pos.Fwd.RotateAround( &explosion_rotation_axis, other_exploded * explosion_rotation_rate );
 											draw_pos.Up.RotateAround( &explosion_rotation_axis, other_exploded * explosion_rotation_rate );
 											draw_pos.Right.RotateAround( &explosion_rotation_axis, other_exploded * explosion_rotation_rate );
@@ -1282,12 +1581,12 @@ bool Ship::WillCollide( const GameObject *other, double dt, std::string *this_ob
 									
 									if( other_exploded )
 									{
-										Vec3D modelspace_explosion_motion = (*other_obj_iter)->GetExplosionMotion( other->ID );
+										Vec3D modelspace_explosion_motion = (*other_obj_iter)->GetExplosionMotion( other_explosion_seed );
 										Vec3D worldspace_explosion_motion = other->Fwd * modelspace_explosion_motion.X + other->Up * modelspace_explosion_motion.Y + other->Right * modelspace_explosion_motion.Z;
 										
 										for( size_t i = 0; i < other_vertex_count; i ++ )
 										{
-											vertices2[ i ] += (*other_obj_iter)->GetExplosionMotion( other->ID ) * ship->ExplosionRate() * dt;
+											vertices2[ i ] += (*other_obj_iter)->GetExplosionMotion( other_explosion_seed ) * ship->ExplosionRate() * dt;
 											// FIXME: Apply explosion rotation too!
 										}
 									}
@@ -1362,6 +1661,11 @@ bool Ship::WillCollide( const GameObject *other, double dt, std::string *this_ob
 				if( Math3D::MinimumDistance( this, &MotionVector, other, &(other->MotionVector), dt ) > (Shape.MaxRadius * (1. + exploded * 0.25) + ship->Radius()) )
 					return false;
 				
+#if ALWAYS_BLOCKMAP_COLLISION
+				Vec3D other_moved = other->MotionVector * dt;
+				return Shape.CollidesWithSphere( this, &objects, this_object, exploded, explosion_seed, other, &other_moved, ship->Radius() );
+#endif
+				
 				Pos3D end( other );
 				end += (other->MotionVector * dt) - (MotionVector * dt);
 				ModelArrays array_inst;
@@ -1376,7 +1680,7 @@ bool Ship::WillCollide( const GameObject *other, double dt, std::string *this_ob
 					Pos3D modelspace_center = obj_iter->second.CenterPoint;
 					Vec3D offset = Fwd * modelspace_center.X + Up * modelspace_center.Y + Right * modelspace_center.Z;
 					if( exploded )
-						offset += obj_iter->second.GetExplosionMotion( ID ) * exploded;
+						offset += obj_iter->second.GetExplosionMotion( explosion_seed ) * exploded;
 					Pos3D center = *this + offset;
 					
 					// If these two objects don't pass near each other, don't bother checking faces.
@@ -1386,22 +1690,22 @@ bool Ship::WillCollide( const GameObject *other, double dt, std::string *this_ob
 					
 					for( std::map<std::string,ModelArrays>::const_iterator array_iter = obj_iter->second.Arrays.begin(); array_iter != obj_iter->second.Arrays.end(); array_iter ++ )
 					{
-						array_inst.BecomeInstance( &(array_iter->second), false );
+						array_inst.BecomeInstance( &(array_iter->second) );
 						
 						if( exploded )
 						{
 							Pos3D draw_pos( this );
 							
 							// Convert explosion vectors to worldspace.
-							Vec3D explosion_motion = obj_iter->second.GetExplosionMotion( ID ) * exploded;
-							Vec3D modelspace_rotation_axis = obj_iter->second.GetExplosionRotationAxis( ID );
+							Vec3D explosion_motion = obj_iter->second.GetExplosionMotion( explosion_seed ) * exploded;
+							Vec3D modelspace_rotation_axis = obj_iter->second.GetExplosionRotationAxis( explosion_seed );
 							Vec3D explosion_rotation_axis = (Fwd * modelspace_rotation_axis.X) + (Up * modelspace_rotation_axis.Y) + (Right * modelspace_rotation_axis.Z);
 							
 							draw_pos.MoveAlong( &Fwd, explosion_motion.X );
 							draw_pos.MoveAlong( &Up, explosion_motion.Y );
 							draw_pos.MoveAlong( &Right, explosion_motion.Z );
 							
-							double explosion_rotation_rate = obj_iter->second.GetExplosionRotationRate( ID );
+							double explosion_rotation_rate = obj_iter->second.GetExplosionRotationRate( explosion_seed );
 							draw_pos.Fwd.RotateAround( &explosion_rotation_axis, exploded * explosion_rotation_rate );
 							draw_pos.Up.RotateAround( &explosion_rotation_axis, exploded * explosion_rotation_rate );
 							draw_pos.Right.RotateAround( &explosion_rotation_axis, exploded * explosion_rotation_rate );
@@ -1443,6 +1747,11 @@ bool Ship::WillCollide( const GameObject *other, double dt, std::string *this_ob
 			if( Math3D::MinimumDistance( this, &MotionVector, other, &(other->MotionVector), dt ) > (Shape.MaxRadius * (1. + exploded * 0.25) + asteroid->Radius) )
 				return false;
 			
+#if ALWAYS_BLOCKMAP_COLLISION
+			Vec3D other_motion = other->MotionVector * dt;
+			return Shape.CollidesWithSphere( this, &objects, this_object, exploded, explosion_seed, other, &other_motion, asteroid->Radius );
+#endif
+			
 			Pos3D end( other );
 			end += (other->MotionVector * dt) - (MotionVector * dt);
 			ModelArrays array_inst;
@@ -1455,22 +1764,22 @@ bool Ship::WillCollide( const GameObject *other, double dt, std::string *this_ob
 				
 				for( std::map<std::string,ModelArrays>::const_iterator array_iter = obj_iter->second.Arrays.begin(); array_iter != obj_iter->second.Arrays.end(); array_iter ++ )
 				{
-					array_inst.BecomeInstance( &(array_iter->second), false );
+					array_inst.BecomeInstance( &(array_iter->second) );
 					
 					if( exploded )
 					{
 						Pos3D draw_pos( this );
 						
 						// Convert explosion vectors to worldspace.
-						Vec3D explosion_motion = obj_iter->second.GetExplosionMotion( ID ) * exploded;
-						Vec3D modelspace_rotation_axis = obj_iter->second.GetExplosionRotationAxis( ID );
+						Vec3D explosion_motion = obj_iter->second.GetExplosionMotion( ExplosionSeed() ) * exploded;
+						Vec3D modelspace_rotation_axis = obj_iter->second.GetExplosionRotationAxis( ExplosionSeed() );
 						Vec3D explosion_rotation_axis = (Fwd * modelspace_rotation_axis.X) + (Up * modelspace_rotation_axis.Y) + (Right * modelspace_rotation_axis.Z);
 						
 						draw_pos.MoveAlong( &Fwd, explosion_motion.X );
 						draw_pos.MoveAlong( &Up, explosion_motion.Y );
 						draw_pos.MoveAlong( &Right, explosion_motion.Z );
 						
-						double explosion_rotation_rate = obj_iter->second.GetExplosionRotationRate( ID );
+						double explosion_rotation_rate = obj_iter->second.GetExplosionRotationRate( ExplosionSeed() );
 						draw_pos.Fwd.RotateAround( &explosion_rotation_axis, exploded * explosion_rotation_rate );
 						draw_pos.Up.RotateAround( &explosion_rotation_axis, exploded * explosion_rotation_rate );
 						draw_pos.Right.RotateAround( &explosion_rotation_axis, exploded * explosion_rotation_rate );
@@ -1530,37 +1839,46 @@ void Ship::Update( double dt )
 			ShieldR += recharge;
 		}
 		
-		// Shield position.
+		// Shield position, and keep shields legal.
+		double max_shield = MaxShield();
 		if( ShieldPos == Ship::SHIELD_FRONT )
 		{
 			ShieldF += ShieldR;
 			ShieldR = 0.;
+			if( ShieldF > max_shield * 2. )
+				ShieldF = max_shield * 2.;
 		}
 		else if( ShieldPos == Ship::SHIELD_REAR )
 		{
 			ShieldR += ShieldF;
 			ShieldF = 0.;
+			if( ShieldR > max_shield * 2. )
+				ShieldR = max_shield * 2.;
 		}
-		
-		// Keep shields legal.
-		double max_shield = MaxShield();
-		if( ShieldF > max_shield )
+		else
 		{
-			ShieldR += (ShieldF - max_shield);
-			ShieldF = max_shield;
+			if( ShieldF > max_shield )
+				ShieldF = max_shield;
+			if( ShieldR > max_shield )
+				ShieldR = max_shield;
 		}
-		if( ShieldR > max_shield )
-		{
-			ShieldF += (ShieldR - max_shield);
-			ShieldR = max_shield;
-		}
-		if( ShieldF > max_shield )
-			ShieldF = max_shield;
 	}
 	
 	if( CockpitOffset.Length() > 1. )
 		CockpitOffset.ScaleTo( 1. );
 	CockpitOffset.ScaleBy( pow( 0.5, dt * 5. ) );
+	
+	double jump_progress = Lifetime.Progress();
+	if( jump_progress > JumpProgress )
+		JumpProgress = jump_progress;
+	
+	if( JumpProgress < 1. )
+	{
+		// Arriving from hyperspace.
+		CockpitOffset.X = -1. * sin( JumpProgress * M_PI / 2. );
+		MotionVector.Copy( &Fwd );
+		MotionVector.ScaleTo( MaxSpeed() );
+	}
 	
 	GameObject::Update( dt );
 	
@@ -1571,6 +1889,32 @@ void Ship::Update( double dt )
 
 void Ship::Draw( void )
 {
+	Pos3D *pos = this;
+	
+	if( (Health <= 0.) && ComplexCollisionDetection() && (DeathClock.ElapsedSeconds() > PiecesDangerousTime()) )
+		return;
+	
+	if( (JumpProgress < 1.) && (Category() != ShipClass::CATEGORY_TARGET) )
+	{
+		pos = new Pos3D( this );
+		pos->MoveAlong( &(pos->Fwd), pow( 1. - JumpProgress, 1.1 ) * -200. * Radius() );
+	}
+	
+	// Engine glow is based on throttle level.
+	float engine_power = ((Health > 0.) && MaxSpeed()) ? (MotionVector.Length() / MaxSpeed()) : std::max<float>( 0.f, 1. - DeathClock.ElapsedSeconds() );
+	float r = std::min<float>( 1.f, powf( engine_power, 0.6f ) * 1.02f );
+	float g = std::min<float>( 1.f, powf( engine_power, 1.3f ) * 1.01f );
+	float b = std::min<float>( 1.f, powf( engine_power, 1.5f ) * 1.01f );
+	for( std::map<std::string,ModelMaterial>::iterator mtl_iter = Shape.Materials.begin(); mtl_iter != Shape.Materials.end(); mtl_iter ++ )
+	{
+		if( Str::FindInsensitive( mtl_iter->first, "Engine" ) >= 0 )
+		{
+			mtl_iter->second.Ambient.Red   = r;
+			mtl_iter->second.Ambient.Green = g;
+			mtl_iter->second.Ambient.Blue  = b;
+		}
+	}
+	
 	if( Subsystems.size() )
 	{
 		// Build a list of all objects that don't have destroyed subsystems.
@@ -1582,16 +1926,21 @@ void Ship::Draw( void )
 				objects.insert( obj_iter->first );
 		}
 		
-		Shape.Draw( this, (objects.size() < Shape.Objects.size()) ? &objects : NULL, NULL, Exploded() );
+		Shape.Draw( pos, (objects.size() < Shape.Objects.size()) ? &objects : NULL, NULL, Exploded(), ExplosionSeed() );
 	}
 	else
-		Shape.Draw( this, NULL, NULL, Exploded() );
+		Shape.Draw( pos, NULL, NULL, Exploded(), ExplosionSeed() );
+	
+	if( pos != this )
+		delete pos;
 }
 
 
-void Ship::DrawWireframe( void )
+void Ship::DrawWireframe( Color *color, double scale )
 {
-	Color color(0.5,0.5,1,1);
+	Color default_color(0.5,0.5,1,1);
+	if( ! color )
+		color = &default_color;
 	
 	if( Subsystems.size() )
 	{
@@ -1604,8 +1953,8 @@ void Ship::DrawWireframe( void )
 				objects.insert( obj_iter->first );
 		}
 		
-		Shape.Draw( this, (objects.size() < Shape.Objects.size()) ? &objects : NULL, &color, Exploded(), ID );
+		Shape.Draw( this, (objects.size() < Shape.Objects.size()) ? &objects : NULL, color, Exploded(), ExplosionSeed(), scale, scale, scale );
 	}
 	else
-		Shape.Draw( this, NULL, &color, Exploded(), ID );
+		Shape.Draw( this, NULL, color, Exploded(), ExplosionSeed(), scale, scale, scale );
 }

@@ -12,6 +12,7 @@ class Turret;
 #include "GameObject.h"
 #include "Model.h"
 #include "Shot.h"
+#include "Ship.h"
 
 
 class Turret : public GameObject
@@ -22,7 +23,7 @@ public:
 	Vec3D RelativeUp, RelativeFwd;
 	bool ParentControl;
 	double MinGunPitch, MaxGunPitch;
-	uint32_t Team;
+	uint8_t Team;
 	bool Visible;
 	Model *BodyShape, *GunShape;
 	double GunPitch, GunPitchRate;
@@ -49,7 +50,8 @@ public:
 	
 	void ClientInit( void );
 	void Attach( const GameObject *parent, const Vec3D *offset = NULL, const Vec3D *relative_up = NULL, const Vec3D *relative_fwd = NULL, bool parent_control = false );
-	void UpdatePos( const GameObject *parent );
+	Ship *ParentShip( void ) const;
+	void UpdatePos( const GameObject *parent = NULL );
 	void Reset( void );
 	void SetHealth( double health );
 	void AddDamage( double damage );
@@ -57,9 +59,11 @@ public:
 	void PitchGun( double degrees );
 	void SetPitch( double pitch );
 	void SetYaw( double yaw );
-	Pos3D GunPos( void );
+	Pos3D GunPos( void ) const;
+	Pos3D HeadPos( void ) const;
 	
-	std::map<int,Shot*> NextShots( GameObject *target = NULL );
+	std::map<int,Shot*> NextShots( GameObject *target = NULL, uint8_t firing_mode = 0 ) const;
+	std::map<int,Shot*> AllShots( GameObject *target = NULL ) const;
 	void JustFired( void );
 	double ShotDelay( void ) const;
 	

@@ -1,25 +1,24 @@
-id ISD2
+id ISD
 name Star Destroyer
 category capital
 team empire
-radius 900
-speed 25
-accel 12.5
-roll 0.5
-pitch 0.5
-yaw 1
-health 10000
+radius 1000
+speed 32
+accel 10
+roll 1.1 0.7
+pitch 0.7 0.5
+yaw 1.5 1
+health 12000
 shield 100000
 recover 60
 recharge 0
 ramming 500000
-explode 0.01
-subsystem ShieldGenerator1 1199
-subsystem ShieldGenerator2 1199
+explode 0.015
+subsystem ShieldGenerator1 1599
+subsystem ShieldGenerator2 1599
 subsystem CriticalBridge1 94
 subsystem CriticalBridge2 94
 subsystem CriticalBridge3 94
-turret turbolaser 0 -96.77 687 dir 0 0 1 arc 120 pitch -30 30 hidden linked firetime 0.67
 firetime turbolaser 0.57
 model isd2_hq.obj
 model_collision isd2_hq_col.obj

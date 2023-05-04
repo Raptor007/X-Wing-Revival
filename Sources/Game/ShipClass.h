@@ -24,7 +24,7 @@ public:
 	std::string LongName;
 	std::string Squadron;
 	uint8_t Category;
-	uint32_t Team;
+	uint8_t Team;
 	double Radius;
 	double CollisionDamage;
 	double MaxSpeed;
@@ -45,9 +45,12 @@ public:
 	std::map< uint8_t, double > FireTime;
 	std::map< uint8_t, int8_t > Ammo;
 	std::vector<ShipClassTurret> Turrets;
+	double TurretHealth;
 	std::string CollisionModel;
 	std::string ExternalModel;
 	std::string CockpitModel;
+	std::map<uint8_t,std::string> GroupSkins;
+	std::map<uint8_t,std::string> GroupCockpits;
 	Vec3D CockpitPos;
 	double ModelScale;
 	std::map< double, std::string > FlybySounds;
@@ -83,6 +86,7 @@ class ShipClassTurret : public Pos3D
 {
 public:
 	bool Visible;
+	double Health;
 	bool ParentControl;
 	uint8_t Weapon;
 	uint8_t FiringMode;

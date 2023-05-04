@@ -12,12 +12,12 @@ yaw 40 25
 roll_change 130 100
 pitch_change 115 95
 yaw_change 115 95
-health 125
+health 130
 shield 0
 ramming 500
 explode 1
-weapon laser_green 0 -0.33 0
 weapon laser_green 0 -0.5 0
+weapon laser_green 0 0 0
 firetime laser_green 0.25
 weapon torpedo -1.45 0 0
 firetime torpedo 1.5
@@ -26,4 +26,5 @@ model tie-bomber.obj
 cockpit tie-bomber_cockpit.obj 1.474 0 2.0812
 model_scale 0.022
 flyby 20 tie_slow.wav
-flyby 240 tie_fast.wav
+flyby 200 tie_med.wav
+flyby 250 tie_fast.wav

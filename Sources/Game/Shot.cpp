@@ -37,6 +37,8 @@ void Shot::ClientInit( void )
 		Anim.BecomeInstance( Raptor::Game->Res.GetAnimation("laser_red.ani") );
 	else if( ShotType == TYPE_TURBO_LASER_GREEN )
 		Anim.BecomeInstance( Raptor::Game->Res.GetAnimation("laser_green.ani") );
+	else if( ShotType == TYPE_QUAD_LASER_RED )
+		Anim.BecomeInstance( Raptor::Game->Res.GetAnimation("laser_red.ani") );
 	else if( ShotType == TYPE_ION_CANNON )
 		Anim.BecomeInstance( Raptor::Game->Res.GetAnimation("ion_cannon.ani") );
 	else if( ShotType == TYPE_TORPEDO )
@@ -56,26 +58,32 @@ void Shot::ClientInit( void )
 			Raptor::Game->Snd.PlayAt( Raptor::Game->Res.GetSound("laser_red.wav"), X, Y, Z, 1.5 );
 		else if( ShotType == TYPE_TURBO_LASER_GREEN )
 			Raptor::Game->Snd.PlayAt( Raptor::Game->Res.GetSound("turbolaser_green.wav"), X, Y, Z, 1.5 );
+		else if( ShotType == TYPE_QUAD_LASER_RED )
+			Raptor::Game->Snd.PlayAt( Raptor::Game->Res.GetSound("laser_turret.wav"), X, Y, Z, 1.125 );
 		else if( ShotType == TYPE_TORPEDO )
 			Raptor::Game->Snd.PlayAt( Raptor::Game->Res.GetSound("torpedo.wav"), X, Y, Z, 0.75 );
 		else if( ShotType == TYPE_MISSILE )
 			Raptor::Game->Snd.PlayAt( Raptor::Game->Res.GetSound("torpedo.wav"), X, Y, Z, 0.75 );
 		
 		if( Seeking && (Seeking == ((XWingGame*)( Raptor::Game ))->ObservedShipID) )
-			Raptor::Game->Snd.Play( Raptor::Game->Res.GetSound("incoming.wav") );
-		
-		GameObject *obj = Data->GetObject( FiredFrom );
-		if( obj && (obj->Type() == XWing::Object::SHIP) )
 		{
-			Ship *ship = (Ship*) obj;
-			if( (ship->PlayerID != Raptor::Game->PlayerID) && (ship->SelectedWeapon != ShotType) )
+			const GameObject *observed_object = Data->GetObject( ((XWingGame*)( Raptor::Game ))->ObservedShipID );
+			if( observed_object && (observed_object->PlayerID == Raptor::Game->PlayerID) )
+				Raptor::Game->Snd.Play( Raptor::Game->Res.GetSound("incoming.wav") );
+		}
+		
+		GameObject *fired_from = Data->GetObject( FiredFrom );
+		if( fired_from && (fired_from->Type() == XWing::Object::SHIP) )
+		{
+			Ship *ship = (Ship*) fired_from;
+			if( (ship->PlayerID != Raptor::Game->PlayerID) && (ship->SelectedWeapon != ShotType) && (ship->Ammo.find(ShotType) != ship->Ammo.end()) )
 			{
 				ship->SelectedWeapon = ShotType;
 				ship->WeaponIndex = 0;
 			}
 			ship->JustFired( ShotType, 1 );
-			if( ship->PlayerID != Raptor::Game->PlayerID )
-				ship->FiringMode = ship->FiredThisFrame;
+			if( ship->SelectedWeapon && (ship->PlayerID != Raptor::Game->PlayerID) )
+				ship->FiringMode[ ship->SelectedWeapon ] = ship->FiredThisFrame;
 		}
 	}
 }
@@ -87,6 +95,8 @@ double Shot::Damage( void ) const
 		return 33.;
 	else if( ShotType == TYPE_TURBO_LASER_RED )
 		return 32.;
+	else if( ShotType == TYPE_QUAD_LASER_RED )
+		return 21.;
 	else if( ShotType == TYPE_TORPEDO )
 		return 200.;
 	else if( ShotType == TYPE_MISSILE )
@@ -99,15 +109,15 @@ double Shot::Damage( void ) const
 double Shot::AsteroidDamage( void ) const
 {
 	if( ShotType == TYPE_TURBO_LASER_GREEN )
-		return 250.;
-	else if( ShotType == TYPE_TURBO_LASER_RED )
-		return 200.;
-	else if( ShotType == TYPE_TORPEDO )
 		return 150.;
-	else if( ShotType == TYPE_MISSILE )
+	else if( ShotType == TYPE_TURBO_LASER_RED )
+		return 50.;
+	else if( ShotType == TYPE_TORPEDO )
 		return 100.;
+	else if( ShotType == TYPE_MISSILE )
+		return 50.;
 	
-	return 0.;
+	return 1.;
 }
 
 
@@ -172,6 +182,8 @@ Color Shot::LightColor( void ) const
 		return Color( 0.85f, 0.f, 0.f, 15.f );
 	else if( ShotType == TYPE_TURBO_LASER_GREEN )
 		return Color( 0.f, 0.4f, 0.f, 15.f );
+	else if( ShotType == TYPE_QUAD_LASER_RED )
+		return Color( 0.8f, 0.f, 0.f, 15.f );
 	else if( ShotType == TYPE_TORPEDO )
 		return Color( 1.f, 0.7f, 0.4f, 15.f );
 	else if( ShotType == TYPE_MISSILE )

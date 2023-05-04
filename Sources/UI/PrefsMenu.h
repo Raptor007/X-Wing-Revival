@@ -13,6 +13,9 @@ class PrefsMenuDropDown;
 class PrefsMenuFilterDropDown;
 class PrefsMenuDoneButton;
 class PrefsMenuDefaultsButton;
+class PrefsMenuPageButton;
+class PrefsMenuRefreshButton;
+class PrefsMenuBind;
 
 #include "PlatformSpecific.h"
 
@@ -31,8 +34,9 @@ class PrefsMenuDefaultsButton;
 class PrefsMenu : public Window
 {
 public:
-	Font *LabelFont, *TitleFont, *ItemFont, *ButtonFont;
+	Font *LabelFont, *TitleFont, *ItemFont, *ButtonFont, *ControlFont, *BindFont;
 	std::map<std::string,std::string> Previous;
+	int Page;
 	
 	PrefsMenu( void );
 	virtual ~PrefsMenu();
@@ -41,8 +45,18 @@ public:
 	bool WatchedSettingsChanged( void );
 	
 	void UpdateContents( void );
+	bool ChangePage( int page );
+	
 	void Draw( void );
+	bool KeyDown( SDLKey key );
 	bool KeyUp( SDLKey key );
+	
+	enum
+	{
+		PAGE_PREFERENCES = 0,
+		PAGE_CONTROLS,
+		NUM_PAGES
+	};
 };
 
 
@@ -60,10 +74,7 @@ public:
 class PrefsMenuVRCheckBox : public PrefsMenuCheckBox
 {
 public:
-	PrefsMenuCheckBox *FramebuffersCheckbox, *VSyncCheckbox;
-	PrefsMenuDropDown *FSAADropDown;
-	
-	PrefsMenuVRCheckBox( SDL_Rect *rect, Font *font, std::string label, PrefsMenuCheckBox *framebuffers_checkbox = NULL, PrefsMenuCheckBox *vsync_checkbox = NULL, PrefsMenuDropDown *fsaa_dropdown = NULL );
+	PrefsMenuVRCheckBox( SDL_Rect *rect, Font *font, std::string label );
 	virtual ~PrefsMenuVRCheckBox();
 	void Changed( void );
 };
@@ -90,7 +101,7 @@ public:
 	
 	PrefsMenuTextBox( SDL_Rect *rect, Font *font, uint8_t align, std::string variable );
 	virtual ~PrefsMenuTextBox();
-	void Changed( void );
+	void Deselected( void );
 };
 
 
@@ -113,6 +124,7 @@ public:
 	
 	PrefsMenuDropDown( SDL_Rect *rect, Font *font, uint8_t align, int scroll_bar_size, std::string variable );
 	virtual ~PrefsMenuDropDown();
+	void Update( void );
 	void Changed( void );
 };
 
@@ -144,12 +156,49 @@ public:
 };
 
 
+class PrefsMenuPageButton : public LabelledButton
+{
+public:
+	int Page;
+	PrefsMenuPageButton( SDL_Rect *rect, Font *button_font, const char *label, int page, bool selected );
+	virtual ~PrefsMenuPageButton();
+	void Clicked( Uint8 button = SDL_BUTTON_LEFT );
+};
+
+
 class PrefsMenuSillyButton : public Button
 {
 public:
 	int TimesClicked;
-	PrefsMenuSillyButton( SDL_Rect *rect );
+	Font *PewFont;
+	
+	PrefsMenuSillyButton( SDL_Rect *rect, Font *pew_font );
 	virtual ~PrefsMenuSillyButton();
 	void Draw( void );
+	void Clicked( Uint8 button = SDL_BUTTON_LEFT );
+};
+
+
+class PrefsMenuRefreshButton : public LabelledButton
+{
+public:
+	PrefsMenuRefreshButton( SDL_Rect *rect, Font *button_font, const char *label );
+	virtual ~PrefsMenuRefreshButton();
+	void Clicked( Uint8 button = SDL_BUTTON_LEFT );
+};
+
+
+class PrefsMenuBind : public Button
+{
+public:
+	uint8_t Control, Inverse;
+	bool Analog;
+	Font *NameFont, *BindFont;
+	
+	PrefsMenuBind( SDL_Rect *rect, uint8_t analog_control, uint8_t inverse, Font *name_font, Font *bind_font );
+	PrefsMenuBind( SDL_Rect *rect, uint8_t digital_control, Font *name_font, Font *bind_font );
+	virtual ~PrefsMenuBind();
+	void Draw( void );
+	bool HandleEvent( SDL_Event *event );
 	void Clicked( Uint8 button = SDL_BUTTON_LEFT );
 };

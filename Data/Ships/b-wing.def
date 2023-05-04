@@ -28,6 +28,10 @@ firetime torpedo 1.5
 ammo torpedo 12
 model b-wing.obj
 cockpit b-wing_cockpit.obj 0 4.55 1.15
+group_skin 1 b-wing_red.obj b-wing_cockpit_red.obj
+group_skin 2 b-wing_gold.obj b-wing_cockpit_gold.obj
+group_skin 3 b-wing_green.obj b-wing_cockpit_green.obj
 model_scale 0.022
 flyby 20 xwing_slow.wav
-flyby 200 xwing_fast.wav
+flyby 170 xwing_med.wav
+flyby 210 xwing_fast.wav

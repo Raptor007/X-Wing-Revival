@@ -23,8 +23,9 @@ public:
 	int TimeLimit;
 	bool PlayersTakeEmptyShips;
 	bool Respawn;
-	double RespawnDelay;
-	bool AIFlock;
+	double RespawnDelay, RebelCruiserRespawn, EmpireCruiserRespawn;
+	std::map<uint16_t,Clock> RespawnClocks;
+	bool AllowShipChange, AllowTeamChange;
 	uint32_t DefendingTeam;
 	std::map<double,XWingServerAlert> Alerts;
 	std::map< uint8_t, std::vector<Pos3D> > Waypoints;
@@ -33,7 +34,7 @@ public:
 	Clock RoundTimer;
 	Clock RoundEndedTimer;
 	double RoundEndedDelay;
-	std::map<uint32_t,int> TeamScores;
+	std::map<uint8_t,int> TeamScores;
 	std::map<uint32_t,int> ShipScores;
 	
 	Clock CountdownTimer;
@@ -53,13 +54,15 @@ public:
 	
 	void ResetToStartingObjects( void );
 	void ToggleCountdown( void );
-	void BeginFlying( void );
+	void BeginFlying( uint16_t player_id = 0, bool respawn = false );
+	
+	void ShipKilled( Ship *ship, GameObject *killer_obj = NULL );
 	void SendScores( void );
 	
-	double RoundTimeRemaining( void );
+	double RoundTimeRemaining( void ) const;
 	
-	const ShipClass *GetShipClass( const std::string &name );
-	Ship *SpawnShip( const ShipClass *ship_class, uint32_t team, std::set<uint32_t> *add_object_ids = NULL );
+	const ShipClass *GetShipClass( const std::string &name ) const;
+	Ship *SpawnShip( const ShipClass *ship_class, uint8_t team, std::set<uint32_t> *add_object_ids = NULL );
 	void SpawnShipTurrets( const Ship *ship, std::set<uint32_t> *add_object_ids = NULL );
 };
 

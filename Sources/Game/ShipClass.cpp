@@ -34,6 +34,7 @@ ShipClass::ShipClass( uint32_t id ) : GameObject( id, XWing::Object::SHIP_CLASS 
 	ShieldRechargeDelay = 5.;
 	ShieldRechargeRate = 0.;
 	ExplosionRate = 1.;
+	TurretHealth = 95.;
 	ModelScale = 0.022;
 }
 
@@ -77,11 +78,14 @@ ShipClass::ShipClass( const ShipClass &other ) : GameObject( 0, XWing::Object::S
 	FireTime = other.FireTime;
 	Ammo = other.Ammo;
 	Turrets = other.Turrets;
+	TurretHealth = other.TurretHealth;
 	CollisionModel = other.CollisionModel;
 	ExternalModel = other.ExternalModel;
 	CockpitModel = other.CockpitModel;
 	CockpitPos.Copy( &(other.CockpitPos) );
 	ModelScale = other.ModelScale;
+	GroupSkins = other.GroupSkins;
+	GroupCockpits = other.GroupCockpits;
 	FlybySounds = other.FlybySounds;
 }
 
@@ -91,7 +95,7 @@ ShipClass::~ShipClass()
 }
 
 
-static uint8_t ShotTypeFromString( std::string type, uint32_t team )
+static uint8_t ShotTypeFromString( std::string type, uint8_t team )
 {
 	std::transform( type.begin(), type.end(), type.begin(), tolower );
 	
@@ -103,6 +107,8 @@ static uint8_t ShotTypeFromString( std::string type, uint32_t team )
 		return Shot::TYPE_TURBO_LASER_RED;
 	else if( (type == "green_turbolaser") || (type == "turbolaser_green") )
 		return Shot::TYPE_TURBO_LASER_GREEN;
+	else if( type == "quad_laser" )
+		return Shot::TYPE_QUAD_LASER_RED;
 	else if( type == "ion_cannon" )
 		return Shot::TYPE_ION_CANNON;
 	else if( type == "torpedo" )
@@ -368,6 +374,11 @@ bool ShipClass::Load( const std::string &filename )
 				{
 					Turrets.back().Visible = false;
 				}
+				else if( (subvar == "health") && args.size() )
+				{
+					Turrets.back().Health = atof( args.at(0).c_str() );
+					args.erase( args.begin() );
+				}
 				else if( subvar == "independent" )
 				{
 					Turrets.back().ParentControl = false;
@@ -375,6 +386,10 @@ bool ShipClass::Load( const std::string &filename )
 				else if( subvar == "linked" )
 				{
 					Turrets.back().ParentControl = true;
+				}
+				else if( subvar == "single" )
+				{
+					Turrets.back().FiringMode = 1;
 				}
 				else if( subvar == "dual" )
 				{
@@ -386,6 +401,10 @@ bool ShipClass::Load( const std::string &filename )
 					args.erase( args.begin() );
 				}
 			}
+		}
+		else if( (var == "turret_health") && args.size() )
+		{
+			TurretHealth = atof( args.at(0).c_str() );
 		}
 		else if( (var == "cockpit") && (args.size() >= 4) )
 		{
@@ -401,6 +420,13 @@ bool ShipClass::Load( const std::string &filename )
 		else if( (var == "model_collision") && args.size() )
 		{
 			CollisionModel = args.at(0);
+		}
+		else if( (var == "group_skin") && (args.size() >= 2) )
+		{
+			uint8_t group = atoi( args.at(0).c_str() );
+			GroupSkins[ group ] = args.at(1);
+			if( args.size() >= 3 )
+				GroupCockpits[ group ] = args.at(2);
 		}
 		else if( (var == "model_scale") && args.size() )
 		{
@@ -430,8 +456,8 @@ void ShipClass::AddToInitPacket( Packet *packet, int8_t precision )
 {
 	packet->AddString( ShortName );
 	packet->AddString( LongName );
-	packet->AddChar( Category );
-	packet->AddUInt( Team );
+	packet->AddUChar( Category );
+	packet->AddUChar( Team );
 	packet->AddFloat( Radius );
 	packet->AddFloat( MaxSpeed );
 	packet->AddFloat( Acceleration );
@@ -491,6 +517,15 @@ void ShipClass::AddToInitPacket( Packet *packet, int8_t precision )
 	
 	packet->AddFloat( ModelScale );
 	
+	packet->AddUChar( GroupSkins.size() );
+	for( std::map<uint8_t,std::string>::const_iterator skin_iter = GroupSkins.begin(); skin_iter != GroupSkins.end(); skin_iter ++ )
+	{
+		packet->AddUChar( skin_iter->first );
+		packet->AddString( skin_iter->second );
+		std::map<uint8_t,std::string>::const_iterator cockpit_iter = GroupCockpits.find( skin_iter->first );
+		packet->AddString( (cockpit_iter != GroupCockpits.end()) ? cockpit_iter->second : "" );
+	}
+	
 	packet->AddUChar( FlybySounds.size() );
 	for( std::map< double, std::string >::const_iterator flyby_iter = FlybySounds.begin(); flyby_iter != FlybySounds.end(); flyby_iter ++ )
 	{
@@ -504,8 +539,8 @@ void ShipClass::ReadFromInitPacket( Packet *packet, int8_t precision )
 {
 	ShortName           = packet->NextString();
 	LongName            = packet->NextString();
-	Category            = packet->NextChar();
-	Team                = packet->NextUInt();
+	Category            = packet->NextUChar();
+	Team                = packet->NextUChar();
 	Radius              = packet->NextFloat();
 	MaxSpeed            = packet->NextFloat();
 	Acceleration        = packet->NextFloat();
@@ -565,6 +600,16 @@ void ShipClass::ReadFromInitPacket( Packet *packet, int8_t precision )
 	CockpitPos.Z = packet->NextFloat();
 	
 	ModelScale = packet->NextFloat();
+	
+	size_t num_skins = packet->NextUChar();
+	for( size_t i = 0; i < num_skins; i ++ )
+	{
+		uint8_t group = packet->NextUChar();
+		GroupSkins[ group ] = packet->NextString();
+		std::string cockpit = packet->NextString();
+		if( cockpit.length() )
+			GroupCockpits[ group ] = cockpit;
+	}
 	
 	size_t num_flyby = packet->NextUChar();
 	for( size_t i = 0; i < num_flyby; i ++ )
@@ -650,8 +695,9 @@ ShipClassTurret::ShipClassTurret( double fwd, double up, double right, uint8_t w
 	Weapon = weapon;
 	
 	Visible = false;
+	Health = 95.;
 	ParentControl = true;
-	FiringMode = 1;
+	FiringMode = 0;  // Automatically determine mode in XWingServer::SpawnShipTurrets.
 	SingleShotDelay = 0.5;
 	TargetArc = 360.;
 	MinGunPitch = -10.;
