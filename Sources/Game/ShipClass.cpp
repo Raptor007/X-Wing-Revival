@@ -15,7 +15,7 @@
 
 ShipClass::ShipClass( uint32_t id ) : GameObject( id, XWing::Object::SHIP_CLASS )
 {
-	Category = CATEGORY_FIGHTER;
+	Category = CATEGORY_UNKNOWN;
 	Team = XWing::Team::NONE;
 	Radius = 4.5;
 	CollisionDamage = 1000.;
@@ -35,7 +35,18 @@ ShipClass::ShipClass( uint32_t id ) : GameObject( id, XWing::Object::SHIP_CLASS 
 	ShieldRechargeRate = 0.;
 	ExplosionRate = 1.;
 	TurretHealth = 95.;
-	ModelScale = 0.022;
+	TurretYawSpeed = TurretPitchSpeed = 45.;
+	TurretBody = "turret_body.obj";
+	TurretGun  = "turret_gun.obj";
+	TurretGunWidth = 2.2;
+	TurretGunUp = 0.022 * 175.;
+	TurretGunFwd = 0.022 * 50.;
+	TurretHeadUp = 2.;
+	TurretHeadFwd = 5.;
+	GlanceUpFwd = 85.;
+	GlanceUpBack = 20.;
+	ModelScale = 1.;
+	Secret = false;
 }
 
 
@@ -79,14 +90,29 @@ ShipClass::ShipClass( const ShipClass &other ) : GameObject( 0, XWing::Object::S
 	Ammo = other.Ammo;
 	Turrets = other.Turrets;
 	TurretHealth = other.TurretHealth;
+	TurretPitchSpeed = other.TurretPitchSpeed;
+	TurretYawSpeed = other.TurretYawSpeed;
+	TurretBody = other.TurretBody;
+	TurretGun = other.TurretGun;
+	TurretGunWidth = other.TurretGunWidth;
+	TurretGunUp = other.TurretGunUp;
+	TurretGunFwd = other.TurretGunFwd;
+	TurretHeadUp = other.TurretHeadUp;
+	TurretHeadFwd = other.TurretHeadFwd;
 	CollisionModel = other.CollisionModel;
 	ExternalModel = other.ExternalModel;
 	CockpitModel = other.CockpitModel;
+	CockpitModelVR = other.CockpitModelVR;
 	CockpitPos.Copy( &(other.CockpitPos) );
+	CockpitPosVR.Copy( &(other.CockpitPosVR) );
+	GlanceUpFwd  = other.GlanceUpFwd;
+	GlanceUpBack = other.GlanceUpBack;
 	ModelScale = other.ModelScale;
+	Shape.BecomeCopy( &(other.Shape) );
 	GroupSkins = other.GroupSkins;
 	GroupCockpits = other.GroupCockpits;
 	FlybySounds = other.FlybySounds;
+	Secret = other.Secret;
 }
 
 
@@ -117,6 +143,8 @@ static uint8_t ShotTypeFromString( std::string type, uint8_t team )
 		return Shot::TYPE_MISSILE;
 	else if( type == "turbolaser" )
 		return (team == XWing::Team::EMPIRE) ? Shot::TYPE_TURBO_LASER_GREEN : Shot::TYPE_TURBO_LASER_RED;
+	else if( type == "superlaser" )
+		return Shot::TYPE_SUPERLASER;
 	
 	return (team == XWing::Team::EMPIRE) ? Shot::TYPE_LASER_GREEN : Shot::TYPE_LASER_RED;
 }
@@ -162,12 +190,16 @@ bool ShipClass::Load( const std::string &filename )
 			std::transform( category.begin(), category.end(), category.begin(), tolower );
 			if( category == "fighter" )
 				Category = CATEGORY_FIGHTER;
+			else if( category == "gunboat" )
+				Category = CATEGORY_GUNBOAT;
 			else if( category == "bomber" )
 				Category = CATEGORY_BOMBER;
 			else if( category == "capital" )
 				Category = CATEGORY_CAPITAL;
 			else if( category == "target" )
 				Category = CATEGORY_TARGET;
+			else
+				Category = CATEGORY_UNKNOWN;
 		}
 		else if( (var == "team") && args.size() )
 		{
@@ -180,6 +212,8 @@ bool ShipClass::Load( const std::string &filename )
 			else
 				Team = XWing::Team::NONE;
 		}
+		else if( var == "secret" )
+			Secret = true;
 		else if( (var == "radius") && args.size() )
 		{
 			Radius = atof( args.at(0).c_str() );
@@ -374,6 +408,10 @@ bool ShipClass::Load( const std::string &filename )
 				{
 					Turrets.back().Visible = false;
 				}
+				else if( subvar == "invincible" )
+				{
+					Turrets.back().CanBeHit = false;
+				}
 				else if( (subvar == "health") && args.size() )
 				{
 					Turrets.back().Health = atof( args.at(0).c_str() );
@@ -406,12 +444,49 @@ bool ShipClass::Load( const std::string &filename )
 		{
 			TurretHealth = atof( args.at(0).c_str() );
 		}
+		else if( (var == "turret_model") && args.size() )
+		{
+			TurretBody = (args.size() >= 2) ? args.at(0) : "";
+			TurretGun  = (args.size() >= 2) ? args.at(1) : args.at(0);
+		}
+		else if( (var == "turret_gunpos") && args.size() )
+		{
+			TurretGunUp = atof( args.at(0).c_str() );
+			TurretGunFwd = (args.size() >= 2) ? atof( args.at(1).c_str() ) : 0.;
+		}
+		else if( (var == "turret_separation") && args.size() )
+		{
+			TurretGunWidth = atof( args.at(0).c_str() );
+		}
+		else if( (var == "turret_headpos") && args.size() )
+		{
+			TurretHeadUp = atof( args.at(0).c_str() );
+			TurretHeadFwd = (args.size() >= 2) ? atof( args.at(1).c_str() ) : 0.;
+		}
+		else if( (var == "turret_speed") && args.size() )
+		{
+			TurretYawSpeed = atof( args.at(0).c_str() );
+			TurretPitchSpeed = (args.size() >= 2) ? atof( args.at(1).c_str() ) : TurretYawSpeed;
+		}
 		else if( (var == "cockpit") && (args.size() >= 4) )
 		{
 			CockpitModel = args.at(0);
 			CockpitPos.Z = atof( args.at(1).c_str() ); // Right
 			CockpitPos.Y = atof( args.at(2).c_str() ); // Up
 			CockpitPos.X = atof( args.at(3).c_str() ); // Fwd
+		}
+		else if( (var == "cockpit_vr") && (args.size() >= 4) )
+		{
+			CockpitModelVR = args.at(0);
+			CockpitPosVR.Z = atof( args.at(1).c_str() ); // Right
+			CockpitPosVR.Y = atof( args.at(2).c_str() ); // Up
+			CockpitPosVR.X = atof( args.at(3).c_str() ); // Fwd
+		}
+		else if( (var == "glance") && args.size() )
+		{
+			GlanceUpFwd = atof( args.at(0).c_str() );
+			if( args.size() >= 2 )
+				GlanceUpBack = atof( args.at(1).c_str() );
 		}
 		else if( (var == "model") && args.size() )
 		{
@@ -420,6 +495,8 @@ bool ShipClass::Load( const std::string &filename )
 		else if( (var == "model_collision") && args.size() )
 		{
 			CollisionModel = args.at(0);
+			Shape.LoadOBJ( std::string("Models/") + CollisionModel, false );
+			Shape.ScaleBy( ModelScale );  // This only has any effect if model_scale has already been set (default is 1).
 		}
 		else if( (var == "group_skin") && (args.size() >= 2) )
 		{
@@ -431,6 +508,7 @@ bool ShipClass::Load( const std::string &filename )
 		else if( (var == "model_scale") && args.size() )
 		{
 			ModelScale = atof( args.at(0).c_str() );
+			Shape.ScaleBy( ModelScale );  // This only has any effect if model_collision has already been loaded.
 		}
 		else if( (var == "flyby") && (args.size() >= 2) )
 		{
@@ -456,7 +534,7 @@ void ShipClass::AddToInitPacket( Packet *packet, int8_t precision )
 {
 	packet->AddString( ShortName );
 	packet->AddString( LongName );
-	packet->AddUChar( Category );
+	packet->AddUChar( Secret ? (Category | 0x80) : Category );
 	packet->AddUChar( Team );
 	packet->AddFloat( Radius );
 	packet->AddFloat( MaxSpeed );
@@ -507,6 +585,13 @@ void ShipClass::AddToInitPacket( Packet *packet, int8_t precision )
 		}
 	}
 	
+	packet->AddUChar( Subsystems.size() );
+	for( std::map<std::string,double>::const_iterator subsystem_iter = Subsystems.begin(); subsystem_iter != Subsystems.end(); subsystem_iter ++ )
+	{
+		packet->AddString( subsystem_iter->first );
+		packet->AddDouble( subsystem_iter->second );
+	}
+	
 	packet->AddString( CollisionModel );
 	packet->AddString( ExternalModel );
 	
@@ -514,6 +599,17 @@ void ShipClass::AddToInitPacket( Packet *packet, int8_t precision )
 	packet->AddFloat( CockpitPos.X );
 	packet->AddFloat( CockpitPos.Y );
 	packet->AddFloat( CockpitPos.Z );
+	
+	packet->AddString( CockpitModelVR );
+	if( ! CockpitModelVR.empty() )
+	{
+		packet->AddFloat( CockpitPosVR.X );
+		packet->AddFloat( CockpitPosVR.Y );
+		packet->AddFloat( CockpitPosVR.Z );
+	}
+	
+	packet->AddUChar( GlanceUpFwd  + 0.5 * Num::Sign(GlanceUpFwd)  );
+	packet->AddUChar( GlanceUpBack + 0.5 * Num::Sign(GlanceUpBack) );
 	
 	packet->AddFloat( ModelScale );
 	
@@ -540,6 +636,8 @@ void ShipClass::ReadFromInitPacket( Packet *packet, int8_t precision )
 	ShortName           = packet->NextString();
 	LongName            = packet->NextString();
 	Category            = packet->NextUChar();
+	Secret = Category & 0x80;
+	Category &= 0x7F;
 	Team                = packet->NextUChar();
 	Radius              = packet->NextFloat();
 	MaxSpeed            = packet->NextFloat();
@@ -591,6 +689,13 @@ void ShipClass::ReadFromInitPacket( Packet *packet, int8_t precision )
 		}
 	}
 	
+	size_t num_subsystems = packet->NextUChar();
+	for( size_t i = 0; i < num_subsystems; i ++ )
+	{
+		std::string subsystem_name = packet->NextString();
+		Subsystems[ subsystem_name ] = packet->NextDouble();
+	}
+	
 	CollisionModel = packet->NextString();
 	ExternalModel = packet->NextString();
 	
@@ -598,6 +703,17 @@ void ShipClass::ReadFromInitPacket( Packet *packet, int8_t precision )
 	CockpitPos.X = packet->NextFloat();
 	CockpitPos.Y = packet->NextFloat();
 	CockpitPos.Z = packet->NextFloat();
+	
+	CockpitModelVR = packet->NextString();
+	if( ! CockpitModelVR.empty() )
+	{
+		CockpitPosVR.X = packet->NextFloat();
+		CockpitPosVR.Y = packet->NextFloat();
+		CockpitPosVR.Z = packet->NextFloat();
+	}
+	
+	GlanceUpFwd  = packet->NextUChar();
+	GlanceUpBack = packet->NextUChar();
 	
 	ModelScale = packet->NextFloat();
 	
@@ -638,7 +754,7 @@ void ShipClass::Update( double dt )
 
 bool ShipClass::PlayersCanFly( void ) const
 {
-	return (Category == CATEGORY_FIGHTER) || (Category == CATEGORY_BOMBER);
+	return ((Category == CATEGORY_FIGHTER) || (Category == CATEGORY_BOMBER) || (Category == CATEGORY_GUNBOAT)) && ! Secret;
 }
 
 
@@ -663,7 +779,7 @@ bool ShipClass::operator < ( const ShipClass &other ) const
 		return false;
 	
 	/*
-	// This section is disabled because YT-1300 is currently defined as a fighter.
+	// Commented-out because this puts the YT-1300 above the Y-Wing and B-Wing.
 	if( (Category == CATEGORY_FIGHTER) && (other.Category != CATEGORY_FIGHTER) )
 		return true;
 	if( (Category != CATEGORY_FIGHTER) && (other.Category == CATEGORY_FIGHTER) )
@@ -683,6 +799,14 @@ bool ShipClass::operator < ( const ShipClass &other ) const
 	if( CollisionDamage > other.CollisionDamage )
 		return false;
 	
+	/*
+	// Commented-out because this puts the Y-Wing above the secret X-Wing (Ion/Missile).
+	if( Secret && ! other.Secret )
+		return false;
+	if( other.Secret && ! Secret )
+		return true;
+	*/
+	
 	return (strcasecmp( ShortName.c_str(), other.ShortName.c_str() ) < 0);
 }
 
@@ -694,7 +818,8 @@ ShipClassTurret::ShipClassTurret( double fwd, double up, double right, uint8_t w
 {
 	Weapon = weapon;
 	
-	Visible = false;
+	Visible = true;
+	CanBeHit = true;
 	Health = 95.;
 	ParentControl = true;
 	FiringMode = 0;  // Automatically determine mode in XWingServer::SpawnShipTurrets.
@@ -702,4 +827,23 @@ ShipClassTurret::ShipClassTurret( double fwd, double up, double right, uint8_t w
 	TargetArc = 360.;
 	MinGunPitch = -10.;
 	MaxGunPitch = 90.;
+}
+
+
+ShipClassTurret &ShipClassTurret::operator = ( const ShipClassTurret &other )
+{
+	Pos3D::Copy( &other );
+	Weapon = other.Weapon;
+	
+	Visible = other.Visible;
+	CanBeHit = other.CanBeHit;
+	Health = other.Health;
+	ParentControl = other.ParentControl;
+	FiringMode = other.FiringMode;
+	SingleShotDelay = other.SingleShotDelay;
+	TargetArc = other.TargetArc;
+	MinGunPitch = other.MinGunPitch;
+	MaxGunPitch = other.MaxGunPitch;
+	
+	return *this;
 }

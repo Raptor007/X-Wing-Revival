@@ -15,11 +15,18 @@ class XWingGame;
 class XWingGame : public RaptorGame
 {
 public:
+	uint32_t GameType;
 	Clock RoundTimer;
+	
 	uint32_t ObservedShipID;
 	double LookYaw, LookPitch;
 	bool ThumbstickLook;
 	double AsteroidLOD;
+	double OverlayScroll;
+	
+	std::queue<std::string> Achievements;
+	Clock AchievementClock;
+	
 	uint8_t Controls[ XWing::Control::COUNT ];
 	
 	XWingGame( std::string version );
@@ -35,6 +42,7 @@ public:
 	bool HandleEvent( SDL_Event *event );
 	bool HandleCommand( std::string cmd, std::vector<std::string> *params = NULL );
 	bool ProcessPacket( Packet *packet );
+	void MessageReceived( std::string text, uint32_t type = TextConsole::MSG_NORMAL );
 	
 	void ChangeState( int state );
 	void Disconnected( void );

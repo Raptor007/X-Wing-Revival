@@ -22,6 +22,10 @@ weapon laser_red 5 -1.2 0
 weapon laser_red 0 -11.3 0
 weapon laser_red -5 -1.2 0
 firetime laser_red 0.25
+weapon ion_cannon 5 -1.2 0
+weapon ion_cannon 0.25 -11.3 0
+weapon ion_cannon -5 -1.2 0
+firetime ion_cannon 0.33
 weapon torpedo 0.6 -1.3 0
 weapon torpedo -0.6 -1.3 0
 firetime torpedo 1.5
@@ -32,6 +36,7 @@ group_skin 1 b-wing_red.obj b-wing_cockpit_red.obj
 group_skin 2 b-wing_gold.obj b-wing_cockpit_gold.obj
 group_skin 3 b-wing_green.obj b-wing_cockpit_green.obj
 model_scale 0.022
+glance 70 20
 flyby 20 xwing_slow.wav
 flyby 170 xwing_med.wav
 flyby 210 xwing_fast.wav

@@ -41,19 +41,28 @@ public:
 	double ShieldRechargeRate;
 	double ExplosionRate;
 	std::map< std::string, double > Subsystems;
+	//std::vector<Vec3D> SubsystemCenters;
+	//std::vector<std::string> SubsystemNames;
 	std::map< uint8_t, std::vector<Pos3D> > Weapons;
 	std::map< uint8_t, double > FireTime;
 	std::map< uint8_t, int8_t > Ammo;
 	std::vector<ShipClassTurret> Turrets;
 	double TurretHealth;
+	double TurretYawSpeed, TurretPitchSpeed;
+	std::string TurretBody, TurretGun;
+	double TurretGunWidth;
+	double TurretGunUp, TurretGunFwd, TurretHeadUp, TurretHeadFwd;
 	std::string CollisionModel;
 	std::string ExternalModel;
-	std::string CockpitModel;
+	std::string CockpitModel, CockpitModelVR;
 	std::map<uint8_t,std::string> GroupSkins;
 	std::map<uint8_t,std::string> GroupCockpits;
-	Vec3D CockpitPos;
+	Vec3D CockpitPos, CockpitPosVR;
+	double GlanceUpFwd, GlanceUpBack;
 	double ModelScale;
+	Model Shape;
 	std::map< double, std::string > FlybySounds;
+	bool Secret;
 	
 	ShipClass( uint32_t id = 0 );
 	ShipClass( const ShipClass &other );
@@ -74,8 +83,10 @@ public:
 	
 	enum
 	{
-		CATEGORY_FIGHTER = 0,
+		CATEGORY_UNKNOWN = 0,
+		CATEGORY_FIGHTER,
 		CATEGORY_BOMBER,
+		CATEGORY_GUNBOAT,
 		CATEGORY_CAPITAL,
 		CATEGORY_TARGET
 	};
@@ -85,7 +96,7 @@ public:
 class ShipClassTurret : public Pos3D
 {
 public:
-	bool Visible;
+	bool Visible, CanBeHit;
 	double Health;
 	bool ParentControl;
 	uint8_t Weapon;
@@ -96,4 +107,5 @@ public:
 	double MaxGunPitch;
 	
 	ShipClassTurret( double fwd, double up, double right, uint8_t weapon );
+	ShipClassTurret &operator = ( const ShipClassTurret &other );
 };

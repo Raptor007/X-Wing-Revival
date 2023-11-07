@@ -33,9 +33,6 @@ IngameMenu::IngameMenu( void )
 	
 	AddElement( new IngameMenuResumeButton( &button_rect, ButtonFont ));
 	
-	if( player->PropertyAsString("ship") == "Spectator" )
-		AddElement( new IngameMenuViewDropDown( &button_rect, ButtonFont ));
-	
 	if( Raptor::Game->Data.PropertyAsBool("allow_ship_change",true) )
 	{
 		AddElement( new IngameMenuShipDropDown( &button_rect, ButtonFont ));
@@ -46,6 +43,9 @@ IngameMenu::IngameMenu( void )
 		if( player_team != "Spectator" )
 			AddElement( new IngameMenuGroupDropDown( &button_rect, ButtonFont ));
 	}
+	
+	if( player->PropertyAsString("ship") == "Spectator" )
+		AddElement( new IngameMenuViewDropDown( &button_rect, ButtonFont ));
 	
 	AddElement( new IngameMenuPrefsButton( &button_rect, ButtonFont ));
 	//AddElement( new IngameMenuHelpButton( &button_rect, ButtonFont ));
@@ -119,7 +119,7 @@ void IngameMenu::Draw( void )
 
 bool IngameMenu::KeyDown( SDLKey key )
 {
-	if( (key == SDLK_ESCAPE) || (key == SDLK_F10) )
+	if( (key == SDLK_ESCAPE) || (key == SDLK_F9) ) // FIXME: Check for XWing::Controls::MENU instead?
 	{
 		Remove();
 		Raptor::Game->Mouse.ShowCursor = false;
@@ -269,13 +269,14 @@ IngameMenuShipDropDown::IngameMenuShipDropDown( SDL_Rect *rect, Font *font, uint
 	Blue = 0.f;
 	Alpha = 0.75f;
 	
+	uint32_t gametype = ((const XWingGame*)( Raptor::Game ))->GameType;
 	std::string player_ship;
 	uint8_t player_team = XWing::Team::NONE;
 	Player *player = Raptor::Game->Data.GetPlayer( Raptor::Game->PlayerID );
 	if( player )
 	{
 		player_ship = player->PropertyAsString("ship");
-		std::string prefix = (Raptor::Game->Data.PropertyAsString("gametype") == "yavin") ? "yavin_" : "";
+		std::string prefix = (gametype == XWing::GameType::BATTLE_OF_YAVIN) ? "yavin_" : "";
 		std::string team = player->PropertyAsString("team");
 		if( team == "Rebel" )
 		{
@@ -293,7 +294,7 @@ IngameMenuShipDropDown::IngameMenuShipDropDown( SDL_Rect *rect, Font *font, uint
 			player_ship = "Spectator";
 	}
 	
-	bool allow_team_change = Raptor::Game->Data.PropertyAsBool("allow_team_change") || Str::BeginsWith( Raptor::Game->Data.PropertyAsString("gametype"), "ffa_" );
+	bool allow_team_change = (gametype == XWing::GameType::FFA_ELIMINATION) || (gametype == XWing::GameType::FFA_DEATHMATCH) || Raptor::Game->Data.PropertyAsBool("allow_team_change");
 	
 	if( player_ship == "Spectator" )
 		AddItem( "Spectator", "    Select Ship" );
@@ -303,7 +304,7 @@ IngameMenuShipDropDown::IngameMenuShipDropDown( SDL_Rect *rect, Font *font, uint
 		if( obj_iter->second->Type() == XWing::Object::SHIP_CLASS )
 		{
 			const ShipClass *sc = (const ShipClass*) obj_iter->second;
-			if( (sc->PlayersCanFly() && ((sc->Team == player_team) || ! sc->Team || ! player_team || allow_team_change))
+			if( ( (sc->PlayersCanFly() || Raptor::Game->Data.PropertyAsBool("darkside",false)) && ((sc->Team == player_team) || ! sc->Team || ! player_team || allow_team_change) )
 			||  (sc->ShortName == player_ship) )
 				AddItem( sc->ShortName, std::string("    Ship: ") + sc->LongName );
 		}
@@ -333,12 +334,26 @@ void IngameMenuShipDropDown::Changed( void )
 	if( Raptor::Game->SetPlayerProperty( "ship", Value ) )
 	{
 		if( (Value == "Spectator") || (Str::FindInsensitive( Value, " Gunner" ) >= 0) )
-			Raptor::Game->Msg.Print( std::string("You will be a ") + Value + std::string(" next.") );
+			Raptor::Game->MessageReceived( std::string("You will be a ") + Value + std::string(" next.") );
 		else // FIXME: Don't show this when changing from Spectator.
 		{
 			const ShipClass *ship_class = ((XWingGame*)( Raptor::Game ))->GetShipClass( Value );
-			std::string ship = ship_class ? ship_class->LongName : Value;
-			Raptor::Game->Msg.Print( std::string("Your next ship will be: ") + ship );
+			std::string ship_class_name = ship_class ? ship_class->LongName : Value;
+			std::string message = "Your next ship will be a ";
+			if( Str::BeginsWith( ship_class_name, "A" )
+			||  Str::BeginsWith( ship_class_name, "E" )
+			||  Str::BeginsWith( ship_class_name, "I" )
+			||  Str::BeginsWith( ship_class_name, "O" )
+			||  Str::BeginsWith( ship_class_name, "F-" )
+			||  Str::BeginsWith( ship_class_name, "H-" )
+			||  Str::BeginsWith( ship_class_name, "L-" )
+			||  Str::BeginsWith( ship_class_name, "M-" )
+			||  Str::BeginsWith( ship_class_name, "N-" )
+			||  Str::BeginsWith( ship_class_name, "R-" )
+			||  Str::BeginsWith( ship_class_name, "S-" )
+			||  Str::BeginsWith( ship_class_name, "X-" ) )
+				message = "Your next ship will be an ";
+			Raptor::Game->MessageReceived( message + ship_class_name + std::string(".") );
 		}
 		
 		// Remove the menu after changing ship.

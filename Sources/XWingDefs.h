@@ -37,7 +37,9 @@ namespace XWing
 			MISC_HIT_SHIP = '?Hit',
 			CHANGE_SEAT = 'Seat',
 			TOGGLE_COPILOT = 'CoPi',
-			ENGINE_SOUND = 'Engi'
+			ENGINE_SOUND = 'Engi',
+			CHECKPOINT = 'GoGo',
+			ACHIEVEMENT = 'Wow!'
 		};
 	}
 	
@@ -51,7 +53,8 @@ namespace XWing
 			ASTEROID = 'Rock',
 			TURRET = 'Turr',
 			DEATH_STAR = 'Moon',
-			DEATH_STAR_BOX = 'aBox'
+			DEATH_STAR_BOX = 'aBox',
+			CHECKPOINT = 'GoGo'
 		};
 	}
 	
@@ -69,10 +72,13 @@ namespace XWing
 	{
 		enum
 		{
+			UNDEFINED = 0,
 			TEAM_ELIMINATION = 'Team',
 			FFA_ELIMINATION = 'FFA ',
 			TEAM_DEATHMATCH = 'TDM ',
 			FFA_DEATHMATCH = 'DM  ',
+			TEAM_RACE = 'Kesl',
+			FFA_RACE = 'Race',
 			BATTLE_OF_YAVIN = 'Yavn',
 			CAPITAL_SHIP_HUNT = 'Hunt',
 			FLEET_BATTLE = 'Flet'
@@ -84,7 +90,7 @@ namespace XWing
 		enum
 		{
 			// Analog Axes
-			ROLL,     ROLL_INVERTED,
+			ROLL = 1, ROLL_INVERTED,
 			PITCH,    PITCH_INVERTED,
 			YAW,      YAW_INVERTED,
 			THROTTLE, THROTTLE_INVERTED,
@@ -109,11 +115,12 @@ namespace XWing
 			TARGET_CROSSHAIR,
 			TARGET_NEAREST_ENEMY,
 			TARGET_NEAREST_ATTACKER,
-			TARGET_NEAREST_INCOMING,
+			TARGET_NEWEST_INCOMING,
 			TARGET_OBJECTIVE,
 			TARGET_NEWEST,
 			TARGET_GROUPMATE,
 			TARGET_SYNC,
+			LOOK_CENTER,
 			LOOK_UP,
 			LOOK_DOWN,
 			LOOK_LEFT,
@@ -122,7 +129,14 @@ namespace XWing
 			LOOK_UP_RIGHT,
 			LOOK_DOWN_LEFT,
 			LOOK_DOWN_RIGHT,
-			LOOK_CENTER,
+			GLANCE_UP,
+			GLANCE_BACK,
+			GLANCE_LEFT,
+			GLANCE_RIGHT,
+			GLANCE_UP_LEFT,
+			GLANCE_UP_RIGHT,
+			GLANCE_BACK_LEFT,
+			GLANCE_BACK_RIGHT,
 			SCORES,
 			
 			// Pressed Digital Buttons
@@ -135,12 +149,16 @@ namespace XWing
 			TARGET_NEXT_ENEMY,  // SPECTATE_NEXT (Xbox)
 			TARGET_PREV_FRIENDLY,
 			TARGET_NEXT_FRIENDLY,
+			TARGET_NEXT_SUBSYSTEM,
+			TARGET_PREV_SUBSYSTEM,
 			SEAT_COCKPIT,
 			SEAT_GUNNER1,
 			SEAT_GUNNER2,
 			CHEWIE_TAKE_THE_WHEEL,
 			CHAT,
 			MENU,
+			PREFS,
+			PAUSE,
 			
 			COUNT
 		};

@@ -24,5 +24,3 @@ model isd2_hq.obj
 model_collision isd2_hq_col.obj
 cockpit isd2_hq.obj -1.27 106 -480
 model_scale 0.022
-flyby 20 xwing_slow.wav
-flyby 200 xwing_fast.wav

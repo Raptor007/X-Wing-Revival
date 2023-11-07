@@ -66,9 +66,11 @@ public:
 class Renderable
 {
 public:
+	Ship *ShipPtr;
 	Shot *ShotPtr;
 	Effect *EffectPtr;
 	
+	Renderable( Ship *ship );
 	Renderable( Shot *shot );
 	Renderable( Effect *effect );
 	~Renderable();

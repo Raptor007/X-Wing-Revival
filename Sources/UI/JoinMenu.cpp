@@ -4,12 +4,7 @@
 
 #include "JoinMenu.h"
 
-#ifdef __APPLE__
-	#include <SDL_net/SDL_net.h>
-#else
-	#include <SDL/SDL_net.h>
-#endif
-
+#include <cmath>
 #include "RaptorDefs.h"
 #include "Graphics.h"
 #include "NetClient.h"
@@ -35,9 +30,9 @@ JoinMenu::JoinMenu( void )
 	Blue = 1.0f;
 	Alpha = 0.5f;
 	
-	TitleFont = Raptor::Game->Res.GetFont( "Verdana.ttf", 30 );
-	LabelFont = Raptor::Game->Res.GetFont( "Verdana.ttf", 16 );
-	ItemFont = Raptor::Game->Res.GetFont( "Verdana.ttf", 17 );
+	TitleFont  = Raptor::Game->Res.GetFont( "Verdana.ttf", 30 );
+	LabelFont  = Raptor::Game->Res.GetFont( "Verdana.ttf", 16 );
+	ItemFont   = Raptor::Game->Res.GetFont( "Verdana.ttf", 16 );
 	ButtonFont = Raptor::Game->Res.GetFont( "Verdana.ttf", 30 );
 	
 	SDL_Rect rect;
@@ -184,8 +179,12 @@ void JoinMenu::Draw( void )
 						text += " [Yavin]";
 					else if( properties["gametype"] == "hunt" )
 						text += " [Flagship Hunt]";
-					else if( (properties["gametype"] == "fleet") || (properties["gametype"] == "def_des") )
+					else if( properties["gametype"] == "fleet" )
 						text += " [Fleet Battle]";
+					else if( properties["gametype"] == "team_race" )
+						text += " [Team Kessel]";
+					else if( properties["gametype"] == "ffa_race" )
+						text += " [FFA Kessel]";
 					else
 						text += " [" + properties["gametype"] + "]";
 				}

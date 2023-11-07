@@ -49,7 +49,7 @@
 				FavorSizeOrSpeed="0"
 				WholeProgramOptimization="false"
 				AdditionalIncludeDirectories="Sources;Sources\UI;Sources\Game;..\RaptorEngine\Core;..\RaptorEngine\Graphics;..\RaptorEngine\Input;..\RaptorEngine\Libs;..\RaptorEngine\Net;..\RaptorEngine\Sound;..\RaptorEngine\UI;..\RaptorEngine\Game;..\RaptorEngine\Saitek;..\RaptorEngine\VR"
-				PreprocessorDefinitions="WIN32;_DEBUG;_WINDOWS"
+				PreprocessorDefinitions="WIN32;_DEBUG;_WINDOWS;SDL2"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="3"
@@ -72,12 +72,12 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="OpenGL32.lib GLU32.lib GLEW32s.lib GLEW32mxs.lib SDL.lib SDLmain.lib SDL_net.lib SDL_image.lib SDL_ttf.lib SDL_mixer.lib openvr_api.lib vcompd.lib"
+				AdditionalDependencies="OpenGL32.lib GLU32.lib GLEW32s.lib GLEW32mxs.lib SDL2.lib SDL2main.lib SDL2_net.lib SDL2_image.lib SDL2_ttf.lib SDL2_mixer.lib openvr_api.lib vcompd.lib"
 				OutputFile="$(OutDir)\$(ProjectName) Debug.exe"
 				LinkIncremental="2"
-				AdditionalLibraryDirectories="&quot;Y:\Documents\Frameworks\lib&quot;"
+				AdditionalLibraryDirectories=""
 				IgnoreDefaultLibraryNames="LIBCMT;msvcrt.lib"
-				DelayLoadDLLs="SDL.dll;SDL_net.dll;SDL_image.dll;SDL_ttf.dll;SDL_mixer.dll;openvr_api.dll"
+				DelayLoadDLLs="SDL2.dll;SDL2_net.dll;SDL2_image.dll;SDL2_ttf.dll;SDL2_mixer.dll;openvr_api.dll"
 				GenerateDebugInformation="true"
 				AssemblyDebug="1"
 				GenerateMapFile="true"
@@ -93,6 +93,7 @@
 			/>
 			<Tool
 				Name="VCManifestTool"
+				EmbedManifest="true"
 			/>
 			<Tool
 				Name="VCXDCMakeTool"
@@ -141,7 +142,7 @@
 				FavorSizeOrSpeed="0"
 				WholeProgramOptimization="false"
 				AdditionalIncludeDirectories="Sources;Sources\UI;Sources\Game;..\RaptorEngine\Core;..\RaptorEngine\Graphics;..\RaptorEngine\Input;..\RaptorEngine\Libs;..\RaptorEngine\Net;..\RaptorEngine\Sound;..\RaptorEngine\UI;..\RaptorEngine\Game;..\RaptorEngine\Saitek;..\RaptorEngine\VR"
-				PreprocessorDefinitions="WIN32;_DEBUG;_WINDOWS"
+				PreprocessorDefinitions="WIN32;_DEBUG;_WINDOWS;SDL2"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="3"
@@ -163,12 +164,12 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="OpenGL32.lib GLU32.lib GLEW32s.lib GLEW32mxs.lib SDL.lib SDLmain.lib SDL_net.lib SDL_image.lib SDL_ttf.lib SDL_mixer.lib openvr_api.lib vcompd.lib"
+				AdditionalDependencies="OpenGL32.lib GLU32.lib GLEW32s.lib GLEW32mxs.lib SDL2.lib SDL2main.lib SDL2_net.lib SDL2_image.lib SDL2_ttf.lib SDL2_mixer.lib openvr_api.lib vcompd.lib"
 				OutputFile="$(OutDir)\$(ProjectName) Debug x64.exe"
 				LinkIncremental="2"
-				AdditionalLibraryDirectories="&quot;Y:\Documents\Frameworks\lib64&quot;"
+				AdditionalLibraryDirectories=""
 				IgnoreDefaultLibraryNames="LIBCMT;msvcrt.lib"
-				DelayLoadDLLs="SDL.dll;SDL_net.dll;SDL_image.dll;SDL_ttf.dll;SDL_mixer.dll;openvr_api.dll"
+				DelayLoadDLLs="SDL2.dll;SDL2_net.dll;SDL2_image.dll;SDL2_ttf.dll;SDL2_mixer.dll;openvr_api.dll"
 				GenerateDebugInformation="true"
 				AssemblyDebug="1"
 				GenerateMapFile="true"
@@ -184,6 +185,7 @@
 			/>
 			<Tool
 				Name="VCManifestTool"
+				EmbedManifest="true"
 			/>
 			<Tool
 				Name="VCXDCMakeTool"
@@ -233,7 +235,7 @@
 				OmitFramePointers="true"
 				WholeProgramOptimization="true"
 				AdditionalIncludeDirectories="Sources;Sources\UI;Sources\Game;..\RaptorEngine\Core;..\RaptorEngine\Graphics;..\RaptorEngine\Input;..\RaptorEngine\Libs;..\RaptorEngine\Net;..\RaptorEngine\Sound;..\RaptorEngine\UI;..\RaptorEngine\Game;..\RaptorEngine\Saitek;..\RaptorEngine\VR"
-				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;_BIND_TO_CURRENT_VCLIBS_VERSION=1;_BIND_TO_CURRENT_CRT_VERSION=1"
+				PreprocessorDefinitions="NDEBUG;WIN32;_WINDOWS;SDL2;_BIND_TO_CURRENT_VCLIBS_VERSION=1;_BIND_TO_CURRENT_CRT_VERSION=1"
 				MinimalRebuild="true"
 				RuntimeLibrary="2"
 				EnableFunctionLevelLinking="true"
@@ -255,11 +257,11 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="OpenGL32.lib GLU32.lib GLEW32s.lib GLEW32mxs.lib SDL.lib SDLmain.lib SDL_net.lib SDL_image.lib SDL_ttf.lib SDL_mixer.lib openvr_api.lib vcomp.lib"
+				AdditionalDependencies="OpenGL32.lib GLU32.lib GLEW32s.lib GLEW32mxs.lib SDL2.lib SDL2main.lib SDL2_net.lib SDL2_image.lib SDL2_ttf.lib SDL2_mixer.lib openvr_api.lib vcomp.lib"
 				LinkIncremental="1"
-				AdditionalLibraryDirectories="&quot;Y:\Documents\Frameworks\lib&quot;"
+				AdditionalLibraryDirectories=""
 				IgnoreDefaultLibraryNames="LIBCMT"
-				DelayLoadDLLs="SDL.dll;SDL_net.dll;SDL_image.dll;SDL_ttf.dll;SDL_mixer.dll;openvr_api.dll"
+				DelayLoadDLLs="SDL2.dll;SDL2_net.dll;SDL2_image.dll;SDL2_ttf.dll;SDL2_mixer.dll;openvr_api.dll"
 				GenerateDebugInformation="true"
 				GenerateMapFile="true"
 				MapFileName="$(TargetDir)$(TargetName).map"
@@ -276,6 +278,7 @@
 			/>
 			<Tool
 				Name="VCManifestTool"
+				EmbedManifest="true"
 			/>
 			<Tool
 				Name="VCXDCMakeTool"
@@ -326,7 +329,7 @@
 				OmitFramePointers="true"
 				WholeProgramOptimization="true"
 				AdditionalIncludeDirectories="Sources;Sources\UI;Sources\Game;..\RaptorEngine\Core;..\RaptorEngine\Graphics;..\RaptorEngine\Input;..\RaptorEngine\Libs;..\RaptorEngine\Net;..\RaptorEngine\Sound;..\RaptorEngine\UI;..\RaptorEngine\Game;..\RaptorEngine\Saitek;..\RaptorEngine\VR"
-				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;_BIND_TO_CURRENT_VCLIBS_VERSION=1;_BIND_TO_CURRENT_CRT_VERSION=1"
+				PreprocessorDefinitions="NDEBUG;WIN32;_WINDOWS;SDL2;_BIND_TO_CURRENT_VCLIBS_VERSION=1;_BIND_TO_CURRENT_CRT_VERSION=1"
 				MinimalRebuild="true"
 				RuntimeLibrary="2"
 				EnableFunctionLevelLinking="true"
@@ -347,12 +350,12 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="OpenGL32.lib GLU32.lib GLEW32s.lib GLEW32mxs.lib SDL.lib SDLmain.lib SDL_net.lib SDL_image.lib SDL_ttf.lib SDL_mixer.lib openvr_api.lib vcomp.lib"
+				AdditionalDependencies="OpenGL32.lib GLU32.lib GLEW32s.lib GLEW32mxs.lib SDL2.lib SDL2main.lib SDL2_net.lib SDL2_image.lib SDL2_ttf.lib SDL2_mixer.lib openvr_api.lib vcomp.lib"
 				OutputFile="$(OutDir)\$(ProjectName) x64.exe"
 				LinkIncremental="1"
-				AdditionalLibraryDirectories="&quot;Y:\Documents\Frameworks\lib64&quot;"
+				AdditionalLibraryDirectories=""
 				IgnoreDefaultLibraryNames="LIBCMT"
-				DelayLoadDLLs="SDL.dll;SDL_net.dll;SDL_image.dll;SDL_ttf.dll;SDL_mixer.dll;openvr_api.dll"
+				DelayLoadDLLs="SDL2.dll;SDL2_net.dll;SDL2_image.dll;SDL2_ttf.dll;SDL2_mixer.dll;openvr_api.dll"
 				GenerateDebugInformation="true"
 				GenerateMapFile="true"
 				MapFileName="$(TargetDir)$(TargetName).map"
@@ -369,6 +372,7 @@
 			/>
 			<Tool
 				Name="VCManifestTool"
+				EmbedManifest="true"
 			/>
 			<Tool
 				Name="VCXDCMakeTool"
@@ -1064,6 +1068,14 @@
 				</File>
 				<File
 					RelativePath=".\Sources\Game\Asteroid.h"
+					>
+				</File>
+				<File
+					RelativePath=".\Sources\Game\Checkpoint.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\Sources\Game\Checkpoint.h"
 					>
 				</File>
 				<File

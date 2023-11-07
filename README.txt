@@ -1,6 +1,6 @@
 ----------------------------------------
 |            X-Wing Revival            |
-|        0.2 Alpha (2023-05-04)        |
+|        0.3 Alpha (2023-11-07)        |
 |     by Raptor007 (Blair Sherman)     |
 | http://raptor007.com/x-wing-revival/ |
 ----------------------------------------
@@ -10,8 +10,10 @@ Welcome to X-Wing Revival!  I started making this because I wanted to have an X-
 party in 2011, and found that X-Wing Alliance (released in 2002) didn't run correctly on
 modern PCs.  We've come a long way since then!  The goal is still to recreate the feeling
 of a classic LucasArts X-Wing game, but X-Wing Revival has developed into its own unique
-take on the genre, with a focus on fun dogfighting, epic battles, multiplayer balance,
+take on the genre, with a focus on fast dogfighting, epic battles, multiplayer balance,
 and staying true to classic Star Wars ship designs.  (TIE Fighters don't have missiles!)
+X-Wing Revival finally feels like a proper sequel to the X-Wing Demo for Macintosh that
+I played over and over on a Quadra 605 while listening to the Star Wars soundtrack CDs.
 
 If you're looking for the official X-Wing title of 2020, check out Star Wars Squadrons:
   https://store.steampowered.com/app/1222730/STAR_WARS_Squadrons/
@@ -27,15 +29,15 @@ and click Fly when you're ready to launch.
 
   Fleet Battle: Each team tries to destroy the enemy capital ships while defending
     their own.  The last team with any surviving capital ship wins.  Respawn is only
-	possible while your main capital ship survives, so prioritize its protection.
-	Cruisers will respawn if their entire group is destroyed before the main ship,
-	but the more cruisers on a team, the longer it takes for their group to respawn.
-	Default cruisers are 2 Corvettes vs 3 Interdictors.  (If you set both to 0, this
-	is essentially the old "Defend/Destroy" mode.)
+    possible while your main capital ship survives, so prioritize its protection.
+    Cruisers will respawn if their entire group is destroyed before the main ship,
+    but the more cruisers on a team, the longer it takes for their group to respawn.
+    Default cruisers are 2 Corvettes vs 3 Interdictors.  (If you set both to 0, this
+    is essentially the old "Defend/Destroy" mode.)
 
   Battle of Yavin: Rebels must fly down the trench and try to hit the exhaust port
     with a pair of proton torpedoes.  Imperials must try to prevent the Rebels from
-	doing this before the time limit runs out.  Harder AI skill effects turrets too!
+    doing this before the time limit runs out.  Harder AI skill effects turrets too!
 
   Flagship Hunt: The attacking team must destroy the defending team's flagship before
     the time limit runs out.  (This mode was previously called "Capital Ship Hunt".)
@@ -46,9 +48,15 @@ and click Fly when you're ready to launch.
     AI ships when the player's ship has been destroyed, but no new ships will be given
     to either team once the match has started.
 
+  Team Kessel Run: Race through the asteroid field, gaining points for your team with
+    each checkpoint reached.  First team at the score limit (or last team alive) wins.
+
   FFA Deathmatch: The player to hit the kill limit first wins.  Respawn always enabled.
 
   FFA Elimination: Last man standing wins, and there's no respawn whatsoever.
+
+  FFA Kessel Run: Race through the checkpoints in the asteroid field.  First player to
+    reach the score limit (or last player alive) wins.  Basically Carmageddon in space.
 
 
 == TROUBLESHOOTING / FAQ ==
@@ -85,6 +93,11 @@ My OS warns about or won't allow a downloaded or unsigned application to run.
 
   I recommend the permanent fixes for power users only, or anyone who misses the 90's.
 
+Linux asks what application to open files of type "executable" with.
+
+  Click Cancel, then right-click "X-Wing Revival.elf", go to the "Permissions" tab, and
+    check "Allow this file to run as a program".  Then double-clicking should run it.
+
 
 == PREFERENCES ==
 
@@ -93,8 +106,8 @@ My OS warns about or won't allow a downloaded or unsigned application to run.
   Fullscreen: Toggle fullscreen, and set the resolution for fullscreen mode.
     Windowed resolution can be changed by dragging the lower-right corner.
 
-  FSAA (Antialiasing): Use multiple samples to reduce jagged edges.  Can be GPU-heavy,
-    especially when VR is enabled.
+  MSAA (Antialiasing): Use multiple samples to reduce jagged edges.  Can be GPU-heavy,
+    especially when VR is enabled.  (Renamed from "FSAA" to avoid confusion with FXAA.)
 
   Vertical Synchronization (VSync): Eliminate tearing by only drawing frames when the
     monitor is ready to refresh.  Recommended for fast systems, but turning this off is
@@ -120,23 +133,35 @@ My OS warns about or won't allow a downloaded or unsigned application to run.
     large surfaces like capital ships and the Death Star trench.
     NOTE: This only works if "Draw With Shaders" is enabled.
 
-  Dynamic Lights Per Object: Number of point light sources (lasers, torpedos, etc) to
+  Dynamic Lights: Number of point light sources (lasers, torpedos, explosions, etc) to
     use for lighting each object.  Higher values use a bit more CPU and GPU power.
     NOTE: This only works if "Draw With Shaders" is enabled.
 
-  Death Star Trench Details: Add detail to the Death Star trench walls and floor.  Can
-    be somewhat GPU-heavy and CPU-heavy.
+  Effects: Adjust the number of sprites per explosion.  Lowest removes shot impact
+    effects entirely.  Most should leave this High, but lower settings may reduce
+    the CPU load of dynamic lights and/or the GPU load of layered transparencies.
+
+  Asteroid Quality: Controls how far away asteroids render as model vs simple sphere.
+    Can be somewhat CPU-heavy and GPU-heavy with many asteroids, especially in VR.
     NOTE: This is even more CPU-heavy when shaders are disabled!
 
-  Asteroid Detail: Controls how far away asteroids render as model vs simple sphere.
-    Can be somewhat CPU-heavy and GPU-heavy with many asteroids, especially in VR.
-	NOTE: This is even more CPU-heavy when shaders are disabled!
+  Death Star Trench/Surface: Draw 3D details over the flat surfaces of the Death Star.
+    Can be somewhat GPU-heavy and CPU-heavy, especially in VR.
+    NOTE: This is even more CPU-heavy when shaders are disabled!
 
 --Virtual Reality--
 
   Enable VR Mode: Enable VR HMD output and seated head tracking, using OpenVR/SteamVR.
-    Tested with the HTC Vive, and it should work for the Oculus Rift or any other HMD.
-    You might need to tweak vr_fov and vr_offset in the console.  VERY GPU-HEAVY!
+    Tested with the HTC Vive, and it should work for the Oculus Rift, Valve Index, or
+    any other HMD.  Non-Vive headsets may require view tweaks below.  VERY GPU-HEAVY!
+
+  Sway: Enable cockpit swaying motions in VR.  More immersive, but can be nauseating.
+
+  FOVW / FOVH: Field of view in degrees; negative means vertical FOV.  Default: -111
+
+  Eye Separation: Spacing in meters between the two eyes.  Default: 0.0625
+
+  Center Offset: Offset in pixels from screen center to eye center.  Default: 87
 
 --Sound--
 
@@ -202,27 +227,50 @@ My OS warns about or won't allow a downloaded or unsigned application to run.
    Joy Hat: Look Around
    Joy Button 1 (Trigger): Fire
    Joy Button 2: Change Weapon
-   Joy Button 3: Target Ahead
+   Joy Button 3: Change Firing Mode
    Joy Button 4: Target Nearest Enemy
-   Joy Button 5: Change Firing Mode
-   Joy Button 6: Look Center / VR Head Center
-   Joy Button 7: Change Shield Direction
-   Joy Button 8: Target Attacker
-   Joy Button 9: Target Incoming Warhead
-   Joy Button 10: Target None
-   Joy Button 11: Target Data-Link
-   Joy Button 12: Target Groupmate
-   Joy Button 13: Target Previous
-   Joy Button 14: Target Next
-   Joy Button 20 (Hat 2 Up): Target Previous Friendly
-   Joy Button 21 (Hat 2 Right): Target Next Enemy
-   Joy Button 22 (Hat 2 Down): Target Next Friendly
-   Joy Button 23 (Hat 2 Left): Target Previous Enemy
-   Joy Button 24 (Hat 3 Up): Target Data-Link
-   Joy Button 25 (Hat 3 Right): Target Objective
-   Joy Button 26 (Hat 3 Down): Target None
-   Joy Button 27 (Hat 3 Left): Target Groupmate
-   Joy Button 31 (Clutch): Target Incoming Warhead
+   Joy Button 5: Look Center / VR Head Center
+   Joy Button 6: Target Ahead
+   Joy Button 7: Target Attacker
+   Joy Button 8: Target Incoming Warhead
+   Joy Button 9: Target Next Enemy
+   Joy Button 10: Target Previous Enemy
+   Joy Button 11: Change Shield Direction
+   Joy Button 12: Target Objective
+
+   X52 Button 1 (Trigger): Fire
+   X52 Button 2 (Fire): Change Weapon
+   X52 Button 3 (A): Target Ahead
+   X52 Button 4 (B): Target Nearest Enemy
+   X52 Button 5 (C): Change Firing Mode
+   X52 Button 6 (Pinkie): Look Center / VR Head Center
+   X52 Button 7 (D): Change Shield Direction
+   X52 Button 8 (E): Target Attacker
+   X52 Button 9 (T1): Target Incoming Warhead
+   X52 Button 10 (T2): Target None
+   X52 Button 11 (T3): Target Data-Link
+   X52 Button 12 (T4): Target Groupmate
+   X52 Button 13 (T5): Target Previous
+   X52 Button 14 (T6): Target Next
+   X52 Button 20 (Hat 2 Up): Target Previous Subsystem
+   X52 Button 21 (Hat 2 Right): Target Next Enemy
+   X52 Button 22 (Hat 2 Down): Target Next Subsystem
+   X52 Button 23 (Hat 2 Left): Target Previous Enemy
+   X52 Button 24 (Hat 3 Up): Target Data-Link
+   X52 Button 25 (Hat 3 Right): Target Next Friendly
+   X52 Button 26 (Hat 3 Down): Target None
+   X52 Button 27 (Hat 3 Left): Target Previous Friendly
+   X52 Button 31 (Clutch): Target Incoming Warhead
+
+   SideWinder Button 1 (Trigger): Fire
+   SideWinder Button 2: Change Weapon
+   SideWinder Button 3: Target Ahead
+   SideWinder Button 4: Change Firing Mode
+   SideWinder Button 5 (A): Target Nearest Enemy
+   SideWinder Button 6 (B): Target Attacker
+   SideWinder Button 7 (C): Target Incoming Warhead
+   SideWinder Button 8 (D): Change Shield Direction
+   SideWinder Button 9 (Shift): Look Center / VR Head Center
 
    Xbox Left Stick: Yaw/Pitch
    Xbox Right Stick: Look Around
@@ -358,20 +406,12 @@ sure this port is allowed so you can discover local games.
 
 == VIRTUAL REALITY ==
 
-This version of X-Wing Revival has OpenVR (SteamVR) support!  It has only been tested
-on the HTC Vive, but it should work on other headsets like the Oculus Rift.
+This version of X-Wing Revival has OpenVR (SteamVR) support!  I've only tested this
+on the HTC Vive, but it should work on other headsets with SteamVR support, such as
+Oculus Rift, Valve Index, etc.  See the Preferences for VR view tweaks.
 
-I quickly hacked this in without following all the best practices, so it may require a
-little bit of tweaking to look perfect, especially if you aren't using the HTC Vive.
-Here are the relevant console variables:
-
-  vr_fov: Field of view in VR.  Negative values specify vertical FOV.  Defaut: -111
-  vr_offset: Eye centering fix in pixels.  Small values exaggerate depth.  Default: 87
-  vr_separation: Distance between in-game eyes in meters.  Default: 0.0625
-
-When playing in VR, there's no radar yet, but the ability to freely look around more
-than makes up for this.  Messages won't display by default, but you can show them by
-pressing return to toggle chat.
+When playing in VR, there's no radar yet, so pick up your visual scanning!  Messages
+won't display by default, but you can show them by pressing return to toggle chat.
 
 
 == ABOUT THE SCREENSAVER ==
@@ -389,6 +429,33 @@ console commands to execute, such as "sv gametype yavin" or "sv rebel_fighter A/
 
 
 == VERSION HISTORY ==
+
+Alpha 0.3 (2023-11-07):
+ * Now includes ELF64 binary for Linux.
+ * Updated to SDL2 on Windows/Linux.  This fixes some joystick device mappings.
+ * Improved netcode fixes shot sync and reduces ship rubber-banding when stopping.
+ * Added new race game modes: Team Kessel Run and FFA Kessel Run.
+ * Added new playable Imperial ship: Assault Gunboat.
+ * Improved gameplay with respawn disabled.  Round ends when the last player dies.
+ * AI ships work harder to complete main objectives, especially without respawn.
+ * Expanded AI skill levels: Bantha Fodder, Rookie, Veteran, Ace, Jedi, and Sith.
+ * Subsystems on Star Destroyer can now be targeted and locked on at close range.
+ * Y-Wings and B-Wings now have working ion cannons to take down shields quickly.
+ * All ship turrets animate movement.  YT-1300 turrets reworked with firing modes.
+ * Improved explosions, shots, and dynamic lights.  Effects quality now adjustable.
+ * Reduced z-fighting flicker and improved performance by culling model backfaces.
+ * Improved TIE cockpit visibility and moved VR viewport into correct head position.
+ * Added VR tweaks to prefs, including new "vr_sway" (default off to reduce nausea).
+ * Reworked sounds: damage received, enemy lock, missile launch, and rebel turrets.
+ * More variety in asteroid size and health.  Improved scatter and reduced count.
+ * Target Incoming Warhead now always targets the most recently launched.
+ * Joystick hat now defaults to Glance views, similar to controller thumbstick look.
+ * Increased spacing between cruiser arrival points to reduce friendly collisions.
+ * If the rebels do not destroy the Death Star in time, it fires its superlaser.
+ * Fixed auto-assign moving you to the winning team if you died after your flagship.
+ * Fixed flyby sounds playing too frequently when closely following another ship.
+ * Fixed position of Customize Fleet menu in VR.
+ * Added pause button for single-player games.
 
 Alpha 0.2 (2023-05-04):
  * AI ships now dodge obstacles, avoid friendly fire, and have selectable skill level.

@@ -1,8 +1,9 @@
-id T/F
-name TIE Fighter
-squadron Alpha
+id T/F-S
+name TIE Fighter (SuperLaser)
+squadron DeathTIE
 category fighter
 team empire
+secret
 radius 4.3
 speed 200
 accel 100
@@ -16,9 +17,8 @@ health 100
 shield 0
 ramming 500
 explode 1
-weapon laser_green 0.2 -0.9 0
-weapon laser_green -0.2 -0.9 0
-firetime laser_green 0.25
+weapon superlaser 0 -0.9 0
+firetime superlaser 5
 model tie-fighter_hq.obj
 cockpit tie-fighter_cockpit_vr.obj 0 0 0.07
 cockpit_vr tie-fighter_cockpit_vr.obj 0 0.1 -0.1

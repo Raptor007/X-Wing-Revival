@@ -6,6 +6,7 @@
 class PrefsMenu;
 class PrefsMenuCheckBox;
 class PrefsMenuVRCheckBox;
+class PrefsMenuSecretCheckBox;
 class PrefsMenuRadioButton;
 class PrefsMenuTextBox;
 class PrefsMenuListBox;
@@ -14,6 +15,7 @@ class PrefsMenuFilterDropDown;
 class PrefsMenuDoneButton;
 class PrefsMenuDefaultsButton;
 class PrefsMenuPageButton;
+class PrefsMenuSillyButton;
 class PrefsMenuRefreshButton;
 class PrefsMenuBind;
 
@@ -50,6 +52,8 @@ public:
 	void Draw( void );
 	bool KeyDown( SDLKey key );
 	bool KeyUp( SDLKey key );
+	bool MouseDown( Uint8 button = SDL_BUTTON_LEFT );
+	bool MouseUp( Uint8 button = SDL_BUTTON_LEFT );
 	
 	enum
 	{
@@ -77,6 +81,17 @@ public:
 	PrefsMenuVRCheckBox( SDL_Rect *rect, Font *font, std::string label );
 	virtual ~PrefsMenuVRCheckBox();
 	void Changed( void );
+};
+
+
+class PrefsMenuSecretCheckBox : public PrefsMenuCheckBox
+{
+public:
+	int TimesClicked;
+	
+	PrefsMenuSecretCheckBox( SDL_Rect *rect, Font *font, std::string label, std::string variable = "darkside", std::string true_str = "true", std::string false_str = "false" );
+	virtual ~PrefsMenuSecretCheckBox();
+	void Clicked( Uint8 button = SDL_BUTTON_LEFT );
 };
 
 
@@ -192,7 +207,7 @@ class PrefsMenuBind : public Button
 {
 public:
 	uint8_t Control, Inverse;
-	bool Analog;
+	bool Analog, Digital;
 	Font *NameFont, *BindFont;
 	
 	PrefsMenuBind( SDL_Rect *rect, uint8_t analog_control, uint8_t inverse, Font *name_font, Font *bind_font );

@@ -27,17 +27,19 @@ PrefsMenu::PrefsMenu( void )
 	
 	TitleFont   = Raptor::Game->Res.GetFont( "Verdana.ttf", 30 );
 	LabelFont   = Raptor::Game->Res.GetFont( "Verdana.ttf", 16 );
-	ItemFont    = Raptor::Game->Res.GetFont( "Verdana.ttf", 17 );
-	ButtonFont  = Raptor::Game->Res.GetFont( "Verdana.ttf", 30 );
-	ControlFont = Raptor::Game->Res.GetFont( "Geneva.ttf", 12 );
+	ItemFont    = LabelFont;
+	ButtonFont  = TitleFont;
+	ControlFont = Raptor::Game->Res.GetFont( "Geneva.ttf",  12 );
 	BindFont    = Raptor::Game->Res.GetFont( "Verdana.ttf", 10 );
 	
 	Page = PAGE_PREFERENCES;
 	UpdateContents();
 	
 	WatchSetting( "g_fullscreen" );
+#if ! SDL_VERSION_ATLEAST(2,0,0)
 	WatchSetting( "g_res_fullscreen_x" );
 	WatchSetting( "g_res_fullscreen_y" );
+#endif
 	WatchSetting( "g_vsync" );
 	WatchSetting( "g_bpp" );
 	WatchSetting( "g_zbits" );
@@ -47,6 +49,7 @@ PrefsMenu::PrefsMenu( void )
 	WatchSetting( "g_texture_maxres" );
 	WatchSetting( "g_framebuffers" );
 	WatchSetting( "g_shader_enable" );
+	WatchSetting( "g_shader_version" );
 	WatchSetting( "g_shader_light_quality" );
 	WatchSetting( "g_shader_point_lights" );
 }
@@ -65,13 +68,20 @@ void PrefsMenu::WatchSetting( const std::string &name )
 
 bool PrefsMenu::WatchedSettingsChanged( void )
 {
-	// Restart graphics for turning shaders on, but not for turning them off.
+	// Toggling shaders only requires restart when enabling if any Shader::Load occurred while they were disabled.
 	bool shader_enable = Raptor::Game->Cfg.SettingAsBool( "g_shader_enable" );
-	if( shader_enable && (Previous[ "g_shader_enable" ] != Raptor::Game->Cfg.SettingAsString( "g_shader_enable" )) )
+	if( shader_enable && (Previous[ "g_shader_enable" ] != Raptor::Game->Cfg.SettingAsString( "g_shader_enable" )) && Raptor::Game->Res.ShadersNeedReload() )
+	{
+		//Raptor::Game->Console.Print( "PrefsMenu::WatchedSettingsChanged: g_shader_enable" );
 		return true;
+	}
 	
 	for( std::map<std::string,std::string>::const_iterator prev_iter = Previous.begin(); prev_iter != Previous.end(); prev_iter ++ )
 	{
+		// We already decided above if g_shader_enable requires a restart.
+		if( prev_iter->first == "g_shader_enable" )
+			continue;
+		
 		// Don't restart graphics for changes to shader variables if shaders are disabled.
 		if( Str::BeginsWith( prev_iter->first, "g_shader_" ) && ! shader_enable )
 			continue;
@@ -82,7 +92,10 @@ bool PrefsMenu::WatchedSettingsChanged( void )
 		
 		// Restart if any other watched variable was changed.
 		if( prev_iter->second != Raptor::Game->Cfg.SettingAsString( prev_iter->first ) )
+		{
+			//Raptor::Game->Console.Print( std::string("PrefsMenu::WatchedSettingsChanged: ") + prev_iter->first );
 			return true;
+		}
 	}
 	
 	return false;
@@ -130,14 +143,18 @@ void PrefsMenu::UpdateContents( void )
 		
 		group_rect.x = 10;
 		group_rect.y = 50;
-		group_rect.w = 405;
+		group_rect.w = 420;
 		group_rect.h = 299;
 		group = new GroupBox( &group_rect, "Graphics", ItemFont );
 		AddElement( group );
 		rect.x = 10;
 		rect.y = 10 + group->TitleFont->GetAscent();
-		
 		rect.h = ItemFont ? ItemFont->GetHeight() : 18;
+		
+#if SDL_VERSION_ATLEAST(2,0,0)
+		rect.w = 110;
+		group->AddElement( new PrefsMenuCheckBox( &rect, LabelFont, "Fullscreen", "g_fullscreen" ) );
+#else
 		rect.w = 115;
 		group->AddElement( new PrefsMenuCheckBox( &rect, LabelFont, "Fullscreen:", "g_fullscreen" ) );
 		rect.x += rect.w + 5;
@@ -149,14 +166,17 @@ void PrefsMenu::UpdateContents( void )
 		rect.x += rect.w + 5;
 		rect.w = 60;
 		group->AddElement( new PrefsMenuTextBox( &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, "g_res_fullscreen_y" ) );
+#endif
 		rect.x += rect.w + 15;
 		rect.w = 85;
 		PrefsMenuDropDown *fsaa_dropdown = new PrefsMenuDropDown( &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, 0, "g_fsaa" );
-		fsaa_dropdown->AddItem( "0", "No AA" );
-		fsaa_dropdown->AddItem( "2", "2xFSAA" );
-		fsaa_dropdown->AddItem( "4", "4xFSAA" );
-		fsaa_dropdown->AddItem( "8", "8xFSAA" );
-		fsaa_dropdown->AddItem( "16", "16xFSAA" );
+		fsaa_dropdown->AddItem(  "0", "No AA" );
+		fsaa_dropdown->AddItem(  "2", "2xMSAA" );
+		fsaa_dropdown->AddItem(  "3", "3xMSAA" );
+		fsaa_dropdown->AddItem(  "4", "4xMSAA" );
+		fsaa_dropdown->AddItem(  "6", "6xMSAA" );
+		fsaa_dropdown->AddItem(  "8", "8xMSAA" );
+		fsaa_dropdown->AddItem( "16", "16xMSAA" );
 		fsaa_dropdown->Update();
 		group->AddElement( fsaa_dropdown );
 		
@@ -172,20 +192,20 @@ void PrefsMenu::UpdateContents( void )
 		rect.x += rect.w + 5;
 		rect.w = 85;
 		PrefsMenuDropDown *texture_res_dropdown = new PrefsMenuDropDown( &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, 0, "g_texture_maxres" );
-		texture_res_dropdown->AddItem( "64", "Awful" );
-		texture_res_dropdown->AddItem( "128", "Low" );
-		texture_res_dropdown->AddItem( "256", "Medium" );
+		texture_res_dropdown->AddItem(   "64", "Awful" );
+		texture_res_dropdown->AddItem(  "128", "Low" );
+		texture_res_dropdown->AddItem(  "256", "Medium" );
 		texture_res_dropdown->AddItem( "1024", "Med-Hi" );
-		texture_res_dropdown->AddItem( "0", "High" );
+		texture_res_dropdown->AddItem(    "0", "High" );
 		texture_res_dropdown->Update();
 		group->AddElement( texture_res_dropdown );
 		rect.x += rect.w + 10;
 		rect.w = 85;
 		PrefsMenuFilterDropDown *af_dropdown = new PrefsMenuFilterDropDown( &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, 0 );
-		af_dropdown->AddItem( "1", "Trilinear" );
-		af_dropdown->AddItem( "2", "2xAF" );
-		af_dropdown->AddItem( "4", "4xAF" );
-		af_dropdown->AddItem( "8", "8xAF" );
+		af_dropdown->AddItem(  "1", "Trilinear" );
+		af_dropdown->AddItem(  "2", "2xAF" );
+		af_dropdown->AddItem(  "4", "4xAF" );
+		af_dropdown->AddItem(  "8", "8xAF" );
 		af_dropdown->AddItem( "16", "16xAF" );
 		af_dropdown->AddItem( "-1", "Linear" );
 		af_dropdown->Update();
@@ -227,24 +247,67 @@ void PrefsMenu::UpdateContents( void )
 		
 		rect.x = 10;
 		rect.y += rect.h + 8;
-		rect.w = 240;
-		group->AddElement( new PrefsMenuCheckBox( &rect, LabelFont, "Death Star Trench Details", "g_deathstar_detail", "3", "0" ) );
-		
-		rect.y += rect.h + 8;
-		rect.w = 145;
+		rect.w = 64;
+		group->AddElement( new Label( &rect, "Effects:", LabelFont, Font::ALIGN_MIDDLE_LEFT ) );
+		rect.x += rect.w + 5;
+		rect.w = 75;
+		PrefsMenuDropDown *effects_dropdown = new PrefsMenuDropDown( &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, 0, "g_effects" );
+		double effects_quality = Raptor::Game->Cfg.SettingAsDouble("g_effects",1.);
+		if( effects_quality < 0. )
+			effects_dropdown->AddItem( Raptor::Game->Cfg.SettingAsString("g_effects"), "Awful" );
+		effects_dropdown->AddItem( "0",   "Lowest" );
+		effects_dropdown->AddItem( "0.1", "Low" );
+		effects_dropdown->AddItem( "0.5", "Medium" );
+		effects_dropdown->AddItem( "1",   "High" );
+		if( effects_quality > 1. )
+			effects_dropdown->AddItem( Raptor::Game->Cfg.SettingAsString("g_effects"), "Ultra" );
+		effects_dropdown->Update();
+		group->AddElement( effects_dropdown );
+		rect.x += rect.w + 39;
+		rect.w = 137;
 		group->AddElement( new Label( &rect, "Asteroid Quality:", LabelFont, Font::ALIGN_MIDDLE_LEFT ) );
 		rect.x += rect.w + 5;
-		rect.w = 85;
+		rect.w = 75;
 		PrefsMenuDropDown *asteroid_lod_dropdown = new PrefsMenuDropDown( &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, 0, "g_asteroid_lod" );
-		asteroid_lod_dropdown->AddItem( "0", "Awful" );
+		asteroid_lod_dropdown->AddItem( "0",    "Awful" );
 		asteroid_lod_dropdown->AddItem( "0.25", "Low" );
-		asteroid_lod_dropdown->AddItem( "0.5", "Medium" );
-		asteroid_lod_dropdown->AddItem( "1", "High" );
-		asteroid_lod_dropdown->AddItem( "2", "Ultra" );
+		asteroid_lod_dropdown->AddItem( "0.5",  "Medium" );
+		asteroid_lod_dropdown->AddItem( "1",    "High" );
+		asteroid_lod_dropdown->AddItem( "2",    "Ultra" );
 		asteroid_lod_dropdown->Update();
 		group->AddElement( asteroid_lod_dropdown );
 		
-		group->Rect.h = rect.y + rect.h + 10;
+		rect.x = 10;
+		rect.y += rect.h + 8;
+		rect.w = 160;
+		group->AddElement( new Label( &rect, "Death Star Trench:", LabelFont, Font::ALIGN_MIDDLE_LEFT ) );
+		rect.x += rect.w + 5;
+		rect.w = 75;
+		PrefsMenuDropDown *deathstar_trench_dropdown = new PrefsMenuDropDown( &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, 0, "g_deathstar_trench" );
+		deathstar_trench_dropdown->AddItem( "0", "Flat" );
+		deathstar_trench_dropdown->AddItem( "1", "Awful" );
+		deathstar_trench_dropdown->AddItem( "2", "Low" );
+		deathstar_trench_dropdown->AddItem( "3", "Medium" );
+		deathstar_trench_dropdown->AddItem( "4", "High" );
+		deathstar_trench_dropdown->AddItem( "5", "Ultra" );
+		deathstar_trench_dropdown->Update();
+		group->AddElement( deathstar_trench_dropdown );
+		rect.x += rect.w + 10;
+		rect.w = 70;
+		group->AddElement( new Label( &rect, "Surface:", LabelFont, Font::ALIGN_MIDDLE_LEFT ) );
+		rect.x += rect.w + 5;
+		rect.w = 75;
+		PrefsMenuDropDown *deathstar_surface_dropdown = new PrefsMenuDropDown( &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, 0, "g_deathstar_surface" );
+		deathstar_surface_dropdown->AddItem( "0", "Flat" );
+		deathstar_surface_dropdown->AddItem( "1", "Awful" );
+		deathstar_surface_dropdown->AddItem( "2", "Low" );
+		deathstar_surface_dropdown->AddItem( "3", "Medium" );
+		deathstar_surface_dropdown->AddItem( "4", "High" );
+		deathstar_surface_dropdown->AddItem( "5", "Ultra" );
+		deathstar_surface_dropdown->Update();
+		group->AddElement( deathstar_surface_dropdown );
+		
+		group->Rect.h = rect.y + rect.h + 13;
 		group_rect.h = group->Rect.h;
 		
 		// --------------------------------------------------------------------------------------------------------------------
@@ -259,10 +322,45 @@ void PrefsMenu::UpdateContents( void )
 		rect.w = 160;
 		group->AddElement( new PrefsMenuVRCheckBox( &rect, LabelFont, "Enable VR Mode" ) );
 		
-		// FIXME: vr_mirror, vr_fov, vr_separation, vr_offset
+		rect.x += rect.w + 20;
+		rect.w = 70;
+		group->AddElement( new PrefsMenuCheckBox( &rect, LabelFont, "Sway", "vr_sway" ) );
+		
+		rect.y += rect.h + 8;
+		rect.x = 10;
+		rect.w = 165;
+		group->AddElement( new Label( &rect, "FOVW / FOVH(-):", LabelFont, Font::ALIGN_MIDDLE_LEFT ) );
+		rect.x += rect.w + 5;
+		rect.w = 95;
+		group->AddElement( new PrefsMenuTextBox( &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, "vr_fov" ) );
+		
+		rect.y += rect.h + 8;
+		rect.x = 10;
+		rect.w = 165;
+		group->AddElement( new Label( &rect, "Eye Separation (m):", LabelFont, Font::ALIGN_MIDDLE_LEFT ) );
+		rect.x += rect.w + 5;
+		rect.w = 95;
+		group->AddElement( new PrefsMenuTextBox( &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, "vr_separation" ) );
+		
+		rect.y += rect.h + 8;
+		rect.x = 10;
+		rect.w = 165;
+		group->AddElement( new Label( &rect, "Center Offset (px):", LabelFont, Font::ALIGN_MIDDLE_LEFT ) );
+		rect.x += rect.w + 5;
+		rect.w = 95;
+		group->AddElement( new PrefsMenuTextBox( &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, "vr_offset" ) );
 		
 		group->Rect.w = rect.x + rect.w + 10;
 		group->Rect.h = rect.y + rect.h + 10;
+		
+		// --------------------------------------------------------------------------------------------------------------------
+		// Dark Side
+		
+		rect.x = Rect.w - 320;
+		rect.y = group->Rect.y + (group->TitleFont ? group->TitleFont->GetAscent() : 0);
+		rect.w = 100;
+		rect.h = ItemFont ? ItemFont->GetHeight() : 18;
+		AddElement( new PrefsMenuSecretCheckBox( &rect, LabelFont, "Dark Side" ) );
 		
 		// --------------------------------------------------------------------------------------------------------------------
 		// Sound
@@ -279,61 +377,82 @@ void PrefsMenu::UpdateContents( void )
 		rect.w = 70;
 		group->AddElement( new Label( &rect, "Volume:", LabelFont, Font::ALIGN_MIDDLE_LEFT ) );
 		rect.x += rect.w + 5;
-		rect.w = 100;
+		rect.w = 90;
 		PrefsMenuDropDown *s_volume_dropdown = new PrefsMenuDropDown( &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, 0, "s_volume" );
-		s_volume_dropdown->AddItem( "0",     "Mute" );
-		s_volume_dropdown->AddItem( "0.075", "Very Quiet" );
-		s_volume_dropdown->AddItem( "0.125", "Quiet" );
-		s_volume_dropdown->AddItem( "0.25",  "Medium" );
-		s_volume_dropdown->AddItem( "0.5",   "Loud" );
-		s_volume_dropdown->AddItem( "0.75",  "Louder" );
-		s_volume_dropdown->AddItem( "1",     "Loudest" );
+		s_volume_dropdown->AddItem( "0",   "Mute" );
+		s_volume_dropdown->AddItem( "0.1", "10%" );
+		s_volume_dropdown->AddItem( "0.2", "20%" );
+		s_volume_dropdown->AddItem( "0.3", "30%" );
+		s_volume_dropdown->AddItem( "0.4", "40%" );
+		s_volume_dropdown->AddItem( "0.5", "50%" );
+		s_volume_dropdown->AddItem( "0.6", "60%" );
+		s_volume_dropdown->AddItem( "0.7", "70%" );
+		s_volume_dropdown->AddItem( "0.8", "80%" );
+		s_volume_dropdown->AddItem( "0.9", "90%" );
+		s_volume_dropdown->AddItem( "1",   "100%" );
 		s_volume_dropdown->Update();
 		group->AddElement( s_volume_dropdown );
 		
 		rect.y += rect.h + 8;
-		rect.x = 10;
+		rect.x = 20;
 		rect.w = 70;
 		group->AddElement( new Label( &rect, "Effects:", LabelFont, Font::ALIGN_MIDDLE_LEFT ) );
 		rect.x += rect.w + 5;
-		rect.w = 100;
+		rect.w = 80;
 		PrefsMenuDropDown *s_effect_volume_dropdown = new PrefsMenuDropDown( &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, 0, "s_effect_volume" );
-		s_effect_volume_dropdown->AddItem( "0",     "Mute" );
-		s_effect_volume_dropdown->AddItem( "0.125", "Very Quiet" );
-		s_effect_volume_dropdown->AddItem( "0.25",  "Quiet" );
-		s_effect_volume_dropdown->AddItem( "0.5",   "Medium" );
-		s_effect_volume_dropdown->AddItem( "0.75",  "Loud" );
-		s_effect_volume_dropdown->AddItem( "1",     "Loudest" );
+		s_effect_volume_dropdown->AddItem( "0",   "Mute" );
+		s_effect_volume_dropdown->AddItem( "0.1", "10%" );
+		s_effect_volume_dropdown->AddItem( "0.2", "20%" );
+		s_effect_volume_dropdown->AddItem( "0.3", "30%" );
+		s_effect_volume_dropdown->AddItem( "0.4", "40%" );
+		s_effect_volume_dropdown->AddItem( "0.5", "50%" );
+		s_effect_volume_dropdown->AddItem( "0.6", "60%" );
+		s_effect_volume_dropdown->AddItem( "0.7", "70%" );
+		s_effect_volume_dropdown->AddItem( "0.8", "80%" );
+		s_effect_volume_dropdown->AddItem( "0.9", "90%" );
+		s_effect_volume_dropdown->AddItem( "1",   "100%" );
 		s_effect_volume_dropdown->Update();
 		group->AddElement( s_effect_volume_dropdown );
 		
 		rect.y += rect.h + 8;
-		rect.x = 10;
+		rect.x = 30;
 		rect.w = 70;
 		group->AddElement( new Label( &rect, "Engines:", LabelFont, Font::ALIGN_MIDDLE_LEFT ) );
 		rect.x += rect.w + 5;
-		rect.w = 100;
+		rect.w = 70;
 		PrefsMenuDropDown *s_engine_volume_dropdown = new PrefsMenuDropDown( &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, 0, "s_engine_volume" );
-		s_engine_volume_dropdown->AddItem( "0",    "Mute" );
-		s_engine_volume_dropdown->AddItem( "0.5",  "Quiet" );
-		s_engine_volume_dropdown->AddItem( "0.75", "Medium" );
-		s_engine_volume_dropdown->AddItem( "1",    "Loud" );
+		s_engine_volume_dropdown->AddItem( "0",   "Mute" );
+		s_engine_volume_dropdown->AddItem( "0.1", "10%" );
+		s_engine_volume_dropdown->AddItem( "0.2", "20%" );
+		s_engine_volume_dropdown->AddItem( "0.3", "30%" );
+		s_engine_volume_dropdown->AddItem( "0.4", "40%" );
+		s_engine_volume_dropdown->AddItem( "0.5", "50%" );
+		s_engine_volume_dropdown->AddItem( "0.6", "60%" );
+		s_engine_volume_dropdown->AddItem( "0.7", "70%" );
+		s_engine_volume_dropdown->AddItem( "0.8", "80%" );
+		s_engine_volume_dropdown->AddItem( "0.9", "90%" );
+		s_engine_volume_dropdown->AddItem( "1",   "100%" );
 		s_engine_volume_dropdown->Update();
 		group->AddElement( s_engine_volume_dropdown );
 		
-		rect.x = 10;
+		rect.x = 20;
 		rect.y += rect.h + 8;
 		rect.w = 70;
 		group->AddElement( new Label( &rect, "Music:", LabelFont, Font::ALIGN_MIDDLE_LEFT ) );
 		rect.x += rect.w + 5;
-		rect.w = 100;
+		rect.w = 80;
 		PrefsMenuDropDown *s_music_volume_dropdown = new PrefsMenuDropDown( &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, 0, "s_music_volume" );
-		s_music_volume_dropdown->AddItem( "0", "Mute" );
-		s_music_volume_dropdown->AddItem( "0.125", "Very Quiet" );
-		s_music_volume_dropdown->AddItem( "0.25", "Quiet" );
-		s_music_volume_dropdown->AddItem( "0.5", "Medium" );
-		s_music_volume_dropdown->AddItem( "0.75", "Loud" );
-		s_music_volume_dropdown->AddItem( "1", "Loudest" );
+		s_music_volume_dropdown->AddItem( "0",   "Mute" );
+		s_music_volume_dropdown->AddItem( "0.1", "10%" );
+		s_music_volume_dropdown->AddItem( "0.2", "20%" );
+		s_music_volume_dropdown->AddItem( "0.3", "30%" );
+		s_music_volume_dropdown->AddItem( "0.4", "40%" );
+		s_music_volume_dropdown->AddItem( "0.5", "50%" );
+		s_music_volume_dropdown->AddItem( "0.6", "60%" );
+		s_music_volume_dropdown->AddItem( "0.7", "70%" );
+		s_music_volume_dropdown->AddItem( "0.8", "80%" );
+		s_music_volume_dropdown->AddItem( "0.9", "90%" );
+		s_music_volume_dropdown->AddItem( "1",   "100%" );
 		s_music_volume_dropdown->Update();
 		group->AddElement( s_music_volume_dropdown );
 		
@@ -358,7 +477,7 @@ void PrefsMenu::UpdateContents( void )
 		group_rect.x = 10;
 		group_rect.y = 50;
 		group_rect.w = 200;
-		group_rect.h = 140;
+		group_rect.h = 135;
 		group = new GroupBox( &group_rect, "Joystick", ItemFont );
 		AddElement( group );
 		rect.x = 10;
@@ -464,7 +583,7 @@ void PrefsMenu::UpdateContents( void )
 		// Controller
 		
 		group_rect.y += group_rect.h + 5;
-		group_rect.h = 120;
+		group_rect.h = 116;
 		group = new GroupBox( &group_rect, "Controller", ItemFont );
 		AddElement( group );
 		rect.x = 10;
@@ -547,7 +666,7 @@ void PrefsMenu::UpdateContents( void )
 		// Mouse
 		
 		group_rect.y += group_rect.h + 5;
-		group_rect.h = 120;
+		group_rect.h = 116;
 		group = new GroupBox( &group_rect, "Mouse", ItemFont );
 		AddElement( group );
 		rect.x = 10;
@@ -596,7 +715,7 @@ void PrefsMenu::UpdateContents( void )
 		// Global Toggles
 		
 		rect.x = 10;
-		rect.y = group_rect.y + group_rect.h + 10;
+		rect.y = group_rect.y + group_rect.h + 15;
 		rect.w = 150;
 		AddElement( new PrefsMenuCheckBox( &rect, LabelFont, "Swap Yaw/Roll", "swap_yaw_roll" ) );
 		
@@ -649,17 +768,17 @@ void PrefsMenu::UpdateContents( void )
 		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::LOOK_Y ], ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::LOOK_Y_INVERTED ], ControlFont, BindFont ) );
 		
 		rect.y += rect.h + 10;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::ROLL_LEFT ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::ROLL_LEFT ], ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::ROLL_LEFT ], ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::ROLL_RIGHT ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::ROLL_RIGHT ], ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::ROLL_RIGHT ], ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::PITCH_UP ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::PITCH_UP ], ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::PITCH_UP ], ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::PITCH_DOWN ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::PITCH_DOWN ], ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::PITCH_DOWN ], ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::YAW_LEFT ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::YAW_LEFT ], ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::YAW_LEFT ], ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::YAW_RIGHT ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::YAW_RIGHT ], ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::YAW_RIGHT ], ControlFont, BindFont ) );
 		
 		rect.y += rect.h + 10;
 		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::THROTTLE_UP ], ControlFont, BindFont ) );
@@ -690,7 +809,7 @@ void PrefsMenu::UpdateContents( void )
 		rect.y += rect.h + 3;
 		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::TARGET_NEAREST_ATTACKER ], ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::TARGET_NEAREST_INCOMING ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::TARGET_NEWEST_INCOMING ], ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
 		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::TARGET_OBJECTIVE ], ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
@@ -705,6 +824,10 @@ void PrefsMenu::UpdateContents( void )
 		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::TARGET_NEXT_FRIENDLY ], ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
 		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::TARGET_PREV_FRIENDLY ], ControlFont, BindFont ) );
+		rect.y += rect.h + 3;
+		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::TARGET_NEXT_SUBSYSTEM ], ControlFont, BindFont ) );
+		rect.y += rect.h + 3;
+		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::TARGET_PREV_SUBSYSTEM ], ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
 		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::TARGET_GROUPMATE ], ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
@@ -741,13 +864,33 @@ void PrefsMenu::UpdateContents( void )
 		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::LOOK_DOWN_LEFT ], ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
 		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::LOOK_DOWN_RIGHT ], ControlFont, BindFont ) );
+		rect.y += rect.h + 3;
+		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::GLANCE_UP ], ControlFont, BindFont ) );
+		rect.y += rect.h + 3;
+		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::GLANCE_BACK ], ControlFont, BindFont ) );
+		rect.y += rect.h + 3;
+		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::GLANCE_LEFT ], ControlFont, BindFont ) );
+		rect.y += rect.h + 3;
+		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::GLANCE_RIGHT ], ControlFont, BindFont ) );
+		rect.y += rect.h + 3;
+		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::GLANCE_UP_LEFT ], ControlFont, BindFont ) );
+		rect.y += rect.h + 3;
+		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::GLANCE_UP_RIGHT ], ControlFont, BindFont ) );
+		rect.y += rect.h + 3;
+		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::GLANCE_BACK_LEFT ], ControlFont, BindFont ) );
+		rect.y += rect.h + 3;
+		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::GLANCE_BACK_RIGHT ], ControlFont, BindFont ) );
 		
 		rect.y += rect.h + 10;
 		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::CHAT ], ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
 		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::SCORES ], ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
+		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::PAUSE ], ControlFont, BindFont ) );
+		rect.y += rect.h + 3;
 		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::MENU ], ControlFont, BindFont ) );
+		rect.y += rect.h + 3;
+		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::PREFS ], ControlFont, BindFont ) );
 	}
 }
 
@@ -781,7 +924,7 @@ void PrefsMenu::Draw( void )
 
 bool PrefsMenu::KeyDown( SDLKey key )
 {
-	if( key == SDLK_F10 )
+	if( key == SDLK_F10 ) // FIXME: Check for XWing::Controls::PREFS instead?
 	{
 		Remove();
 		return true;
@@ -803,6 +946,18 @@ bool PrefsMenu::KeyUp( SDLKey key )
 	}
 	
 	return false;
+}
+
+
+bool PrefsMenu::MouseDown( Uint8 button )
+{
+	return true;
+}
+
+
+bool PrefsMenu::MouseUp( Uint8 button )
+{
+	return true;
 }
 
 
@@ -881,6 +1036,47 @@ void PrefsMenuVRCheckBox::Changed( void )
 	}
 	
 	prefs_menu->UpdateContents();
+}
+
+
+// ---------------------------------------------------------------------------
+
+
+PrefsMenuSecretCheckBox::PrefsMenuSecretCheckBox( SDL_Rect *rect, Font *font, std::string label, std::string variable, std::string true_str, std::string false_str ) : PrefsMenuCheckBox( rect, font, label, variable, true_str, false_str )
+{
+	TimesClicked = 0;
+	Visible = Raptor::Game->Cfg.SettingAsBool( variable );
+}
+
+
+PrefsMenuSecretCheckBox::~PrefsMenuSecretCheckBox()
+{
+}
+
+
+void PrefsMenuSecretCheckBox::Clicked( Uint8 button )
+{
+	if( button != SDL_BUTTON_LEFT )
+		return;
+	
+	TimesClicked ++;
+	if( (TimesClicked == 7) && ! Visible )
+	{
+		Visible = true;
+		int channel = Raptor::Game->Snd.Play( Raptor::Game->Res.GetSound( Variable + std::string(".wav") ) );
+		if( (channel >= 0) && (Raptor::Game->Snd.AttenuateFor < 0) )
+		{
+			Raptor::Game->Snd.AttenuateFor = channel;
+			Raptor::Game->Snd.MusicAttenuate = 0.75f;
+			Raptor::Game->Snd.SoundAttenuate = 0.5f;
+		}
+	}
+	
+	if( Visible )
+	{
+		TimesClicked = 0;
+		PrefsMenuCheckBox::Clicked( button );
+	}
 }
 
 
@@ -1154,11 +1350,16 @@ void PrefsMenuDefaultsButton::Clicked( Uint8 button )
 		
 		if( Raptor::Game->Cfg.SettingAsBool("vr_enable") )
 		{
+			Raptor::Game->Cfg.Settings[ "g_fullscreen" ] = prev_settings[ "g_fullscreen" ];
 			Raptor::Game->Cfg.Settings[ "g_framebuffers" ] = "true";
-			Raptor::Game->Cfg.Settings[ "g_zbits" ] = "32";
-			Raptor::Game->Cfg.Settings[ "g_fsaa" ] = "0";
 			Raptor::Game->Cfg.Settings[ "g_vsync" ] = "false";
 			Raptor::Game->Cfg.Settings[ "g_asteroid_lod" ] = "0.5";
+			Raptor::Game->Cfg.Settings[ "g_deathstar_trench" ] = "3";
+			Raptor::Game->Cfg.Settings[ "g_deathstar_surface" ] = "2";
+			
+			int fsaa = Raptor::Game->Cfg.SettingAsInt( "g_fsaa", 4 );
+			if( fsaa > 2 )
+				Raptor::Game->Cfg.Settings[ "g_fsaa" ] = "2";
 			
 			int maxfps = Raptor::Game->Cfg.SettingAsInt( "maxfps", 60 );
 			if( maxfps && (maxfps < 90) )
@@ -1174,6 +1375,7 @@ void PrefsMenuDefaultsButton::Clicked( Uint8 button )
 	}
 	else if( menu->Page == PrefsMenu::PAGE_CONTROLS )
 	{
+		Raptor::Game->SetDefaultJoyTypes();
 		Raptor::Game->SetDefaultControls();
 		
 		std::map<std::string,std::string> prev_settings = Raptor::Game->Cfg.Settings;
@@ -1313,6 +1515,7 @@ PrefsMenuBind::PrefsMenuBind( SDL_Rect *rect, uint8_t analog_control, uint8_t in
 	Control = analog_control;
 	Inverse = inverse;
 	Analog = true;
+	Digital = (Control == Inverse);
 	
 	NameFont = name_font;
 	BindFont = bind_font;
@@ -1329,6 +1532,7 @@ PrefsMenuBind::PrefsMenuBind( SDL_Rect *rect, uint8_t digital_control, Font *nam
 	Control = digital_control;
 	Inverse = 0;
 	Analog = false;
+	Digital = true;
 	
 	NameFont = name_font;
 	BindFont = bind_font;
@@ -1355,7 +1559,7 @@ void PrefsMenuBind::Draw( void )
 		else if( Str::BeginsWith( control_name, "Yaw" ) )
 			control_name = std::string("Roll") + control_name.substr( 3 );
 	}
-	if( Analog )
+	if( Analog && ! Digital )
 		control_name += std::string(" Axis");
 	
 	std::string bound_string;
@@ -1379,7 +1583,7 @@ void PrefsMenuBind::Draw( void )
 		bound_string += *bound_iter;
 	}
 	
-	if( Inverse )
+	if( Inverse && ! Digital )
 	{
 		std::vector<std::string> inverted = Raptor::Game->Cfg.ControlBoundTo( Inverse );
 		for( std::vector<std::string>::const_iterator bound_iter = inverted.begin(); bound_iter != inverted.end(); bound_iter ++ )
@@ -1442,7 +1646,7 @@ bool PrefsMenuBind::HandleEvent( SDL_Event *event )
 			if( Inverse && (dir < 0) )
 				Raptor::Game->Cfg.Bind( event, Inverse );
 		}
-		else if( (! Analog) && ((event->type == SDL_KEYDOWN) || (event->type == SDL_MOUSEBUTTONDOWN) || (event->type == SDL_JOYBUTTONDOWN) || (event->type == SDL_JOYHATMOTION)) )
+		else if( Digital && (event->type != SDL_JOYAXISMOTION) && (event->type != SDL_JOYBALLMOTION) )
 			handled = Raptor::Game->Cfg.Bind( event, Control );
 		
 		if( handled )

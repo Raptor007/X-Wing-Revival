@@ -21,6 +21,12 @@ class MainMenu : public Layer
 {
 public:
 	Animation Background, Fog;
+	double FogTime;
+	
+	bool NeedPrecache;
+	volatile bool Loading;
+	Font *LoadingFont;
+	
 	Font *TitleFont, *TitleFontBig, *TitleFontSmall;
 	Font *VersionFont;
 	Font *ButtonFont;
@@ -28,7 +34,6 @@ public:
 	MainMenuPrefsButton *PrefsButton;
 	MainMenuHelpButton *HelpButton;
 	MainMenuQuitButton *QuitButton;
-	double FogTime;
 	
 	MainMenu( void );
 	virtual ~MainMenu();
@@ -74,3 +79,6 @@ public:
 	virtual ~MainMenuQuitButton();
 	void Clicked( Uint8 button = SDL_BUTTON_LEFT );
 };
+
+
+int MainMenuPrecacheThread( void *main_menu );

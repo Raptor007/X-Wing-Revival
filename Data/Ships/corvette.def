@@ -14,10 +14,15 @@ recover 20
 recharge 2
 ramming 6000
 explode 0.05
-turret turbolaser 0 12 37.5 up 0 1 0 pitch -5 90 dir 0 0 1 arc 300 hidden independent firetime 0.4
-turret turbolaser 0 -12 37.5 up 0 -1 0 pitch -5 90 dir 0 0 1 arc 300 hidden independent firetime 0.4
+turret turbolaser 0 10.28 37.5 up 0 1 0 pitch -5 90 dir 0 0 1 arc 300 invincible independent firetime 0.4
+turret turbolaser 0 -10.28 37.5 up 0 -1 0 pitch -5 90 dir 0 0 1 arc 300 invincible independent firetime 0.4
 firetime turbolaser 0.4
 model corvette.obj
 model_collision corvette.obj
 cockpit corvette.obj 0 14 -20
+turret_model corvette_turret_body.obj corvette_turret_gun.obj
+turret_gunpos 0.633
+turret_separation 2.5
+turret_headpos 1.5 1
+turret_speed 120 90
 model_scale 0.022

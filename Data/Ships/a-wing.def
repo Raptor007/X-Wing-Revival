@@ -31,6 +31,7 @@ group_skin 1 a-wing_red.obj a-wing_cockpit_red.obj
 group_skin 2 a-wing_gold.obj a-wing_cockpit_gold.obj
 group_skin 4 a-wing_blue.obj a-wing_cockpit_blue.obj
 model_scale 0.022
+glance 70 30
 flyby 20 xwing_slow.wav
 flyby 170 xwing_med.wav
 flyby 210 xwing_fast.wav

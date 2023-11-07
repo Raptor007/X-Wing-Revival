@@ -8,6 +8,7 @@
 #include "XWingDefs.h"
 #include "RaptorGame.h"
 #include "Ship.h"
+#include "Num.h"
 
 
 DeathStarBox::DeathStarBox( uint32_t id ) : GameObject( id, XWing::Object::DEATH_STAR_BOX )
@@ -64,7 +65,24 @@ bool DeathStarBox::IsMoving( void ) const
 
 void DeathStarBox::AddToInitPacket( Packet *packet, int8_t precision )
 {
-	GameObject::AddToInitPacket( packet, -127 );
+	if( precision > 0 )
+	{
+		packet->AddDouble( X );
+		packet->AddDouble( Y );
+		packet->AddDouble( Z );
+	}
+	else
+	{
+		packet->AddFloat( X );
+		packet->AddFloat( Y );
+		packet->AddFloat( Z );
+	}
+	packet->AddShort( Num::UnitFloatTo16(Fwd.X) );
+	packet->AddShort( Num::UnitFloatTo16(Fwd.Y) );
+	packet->AddShort( Num::UnitFloatTo16(Fwd.Z) );
+	packet->AddChar( Num::UnitFloatTo8(Up.X) );
+	packet->AddChar( Num::UnitFloatTo8(Up.Y) );
+	packet->AddChar( Num::UnitFloatTo8(Up.Z) );
 	packet->AddFloat( L );
 	packet->AddFloat( H );
 	packet->AddFloat( W );
@@ -73,7 +91,25 @@ void DeathStarBox::AddToInitPacket( Packet *packet, int8_t precision )
 
 void DeathStarBox::ReadFromInitPacket( Packet *packet, int8_t precision )
 {
-	GameObject::ReadFromInitPacket( packet, -127 );
+	if( precision > 0 )
+	{
+		X = packet->NextDouble();
+		Y = packet->NextDouble();
+		Z = packet->NextDouble();
+	}
+	else
+	{
+		X = packet->NextFloat();
+		Y = packet->NextFloat();
+		Z = packet->NextFloat();
+	}
+	Fwd.X = Num::UnitFloatFrom16( packet->NextShort() );
+	Fwd.Y = Num::UnitFloatFrom16( packet->NextShort() );
+	Fwd.Z = Num::UnitFloatFrom16( packet->NextShort() );
+	Up.X = Num::UnitFloatFrom8( packet->NextChar() );
+	Up.Y = Num::UnitFloatFrom8( packet->NextChar() );
+	Up.Z = Num::UnitFloatFrom8( packet->NextChar() );
+	PrevPos.Copy( this );
 	L = packet->NextFloat();
 	H = packet->NextFloat();
 	W = packet->NextFloat();

@@ -28,7 +28,7 @@ FleetMenu::FleetMenu( void )
 	
 	TitleFont  = Raptor::Game->Res.GetFont( "Verdana.ttf", 30 );
 	LabelFont  = Raptor::Game->Res.GetFont( "Verdana.ttf", 16 );
-	ItemFont   = Raptor::Game->Res.GetFont( "Verdana.ttf", 17 );
+	ItemFont   = Raptor::Game->Res.GetFont( "Verdana.ttf", 16 );
 	ButtonFont = Raptor::Game->Res.GetFont( "Verdana.ttf", 30 );
 	
 	const Player *player = Raptor::Game->Data.GetPlayer( Raptor::Game->PlayerID );
@@ -219,6 +219,18 @@ bool FleetMenu::KeyUp( SDLKey key )
 }
 
 
+bool FleetMenu::MouseDown( Uint8 button )
+{
+	return true;
+}
+
+
+bool FleetMenu::MouseUp( Uint8 button )
+{
+	return true;
+}
+
+
 // ---------------------------------------------------------------------------
 
 
@@ -239,6 +251,7 @@ FleetMenuDropDown::FleetMenuDropDown( SDL_Rect *rect, Font *font, std::string va
 	{
 		categories.insert( ShipClass::CATEGORY_FIGHTER );
 		categories.insert( ShipClass::CATEGORY_BOMBER );
+		categories.insert( ShipClass::CATEGORY_GUNBOAT );
 	}
 	if( (Str::FindInsensitive( Name, "_flagship" ) >= 0) || (Str::FindInsensitive( Name, "_cruiser" ) >= 0) )
 		categories.insert( ShipClass::CATEGORY_CAPITAL );
@@ -249,7 +262,7 @@ FleetMenuDropDown::FleetMenuDropDown( SDL_Rect *rect, Font *font, std::string va
 	else if( variable == "empire_flagship" )
 		special_allowed.insert( "T/A" );
 	
-	bool darkside = Raptor::Game->Cfg.SettingAsBool("darkside",false) && ! Raptor::Game->Data.PropertyAsBool("lightside",false);
+	bool darkside = (Raptor::Game->Cfg.SettingAsBool("darkside",false) || Raptor::Game->Data.PropertyAsBool("darkside",false)) && ! Raptor::Game->Data.PropertyAsBool("lightside",false);
 	
 	for( std::map<uint32_t,GameObject*>::const_iterator obj_iter = Raptor::Game->Data.GameObjects.begin(); obj_iter != Raptor::Game->Data.GameObjects.end(); obj_iter ++ )
 	{
@@ -257,7 +270,7 @@ FleetMenuDropDown::FleetMenuDropDown( SDL_Rect *rect, Font *font, std::string va
 		{
 			const ShipClass *sc = (const ShipClass*) obj_iter->second;
 			if( darkside || (sc->ShortName == Value) || special_allowed.count(sc->ShortName)
-			|| (teams.count(sc->Team) && categories.count(sc->Category)) )
+			|| (teams.count(sc->Team) && categories.count(sc->Category) && ! sc->Secret) )
 				AddItem( sc->ShortName, sc->LongName );
 		}
 	}

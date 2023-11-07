@@ -8,6 +8,7 @@ class LobbyMenuFlyButton;
 class LobbyMenuLeaveButton;
 class LobbyMenuPlayerTextBox;
 class LobbyMenuPlayerDropDown;
+class LobbyMenuShipDropDown;
 class LobbyMenuConfiguration;
 class LobbyMenuConfigChangeButton;
 
@@ -91,6 +92,16 @@ public:
 	LobbyMenuPlayerDropDown( SDL_Rect *rect, Font *font, uint8_t align, int scroll_bar_size, std::string variable );
 	virtual ~LobbyMenuPlayerDropDown();
 	void Changed( void );
+};
+
+
+class LobbyMenuShipDropDown : public LobbyMenuPlayerDropDown
+{
+public:
+	LobbyMenuShipDropDown( SDL_Rect *rect, Font *font, uint8_t align, int scroll_bar_size, std::string variable );
+	virtual ~LobbyMenuShipDropDown();
+	void Update( void );
+	void Clicked( Uint8 button = SDL_BUTTON_LEFT );
 };
 
 

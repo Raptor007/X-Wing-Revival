@@ -21,6 +21,7 @@ public:
 	
 	uint32_t FiredFrom;
 	uint32_t Seeking;
+	uint32_t SeekingSubsystem;
 	
 	Shot( uint32_t id = 0 );
 	virtual ~Shot();
@@ -28,7 +29,9 @@ public:
 	void ClientInit( void );
 	
 	double Damage( void ) const;
+	double HullDamage( void ) const;
 	double AsteroidDamage( void ) const;
+	
 	double Speed( void ) const;
 	double TurnRate( void ) const;
 	double Intercept( void ) const;
@@ -60,6 +63,7 @@ public:
 		TYPE_QUAD_LASER_RED,
 		TYPE_ION_CANNON,
 		TYPE_TORPEDO,
-		TYPE_MISSILE
+		TYPE_MISSILE,
+		TYPE_SUPERLASER
 	};
 };

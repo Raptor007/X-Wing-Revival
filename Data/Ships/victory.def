@@ -1,0 +1,24 @@
+id VSD
+name Victory S.D.
+category capital
+team empire
+secret
+radius 450
+speed 30
+accel 10
+roll 1.3 0.9
+pitch 1 0.7
+yaw 2 1.5
+health 6000
+shield 10000
+recover 30
+recharge 0
+ramming 10000
+explode 0.015
+subsystem ShieldGenerator1 749
+subsystem ShieldGenerator2 749
+firetime turbolaser 0.5
+model vsd2.obj
+model_collision vsd2_col.obj
+cockpit vsd2.obj 0 69 -260
+model_scale 0.022

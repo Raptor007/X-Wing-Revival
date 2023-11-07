@@ -10,6 +10,7 @@ class Ship;
 #include "GameObject.h"
 #include <string>
 #include <map>
+#include <cfloat>
 #include "ShipClass.h"
 #include "Model.h"
 #include "Shot.h"
@@ -35,6 +36,8 @@ public:
 	Clock DeathClock;
 	double JumpProgress;
 	std::map<std::string,double> Subsystems;
+	std::vector<Vec3D> SubsystemCenters;     // FIXME: Move these to ShipClass?
+	std::vector<std::string> SubsystemNames; //
 	double CollisionPotential;
 	double ShieldF, ShieldR;
 	uint8_t ShieldPos;
@@ -48,7 +51,13 @@ public:
 	uint8_t FiredThisFrame;
 	
 	uint32_t Target;
+	uint8_t TargetSubsystem;
 	float TargetLock;
+	uint32_t NextCheckpoint;
+	
+	int8_t EngineSoundDir;
+	Clock EngineSoundClock;
+	std::string EngineSoundPrev;
 	
 	
 	Ship( uint32_t id = 0 );
@@ -62,7 +71,7 @@ public:
 	void Reset( void );
 	
 	void SetHealth( double health );
-	void AddDamage( double front, double rear, const char *subsystem = NULL, uint32_t hit_by_id = 0 );
+	void AddDamage( double front, double rear, const char *subsystem = NULL, uint32_t hit_by_id = 0, double max_hull_damage = FLT_MAX );
 	void KnockCockpit( const Vec3D *dir, double force );
 	
 	void SetRoll( double roll, double dt );
@@ -108,7 +117,10 @@ public:
 	double ShotDelay( void ) const;
 	int8_t AmmoForWeapon( uint8_t weapon = 0 ) const;
 	float LockingOn( const GameObject *target ) const;
-	void UpdateTarget( const GameObject *target, double dt = 0. );
+	void UpdateTarget( const GameObject *target, uint8_t subsystem = 0, double dt = 0. );
+	Pos3D TargetCenter( uint8_t subsystem = 0 ) const;
+	std::string SubsystemName( uint8_t subsystem ) const;
+	uint8_t SubsystemID( std::string subsystem ) const;
 	
 	void ResetTurrets( void ) const;
 	Turret *AttachedTurret( uint8_t index = 0 ) const;
@@ -131,7 +143,11 @@ public:
 	void ReadFromUpdatePacketFromClient( Packet *packet, int8_t precision = 0 );
 	
 	bool WillCollide( const GameObject *other, double dt, std::string *this_object = NULL, std::string *other_object = NULL ) const;
+	bool WillCollideWithSphere( const GameObject *other, double other_radius, double dt, std::string *this_object ) const;
 	void Update( double dt );
+	
+	double DrawOffset( void ) const;
+	double CockpitDrawOffset( void ) const;
 	
 	void Draw( void );
 	void DrawWireframe( Color *color = NULL, double scale = 1. );

@@ -5,28 +5,27 @@
 #include "Asteroid.h"
 
 #include <cmath>
-
 #include "XWingDefs.h"
 #include "XWingGame.h"
 #include "Rand.h"
 #include "Math3D.h"
+#include "Num.h"
 
 
 Asteroid::Asteroid( uint32_t id ) : GameObject( id, XWing::Object::ASTEROID )
 {
 	Shape = NULL;
 	
-	Radius = Rand::Double( 20., 50. );
-	Health = (Radius * Radius) / 10.;  // 40 - 250
+	SetRadius();
 	
 	Fwd.Set( Rand::Double( -1., 1 ), Rand::Double( -1., 1 ), Rand::Double( -1., 1 ) );
 	Up.Set( Rand::Double( -1., 1 ), Rand::Double( -1., 1 ), Rand::Double( -1., 1 ) );
 	FixVectors();
 	
-	RollRate = Rand::Double( -10., 10 );
-	PitchRate = Rand::Double( -10., 10 );
-	YawRate = Rand::Double( -10., 10 );
-
+	RollRate  = Rand::Double( -10., 10. );
+	PitchRate = Rand::Double( -10., 10. );
+	YawRate   = Rand::Double( -10., 10. );
+	
 	Shininess = 1.f;
 }
 
@@ -37,11 +36,18 @@ Asteroid::~Asteroid()
 }
 
 
+void Asteroid::SetRadius( double radius )
+{
+	Radius = radius ? radius : floor( pow( 20., Rand::Double( 1., 1.6 ) ) );  // 20 - 120
+	Health = (Radius * Radius) / 40.;  // 10 - 360
+}
+
+
 void Asteroid::ClientInit( void )
 {
 	// Just use a pointer to a shape in the resource manager.
 	Shape = Raptor::Game->Res.GetModel("asteroid.obj");
-	if( Shape && (! Shape->Objects.size()) )
+	if( Shape && ! Shape->Objects.size() )
 		Shape = NULL;
 	
 	// Get the texture and colors for sphere rendering.
@@ -108,21 +114,54 @@ bool Asteroid::IsMoving( void ) const
 
 void Asteroid::AddToInitPacket( Packet *packet, int8_t precision )
 {
-	GameObject::AddToInitPacket( packet, -127 );
+	packet->AddDouble( X );
+	packet->AddDouble( Y );
+	packet->AddDouble( Z );
+	packet->AddChar( Num::UnitFloatTo8(Fwd.X) );
+	packet->AddChar( Num::UnitFloatTo8(Fwd.Y) );
+	packet->AddChar( Num::UnitFloatTo8(Fwd.Z) );
+	packet->AddChar( Num::UnitFloatTo8(Up.X) );
+	packet->AddChar( Num::UnitFloatTo8(Up.Y) );
+	packet->AddChar( Num::UnitFloatTo8(Up.Z) );
 	packet->AddUChar( Radius + 0.5 );
-	packet->AddChar( RollRate + 0.5 );
-	packet->AddChar( PitchRate + 0.5 );
-	packet->AddChar( YawRate + 0.5 );
+	packet->AddChar( (RollRate  > 127.) ? 127 : ( (RollRate  < -127.) ? -127 : (RollRate  + Num::Sign(RollRate)  * 0.5) ) );
+	packet->AddChar( (PitchRate > 127.) ? 127 : ( (PitchRate < -127.) ? -127 : (PitchRate + Num::Sign(PitchRate) * 0.5) ) );
+	packet->AddChar( (YawRate   > 127.) ? 127 : ( (YawRate   < -127.) ? -127 : (YawRate   + Num::Sign(YawRate)   * 0.5) ) );
 }
 
 
 void Asteroid::ReadFromInitPacket( Packet *packet, int8_t precision )
 {
-	GameObject::ReadFromInitPacket( packet, -127 );
-	Radius = packet->NextUChar();
-	RollRate = packet->NextChar();
+	X = packet->NextDouble();
+	Y = packet->NextDouble();
+	Z = packet->NextDouble();
+	Fwd.X = Num::UnitFloatFrom8( packet->NextChar() );
+	Fwd.Y = Num::UnitFloatFrom8( packet->NextChar() );
+	Fwd.Z = Num::UnitFloatFrom8( packet->NextChar() );
+	Up.X = Num::UnitFloatFrom8( packet->NextChar() );
+	Up.Y = Num::UnitFloatFrom8( packet->NextChar() );
+	Up.Z = Num::UnitFloatFrom8( packet->NextChar() );
+	FixVectors();
+	Radius    = packet->NextUChar();
+	RollRate  = packet->NextChar();
 	PitchRate = packet->NextChar();
-	YawRate = packet->NextChar();
+	YawRate   = packet->NextChar();
+}
+
+
+void Asteroid::AddToUpdatePacketFromServer( Packet *packet, int8_t precision )
+{
+	packet->AddChar( (RollRate  > 127.) ? 127 : ( (RollRate  < -127.) ? -127 : (RollRate  + Num::Sign(RollRate)  * 0.5) ) );
+	packet->AddChar( (PitchRate > 127.) ? 127 : ( (PitchRate < -127.) ? -127 : (PitchRate + Num::Sign(PitchRate) * 0.5) ) );
+	packet->AddChar( (YawRate   > 127.) ? 127 : ( (YawRate   < -127.) ? -127 : (YawRate   + Num::Sign(YawRate)   * 0.5) ) );
+}
+
+
+void Asteroid::ReadFromUpdatePacketFromServer( Packet *packet, int8_t precision )
+{
+	RollRate  = packet->NextChar();
+	PitchRate = packet->NextChar();
+	YawRate   = packet->NextChar();
 }
 
 
@@ -164,7 +203,14 @@ void Asteroid::Draw( void )
 	
 	// If we decided to draw the model, draw it.
 	if( (detail >= 5) && Shape )
-		Shape->DrawAt( this, Radius * 3.4 / Shape->GetTriagonal() );
+	{
+		// Cull model back faces to reduce z-fighting and improve performance.
+		glEnable( GL_CULL_FACE );
+		
+		Shape->DrawAt( this, Radius * 3.45 / Shape->GetTriagonal() );
+		
+		glDisable( GL_CULL_FACE );
+	}
 	else
 	{
 		// We're not drawing the model, so draw a sphere instead.
@@ -188,6 +234,6 @@ void Asteroid::Draw( void )
 			game->ShaderMgr.Set1f( "Shininess", Shininess );
 		}
 		
-		game->Gfx.DrawSphere3D( X, Y, Z, Radius, detail, Texture.CurrentFrame(), Graphics::TEXTURE_MODE_X_DIV_R );
+		game->Gfx.DrawSphere3D( X, Y, Z, Radius * ((detail == 3) ? 1.1 : 1.05), detail, Texture.CurrentFrame(), Graphics::TEXTURE_MODE_X_DIV_R );
 	}
 }

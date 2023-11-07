@@ -1,9 +1,9 @@
 /*
- *  Asteroid.h
+ *  Checkpoint.h
  */
 
 #pragma once
-class Asteroid;
+class Checkpoint;
 
 #include "PlatformSpecific.h"
 
@@ -13,22 +13,17 @@ class Asteroid;
 #include "Color.h"
 
 
-class Asteroid : public GameObject
+class Checkpoint : public GameObject
 {
 public:
 	double Radius;
-	double Health;
-	Model *Shape;
-	Animation Texture;
-	Color Ambient, Diffuse, Specular;
-	float Shininess;
+	uint32_t Prev, Next;
 	
-	Asteroid( uint32_t id = 0 );
-	virtual ~Asteroid();
+	Checkpoint( uint32_t id = 0 );
+	Checkpoint( double x, double y, double z );
+	virtual ~Checkpoint();
 	
-	void SetRadius( double radius = 0. );
-	
-	void ClientInit( void );
+	void SetNext( Checkpoint *next );
 	
 	bool PlayerShouldUpdateServer( void ) const;
 	bool ServerShouldUpdatePlayer( void ) const;
@@ -39,8 +34,6 @@ public:
 	
 	void AddToInitPacket( Packet *packet, int8_t precision = 0 );
 	void ReadFromInitPacket( Packet *packet, int8_t precision = 0 );
-	void AddToUpdatePacketFromServer( Packet *packet, int8_t precision = 0 );
-	void ReadFromUpdatePacketFromServer( Packet *packet, int8_t precision = 0 );
 	
 	bool WillCollide( const GameObject *other, double dt, std::string *this_object = NULL, std::string *other_object = NULL ) const;
 	

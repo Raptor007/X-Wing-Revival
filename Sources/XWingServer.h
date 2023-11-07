@@ -21,6 +21,7 @@ public:
 	uint32_t GameType;
 	int KillLimit;
 	int TimeLimit;
+	int Checkpoints;
 	bool PlayersTakeEmptyShips;
 	bool Respawn;
 	double RespawnDelay, RebelCruiserRespawn, EmpireCruiserRespawn;
@@ -36,6 +37,7 @@ public:
 	double RoundEndedDelay;
 	std::map<uint8_t,int> TeamScores;
 	std::map<uint32_t,int> ShipScores;
+	std::set<uint16_t> Cheaters;
 	
 	Clock CountdownTimer;
 	int CountdownFrom;

@@ -14,14 +14,18 @@ recover 50
 recharge 0
 ramming 500000
 explode 0.015
-subsystem ShieldGenerator1 299
-subsystem ShieldGenerator2 299
-subsystem ShieldGenerator3 299
-subsystem ShieldGenerator4 299
+subsystem ShieldGenerator1 749
+subsystem ShieldGenerator2 749
+subsystem ShieldGenerator3 749
+subsystem ShieldGenerator4 749
 subsystem CriticalBridge1 799
 subsystem CriticalBridge2 799
 firetime turbolaser 0.75
 model calamari-cruiser.obj
 model_collision calamari-cruiser.obj
 cockpit calamari-cruiser.obj 2.33 118 -198
+#turret_model corvette_turret_gun.obj
+#turret_gunpos 1 1.5
+#turret_separation 2.5
+#turret_headpos 2 0.5
 model_scale 0.022

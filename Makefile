@@ -8,13 +8,14 @@ MARCH = native
 MCPU =
 MTUNE =
 MFLAGS =
-OFLAGS = -O3 -fomit-frame-pointer -ftree-vectorize -fno-strict-aliasing -flto
+O = 2
+OFLAGS = -O$(O) -fomit-frame-pointer -ftree-vectorize -fno-strict-aliasing -flto
 WFLAGS = -Wall -Wextra -Wno-multichar -Wno-unused-parameter
 INC = /opt/local/include /opt/local/include/SDL /usr/local/include /usr/include
 LIBDIR = /usr/lib64
-LIB = libSDLmain.a libSDL_net.so libSDL_mixer.so libSDL_ttf.so libSDL_image.so libSDL.so libGLEW.a libGLU.so libGL.so libopenvr_api.so
+LIB = libSDLmain.a libSDL_net.so libSDL_mixer.so libSDL_ttf.so libSDL_image.so libSDL.so libGLEW.so libGLU.so libGL.so libopenvr_api.so
 DEF =
-EXE = xwingrev
+EXE = Data/xwingrev
 VERSION = $(shell grep 'define VERSION' Sources/Main.cpp | grep -oh '[0-9.]*')
 GAMEDIR = /Games/X-Wing Revival
 SERVERDIR = /srv/xwingrev
@@ -162,7 +163,7 @@ LIBDIR = /lib
 LIB = SDL_ttf.lib SDL_image.lib SDL_mixer.lib SDL_net.lib SDL.lib openvr_api.lib glew32s.lib GLU32.lib OpenGL32.lib bufferoverflowu.lib
 MFLAGS += -mwindows
 LIBRARIES += -liphlpapi -ladvapi32
-EXE = xwingrev.exe
+EXE = Data/xwingrev.exe
 OBJECTS += build/XWing.res
 endif
 
@@ -194,6 +195,28 @@ AFLAGS += -mtune=$(MTUNE)
 endif
 
 
+# Default to SDL2 if detected.
+ifndef SDL1
+ifneq (,$(wildcard $(LIBDIR)/libSDL2.so))
+SDL2 = y
+endif
+endif
+
+ifdef SDL2
+DEF += SDL2
+LIBRARIES := $(subst SDL,SDL2,$(LIBRARIES))
+endif
+
+
+# Linux ELF binary for distribution (if SDL2 detected).
+ifeq ($(UNAME),Linux)
+ifdef SDL2
+TARGET = Data/X-Wing\ Revival.elf
+PRODUCT = Data/X-Wing Revival.elf
+endif
+endif
+
+
 .PHONY: default exe objects clean install server-install ppc i32 i64 universal lipo
 
 default: $(TARGET)
@@ -210,6 +233,23 @@ default: $(TARGET)
 	$(foreach lib1,$(MAC_BUNDLE_LIBS),$(foreach lib2,$(MAC_BUNDLE_LIBS),$(MAC_INSTALL_NAME_TOOL) -change "$(lib1)" "@loader_path/$(notdir $(lib1))" "$@/Contents/MacOS/$(notdir $(lib2))";))
 	-codesign -s "$(MAC_CODESIGN)" "$@"
 	-if [ -L "$@/Contents/CodeResources" ]; then rm "$@/Contents/CodeResources"; rsync -ax "$@/Contents/_CodeSignature/CodeResources" "$@/Contents/"; fi
+
+%.elf: exe
+	-chmod +x "$(EXE)"
+	rsync -ax "$(EXE)" "$@"
+	-patchelf --replace-needed /usr/lib64/libopenvr_api.so Bin64/libopenvr_api.so "$@"
+	-patchelf --replace-needed libSDL2-2.0.so.0 Bin64/libSDL2.so "$@"
+	-patchelf --replace-needed libSDL2_image-2.0.so.0 Bin64/libSDL2_image.so "$@"
+	-patchelf --replace-needed libSDL2_mixer-2.0.so.0 Bin64/libSDL2_mixer.so "$@"
+	-patchelf --replace-needed libSDL2_net-2.0.so.0 Bin64/libSDL2_net.so "$@"
+	-patchelf --replace-needed libSDL2_ttf-2.0.so.0 Bin64/libSDL2_ttf.so "$@"
+	-patchelf --replace-needed libGL.so.1 Bin64/libGL.so "$@"
+	-patchelf --replace-needed libGLU.so.1 Bin64/libGLU.so "$@"
+	-patchelf --replace-needed libGLEW.so.2.2 Bin64/libGLEW.so "$@"
+	-patchelf --replace-needed libstdc++.so.6 Bin64/libstdc++.so "$@"
+	-patchelf --replace-needed libgcc_s.so.1 Bin64/libgcc_s.so "$@"
+	-patchelf --replace-needed libm.so.6 Bin64/libm.so "$@"
+	-patchelf --replace-needed libc.so.6 Bin64/libc.so "$@"
 
 exe: $(SOURCES) $(GAME_HEADERS) $(ENGINE_HEADERS) $(EXE)
 
@@ -242,12 +282,12 @@ server-install:
 	mkdir -p "$(SERVERDIR)"
 	cp xwingctl "$(SERVERDIR)/"
 	-"$(SERVERDIR)/xwingctl" stop
-	cp "$(EXE)" "$(SERVERDIR)/$(EXE)-$(VERSION)"
-	cd "$(SERVERDIR)" && ln -sf "$(EXE)-$(VERSION)" "$(EXE)"
+	cp "$(EXE)" "$(SERVERDIR)/$(notdir $(EXE))-$(VERSION)"
+	cd "$(SERVERDIR)" && ln -sf "$(notdir $(EXE))-$(VERSION)" "$(notdir $(EXE))"
 	-rsync -ax --exclude=".*" Data/Ships "$(SERVERDIR)/"
 	-rsync -ax --exclude=".*" Data/Models "$(SERVERDIR)/"
 	-chown -R $(SERVERUSER):wheel "$(SERVERDIR)"
-	-chmod 775 "$(SERVERDIR)/$(EXE)-$(VERSION)"
+	-chmod 775 "$(SERVERDIR)/$(notdir $(EXE))-$(VERSION)"
 	-ln -sf "$(SERVERDIR)/xwingctl" /usr/local/bin/xwingctl
 	-"$(SERVERDIR)/xwingctl" start
 

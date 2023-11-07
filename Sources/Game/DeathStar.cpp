@@ -19,6 +19,7 @@ DeathStar::DeathStar( uint32_t id ) : GameObject( id, XWing::Object::DEATH_STAR 
 	TrenchDepth = 80.;
 	TextureSize = 500.;
 	DetailHeight = 2.;
+	SurfaceDetailHeight = 7.;
 	
 	Fwd.Set( 0., 1., 0. );
 	Up.Set( 0., 0., 1. );
@@ -43,12 +44,15 @@ DeathStar::~DeathStar()
 void DeathStar::ClientInit( void )
 {
 	DetailSide.BecomeInstance( Raptor::Game->Res.GetModel("deathstar_detail.obj") );
+	DetailSurface.BecomeInstance( &DetailSide );
 	double w = DetailSide.GetWidth();
 	double l = DetailSide.GetLength();
 	if( w && l )
 	{
 		DetailSide.ScaleBy( TrenchDepth / w, DetailHeight, TextureSize / l );
 		DetailSide.CalculateNormals();
+		DetailSurface.ScaleBy( TextureSize / w, SurfaceDetailHeight, TextureSize / l );
+		DetailSurface.CalculateNormals();
 	}
 	
 	DetailBottom.BecomeInstance( Raptor::Game->Res.GetModel("deathstar_detail_bottom.obj") );
@@ -263,16 +267,16 @@ void DeathStar::Draw( void )
 	Pos3D center( this );
 	center.MoveAlong( &Fwd, cam_fwd );
 	
-	int deathstar_detail = Raptor::Game->Cfg.SettingAsInt( "g_deathstar_detail", 3 );
-	if( deathstar_detail && ( Raptor::Game->Cam.Dist(&center) < Raptor::Game->Cfg.SettingAsDouble( "g_deathstar_detail_dist", 1000. ) ) )
+	int trench_detail = Raptor::Game->Cfg.SettingAsInt( "g_deathstar_trench", 4 );
+	if( trench_detail && ( Raptor::Game->Cam.Dist(&center) < Raptor::Game->Cfg.SettingAsDouble( "g_deathstar_trench_dist", 1000. ) ) )
 	{
 		double sign = Num::Sign( Raptor::Game->Cam.Fwd.Dot(&Fwd) );
 		Pos3D detail_center( &center );
 		detail_center.MoveAlong( &Fwd, (texture_fwd_offset - 0.5 * sign) * TextureSize );
-		detail_center.MoveAlong( &Up, -TrenchDepth );
 		Pos3D detail_left( &detail_center );
+		detail_center.MoveAlong( &Up, -TrenchDepth );
 		detail_left.MoveAlong( &Right, TrenchWidth / -2. );
-		detail_left.MoveAlong( &Up, TrenchDepth / 2. );
+		detail_left.MoveAlong( &Up, TrenchDepth / -2. );
 		detail_left.Fwd.Copy( &Up );
 		detail_left.Up.Copy( &Right );
 		detail_left.FixVectors();
@@ -289,7 +293,7 @@ void DeathStar::Draw( void )
 		if( (cam_up >= 0.) || (cam_right <= TrenchWidth / 2.) )
 			DetailSide.DrawAt( &detail_right );
 		
-		for( int i = 1; i < deathstar_detail; i ++ )
+		for( int i = 1; i < trench_detail; i ++ )
 		{
 			detail_center.MoveAlong( &Fwd, TextureSize * sign );
 			detail_left.MoveAlong( &Fwd, TextureSize * sign );
@@ -307,8 +311,7 @@ void DeathStar::Draw( void )
 		detail_left.MoveAlong( &Fwd, TextureSize * sign );
 		detail_right.MoveAlong( &Fwd, TextureSize * sign );
 		
-		//double height_scale = 0.5 - sign * texture_fwd_offset;
-		double height_scale = 1.;
+		double height_scale = std::max<double>( 0.125, 0.5 - sign * texture_fwd_offset );
 		
 		if( cam_up >= -TrenchDepth )
 			DetailBottom.DrawAt( &detail_center, 1., 1., height_scale, 1. );
@@ -316,6 +319,59 @@ void DeathStar::Draw( void )
 			DetailSide.DrawAt( &detail_left, 1., 1., height_scale, 1. );
 		if( (cam_up >= 0.) || (cam_right <= TrenchWidth / 2.) )
 			DetailSide.DrawAt( &detail_right, 1., 1., height_scale, 1. );
+	}
+	
+	int surface_detail = Raptor::Game->Cfg.SettingAsInt( "g_deathstar_surface", 4 );
+	if( surface_detail && ( Raptor::Game->Cam.Dist(&center) < Raptor::Game->Cfg.SettingAsDouble( "g_deathstar_surface_dist", 1500. ) ) )
+	{
+		long index = ceil( cam_fwd / TextureSize );
+		Pos3D detail_center( this );
+		detail_center.MoveAlong( &Fwd, index * TextureSize );
+		Pos3D detail_surface_left( &detail_center );
+		detail_surface_left.MoveAlong( &Right, (TrenchWidth + TextureSize) / -2. );
+		Pos3D detail_surface_right( &detail_center );
+		detail_surface_right.MoveAlong( &Right, (TrenchWidth + TextureSize) / 2. );
+		double sign = Num::Sign( Raptor::Game->Cam.Fwd.Dot(&Fwd) );
+		
+		if( index % 2 )
+			detail_surface_left.MoveAlong( &Fwd, TextureSize * sign * -1. );
+		else
+			detail_surface_right.MoveAlong( &Fwd, TextureSize * sign * -1. );
+		
+		Pos3D detail_far_left = detail_surface_left + (Fwd * sign * -1. - Right) * TextureSize;
+		Pos3D detail_far_right = detail_surface_right + (Fwd * sign * -1. + Right) * TextureSize;
+		
+		for( int i = 0; i < surface_detail; i ++ )
+		{
+			if( (cam_up >= 0.) || (cam_right >= TrenchWidth / -2.) )
+				DetailSurface.DrawAt( &detail_surface_left );
+			if( (cam_up >= 0.) || (cam_right <= TrenchWidth / 2.) )
+				DetailSurface.DrawAt( &detail_surface_right );
+			
+			detail_surface_left.MoveAlong( &Fwd, TextureSize * sign * 2. );
+			detail_surface_right.MoveAlong( &Fwd, TextureSize * sign * 2. );
+			
+			if( cam_up >= 0. )
+			{
+				DetailSurface.DrawAt( &detail_far_left );
+				DetailSurface.DrawAt( &detail_far_right );
+				
+				detail_far_left.MoveAlong( &Fwd, TextureSize * sign * 2. );
+				detail_far_right.MoveAlong( &Fwd, TextureSize * sign * 2. );
+			}
+		}
+		
+		double height_scale = std::max<double>( 0.125, 0.5 - sign * texture_fwd_offset );
+		
+		if( (cam_up >= 0.) || (cam_right >= TrenchWidth / -2.) )
+			DetailSurface.DrawAt( &detail_surface_left, 1., 1., (index % 2) ? 1. : height_scale, 1. );
+		if( (cam_up >= 0.) || (cam_right <= TrenchWidth / 2.) )
+			DetailSurface.DrawAt( &detail_surface_right, 1., 1., (index % 2) ? height_scale : 1., 1. );
+		if( cam_up >= 0. )
+		{
+			DetailSurface.DrawAt( &detail_far_left, 1., 1., (index % 2) ? 1. : height_scale, 1. );
+			DetailSurface.DrawAt( &detail_far_right, 1., 1., (index % 2) ? height_scale : 1., 1. );
+		}
 	}
 	
 	Pos3D slice[ 4 ];

@@ -23,9 +23,14 @@ public:
 	Vec3D RelativeUp, RelativeFwd;
 	bool ParentControl;
 	double MinGunPitch, MaxGunPitch;
+	double YawSpeed, PitchSpeed;
 	uint8_t Team;
-	bool Visible;
+	bool Visible, CanBeHit;
+	double GunWidth;
+	double GunUp, GunFwd, HeadUp, HeadFwd;
+	std::string BodyModel, GunModel;
 	Model *BodyShape, *GunShape;
+	
 	double GunPitch, GunPitchRate;
 	
 	double Health;
@@ -59,7 +64,7 @@ public:
 	void PitchGun( double degrees );
 	void SetPitch( double pitch );
 	void SetYaw( double yaw );
-	Pos3D GunPos( void ) const;
+	Pos3D GunPos( const Pos3D *body_pos = NULL ) const;
 	Pos3D HeadPos( void ) const;
 	
 	std::map<int,Shot*> NextShots( GameObject *target = NULL, uint8_t firing_mode = 0 ) const;
@@ -85,4 +90,6 @@ public:
 	void Update( double dt );
 	
 	void Draw( void );
+	void Draw( bool allow_shader_change );
+	void DrawWireframe( Color *color = NULL, double scale = 0.022 );
 };

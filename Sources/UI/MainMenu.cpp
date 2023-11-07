@@ -4,7 +4,7 @@
 
 #include "MainMenu.h"
 
-#include "RaptorGame.h"
+#include "XWingGame.h"
 #include "JoinMenu.h"
 #include "PrefsMenu.h"
 #include "TextFileViewer.h"
@@ -13,15 +13,21 @@
 
 MainMenu::MainMenu( void )
 {
+	Name = "MainMenu";
+	
 	Background.BecomeInstance( Raptor::Game->Res.GetAnimation("bg_menu.ani") );
 	Fog.BecomeInstance( Raptor::Game->Res.GetAnimation("fog.ani") );
 	FogTime = 0.;
 	
-	TitleFontBig = Raptor::Game->Res.GetFont( "Candara.ttf", 128 );
-	TitleFontSmall = Raptor::Game->Res.GetFont( "Candara.ttf", 64 );
-	TitleFont = TitleFontBig;
-	ButtonFont = Raptor::Game->Res.GetFont( "Verdana.ttf", 40 );
-	VersionFont = Raptor::Game->Res.GetFont( "Verdana.ttf", 15 );
+	NeedPrecache = false;
+	Loading = false;
+	LoadingFont = NULL;
+	
+	TitleFontBig   = Raptor::Game->Res.GetFont( "Candara.ttf", 128 );
+	TitleFontSmall = Raptor::Game->Res.GetFont( "Candara.ttf",  64 );
+	TitleFont      = TitleFontBig;
+	ButtonFont     = Raptor::Game->Res.GetFont( "Verdana.ttf",  40 );
+	VersionFont    = Raptor::Game->Res.GetFont( "Verdana.ttf",  16 );
 	
 	SDL_Rect button_rect;
 	
@@ -81,6 +87,8 @@ void MainMenu::UpdateRects( void )
 
 void MainMenu::Draw( void )
 {
+	Raptor::Game->Res.Lock.Lock();
+	
 	UpdateRects();
 	
 	int title_x   = Rect.w / 2;
@@ -172,33 +180,67 @@ void MainMenu::Draw( void )
 		glDisable( GL_TEXTURE_2D );
 	}
 	
-	FogTime += std::min<double>( Raptor::Game->FrameTime, 0.25 );
-	
 	bool is_top = IsTop();
 	if( is_top )
 		TitleFont->DrawText( Raptor::Game->Game, title_x, title_y, title_align );
 	if( is_top || ! vr )
 		VersionFont->DrawText( std::string("Version ") + Raptor::Game->Version, version_x, version_y, version_align );
 	
-	// If the screensaver ended up at the main menu somehow, try restarting it.
-	// NOTE: Could use similar logic to have a demo play after some amount of idle time.
-	if( (FogTime > 5.) && (Raptor::Game->State == Raptor::State::DISCONNECTED) && Raptor::Game->Cfg.SettingAsBool("screensaver") && IsTop() && ! Raptor::Server->IsRunning() )
+	Raptor::Game->Res.Lock.Unlock();
+	
+	Raptor::Game->Mouse.ShowCursor = ! (NeedPrecache || Loading);
+	
+	if( NeedPrecache && FogTime )
 	{
+		NeedPrecache = false;
+		
+		if( Raptor::Game->Cfg.SettingAsInt( "precache", 2 ) == 3 ) // FIXME: This would be ideal, but textures fail to load from another thread!
+		{
+			#if SDL_VERSION_ATLEAST(2,0,0)
+				SDL_CreateThread( MainMenuPrecacheThread, "Precache", this );
+			#else
+				SDL_CreateThread( MainMenuPrecacheThread, this );
+			#endif
+		}
+		else
+			MainMenuPrecacheThread( this );
+	}
+	else if( (FogTime > 5.) && (Raptor::Game->State == Raptor::State::DISCONNECTED) && Raptor::Game->Cfg.SettingAsBool("screensaver") && IsTop() && ! Raptor::Server->IsRunning() )
+	{
+		// If the screensaver ended up at the main menu somehow, try restarting it.
+		// NOTE: Could use similar logic to have a demo play after some amount of idle time.
 		Raptor::Game->Host();
 		FogTime = 0.;
 	}
+	
+	FogTime += std::min<double>( Raptor::Game->FrameTime, 0.125 );
 }
 
 
 void MainMenu::DrawElements( void )
 {
-	if( IsTop() )
+	if( Loading || NeedPrecache )
+	{
+		if( ! LoadingFont )
+			LoadingFont = Raptor::Game->Res.GetFont( "Verdana.ttf", 30 );
+		
+		Raptor::Game->Res.Lock.Lock();
+		
+		LoadingFont->DrawText( "Loading...", Rect.w / 2 + 2, Rect.h / 2 + 2, Font::ALIGN_MIDDLE_CENTER, 0.f,0.f,0.f,0.8f );
+		LoadingFont->DrawText( "Loading...", Rect.w / 2,     Rect.h / 2,     Font::ALIGN_MIDDLE_CENTER );
+		
+		Raptor::Game->Res.Lock.Unlock();
+	}
+	else if( IsTop() )
 		Layer::DrawElements();
 }
 
 
 bool MainMenu::HandleEvent( SDL_Event *event )
 {
+	if( Loading || NeedPrecache )
+		return false;
+	
 	if( IsTop() )
 	{
 		if( (event->type == SDL_JOYBUTTONDOWN)
@@ -293,7 +335,7 @@ void MainMenuHelpButton::Clicked( Uint8 button )
 	if( button != SDL_BUTTON_LEFT )
 		return;
 	
-	Raptor::Game->Layers.Add( new TextFileViewer( NULL, "README.txt", NULL, "Help and Info" ) );
+	Raptor::Game->Layers.Add( new TextFileViewer( NULL, "README.txt", Raptor::Game->Res.GetFont( "ProFont.ttf", 12 ), "Help and Info" ) );
 }
 
 
@@ -323,3 +365,15 @@ void MainMenuQuitButton::Clicked( Uint8 button )
 	Raptor::Game->Quit();
 }
 
+
+// -----------------------------------------------------------------------------
+
+
+int MainMenuPrecacheThread( void *main_menu )
+{
+	((MainMenu*)( main_menu ))->Loading = true;
+	SDL_Delay( 1 );
+	((XWingGame*)( Raptor::Game ))->Precache();
+	((MainMenu*)( main_menu ))->Loading = false;
+	return 0;
+}

@@ -17,11 +17,17 @@ recover 5
 recharge 3
 ramming 900
 explode 0.5
-turret quad_laser 0 2.53 -2.09 up 0 1 0 pitch -5 90 dir 0 0 1 arc 360 hidden linked firetime 0.25
-turret quad_laser 0 -2.53 -2.09 up 0 -1 0 pitch -5 90 dir 0 0 1 arc 360 hidden linked firetime 0.25
+turret quad_laser 0 2.13 -2.09 up 0 1 0 pitch -2 90 dir 0 0 1 arc 360 invincible linked firetime 0.22 dual
+turret quad_laser 0 -2.13 -2.09 up 0 -1 0 pitch -1 90 dir 0 0 1 arc 360 invincible linked firetime 0.22 dual
 model yt-1300.obj
 cockpit yt-1300_cockpit.obj 10 1.25 7.64
+turret_model yt-1300_turret_body.obj yt-1300_turret_gun.obj
+turret_gunpos 0.717
+turret_separation 0.21
+turret_headpos 0.61 -0.29
+turret_speed 90
 model_scale 0.022
+glance 30 30
 flyby 20 yt1300_slow.wav
 flyby 160 yt1300_med.wav
 flyby 210 yt1300_fast.wav

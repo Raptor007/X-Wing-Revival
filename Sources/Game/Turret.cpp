@@ -23,6 +23,7 @@ Turret::Turret( uint32_t id ) : GameObject( id, XWing::Object::TURRET )
 	
 	MinGunPitch = 0.;
 	MaxGunPitch = 80.;
+	YawSpeed = PitchSpeed = 45.;
 	Health = 95.;
 	Weapon = Shot::TYPE_TURBO_LASER_GREEN;
 	FiringMode = 2;
@@ -34,6 +35,14 @@ Turret::Turret( uint32_t id ) : GameObject( id, XWing::Object::TURRET )
 	SafetyDistance = 0.;
 	
 	Visible = true;
+	CanBeHit = true;
+	GunWidth = 2.2;
+	GunUp = 0.022 * 175.;
+	GunFwd = 0.022 * 50.;
+	HeadUp = 2.;
+	HeadFwd = 5.;
+	BodyModel = "turret_body.obj";
+	GunModel = "turret_gun.obj";
 	BodyShape = NULL;
 	GunShape = NULL;
 	
@@ -55,8 +64,8 @@ void Turret::ClientInit( void )
 {
 	if( Visible )
 	{
-		BodyShape = Raptor::Game->Res.GetModel("turret_body.obj");
-		GunShape = Raptor::Game->Res.GetModel("turret_gun.obj");
+		BodyShape = Raptor::Game->Res.GetModel(BodyModel);
+		GunShape  = Raptor::Game->Res.GetModel(GunModel);
 	}
 }
 
@@ -140,13 +149,13 @@ void Turret::PitchGun( double degrees )
 	if( GunPitch < MinGunPitch )
 	{
 		GunPitch = MinGunPitch;
-		if( GunPitchRate < 0. )
+		if( (GunPitchRate < 0.) && ClientSide() && (PlayerID == Raptor::Game->PlayerID) )
 			GunPitchRate = 0.;
 	}
 	else if( GunPitch > MaxGunPitch )
 	{
 		GunPitch = MaxGunPitch;
-		if( GunPitchRate > 0. )
+		if( (GunPitchRate > 0.) && ClientSide() && (PlayerID == Raptor::Game->PlayerID) )
 			GunPitchRate = 0.;
 	}
 }
@@ -158,7 +167,7 @@ void Turret::SetPitch( double pitch )
 	else if( pitch < -1. )
 		pitch = -1.;
 	
-	GunPitchRate = pitch * (Visible ? 45. : 90.);
+	GunPitchRate = pitch * PitchSpeed;
 }
 
 void Turret::SetYaw( double yaw )
@@ -168,19 +177,18 @@ void Turret::SetYaw( double yaw )
 	else if( yaw < -1. )
 		yaw = -1.;
 	
-	YawRate = yaw * (Visible ? 45. : 120.);
+	YawRate = yaw * YawSpeed;
 }
 
 
-Pos3D Turret::GunPos( void ) const
+Pos3D Turret::GunPos( const Pos3D *body_pos ) const
 {
+	if( ! body_pos )
+		body_pos = this;
 	GameObject gun;
-	gun.Copy( this );
-	if( Visible )
-	{
-		gun.MoveAlong( &(this->Up), 0.022 * 175. );
-		gun.MoveAlong( &(this->Fwd), 0.022 * 50. );
-	}
+	gun.Copy( body_pos );
+	gun.MoveAlong( &(body_pos->Up),  GunUp  );
+	gun.MoveAlong( &(body_pos->Fwd), GunFwd );
 	gun.Pitch( GunPitch );
 	return gun;
 }
@@ -189,13 +197,8 @@ Pos3D Turret::GunPos( void ) const
 Pos3D Turret::HeadPos( void ) const
 {
 	Pos3D head = GunPos();
-	if( Visible )
-	{
-		head.MoveAlong( &(head.Up),  2. );
-		head.MoveAlong( &(head.Fwd), 5. );
-	}
-	else
-		head.MoveAlong( &(head.Up),  3. );
+	head.MoveAlong( &(head.Up),  HeadUp  );
+	head.MoveAlong( &(head.Fwd), HeadFwd );
 	return head;
 }
 
@@ -239,14 +242,7 @@ std::map<int,Shot*> Turret::NextShots( GameObject *target, uint8_t firing_mode )
 			shot->FixVectors();
 		}
 		
-		double fwd = 0., up = 0., right = 0.;
-		
-		if( Visible || (firing_mode > 1) )
-			right = weapon_index ? -2.2 : 2.2;
-		
-		shot->MoveAlong( &Fwd, fwd );
-		shot->MoveAlong( &Up, up );
-		shot->MoveAlong( &Right, right );
+		shot->MoveAlong( &Right, weapon_index ? -GunWidth : GunWidth ); // FIXME: Make turret weapon positions customizable?
 		
 		shots[ weapon_index ] = shot;
 	}
@@ -257,7 +253,7 @@ std::map<int,Shot*> Turret::NextShots( GameObject *target, uint8_t firing_mode )
 
 std::map<int,Shot*> Turret::AllShots( GameObject *target ) const
 {
-	return NextShots( target, Visible ? 2 : 1 );
+	return NextShots( target, GunWidth ? 2 : 1 ); // FIXME: Make turret weapon positions customizable?
 }
 
 
@@ -303,7 +299,7 @@ bool Turret::CanCollideWithOtherTypes( void ) const
 	if( parent && (parent->JumpProgress < 1.) )
 		return false;
 	
-	return Visible;
+	return CanBeHit;
 }
 
 bool Turret::IsMoving( void ) const
@@ -347,7 +343,7 @@ void Turret::AddToInitPacket( Packet *packet, int8_t precision )
 	
 	packet->AddFloat( Health );
 	
-	uint8_t flags = (Visible ? 0x01 : 0x00) | (ParentControl ? 0x02 : 0x00);
+	uint8_t flags = (Visible ? 0x01 : 0x00) | (ParentControl ? 0x02 : 0x00) | (CanBeHit ? 0x04 : 0x00);
 	packet->AddUChar( flags );
 	
 	Vec3D target_dir = TargetDir.Unit();
@@ -355,6 +351,26 @@ void Turret::AddToInitPacket( Packet *packet, int8_t precision )
 	packet->AddChar( Num::UnitFloatTo8( target_dir.Y ) );
 	packet->AddChar( Num::UnitFloatTo8( target_dir.Z ) );
 	packet->AddUChar( Num::Clamp( TargetArc / 2. + 0.5, 0, 255 ) );
+	
+	packet->AddUChar( YawSpeed   );
+	packet->AddUChar( PitchSpeed );
+	
+	packet->AddFloat( GunWidth );
+	packet->AddFloat( GunUp    );
+	packet->AddFloat( GunFwd   );
+	packet->AddFloat( HeadUp   );
+	packet->AddFloat( HeadFwd  );
+	
+	if( (BodyModel == "turret_body.obj") && (GunModel == "turret_body.obj") )
+	{
+		packet->AddString( "" );
+		packet->AddString( "" );
+	}
+	else
+	{
+		packet->AddString( BodyModel );
+		packet->AddString( GunModel  );
+	}
 }
 
 
@@ -395,11 +411,29 @@ void Turret::ReadFromInitPacket( Packet *packet, int8_t precision )
 	uint8_t flags = packet->NextUChar();
 	Visible       = flags & 0x01;
 	ParentControl = flags & 0x02;
+	CanBeHit      = flags & 0x04;
 	
 	TargetDir.X = Num::UnitFloatFrom8( packet->NextChar() );
 	TargetDir.Y = Num::UnitFloatFrom8( packet->NextChar() );
 	TargetDir.Z = Num::UnitFloatFrom8( packet->NextChar() );
 	TargetArc = packet->NextUChar() * 2.;
+	
+	YawSpeed   = packet->NextUChar();
+	PitchSpeed = packet->NextUChar();
+	
+	GunWidth   = packet->NextFloat();
+	GunUp      = packet->NextFloat();
+	GunFwd     = packet->NextFloat();
+	HeadUp     = packet->NextFloat();
+	HeadFwd    = packet->NextFloat();
+	
+	BodyModel = packet->NextString();
+	GunModel  = packet->NextString();
+	if( BodyModel.empty() && GunModel.empty() )
+	{
+		BodyModel = "turret_body.obj";
+		GunModel  = "turret_gun.obj";
+	}
 }
 
 
@@ -524,7 +558,7 @@ bool Turret::WillCollide( const GameObject *other, double dt, std::string *this_
 		return false;
 	
 	// Hidden embedded turrets don't collide.
-	if( ! Visible )
+	if( ! CanBeHit )
 		return false;
 	
 	// Dead turrets don't collide.
@@ -540,7 +574,7 @@ bool Turret::WillCollide( const GameObject *other, double dt, std::string *this_
 		
 		double dist = Math3D::MinimumDistance( this, &(this->MotionVector), other, &(other->MotionVector), dt );
 		
-		if( dist <= 10. )
+		if( dist <= (GunWidth * 4.5) )
 			return true;
 	}
 	
@@ -557,7 +591,7 @@ bool Turret::WillCollide( const GameObject *other, double dt, std::string *this_
 		
 		double dist = Math3D::MinimumDistance( this, &(this->MotionVector), other, &(other->MotionVector), dt );
 		
-		if( dist <= (ship->Radius() + 5.) )
+		if( dist <= (ship->Radius() + GunWidth * 2.3) )
 			return true;
 	}
 	
@@ -574,6 +608,8 @@ bool Turret::WillCollide( const GameObject *other, double dt, std::string *this_
 
 void Turret::Update( double dt )
 {
+	FiringClock.SetTimeScale( Data->TimeScale );
+	
 	const Ship *parent = ParentShip();
 	if( parent )
 	{
@@ -606,49 +642,73 @@ void Turret::Update( double dt )
 
 void Turret::Draw( void )
 {
+	Draw( true );
+}
+
+
+void Turret::Draw( bool allow_shader_change )
+{
 	if( (Health > 0.) && Visible )
 	{
-		bool change_shader = (! ParentID) && (Raptor::Game->Cfg.SettingAsInt("g_shader_light_quality") >= 2) && Raptor::Game->ShaderMgr.Active();
+		bool change_shader = allow_shader_change && (! ParentID) && (Raptor::Game->Cfg.SettingAsInt("g_shader_light_quality") >= 2) && Raptor::Game->ShaderMgr.Active();
 		Shader *prev_shader = Raptor::Game->ShaderMgr.Selected;
 		if( change_shader )
 			Raptor::Game->ShaderMgr.SelectAndCopyVars( Raptor::Game->Res.GetShader("deathstar") );
 		
+		Pos3D pos = *this;
+		
+		bool gunner_view = (PlayerID == Raptor::Game->PlayerID); // FIXME: Ideally this should also apply to spectating the gunner view.
+		
 		// If attached to a ship jumping in from hyperspace, the turrets jump in with it.
-		Vec3D offset;
 		const Ship *parent = ParentShip();
-		if( parent )
+		if( parent && (parent->JumpProgress < 1.) )
 		{
-			if( parent->Health > 0. )
-			{
-				if( parent->JumpProgress < 1. )
-					offset = parent->Fwd * pow( 1. - parent->JumpProgress, 1.1 ) * -200. * ((const Ship*)( parent ))->Radius();
-				else
-					parent = NULL;  // No need to offset turret position if parent ship is not jumping.
-			}
+			if( (parent->PlayerID == Raptor::Game->PlayerID) && ! gunner_view )
+				pos.MoveAlong( &(parent->Fwd), parent->CockpitDrawOffset() );
 			else
-				parent = NULL;
+				pos.MoveAlong( &(parent->Fwd), parent->DrawOffset() );
 		}
 		
+		if( gunner_view )
+			pos.Yaw( YawRate * -0.004 );
+		
 		if( BodyShape )
-		{
-			if( parent )
-			{
-				Pos3D pos = *this + offset;
-				BodyShape->DrawAt( &pos, 0.022 );
-			}
-			else
-				BodyShape->DrawAt( this, 0.022 );
-		}
+			BodyShape->DrawAt( &pos, 0.022 );
 		
 		if( GunShape )
 		{
-			Pos3D gun = GunPos();
-			if( parent )
-				gun += offset;
+			Pos3D gun = GunPos( &pos );
+			
+			if( gunner_view )
+				gun.Pitch( GunPitchRate * -0.004 );
+			
 			GunShape->DrawAt( &gun, 0.022 );
 		}
 		
 		if( change_shader )
 			Raptor::Game->ShaderMgr.Select( prev_shader );
+	}
+}
+
+
+void Turret::DrawWireframe( Color *color, double scale )
+{
+	if( (Health > 0.) && Visible )
+	{
+		Color default_color(0.5,0.5,1,1);
+		if( ! color )
+			color = &default_color;
+		
+		Pos3D pos( this );
+		//pos.MoveAlong( &Up, GunUp * -1. );  // FIXME: RenderLayer needs to call something like DrawWireframeAt with corresponding DrawAt.
+		
+		if( BodyShape )
+			BodyShape->Draw( &pos, NULL, color, 0., 0, scale, scale, scale );
+		
+		if( GunShape )
+		{
+			Pos3D gun = GunPos( &pos );
+			GunShape->Draw( &gun, NULL, color, 0., 0, scale, scale, scale );
+		}
 	}
 }

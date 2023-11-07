@@ -15,7 +15,7 @@ recharge 1.5
 ramming 12000
 explode 0.03
 firetime turbolaser 0.42
-turret_health 149
+turret_health 189
 model nebulon-b.obj
 model_collision nebulon-b.obj
 cockpit nebulon-b.obj 0 25.6 -109.2

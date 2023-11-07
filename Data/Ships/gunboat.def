@@ -1,0 +1,37 @@
+id GUN
+name Assault Gunboat
+squadron Tau
+category gunboat
+team empire
+radius 5.1
+speed 165
+accel 70
+roll 85 75
+pitch 60 40
+yaw 50 35
+roll_change 160 130
+pitch_change 120 75
+yaw_change 95 65
+health 100
+shield 115
+recover 5
+recharge 3
+ramming 500
+explode 1
+weapon laser_green 2.475 -0.935 -0.2
+weapon laser_green -2.475 -0.935 -0.2
+firetime laser_green 0.25
+weapon missile 1.6 -0.4 -1.25
+weapon missile -1.6 -0.4 -1.25
+firetime missile 1
+ammo missile 12
+model gunboat.obj
+cockpit gunboat_cockpit.obj 0 0.36 0.98
+group_skin 2 gunboat_gold.obj gunboat_cockpit_gold.obj
+group_skin 3 gunboat_green.obj gunboat_cockpit_green.obj
+group_skin 4 gunboat_blue.obj gunboat_cockpit_blue.obj
+model_scale 0.022
+glance 70 30
+flyby 20 xwing_slow.wav
+flyby 170 xwing_med.wav
+flyby 210 xwing_fast.wav

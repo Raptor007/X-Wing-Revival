@@ -20,5 +20,6 @@ xwingrev.exe
 XWing.build
 X-Wing Revival*.exe
 X-Wing Revival*.map
+X-Wing Revival.elf
 *.cfg
 std*.txt

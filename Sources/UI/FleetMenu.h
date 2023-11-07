@@ -33,6 +33,8 @@ public:
 	void Draw( void );
 	bool KeyDown( SDLKey key );
 	bool KeyUp( SDLKey key );
+	bool MouseDown( Uint8 button = SDL_BUTTON_LEFT );
+	bool MouseUp( Uint8 button = SDL_BUTTON_LEFT );
 };
 
 

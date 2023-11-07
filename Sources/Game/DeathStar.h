@@ -14,11 +14,11 @@ class DeathStar;
 class DeathStar : public GameObject
 {
 public:
-	double TrenchWidth, TrenchDepth, TextureSize, DetailHeight;
+	double TrenchWidth, TrenchDepth, TextureSize, DetailHeight, SurfaceDetailHeight;
 	Animation Texture;
 	Color Ambient, Diffuse, Specular, BottomAmbient, BottomDiffuse, BottomSpecular;
 	float Shininess, BottomShininess;
-	Model DetailBottom, DetailSide;
+	Model DetailBottom, DetailSide, DetailSurface;
 	
 	
 	DeathStar( uint32_t id = 0 );
