@@ -1,6 +1,6 @@
 ----------------------------------------
 |            X-Wing Revival            |
-|        0.3 Alpha (2023-11-07)        |
+|       0.3.1 Alpha (2023-11-22)       |
 |     by Raptor007 (Blair Sherman)     |
 | http://raptor007.com/x-wing-revival/ |
 ----------------------------------------
@@ -93,10 +93,19 @@ My OS warns about or won't allow a downloaded or unsigned application to run.
 
   I recommend the permanent fixes for power users only, or anyone who misses the 90's.
 
+Should I run "X-Wing Revival.exe" or "X-Wing Revival Legacy.exe" on Windows?
+
+  You should try "X-Wing Revival.exe" first.  This is the 64-bit version using SDL 2.0.
+    If you are on a 32-bit system or having problems that did not occur in old versions
+    of X-Wing Revival, you can try "X-Wing Revival Legacy.exe" which is 32-bit SDL 1.2.
+    NOTE: SDL 1.2 and 2.0 often have different joystick axis mappings, so you may
+    need to alter control binds or restore defaults when switching between them.
+
 Linux asks what application to open files of type "executable" with.
 
-  Click Cancel, then right-click "X-Wing Revival.elf", go to the "Permissions" tab, and
-    check "Allow this file to run as a program".  Then double-clicking should run it.
+  Click Cancel, then right-click "X-Wing Revival.elf", select "Properties", then go to
+    the "Permissions" tab, and check "Allow this file to run as a program".  Close this
+    window.  Now double-clicking "X-Wing Revival.elf" should run it.
 
 
 == PREFERENCES ==
@@ -252,14 +261,14 @@ Linux asks what application to open files of type "executable" with.
    X52 Button 12 (T4): Target Groupmate
    X52 Button 13 (T5): Target Previous
    X52 Button 14 (T6): Target Next
-   X52 Button 20 (Hat 2 Up): Target Previous Subsystem
+   X52 Button 20 (Hat 2 Up): Show Scores
    X52 Button 21 (Hat 2 Right): Target Next Enemy
    X52 Button 22 (Hat 2 Down): Target Next Subsystem
    X52 Button 23 (Hat 2 Left): Target Previous Enemy
-   X52 Button 24 (Hat 3 Up): Target Data-Link
-   X52 Button 25 (Hat 3 Right): Target Next Friendly
-   X52 Button 26 (Hat 3 Down): Target None
-   X52 Button 27 (Hat 3 Left): Target Previous Friendly
+   X52 Button 24 (Hat 3 Up): Cockpit Seat
+   X52 Button 25 (Hat 3 Right): Gunner Seat 1
+   X52 Button 26 (Hat 3 Down): Gunner Seat 2
+   X52 Button 27 (Hat 3 Left): Toggle Co-Pilot (Chewie)
    X52 Button 31 (Clutch): Target Incoming Warhead
 
    SideWinder Button 1 (Trigger): Fire
@@ -323,6 +332,7 @@ Linux asks what application to open files of type "executable" with.
    I: Target Incoming
    O: Target Objective
    G: Target Groupmate
+   K: Eject
    V/CapsLock: Target Data-Link
    F1: Cockpit Seat
    F2: Gunner Seat 1
@@ -419,7 +429,7 @@ won't display by default, but you can show them by pressing return to toggle cha
 To use X-Wing Revival as your screensaver, simply copy the RaptorEngine.scr file into
 C:\Windows and select "RaptorEngine" in the Screen Saver settings.  Before you can
 preview or activate it, you'll need to click "Settings...", browse to your copy of
-"X-Wing Revival.exe" (or x64), and click "OK".
+"X-Wing Revival.exe", and click "OK".
 
 The RaptorEngine screensaver wrapper is only currently available for Windows.  You can
 also launch the game with "-screensaver" to watch screensaver mode on any platform.
@@ -429,6 +439,16 @@ console commands to execute, such as "sv gametype yavin" or "sv rebel_fighter A/
 
 
 == VERSION HISTORY ==
+
+Alpha 0.3.1 (2023-11-22):
+ * Fixed players losing sync when playing over the internet.
+ * Fixed cockpit seat being unavailable to turret gunners after pilot disconnects.
+ * Fixed "resync" causing client and/or server to crash.  (Two separate bugs!)
+ * Fixed collision model sometimes not updating when player changes ship.
+ * Slightly improved netcode prediction accuracy.
+ * Turrets no longer aim at Kessel Run checkpoints.  Gunners hear checkpoints too.
+ * Scoreboard now highlights the winning team.
+ * Added Eject button (default K): hold for 3 seconds to self-destruct.
 
 Alpha 0.3 (2023-11-07):
  * Now includes ELF64 binary for Linux.

@@ -845,6 +845,8 @@ void PrefsMenu::UpdateContents( void )
 		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::SEAT_GUNNER2 ], ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
 		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::CHEWIE_TAKE_THE_WHEEL ], ControlFont, BindFont ) );
+		rect.y += rect.h + 3;
+		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::EJECT ], ControlFont, BindFont ) );
 		
 		rect.y += rect.h + 10;
 		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::LOOK_CENTER ], ControlFont, BindFont ) );

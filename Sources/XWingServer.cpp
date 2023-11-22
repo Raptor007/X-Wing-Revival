@@ -198,6 +198,10 @@ bool XWingServer::ProcessPacket( Packet *packet, ConnectedClient *from_client )
 								}
 							}
 							
+							// Allow taking the cockpit seat from a disconnected player.
+							if( parent->PlayerID && ! Data.GetPlayer(parent->PlayerID) )
+								parent->PlayerID = 0;
+							
 							if( ! parent->PlayerID )
 							{
 								Packet message( Raptor::Packet::MESSAGE );
@@ -228,7 +232,7 @@ bool XWingServer::ProcessPacket( Packet *packet, ConnectedClient *from_client )
 				if( player_ship )
 				{
 					Turret *turret = player_ship->AttachedTurret( seat - 1 );
-					if( turret && ! turret->PlayerID )
+					if( turret && ! (turret->PlayerID && Data.GetPlayer(turret->PlayerID)) )
 					{
 						if( player_turret && (player_turret != turret) )
 						{
@@ -289,7 +293,7 @@ bool XWingServer::ProcessPacket( Packet *packet, ConnectedClient *from_client )
 					bool changed = false;
 					std::list<Turret*> turrets = parent->AttachedTurrets();
 					
-					if( parent->PlayerID && (parent->PlayerID != from_client->PlayerID) )
+					if( parent->PlayerID && (parent->PlayerID != from_client->PlayerID) && Data.GetPlayer(parent->PlayerID) )
 					{
 						// If another player owns the ship, check where they are sitting.
 						for( std::list<Turret*>::const_iterator turret_iter = turrets.begin(); turret_iter != turrets.end(); turret_iter ++ )
@@ -386,6 +390,51 @@ bool XWingServer::ProcessPacket( Packet *packet, ConnectedClient *from_client )
 			}
 		}
 	}
+	else if( type == XWing::Packet::EXPLOSION )
+	{
+		uint32_t obj_id = packet->NextUInt();
+		
+		GameObject *obj = Data.GetObject( obj_id );
+		Player *owner = obj ? obj->Owner() : NULL;
+		if( owner && (owner->ID == from_client->PlayerID) )
+		{
+			if( obj->Type() == XWing::Object::SHIP )
+			{
+				Ship *ship = (Ship*) obj;
+				ship->SetHealth( 0. );
+				
+				// Show an explosion to players.
+				Packet explosion( XWing::Packet::EXPLOSION );
+				explosion.AddDouble( ship->X );
+				explosion.AddDouble( ship->Y );
+				explosion.AddDouble( ship->Z );
+				explosion.AddFloat( ship->MotionVector.X );
+				explosion.AddFloat( ship->MotionVector.Y );
+				explosion.AddFloat( ship->MotionVector.Z );
+				explosion.AddFloat( ship->Radius() * 3. );
+				explosion.AddFloat( log( ship->Radius() ) );
+				if( ship->ComplexCollisionDetection() )
+				{
+					explosion.AddUChar( 30 );    // Sub-Explosions
+					explosion.AddFloat( 1.75f ); // Speed Scale
+					explosion.AddFloat( 0.66f ); // Speed Scale Sub
+				}
+				Net.SendAll( &explosion );
+				
+				if( State < XWing::State::ROUND_ENDED )
+				{
+					ShipKilled( ship );
+					
+					// Notify players.
+					Packet message( Raptor::Packet::MESSAGE );
+					char cstr[ 1024 ] = "";
+					snprintf( cstr, 1024, "%s ejected.", owner ? owner->Name.c_str() : ship->Name.c_str() );
+					message.AddString( cstr );
+					Net.SendAll( &message );
+				}
+			}
+		}
+	}
 	
 	return RaptorServer::ProcessPacket( packet, from_client );
 }
@@ -393,12 +442,14 @@ bool XWingServer::ProcessPacket( Packet *packet, ConnectedClient *from_client )
 
 void XWingServer::AcceptedClient( ConnectedClient *client )
 {
-	// Localhost client gets admin rights.
 	if( client->PlayerID && (((client->IP & 0xFF000000) >> 24) == 127) )
 	{
+		// Localhost client gets admin rights.
 		Player *player = Data.GetPlayer( client->PlayerID );
 		if( player )
 			player->Properties["admin"] = "true";
+		
+		client->Precision = 1;
 	}
 	
 	RaptorServer::AcceptedClient( client );
@@ -2006,6 +2057,9 @@ void XWingServer::Update( double dt )
 						ship->CanRespawn = false;
 					}
 				}
+				// If the pilot disconnected but the gunner is still present, give them the ship.
+				else if( ship->PlayerID && (ship->PlayerID != player->ID) && ! Data.GetPlayer(ship->PlayerID) )
+					ship->PlayerID = player->ID;
 			}
 			
 			// See if this ship is available to a player that's waiting for respawn.
@@ -3434,6 +3488,8 @@ void XWingServer::Update( double dt )
 						// This turret uses the parent's target.
 						turret->Target = parent_ship->Target;
 						target = Data.GetObject( turret->Target );
+						if( target && (target->Type() == XWing::Object::CHECKPOINT) )
+							target = NULL;
 						target_owner = target ? target->Owner() : NULL;
 						target_subsystem = parent_ship->TargetSubsystem;
 					}
@@ -4278,16 +4334,13 @@ void XWingServer::Update( double dt )
 				// Make sure the final scores are updated.
 				SendScores();
 				
-				// Don't play either team's victory music or award achivements if the players all died without respawn.
-				if( dead_player_team )
-					victor = XWing::Team::NONE;
-				
 				// If all players are on the team that lost, play defeat music rather than the other team's victory music.
 				uint16_t victor_music = (player_team && (victor != player_team)) ? ((uint32_t)( XWing::Team::NONE )) : victor;
 				
-				// Send round-ended packet (play round-ended music) to players.
+				// Send round-ended packet (show scores, play round-ended music) to players.
 				Packet round_ended( XWing::Packet::ROUND_ENDED );
 				round_ended.AddUInt( GameType );
+				round_ended.AddUShort( victor );
 				round_ended.AddUShort( victor_music );
 				Net.SendAll( &round_ended );
 				
@@ -4306,7 +4359,9 @@ void XWingServer::Update( double dt )
 				
 				// Determine which team is eligible for positive achievements.
 				std::string eligible_team;
-				if( (GameType == XWing::GameType::FLEET_BATTLE) || (GameType == XWing::GameType::TEAM_ELIMINATION) )
+				if( dead_player_team )
+					eligible_team = "Nobody";
+				else if( (GameType == XWing::GameType::FLEET_BATTLE) || (GameType == XWing::GameType::TEAM_ELIMINATION) )
 				{
 					if( victor == XWing::Team::REBEL )
 						eligible_team = "Rebel";
@@ -4936,7 +4991,6 @@ void XWingServer::BeginFlying( uint16_t player_id, bool respawn )
 					ship->SetFwdVec( 1., 0., 0. );
 					ship->SetUpVec( 0., 0., 1. );
 					ship->ResetTurrets();
-					ship->SetThrottle( 0.1, 120. );
 					const char *empire_flagship_cstr = empire_flagship_class.c_str();
 					if( strcasecmp( empire_flagship_cstr, "ISD" ) == 0 )
 						ship->Name = "Devastator";
@@ -4969,7 +5023,6 @@ void XWingServer::BeginFlying( uint16_t player_id, bool respawn )
 					ship->SetFwdVec( -1., 0., 0. );
 					ship->SetUpVec( 0., 0., 1. );
 					ship->ResetTurrets();
-					ship->SetThrottle( 0.1, 120. );
 					const char *rebel_flagship_cstr = rebel_flagship_class.c_str();
 					if( strcasecmp( rebel_flagship_cstr, "CRV" ) == 0 )
 						ship->Name = "Tantive IV";
@@ -5002,7 +5055,6 @@ void XWingServer::BeginFlying( uint16_t player_id, bool respawn )
 				empire_flagship->SetFwdVec( 0., 1., 0. );
 				empire_flagship->SetUpVec( 0., 0., 1. );
 				empire_flagship->ResetTurrets();
-				empire_flagship->SetThrottle( 1., 120. );
 				const char *empire_flagship_cstr = empire_flagship_class.c_str();
 				if( strcasecmp( empire_flagship_cstr, "ISD" ) == 0 )
 					empire_flagship->Name = "Devastator";
@@ -5034,7 +5086,6 @@ void XWingServer::BeginFlying( uint16_t player_id, bool respawn )
 				rebel_flagship->SetFwdVec( 0., -1., 0. );
 				rebel_flagship->SetUpVec( 0., 0., 1. );
 				rebel_flagship->ResetTurrets();
-				rebel_flagship->SetThrottle( 1., 120. );
 				const char *rebel_flagship_cstr = rebel_flagship_class.c_str();
 				if( strcasecmp( rebel_flagship_cstr, "CRV" ) == 0 )
 					rebel_flagship->Name = "Korolev";
@@ -5138,11 +5189,10 @@ void XWingServer::BeginFlying( uint16_t player_id, bool respawn )
 				Ship *ship = SpawnShip( ship_class, team );
 				ship->Group = 255;
 				ship->PlayerID = 0;
-				ship->CanRespawn = Data.PropertyAsBool( "ai_respawn", Respawn );
+				ship->CanRespawn = Data.PropertyAsBool( "ai_respawn", Respawn, Respawn );
 				ship->Name = squadron + std::string(" ") + Num::ToString( (int) Squadrons[ squadron ].size() + 1 );
 				ship->SetFwdVec( (rebel ? -1. : 1.), 0., 0. );
 				ship->SetUpVec( 0., 0., 1. );
-				ship->SetThrottle( 1., 999. );
 				for( int retry = 0; retry < 10; retry ++ )
 				{
 					ship->X = Rand::Double( -150.,  150. ) + (rebel ? 2000. : -2000.) + cruiser * (rebel ? -200. : 200.);
@@ -5208,23 +5258,24 @@ void XWingServer::BeginFlying( uint16_t player_id, bool respawn )
 			{
 				pilots.insert( player_iter->second );
 				
-				if( player_ship.length() )
+				const ShipClass *ship_class = player_ship.length() ? GetShipClass(player_ship) : NULL;
+				if( ship_class )
 				{
-					const ShipClass *ship_class = GetShipClass(player_ship);
-					if( ship_class && (ship_class->Team == XWing::Team::REBEL) )
-					{
-						SetPlayerProperty( player_iter->second, "team", "Rebel" );
-						rebel_count ++;
-					}
-					else if( ship_class && (ship_class->Team == XWing::Team::EMPIRE) )
+					if( ship_class->Team == XWing::Team::EMPIRE )
 					{
 						SetPlayerProperty( player_iter->second, "team", "Empire" );
 						empire_count ++;
 					}
+					else
+					{
+						// Corvettes and Frigates are typically Rebel, so that's the default team for any non-Imperial ship.
+						SetPlayerProperty( player_iter->second, "team", "Rebel" );
+						rebel_count ++;
+					}
 				}
 				else if( ! respawn )
 				{
-					// Auto-Assign
+					// Auto-Assign (or invalid ship selected)
 					SetPlayerProperty( player_iter->second, "team", "" );
 					SetPlayerProperty( player_iter->second, "group", "0" );
 				}
@@ -5394,7 +5445,7 @@ void XWingServer::BeginFlying( uint16_t player_id, bool respawn )
 				
 				Ship *ship = SpawnShip( ship_class, team );
 				ship->PlayerID = 0;
-				ship->CanRespawn = Data.PropertyAsBool( "ai_respawn", Respawn );
+				ship->CanRespawn = Data.PropertyAsBool( "ai_respawn", Respawn, Respawn );
 				ship->Name = squadron + std::string(" ") + Num::ToString( (int) Squadrons[ squadron ].size() + 1 );
 				if( ship->NextCheckpoint )
 				{
@@ -5450,7 +5501,7 @@ void XWingServer::BeginFlying( uint16_t player_id, bool respawn )
 						team = XWing::Team::REBEL;
 					Ship *ship = SpawnShip( sc, team );
 					bool rebel = (team != XWing::Team::EMPIRE);
-					ship->CanRespawn = Data.PropertyAsBool( "ai_respawn", Respawn );
+					ship->CanRespawn = Data.PropertyAsBool( "ai_respawn", false, false );
 					if( ship->NextCheckpoint )
 					{
 						ship->Copy( Data.GetObject( ship->NextCheckpoint ) );
@@ -5467,7 +5518,6 @@ void XWingServer::BeginFlying( uint16_t player_id, bool respawn )
 						ship->SetUpVec( 0., 0., 1. );
 					}
 					ship->ResetTurrets();
-					ship->SetThrottle( 0.1, 120. );
 					ship->Name = sc->LongName;
 				}
 			}
@@ -5579,10 +5629,8 @@ void XWingServer::BeginFlying( uint16_t player_id, bool respawn )
 				else if( player_iter->second->PropertyAsString("ship").length() )
 				{
 					const ShipClass *ship_class = GetShipClass( player_iter->second->PropertyAsString("ship") );
-					if( ship_class && (ship_class->Team == XWing::Team::REBEL) )
-						rebel = true;
-					else if( ship_class && (ship_class->Team == XWing::Team::EMPIRE) )
-						rebel = false;
+					if( ship_class )
+						rebel = (ship_class->Team != XWing::Team::EMPIRE);  // Corvettes and Frigates are typically Rebel, so this should handle all cases well.
 				}
 				else if( ! respawn )
 					// Auto-Assign
@@ -5790,7 +5838,7 @@ void XWingServer::ShipKilled( Ship *ship, GameObject *killer_obj )
 			SetPlayerProperty( *victim_gunner, "deaths", Num::ToString( (*victim_gunner)->PropertyAsInt("deaths") + 1 ) );
 	}
 	
-	// If the ship crashed after being hit, credit the kill to whomever most recently shot them.
+	// If the ship crashed or self-destructed after being hit, credit the kill to whomever most recently shot them.
 	if( ship->HitByID && ! (killer || killer_ship) )
 	{
 		GameObject *hit_by = Data.GetObject( ship->HitByID );

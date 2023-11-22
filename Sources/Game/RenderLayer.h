@@ -38,6 +38,7 @@ public:
 	MessageOverlay *MessageOutput;
 	TextBox *MessageInput;
 	Pos3D Cam;
+	Clock PlayTime;
 	
 	RenderLayer( void );
 	virtual ~RenderLayer();

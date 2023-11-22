@@ -37,6 +37,7 @@ XWingGame::XWingGame( std::string version ) : RaptorGame( "X-Wing Revival", vers
 	ThumbstickLook = true;
 	AsteroidLOD = 1.;
 	OverlayScroll = 0.;
+	Victor = XWing::Team::NONE;
 	memset( Controls, 0, sizeof(Controls) );
 	
 	// Analog Axes
@@ -78,6 +79,7 @@ XWingGame::XWingGame( std::string version ) : RaptorGame( "X-Wing Revival", vers
 	Controls[ XWing::Control::TARGET_NEWEST           ] = Input.AddControl( "TargetNewest" );
 	Controls[ XWing::Control::TARGET_GROUPMATE        ] = Input.AddControl( "TargetGroupmate" );
 	Controls[ XWing::Control::TARGET_SYNC             ] = Input.AddControl( "TargetDataLink" );
+	Controls[ XWing::Control::EJECT                   ] = Input.AddControl( "Eject" );
 	Controls[ XWing::Control::LOOK_CENTER             ] = Input.AddControl( "LookCenter" );
 	Controls[ XWing::Control::LOOK_UP                 ] = Input.AddControl( "LookUp" );
 	Controls[ XWing::Control::LOOK_DOWN               ] = Input.AddControl( "LookDown" );
@@ -154,6 +156,7 @@ void XWingGame::SetDefaultControls( void )
 	Cfg.KeyBinds[ SDLK_g            ] = Controls[ XWing::Control::TARGET_GROUPMATE        ];
 	Cfg.KeyBinds[ SDLK_v            ] = Controls[ XWing::Control::TARGET_SYNC             ];
 	Cfg.KeyBinds[ SDLK_CAPSLOCK     ] = Controls[ XWing::Control::TARGET_SYNC             ];
+	Cfg.KeyBinds[ SDLK_k            ] = Controls[ XWing::Control::EJECT                   ];
 	Cfg.KeyBinds[ SDLK_KP7          ] = Controls[ XWing::Control::LOOK_UP_LEFT            ];
 	Cfg.KeyBinds[ SDLK_KP8          ] = Controls[ XWing::Control::LOOK_UP                 ];
 	Cfg.KeyBinds[ SDLK_KP9          ] = Controls[ XWing::Control::LOOK_UP_RIGHT           ];
@@ -217,14 +220,14 @@ void XWingGame::SetDefaultControls( void )
 	Cfg.JoyButtonBinds[ "Joy" ][ 11 ] = Controls[ XWing::Control::TARGET_GROUPMATE        ];  // T4
 	Cfg.JoyButtonBinds[ "Joy" ][ 12 ] = Controls[ XWing::Control::TARGET_PREV             ];  // T5
 	Cfg.JoyButtonBinds[ "Joy" ][ 13 ] = Controls[ XWing::Control::TARGET_NEXT             ];  // T6
-	Cfg.JoyButtonBinds[ "Joy" ][ 19 ] = Controls[ XWing::Control::TARGET_PREV_SUBSYSTEM   ];  // Hat 2 Up
+	Cfg.JoyButtonBinds[ "Joy" ][ 19 ] = Controls[ XWing::Control::SCORES                  ];  // Hat 2 Up
 	Cfg.JoyButtonBinds[ "Joy" ][ 20 ] = Controls[ XWing::Control::TARGET_NEXT_ENEMY       ];  // Hat 2 Right
 	Cfg.JoyButtonBinds[ "Joy" ][ 21 ] = Controls[ XWing::Control::TARGET_NEXT_SUBSYSTEM   ];  // Hat 2 Down
 	Cfg.JoyButtonBinds[ "Joy" ][ 22 ] = Controls[ XWing::Control::TARGET_PREV_ENEMY       ];  // Hat 2 Left
-	Cfg.JoyButtonBinds[ "Joy" ][ 23 ] = Controls[ XWing::Control::SCORES                  ];  // Hat 3 Up
-	Cfg.JoyButtonBinds[ "Joy" ][ 24 ] = Controls[ XWing::Control::TARGET_NEXT_FRIENDLY    ];  // Hat 3 Right
-	Cfg.JoyButtonBinds[ "Joy" ][ 25 ] = Controls[ XWing::Control::TARGET_NOTHING          ];  // Hat 3 Down
-	Cfg.JoyButtonBinds[ "Joy" ][ 26 ] = Controls[ XWing::Control::TARGET_PREV_FRIENDLY    ];  // Hat 3 Left
+	Cfg.JoyButtonBinds[ "Joy" ][ 23 ] = Controls[ XWing::Control::SEAT_COCKPIT            ];  // Hat 3 Up
+	Cfg.JoyButtonBinds[ "Joy" ][ 24 ] = Controls[ XWing::Control::SEAT_GUNNER1            ];  // Hat 3 Right
+	Cfg.JoyButtonBinds[ "Joy" ][ 25 ] = Controls[ XWing::Control::SEAT_GUNNER2            ];  // Hat 3 Down
+	Cfg.JoyButtonBinds[ "Joy" ][ 26 ] = Controls[ XWing::Control::CHEWIE_TAKE_THE_WHEEL   ];  // Hat 3 Left
 	Cfg.JoyButtonBinds[ "Joy" ][ 30 ] = Controls[ XWing::Control::TARGET_NEWEST_INCOMING  ];  // Clutch
 	
 	Cfg.JoyHatBinds[ "Joy" ][ 0 ][ SDL_HAT_UP    ] = Controls[ XWing::Control::GLANCE_UP    ];  // Hat 1 Up
@@ -606,6 +609,7 @@ void XWingGame::Precache( void )
 		Res.GetSound("incoming.wav");
 		Res.GetSound("checkpoint.wav");
 		Res.GetSound("chat.wav");
+		Res.GetSound("eject.wav");
 		
 		Res.GetSound("damage_hull_2.wav");
 		Res.GetSound("laser_turret_2.wav");
@@ -992,6 +996,8 @@ void XWingGame::Update( double dt )
 	uint8_t target_subsystem = 0;
 	const char *beep = NULL;
 	const Ship *my_turret_parent = NULL;
+	bool ejecting = false;
+	static bool play_eject_sound = true;
 	
 	if( Cfg.SettingAsBool("swap_yaw_roll") )
 	{
@@ -1056,6 +1062,24 @@ void XWingGame::Update( double dt )
 							Net.Send( &play_sound );
 							break;  // The server will pass this on to all gunners, so we only send it once.
 						}
+					}
+				}
+				
+				ejecting = Input.ControlPressed(Controls[ XWing::Control::EJECT ]);
+				if( ejecting )
+				{
+					double eject_held = EjectHeld.ElapsedSeconds();
+					if( eject_held >= 3. )
+					{
+						EjectHeld.Reset();
+						Packet eject( XWing::Packet::EXPLOSION );
+						eject.AddUInt( my_ship->ID );
+						Net.Send( &eject );
+					}
+					else if( play_eject_sound && (eject_held >= 0.25) )
+					{
+						Snd.Play( Res.GetSound("eject.wav") );
+						play_eject_sound = false;
 					}
 				}
 			}
@@ -1556,6 +1580,12 @@ void XWingGame::Update( double dt )
 			else if( new_lock < 9 )
 				Snd.Play( Res.GetSound("locking.wav") );
 		}
+	}
+	
+	if( ! ejecting )
+	{
+		EjectHeld.Reset();
+		play_eject_sound = true;
 	}
 	
 	// If we did anything that calls for a beep, play the sound now.
@@ -2154,6 +2184,9 @@ bool XWingGame::HandleEvent( SDL_Event *event )
 	if( my_ship )
 		my_ship->UpdateTarget( target_id ? Data.GetObject(target_id) : NULL, target_subsystem );
 	
+	if( !( (my_ship && (my_ship->Health > 0.)) || my_turret ) )
+		beep = false;
+	
 	// If we did anything that calls for a beep, play the sound now.
 	if( beep )
 		Snd.Play( Res.GetSound("beep.wav") );
@@ -2594,6 +2627,19 @@ bool XWingGame::ProcessPacket( Packet *packet )
 				const Player *owner = ship->Owner();
 				if( owner && (owner->ID == PlayerID) )
 					Snd.Play( Res.GetSound("checkpoint.wav") );
+				else
+				{
+					// Let turret gunners hear when their ship passes a checkpoint.
+					std::set<Player*> gunners = ship->PlayersInTurrets();
+					for( std::set<Player*>::const_iterator gunner_iter = gunners.begin(); gunner_iter != gunners.end(); gunner_iter ++ )
+					{
+						if( (*gunner_iter)->ID == Raptor::Game->PlayerID )
+						{
+							Snd.Play( Res.GetSound("checkpoint.wav") );
+							break;
+						}
+					}
+				}
 			}
 		}
 	}
@@ -2616,18 +2662,23 @@ bool XWingGame::ProcessPacket( Packet *packet )
 	else if( type == XWing::Packet::ROUND_ENDED )
 	{
 		GameType = packet->NextUInt();
-		uint16_t victor = packet->NextUShort();
+		Victor   = packet->NextUShort();
+		
+		// The server may send alternate victory music (0 for defeat) if all players are on the same team and lose.
+		uint16_t victor_music = Victor;
+		if( packet->Remaining() )
+			victor_music = packet->NextUShort();
 		
 		if( State >= XWing::State::FLYING )
 		{
 			std::string music_name = "defeat.dat";
 			
 			// Victory checking is by player ID for FFA gametypes.
-			if( (GameType == XWing::GameType::FFA_ELIMINATION) || (GameType == XWing::GameType::FFA_DEATHMATCH) )
+			if( (GameType == XWing::GameType::FFA_ELIMINATION) || (GameType == XWing::GameType::FFA_DEATHMATCH) || (GameType == XWing::GameType::FFA_RACE) )
 			{
-				if( victor == PlayerID )
+				if( Victor == PlayerID )
 					music_name = "victory.dat";
-				else if( victor )
+				else if( Victor )
 				{
 					// If we're spectating and any non-AI player wins, play the victory tune.
 					Player *player = Data.GetPlayer( PlayerID );
@@ -2638,9 +2689,9 @@ bool XWingGame::ProcessPacket( Packet *packet )
 			// Usually assume it was a team game.
 			else
 			{
-				if( victor == XWing::Team::REBEL )
+				if( victor_music == XWing::Team::REBEL )
 					music_name = "rebel.dat";
-				else if( victor == XWing::Team::EMPIRE )
+				else if( victor_music == XWing::Team::EMPIRE )
 					music_name = "empire.dat";
 			}
 			
@@ -2680,16 +2731,19 @@ void XWingGame::ChangeState( int state )
 	if( state < XWing::State::FLYING )
 		GameType = XWing::GameType::UNDEFINED;
 	
+	if( state != XWing::State::ROUND_ENDED )
+		Victor = XWing::Team::NONE;
+	
+	while( Achievements.size() )
+		Achievements.pop();
+	AchievementClock.Reset( 0. );
+	
 	if( state == XWing::State::LOBBY )
 		ShowLobby();
 	else if( state == XWing::State::FLYING )
 		BeginFlying();
 	
 	RaptorGame::ChangeState( state );
-	
-	while( Achievements.size() )
-		Achievements.pop();
-	AchievementClock.Reset( 0. );
 	
 	if( (state == XWing::State::LOBBY) && Cfg.SettingAsBool("screensaver") && ! Raptor::Server->IsRunning() )
 		ChangeState( XWing::State::FLYING );

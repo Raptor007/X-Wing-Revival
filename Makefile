@@ -9,7 +9,7 @@ MCPU =
 MTUNE =
 MFLAGS =
 O = 2
-OFLAGS = -O$(O) -fomit-frame-pointer -ftree-vectorize -fno-strict-aliasing -flto
+OFLAGS = -O$(O) -fomit-frame-pointer -ftree-vectorize -fno-strict-aliasing -flto=auto
 WFLAGS = -Wall -Wextra -Wno-multichar -Wno-unused-parameter
 INC = /opt/local/include /opt/local/include/SDL /usr/local/include /usr/include
 LIBDIR = /usr/lib64
@@ -99,7 +99,7 @@ endif
 
 ifneq (,$(findstring -4.0,$(CC)))
 # When using gcc 4.0, don't use link-time optimization (it's not supported) and don't use auto-vectorization because it enables strict aliasing.
-OFLAGS := $(filter-out -flto,$(OFLAGS))
+OFLAGS := $(filter-out -flto=auto,$(OFLAGS))
 OFLAGS := $(filter-out -ftree-vectorize,$(OFLAGS))
 # Don't warn about OpenVR's use of non-virtual destructors.
 WFLAGS += -Wno-non-virtual-dtor

@@ -23,7 +23,9 @@ public:
 	bool ThumbstickLook;
 	double AsteroidLOD;
 	double OverlayScroll;
+	Clock EjectHeld;
 	
+	uint16_t Victor;
 	std::queue<std::string> Achievements;
 	Clock AchievementClock;
 	

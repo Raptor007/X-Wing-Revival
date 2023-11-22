@@ -34,7 +34,7 @@ group_skin 1 x-wing_hq.obj x-wing_cockpit_hq.obj
 group_skin 2 x-wing_hq_gold.obj x-wing_cockpit_hq_gold.obj
 group_skin 3 x-wing_hq_green.obj x-wing_cockpit_hq_green.obj
 model_scale 0.022
-glance 30 20
+glance 70 20
 flyby 20 xwing_slow.wav
 flyby 170 xwing_med.wav
 flyby 210 xwing_fast.wav

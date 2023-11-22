@@ -749,21 +749,21 @@ void RenderLayer::Draw( void )
 	
 	if( view == VIEW_CYCLE )
 	{
-		double cycle_time = Raptor::Game->Cfg.SettingAsDouble("view_cycle_time",7.) * Raptor::Game->Data.TimeScale;  // Undo the effect of observed_ship->Lifetime.TimeScale.
+		double cycle_time = Raptor::Game->Cfg.SettingAsDouble("view_cycle_time",7.);
 		if( cycle_time <= 0. )
 			cycle_time = 7.;
 		
-		double cam_picker = observed_ship ? fmod( observed_ship->Lifetime.ElapsedSeconds(), cycle_time * 5. ) : 0.;
+		double cam_picker = observed_ship ? fmod( observed_ship->Lifetime.ElapsedSeconds(), cycle_time * 5. * Raptor::Game->Data.TimeScale ) : fmod( PlayTime.ElapsedSeconds(), cycle_time * 5. );
 		if( cam_picker < cycle_time )
 			view = VIEW_CINEMA;
 		else if( cam_picker < cycle_time * 2. )
-			view = ((observed_ship->Category() == ShipClass::CATEGORY_CAPITAL) && observed_ship->AttachedTurret()) ? VIEW_GUNNER : VIEW_COCKPIT;
+			view = (observed_ship && (observed_ship->Category() == ShipClass::CATEGORY_CAPITAL) && observed_ship->AttachedTurret()) ? VIEW_GUNNER : VIEW_COCKPIT;
 		else if( cam_picker < cycle_time * 3. )
-			view = (observed_ship->Category() == ShipClass::CATEGORY_CAPITAL) ? VIEW_CINEMA : VIEW_CHASE;
+			view = (observed_ship && observed_ship->Category() == ShipClass::CATEGORY_CAPITAL) ? VIEW_CINEMA : VIEW_CHASE;
 		else if( cam_picker < cycle_time * 4. )
 			view = VIEW_FIXED;
 		else
-			view = observed_ship->AttachedTurret() ? VIEW_GUNNER : VIEW_CHASE;
+			view = (observed_ship && observed_ship->AttachedTurret()) ? VIEW_GUNNER : VIEW_CHASE;
 	}
 	
 	
@@ -1408,7 +1408,17 @@ void RenderLayer::Draw( void )
 					need_target_holo = false;
 				Raptor::Game->Gfx.Clear();
 				
-				if( target_obj )
+				double eject_held = ((XWingGame*)( Raptor::Game ))->EjectHeld.ElapsedSeconds();
+				if( eject_held >= 0.5 )
+				{
+					double unused = 0.;
+					if( modf( eject_held * 6., &unused ) >= 0.5 )
+						Raptor::Game->Gfx.Clear( 1.f, 0.f, 0.f );
+					
+					target_framebuffer->Setup2D();
+					ScreenFont->DrawText( "EJECTING", target_framebuffer->W / 2, target_framebuffer->H / 2, Font::ALIGN_MIDDLE_CENTER, 1.f, 1.f, 1.f, 1.f );
+				}
+				else if( target_obj )
 				{
 					// Draw target.
 					
@@ -3086,8 +3096,7 @@ void RenderLayer::Draw( void )
 	
 	if( (Raptor::Game->Data.TimeScale != 1.) && ! screensaver )
 	{
-		static Clock pause_time;
-		float r = fabsf( cos( pause_time.ElapsedSeconds() * M_PI ) );
+		float r = fabsf( cos( PlayTime.ElapsedSeconds() * M_PI ) );
 		float g = 0.5f + r * 0.5f;
 		float b = 1.f;
 		Raptor::Game->Gfx.Setup2D();
@@ -3238,25 +3247,36 @@ void RenderLayer::DrawScores( void )
 	
 	int y = Rect.y + 100;
 	
-	uint32_t gametype = ((const XWingGame*)( Raptor::Game ))->GameType;
+	const XWingGame *game = (const XWingGame*) Raptor::Game;
+	uint32_t gametype = game->GameType;
 	bool ffa = (gametype == XWing::GameType::FFA_ELIMINATION) || (gametype == XWing::GameType::FFA_DEATHMATCH) || (gametype == XWing::GameType::FFA_RACE);
 	bool objective = (gametype != XWing::GameType::TEAM_ELIMINATION) && (gametype != XWing::GameType::TEAM_DEATHMATCH) && (gametype != XWing::GameType::TEAM_RACE) && ! ffa;
 	
 	if( ! ffa )
 	{
+		float rebel_g  = (game->Victor == XWing::Team::REBEL)  ? fabsf(cos( PlayTime.ElapsedSeconds() * M_PI * 2. )) : 0.12f;
+		float empire_g = (game->Victor == XWing::Team::EMPIRE) ? fabsf(cos( PlayTime.ElapsedSeconds() * M_PI * 2. )) : 0.37f;
+		
 		BigFont->DrawText( "Rebels", Rect.x + Rect.w/2 - 318, y + 2, Font::ALIGN_MIDDLE_LEFT, 0.f, 0.f, 0.f, 0.8f );
-		BigFont->DrawText( "Rebels", Rect.x + Rect.w/2 - 320, y, Font::ALIGN_MIDDLE_LEFT, 1.f, 0.12f, 0.12f, 1.f );
+		BigFont->DrawText( "Rebels", Rect.x + Rect.w/2 - 320, y, Font::ALIGN_MIDDLE_LEFT, 1.f, rebel_g, 0.12f, 1.f );
 		BigFont->DrawText( "vs", Rect.x + Rect.w/2 + 2, y + 2, Font::ALIGN_MIDDLE_CENTER, 0.f, 0.f, 0.f, 0.8f );
 		BigFont->DrawText( "vs", Rect.x + Rect.w/2, y, Font::ALIGN_MIDDLE_CENTER, 0.75f, 0.75f, 0.75f, 1.f );
 		BigFont->DrawText( "Empire", Rect.x + Rect.w/2 + 322, y + 2, Font::ALIGN_MIDDLE_RIGHT, 0.f, 0.f, 0.f, 0.8f );
-		BigFont->DrawText( "Empire", Rect.x + Rect.w/2 + 320, y, Font::ALIGN_MIDDLE_RIGHT, 0.25f, 0.37f, 1.f, 1.f );
+		BigFont->DrawText( "Empire", Rect.x + Rect.w/2 + 320, y, Font::ALIGN_MIDDLE_RIGHT, 0.25f, empire_g, 1.f, 1.f );
 		
 		if( ! objective )
 		{
-			BigFont->DrawText( Raptor::Game->Data.PropertyAsString("team_score_rebel"),  Rect.x + Rect.w/2 - 14, y + 2, Font::ALIGN_MIDDLE_RIGHT, 0.f,   0.f,   0.f,   0.8f );
-			BigFont->DrawText( Raptor::Game->Data.PropertyAsString("team_score_rebel"),  Rect.x + Rect.w/2 - 16, y,     Font::ALIGN_MIDDLE_RIGHT, 1.f,   0.12f, 0.12f, 1.f );
-			BigFont->DrawText( Raptor::Game->Data.PropertyAsString("team_score_empire"), Rect.x + Rect.w/2 + 18, y + 2, Font::ALIGN_MIDDLE_LEFT,  0.f,   0.f,   0.f,   0.8f );
-			BigFont->DrawText( Raptor::Game->Data.PropertyAsString("team_score_empire"), Rect.x + Rect.w/2 + 16, y,     Font::ALIGN_MIDDLE_LEFT,  0.25f, 0.37f, 1.f,   1.f );
+			double rebel_score  = Raptor::Game->Data.PropertyAsInt("team_score_rebel");
+			double empire_score = Raptor::Game->Data.PropertyAsInt("team_score_rebel");
+			if( rebel_score >= empire_score )
+				empire_g = 0.37f;
+			if( empire_score >= rebel_score )
+				rebel_g = 0.12f;
+			
+			BigFont->DrawText( Raptor::Game->Data.PropertyAsString("team_score_rebel"),  Rect.x + Rect.w/2 - 14, y + 2, Font::ALIGN_MIDDLE_RIGHT, 0.f,   0.f,      0.f,   0.8f );
+			BigFont->DrawText( Raptor::Game->Data.PropertyAsString("team_score_rebel"),  Rect.x + Rect.w/2 - 16, y,     Font::ALIGN_MIDDLE_RIGHT, 1.f,   rebel_g,  0.12f, 1.f );
+			BigFont->DrawText( Raptor::Game->Data.PropertyAsString("team_score_empire"), Rect.x + Rect.w/2 + 18, y + 2, Font::ALIGN_MIDDLE_LEFT,  0.f,   0.f,      0.f,   0.8f );
+			BigFont->DrawText( Raptor::Game->Data.PropertyAsString("team_score_empire"), Rect.x + Rect.w/2 + 16, y,     Font::ALIGN_MIDDLE_LEFT,  0.25f, empire_g, 1.f,   1.f );
 		}
 		
 		y += BigFont->GetHeight() - 8;

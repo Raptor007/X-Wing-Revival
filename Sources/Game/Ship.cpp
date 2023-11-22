@@ -26,21 +26,7 @@ Ship::Ship( uint32_t id ) : GameObject( id, XWing::Object::SHIP )
 Ship::Ship( const ShipClass *ship_class ) : GameObject( 0, XWing::Object::SHIP )
 {
 	Clear();
-	Class = ship_class;
-	
-	if( Class && Class->Shape.VertexCount() )
-	{
-		Shape.BecomeInstance( &(Class->Shape) );
-		Shape.GetMaxRadius();
-	}
-	else if( Class && ! Class->CollisionModel.empty() )
-	{
-		Shape.LoadOBJ( std::string("Models/") + Class->CollisionModel, false );
-		Shape.ScaleBy( Class->ModelScale );
-		Shape.GetMaxRadius();
-	}
-	
-	Reset();
+	SetClass( ship_class );
 }
 
 
@@ -123,6 +109,24 @@ bool Ship::SetClass( uint32_t ship_class_id )
 void Ship::SetClass( const ShipClass *ship_class )
 {
 	Class = ship_class;
+	
+	if( Class && ! ClientSide() )
+	{
+		if( Class->Shape.VertexCount() )
+		{
+			Shape.BecomeInstance( &(Class->Shape) );
+			Shape.GetMaxRadius();
+		}
+		else if( ! Class->CollisionModel.empty() )
+		{
+			Shape.LoadOBJ( std::string("Models/") + Class->CollisionModel, false );
+			Shape.ScaleBy( Class->ModelScale );
+			Shape.GetMaxRadius();
+		}
+		else
+			Shape.Clear();
+	}
+	
 	Reset();
 }
 
@@ -2055,6 +2059,11 @@ void Ship::Update( double dt )
 	}
 	
 	GameObject::Update( dt );
+	
+	// After applying rotations in GameObject::Update, make sure MotionVector matches Fwd direction.
+	double speed = MotionVector.Length();
+	MotionVector.Copy( &Fwd );
+	MotionVector.ScaleTo( speed );
 }
 
 

@@ -99,10 +99,16 @@ void Shot::ClientInit( void )
 		{
 			Mix_Chunk *sound = Raptor::Game->Res.GetSound("superlaser.wav");
 			Raptor::Game->Snd.PlayAt( sound, X, Y, Z, 1000000. );
-			Raptor::Game->Snd.PlayAt( sound, X, Y, Z, 100000. );
-			Raptor::Game->Snd.PlayAt( sound, X, Y, Z, 10. );
-			if( fired_from && (fired_from->PlayerID == Raptor::Game->PlayerID) )
+			if( ! fired_from )
+			{
+				Raptor::Game->Snd.PlayAt( sound, X, Y, Z, 100000. );
+				Raptor::Game->Snd.PlayAt( sound, X, Y, Z, 10. );
+			}
+			else if( fired_from->PlayerID == Raptor::Game->PlayerID )
+			{
 				Raptor::Game->Snd.Play( sound );
+				Raptor::Game->Snd.Play( sound );
+			}
 		}
 		
 		if( Seeking && (Seeking == ((XWingGame*)( Raptor::Game ))->ObservedShipID) )
@@ -365,7 +371,7 @@ bool Shot::WillCollide( const GameObject *other, double dt, std::string *this_ob
 void Shot::Update( double dt )
 {
 	Lifetime.SetTimeScale( Data->TimeScale );
-	Anim.Timer.SetTimeScale( Data->TimeScale );
+	//Anim.Timer.SetTimeScale( Data->TimeScale );  // Pause and slow-motion actually look better without this.
 	
 	if( Seeking )
 	{
