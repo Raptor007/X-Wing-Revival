@@ -214,24 +214,18 @@ void PrefsMenu::UpdateContents( void )
 		rect.x = 10;
 		rect.y += rect.h + 8;
 		rect.w = 345;
-		PrefsMenuCheckBox *framebuffers_checkbox = new PrefsMenuCheckBox( &rect, LabelFont, "Framebuffer Textures (Required for VR)", "g_framebuffers" );
-		group->AddElement( framebuffers_checkbox );
+		group->AddElement( new PrefsMenuCheckBox( &rect, LabelFont, "Framebuffer Textures (Required for VR)", "g_framebuffers" ) );
 		
 		rect.x = 10;
 		rect.y += rect.h + 8;
-		rect.w = 185;
-		group->AddElement( new PrefsMenuCheckBox( &rect, LabelFont, "Draw With Shaders", "g_shader_enable" ) );
-		
-		rect.x = 10;
-		rect.y += rect.h + 8;
-		rect.w = 115;
-		group->AddElement( new Label( &rect, "Light Quality:", LabelFont, Font::ALIGN_MIDDLE_LEFT ) );
-		rect.x += rect.w + 5;
-		rect.w = 125;
+		rect.w = 90;
+		group->AddElement( new PrefsMenuCheckBox( &rect, LabelFont, "Shaders", "g_shader_enable" ) );
+		rect.x += rect.w + 10;
+		rect.w = 165;
 		PrefsMenuDropDown *light_quality_dropdown = new PrefsMenuDropDown( &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, 0, "g_shader_light_quality" );
-		light_quality_dropdown->AddItem( "0", "Off" );
-		light_quality_dropdown->AddItem( "1", "Low (Vertex)" );
-		light_quality_dropdown->AddItem( "2", "High (Pixel)" );
+		light_quality_dropdown->AddItem( "0", "No Lighting" );
+		light_quality_dropdown->AddItem( "1", "Per-Vertex Lighting" );
+		light_quality_dropdown->AddItem( "2", "Per-Pixel Lighting" );
 		light_quality_dropdown->Update();
 		group->AddElement( light_quality_dropdown );
 		rect.x += rect.w + 10;
@@ -263,9 +257,14 @@ void PrefsMenu::UpdateContents( void )
 			effects_dropdown->AddItem( Raptor::Game->Cfg.SettingAsString("g_effects"), "Ultra" );
 		effects_dropdown->Update();
 		group->AddElement( effects_dropdown );
-		rect.x += rect.w + 39;
-		rect.w = 137;
-		group->AddElement( new Label( &rect, "Asteroid Quality:", LabelFont, Font::ALIGN_MIDDLE_LEFT ) );
+		rect.x += rect.w + 20;
+		rect.w = 125;
+		group->AddElement( new PrefsMenuCheckBox( &rect, LabelFont, "Engine Glow", "g_engine_glow" ) );
+		
+		rect.x = 10;
+		rect.y += rect.h + 8;
+		rect.w = 200;
+		group->AddElement( new Label( &rect, "Asteroid Level of Detail:", LabelFont, Font::ALIGN_MIDDLE_LEFT ) );
 		rect.x += rect.w + 5;
 		rect.w = 75;
 		PrefsMenuDropDown *asteroid_lod_dropdown = new PrefsMenuDropDown( &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, 0, "g_asteroid_lod" );
@@ -1476,7 +1475,7 @@ void PrefsMenuSillyButton::Clicked( Uint8 button )
 	
 	if( TimesClicked == 7 )
 	{
-		TimesClicked = 0;
+		TimesClicked = 6;
 		
 		Raptor::Game->HandleCommand( "pew" );
 		

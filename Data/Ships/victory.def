@@ -18,6 +18,13 @@ explode 0.015
 subsystem ShieldGenerator1 749
 subsystem ShieldGenerator2 749
 firetime turbolaser 0.5
+engine 0 -35 -400 engine_blue.ani 35 1 1 1 0.5
+engine 83.6 -35 -400 engine_blue.ani 35 1 1 1 0.5
+engine -83.6 -35 -400 engine_blue.ani 35 1 1 1 0.5
+engine 35.9 -16.3 -394 engine_blue.ani 15 1 1 1 0.5
+engine -35.9 -16.3 -394 engine_blue.ani 15 1 1 1 0.5
+engine 35.9 -53.8 -394 engine_blue.ani 15 1 1 1 0.5
+engine -35.9 -53.8 -394 engine_blue.ani 15 1 1 1 0.5
 model vsd2.obj
 model_collision vsd2_col.obj
 cockpit vsd2.obj 0 69 -260

@@ -2465,6 +2465,19 @@ void RenderLayer::Draw( void )
 			// Don't draw ships that are entirely behind us.
 			if( ship->DistAlong( &(Raptor::Game->Cam.Fwd), &(Raptor::Game->Cam) ) < -size )
 				continue;
+			
+			// Draw engine glows later, with the other transparent renderables.
+			if( ship->Health > 0. )
+			{
+				double ship_throttle = ship->GetThrottle();
+				if( (ship_throttle >= 0.75) && ship->Engines.size() && Raptor::Game->Cfg.SettingAsBool("g_engine_glow",true) )
+				{
+					float engine_alpha = (ship_throttle - 0.75f) * 4.f;
+					std::map<ShipEngine*,Pos3D> engines = ship->EnginePositions();
+					for( std::map<ShipEngine*,Pos3D>::const_iterator engine_iter = engines.begin(); engine_iter != engines.end(); engine_iter ++ )
+						sorted_renderables.insert( std::pair<double,Renderable>( engine_iter->second.DistAlong( &(Raptor::Game->Cam.Fwd), &(Raptor::Game->Cam) ), Renderable( engine_iter->first, &(engine_iter->second), engine_alpha ) ) );
+				}
+			}
 		}
 		else if( obj_iter->second->Type() == XWing::Object::TURRET )
 		{
@@ -2524,6 +2537,7 @@ void RenderLayer::Draw( void )
 	for( std::multimap<double,Renderable>::reverse_iterator renderable = sorted_renderables.rbegin(); renderable != sorted_renderables.rend(); renderable ++ )
 	{
 		glPushMatrix();
+		
 		if( renderable->second.ShotPtr )
 			renderable->second.ShotPtr->Draw();
 		else if( renderable->second.EffectPtr )
@@ -2542,6 +2556,9 @@ void RenderLayer::Draw( void )
 			if( use_shaders )
 				Raptor::Game->ShaderMgr.StopShaders();
 		}
+		else if( renderable->second.EnginePtr )
+			renderable->second.EnginePtr->DrawAt( &(renderable->second.EnginePos), renderable->second.EngineAlpha );
+		
 		glPopMatrix();
 	}
 	
@@ -3634,6 +3651,8 @@ Renderable::Renderable( Ship *ship )
 	ShipPtr = ship;
 	ShotPtr = NULL;
 	EffectPtr = NULL;
+	EnginePtr = NULL;
+	EngineAlpha = 0.f;
 }
 
 Renderable::Renderable( Shot *shot )
@@ -3641,6 +3660,8 @@ Renderable::Renderable( Shot *shot )
 	ShipPtr = NULL;
 	ShotPtr = shot;
 	EffectPtr = NULL;
+	EnginePtr = NULL;
+	EngineAlpha = 0.f;
 }
 
 Renderable::Renderable( Effect *effect )
@@ -3648,6 +3669,18 @@ Renderable::Renderable( Effect *effect )
 	ShipPtr = NULL;
 	ShotPtr = NULL;
 	EffectPtr = effect;
+	EnginePtr = NULL;
+	EngineAlpha = 0.f;
+}
+
+Renderable::Renderable( ShipEngine *engine, const Pos3D *pos, float alpha )
+{
+	ShipPtr = NULL;
+	ShotPtr = NULL;
+	EffectPtr = NULL;
+	EnginePtr = engine;
+	EnginePos.Copy( pos );
+	EngineAlpha = alpha;
 }
 
 Renderable::~Renderable()

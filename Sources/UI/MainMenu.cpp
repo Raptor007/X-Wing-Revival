@@ -209,8 +209,8 @@ void MainMenu::Draw( void )
 	{
 		// If the screensaver ended up at the main menu somehow, try restarting it.
 		// NOTE: Could use similar logic to have a demo play after some amount of idle time.
-		Raptor::Game->Host();
 		FogTime = 0.;
+		Raptor::Game->Host();
 	}
 	
 	FogTime += std::min<double>( Raptor::Game->FrameTime, 0.125 );

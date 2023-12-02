@@ -1,6 +1,6 @@
 id T/F-S
 name TIE Fighter (SuperLaser)
-squadron DeathTIE
+squadron Ligma
 category fighter
 team empire
 secret
@@ -19,6 +19,9 @@ ramming 500
 explode 1
 weapon superlaser 0 -0.9 0
 firetime superlaser 5
+engine 0.88 0.03 -0.9 engine_yellow.ani 0.15 1 0.1 0.1 0.5
+engine -0.88 0.03 -0.9 engine_yellow.ani 0.15 1 0.1 0.1 0.5
+engine 0 -0.9 1.1 engine_yellow.ani 0.9 0.1 1 0.3 0.7
 model tie-fighter_hq.obj
 cockpit tie-fighter_cockpit_vr.obj 0 0 0.07
 cockpit_vr tie-fighter_cockpit_vr.obj 0 0.1 -0.1

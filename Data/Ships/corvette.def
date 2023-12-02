@@ -17,6 +17,17 @@ explode 0.05
 turret turbolaser 0 10.28 37.5 up 0 1 0 pitch -5 90 dir 0 0 1 arc 300 invincible independent firetime 0.4
 turret turbolaser 0 -10.28 37.5 up 0 -1 0 pitch -5 90 dir 0 0 1 arc 300 invincible independent firetime 0.4
 firetime turbolaser 0.4
+engine 0 0 -76 engine_orange.ani 12 1 1 1 0.2
+engine 15 0 -76.1 engine_orange.ani 12 1 1 1 0.2
+engine -15 0 -76.1 engine_orange.ani 12 1 1 1 0.2
+engine 7.4 10 -77 engine_orange.ani 15 1 1 1 0.2
+engine -7.4 10 -77 engine_orange.ani 15 1 1 1 0.2
+engine 7.4 -10 -77 engine_orange.ani 15 1 1 1 0.2
+engine -7.4 -10 -77 engine_orange.ani 15 1 1 1 0.2
+engine 22.2 10 -78 engine_orange.ani 17 1 1 1 0.2
+engine -22.2 10 -78 engine_orange.ani 17 1 1 1 0.2
+engine 22.2 -10 -78 engine_orange.ani 17 1 1 1 0.2
+engine -22.2 -10 -78 engine_orange.ani 17 1 1 1 0.2
 model corvette.obj
 model_collision corvette.obj
 cockpit corvette.obj 0 14 -20

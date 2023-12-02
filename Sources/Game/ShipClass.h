@@ -4,6 +4,7 @@
 
 #pragma once
 class ShipClass;
+class ShipClassEngine;
 
 #include "PlatformSpecific.h"
 
@@ -12,6 +13,7 @@ class ShipClass;
 #include <vector>
 #include "GameObject.h"
 #include "Model.h"
+#include "Color.h"
 
 
 class ShipClassTurret;
@@ -52,6 +54,7 @@ public:
 	std::string TurretBody, TurretGun;
 	double TurretGunWidth;
 	double TurretGunUp, TurretGunFwd, TurretHeadUp, TurretHeadFwd;
+	std::vector<ShipClassEngine> Engines;
 	std::string CollisionModel;
 	std::string ExternalModel;
 	std::string CockpitModel, CockpitModelVR;
@@ -108,4 +111,16 @@ public:
 	
 	ShipClassTurret( double fwd, double up, double right, uint8_t weapon );
 	ShipClassTurret &operator = ( const ShipClassTurret &other );
+};
+
+
+class ShipClassEngine : public Vec3D
+{
+public:
+	std::string Texture;
+	double Radius;
+	Color DrawColor;
+	
+	ShipClassEngine( double fwd, double up, double right, std::string texture, double radius, float r = 1.f, float g = 1.f, float b = 1.f, float a = 1.f );
+	ShipClassEngine &operator = ( const ShipClassEngine &other );
 };

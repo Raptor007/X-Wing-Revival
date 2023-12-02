@@ -19,6 +19,13 @@ ramming 900
 explode 0.5
 turret quad_laser 0 2.13 -2.09 up 0 1 0 pitch -2 90 dir 0 0 1 arc 360 invincible linked firetime 0.22 dual
 turret quad_laser 0 -2.13 -2.09 up 0 -1 0 pitch -1 90 dir 0 0 1 arc 360 invincible linked firetime 0.22 dual
+engine 0 0 -14.5 engine_blue.ani 7 1 1 1 0.2
+engine 2.4 0 -14.3 engine_blue.ani 7 1 1 1 0.2
+engine -2.4 0 -14.3 engine_blue.ani 7 1 1 1 0.2
+engine 4.7 0 -13.6 engine_blue.ani 7 1 1 1 0.2
+engine -4.7 0 -13.6 engine_blue.ani 7 1 1 1 0.2
+engine 6.9 0 -12.5 engine_blue.ani 7 1 1 1 0.2
+engine -6.9 0 -12.5 engine_blue.ani 7 1 1 1 0.2
 model yt-1300.obj
 cockpit yt-1300_cockpit.obj 10 1.25 7.64
 turret_model yt-1300_turret_body.obj yt-1300_turret_gun.obj

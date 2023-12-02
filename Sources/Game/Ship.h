@@ -4,6 +4,7 @@
 
 #pragma once
 class Ship;
+class ShipEngine;
 
 #include "PlatformSpecific.h"
 
@@ -58,6 +59,7 @@ public:
 	int8_t EngineSoundDir;
 	Clock EngineSoundClock;
 	std::string EngineSoundPrev;
+	std::vector<ShipEngine> Engines;
 	
 	
 	Ship( uint32_t id = 0 );
@@ -152,10 +154,27 @@ public:
 	void Draw( void );
 	void DrawWireframe( Color *color = NULL, double scale = 1. );
 	
+	std::map<ShipEngine*,Pos3D> EnginePositions( void );
+	std::map<ShipEngine*,Pos3D> EnginePositions( const Pos3D *pos );
+	
 	enum
 	{
 		SHIELD_CENTER = 0,
 		SHIELD_FRONT,
 		SHIELD_REAR
 	};
+};
+
+
+class ShipEngine : public Vec3D
+{
+public:
+	Animation Texture;
+	double Radius;
+	Color DrawColor;
+	
+	ShipEngine( const ShipClassEngine *engine );
+	ShipEngine &operator = ( const ShipEngine &other );
+	
+	void DrawAt( const Pos3D *pos, float alpha = 1.f );
 };

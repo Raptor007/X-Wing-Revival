@@ -110,9 +110,18 @@ void Ship::SetClass( const ShipClass *ship_class )
 {
 	Class = ship_class;
 	
-	if( Class && ! ClientSide() )
+	if( Class )
 	{
-		if( Class->Shape.VertexCount() )
+		if( ClientSide() )
+		{
+			Engines.clear();
+			for( std::vector<ShipClassEngine>::const_iterator engine_iter = ship_class->Engines.begin(); engine_iter != ship_class->Engines.end(); engine_iter ++ )
+			{
+				Engines.push_back( ShipEngine( &*engine_iter ) );
+				Engines.back().Texture.Timer.Sync( &DeathClock );
+			}
+		}
+		else if( Class->Shape.VertexCount() )
 		{
 			Shape.BecomeInstance( &(Class->Shape) );
 			Shape.GetMaxRadius();
@@ -2155,4 +2164,106 @@ void Ship::DrawWireframe( Color *color, double scale )
 	}
 	else
 		Shape.Draw( this, NULL, color, Exploded(), ExplosionSeed(), scale, scale, scale );
+}
+
+
+std::map<ShipEngine*,Pos3D> Ship::EnginePositions( void )
+{
+	if( (JumpProgress < 1.) && (Category() != ShipClass::CATEGORY_TARGET) )
+	{
+		Pos3D pos( this );
+		pos.MoveAlong( &(pos.Fwd), DrawOffset() );
+		return EnginePositions( &pos );
+	}
+	
+	return EnginePositions( this );
+}
+
+
+std::map<ShipEngine*,Pos3D> Ship::EnginePositions( const Pos3D *pos )
+{
+	std::map<ShipEngine*,Pos3D> positions;
+	
+	for( std::vector<ShipEngine>::iterator engine_iter = Engines.begin(); engine_iter != Engines.end(); engine_iter ++ )
+	{
+		Pos3D engine_pos( pos );
+		engine_pos.MoveAlong( &(pos->Fwd),   engine_iter->X );
+		engine_pos.MoveAlong( &(pos->Up),    engine_iter->Y );
+		engine_pos.MoveAlong( &(pos->Right), engine_iter->Z );
+		positions[ &*engine_iter ] = engine_pos;
+	}
+	
+	return positions;
+}
+
+
+// ---------------------------------------------------------------------------
+
+
+ShipEngine::ShipEngine( const ShipClassEngine *engine ) : Vec3D( engine )
+{
+	Texture.BecomeInstance( Raptor::Game->Res.GetAnimation( engine->Texture ) );
+	
+	Radius = engine->Radius;
+	DrawColor = engine->DrawColor;
+}
+
+
+ShipEngine &ShipEngine::operator = ( const ShipEngine &other )
+{
+	Vec3D::Copy( &other );
+	
+	Texture.BecomeInstance( &(other.Texture) );
+	Texture.Timer.Sync( &(other.Texture.Timer) );
+	
+	Radius = other.Radius;
+	DrawColor = other.DrawColor;
+	
+	return *this;
+}
+
+
+void ShipEngine::DrawAt( const Pos3D *pos, float alpha )
+{
+	bool use_shaders = Raptor::Game->ShaderMgr.Active();
+	if( use_shaders )
+		Raptor::Game->ShaderMgr.StopShaders();
+	
+	glEnable( GL_TEXTURE_2D );
+	glBindTexture( GL_TEXTURE_2D, Texture.CurrentFrame() );
+	glColor4f( DrawColor.Red, DrawColor.Green, DrawColor.Blue, DrawColor.Alpha * alpha );
+	
+	// Calculate corners.
+	Vec3D tl = Raptor::Game->Cam.Up * Radius - Raptor::Game->Cam.Right * Radius;
+	Vec3D tr = tl + Raptor::Game->Cam.Right * Radius * 2.;
+	Vec3D bl = tr;
+	Vec3D br = tl;
+	br.RotateAround( &(Raptor::Game->Cam.Fwd), 180. );
+	bl.RotateAround( &(Raptor::Game->Cam.Fwd), 180. );
+	
+	glBegin( GL_QUADS );
+		
+		// Top-left
+		glTexCoord2i( 0, 0 );
+		glVertex3d( pos->X + tl.X, pos->Y + tl.Y, pos->Z + tl.Z );
+		
+		// Bottom-left
+		glTexCoord2i( 0, 1 );
+		glVertex3d( pos->X + bl.X, pos->Y + bl.Y, pos->Z + bl.Z );
+		
+		// Bottom-right
+		glTexCoord2i( 1, 1 );
+		glVertex3d( pos->X + br.X, pos->Y + br.Y, pos->Z + br.Z );
+		
+		// Top-right
+		glTexCoord2i( 1, 0 );
+		glVertex3d( pos->X + tr.X, pos->Y + tr.Y, pos->Z + tr.Z );
+		
+	glEnd();
+	
+	glDisable( GL_TEXTURE_2D );
+	glColor4f( 1.f, 1.f, 1.f, 1.f );
+	
+	if( use_shaders )
+		Raptor::Game->ShaderMgr.ResumeShaders();
 }

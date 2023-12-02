@@ -107,6 +107,7 @@ ShipClass::ShipClass( const ShipClass &other ) : GameObject( 0, XWing::Object::S
 	CockpitPosVR.Copy( &(other.CockpitPosVR) );
 	GlanceUpFwd  = other.GlanceUpFwd;
 	GlanceUpBack = other.GlanceUpBack;
+	Engines = other.Engines;
 	ModelScale = other.ModelScale;
 	Shape.BecomeCopy( &(other.Shape) );
 	GroupSkins = other.GroupSkins;
@@ -468,6 +469,23 @@ bool ShipClass::Load( const std::string &filename )
 			TurretYawSpeed = atof( args.at(0).c_str() );
 			TurretPitchSpeed = (args.size() >= 2) ? atof( args.at(1).c_str() ) : TurretYawSpeed;
 		}
+		else if( (var == "engine") && (args.size() >= 5) )
+		{
+			double right  = atof( args.at(0).c_str() );
+			double up     = atof( args.at(1).c_str() );
+			double fwd    = atof( args.at(2).c_str() );
+			std::string texture = args.at(3);
+			double radius = atof( args.at(4).c_str() );
+			Engines.push_back( ShipClassEngine( fwd, up, right, texture, radius ) );
+			if( args.size() >= 8 )
+			{
+				Engines.back().DrawColor.Red   = atof( args.at(5).c_str() );
+				Engines.back().DrawColor.Green = atof( args.at(6).c_str() );
+				Engines.back().DrawColor.Blue  = atof( args.at(7).c_str() );
+				if( args.size() >= 9 )
+					Engines.back().DrawColor.Alpha = atof( args.at(8).c_str() );
+			}
+		}
 		else if( (var == "cockpit") && (args.size() >= 4) )
 		{
 			CockpitModel = args.at(0);
@@ -592,6 +610,20 @@ void ShipClass::AddToInitPacket( Packet *packet, int8_t precision )
 		packet->AddDouble( subsystem_iter->second );
 	}
 	
+	packet->AddUChar( Engines.size() );
+	for( std::vector<ShipClassEngine>::const_iterator engine_iter = Engines.begin(); engine_iter != Engines.end(); engine_iter ++ )
+	{
+		packet->AddFloat( engine_iter->X );
+		packet->AddFloat( engine_iter->Y );
+		packet->AddFloat( engine_iter->Z );
+		packet->AddString( engine_iter->Texture );
+		packet->AddFloat( engine_iter->Radius );
+		packet->AddUChar( Num::UnitFloatTo8( engine_iter->DrawColor.Red   * 2. - 1. ) );
+		packet->AddUChar( Num::UnitFloatTo8( engine_iter->DrawColor.Green * 2. - 1. ) );
+		packet->AddUChar( Num::UnitFloatTo8( engine_iter->DrawColor.Blue  * 2. - 1. ) );
+		packet->AddUChar( Num::UnitFloatTo8( engine_iter->DrawColor.Alpha * 2. - 1. ) );
+	}
+	
 	packet->AddString( CollisionModel );
 	packet->AddString( ExternalModel );
 	
@@ -693,7 +725,23 @@ void ShipClass::ReadFromInitPacket( Packet *packet, int8_t precision )
 	for( size_t i = 0; i < num_subsystems; i ++ )
 	{
 		std::string subsystem_name = packet->NextString();
-		Subsystems[ subsystem_name ] = packet->NextDouble();
+		double subsystem_health = packet->NextDouble();
+		Subsystems[ subsystem_name ] = subsystem_health;
+	}
+	
+	size_t num_engines = packet->NextUChar();
+	for( size_t i = 0; i < num_engines; i ++ )
+	{
+		double fwd    = packet->NextFloat();
+		double up     = packet->NextFloat();
+		double right  = packet->NextFloat();
+		std::string texture = packet->NextString();
+		double radius = packet->NextFloat();
+		float r = (Num::UnitFloatFrom8( packet->NextUChar() ) + 1.) / 2.;
+		float g = (Num::UnitFloatFrom8( packet->NextUChar() ) + 1.) / 2.;
+		float b = (Num::UnitFloatFrom8( packet->NextUChar() ) + 1.) / 2.;
+		float a = (Num::UnitFloatFrom8( packet->NextUChar() ) + 1.) / 2.;
+		Engines.push_back( ShipClassEngine( fwd, up, right, texture, radius, r, g, b, a ) );
 	}
 	
 	CollisionModel = packet->NextString();
@@ -778,18 +826,6 @@ bool ShipClass::operator < ( const ShipClass &other ) const
 	if( (Team != XWing::Team::REBEL) && (other.Team == XWing::Team::REBEL) )
 		return false;
 	
-	/*
-	// Commented-out because this puts the YT-1300 above the Y-Wing and B-Wing.
-	if( (Category == CATEGORY_FIGHTER) && (other.Category != CATEGORY_FIGHTER) )
-		return true;
-	if( (Category != CATEGORY_FIGHTER) && (other.Category == CATEGORY_FIGHTER) )
-		return false;
-	if( (Category == CATEGORY_BOMBER) && (other.Category != CATEGORY_BOMBER) )
-		return true;
-	if( (Category != CATEGORY_BOMBER) && (other.Category == CATEGORY_BOMBER) )
-		return false;
-	*/
-	
 	if( Radius < other.Radius )
 		return true;
 	if( Radius > other.Radius )
@@ -798,14 +834,6 @@ bool ShipClass::operator < ( const ShipClass &other ) const
 		return true;
 	if( CollisionDamage > other.CollisionDamage )
 		return false;
-	
-	/*
-	// Commented-out because this puts the Y-Wing above the secret X-Wing (Ion/Missile).
-	if( Secret && ! other.Secret )
-		return false;
-	if( other.Secret && ! Secret )
-		return true;
-	*/
 	
 	return (strcasecmp( ShortName.c_str(), other.ShortName.c_str() ) < 0);
 }
@@ -844,6 +872,31 @@ ShipClassTurret &ShipClassTurret::operator = ( const ShipClassTurret &other )
 	TargetArc = other.TargetArc;
 	MinGunPitch = other.MinGunPitch;
 	MaxGunPitch = other.MaxGunPitch;
+	
+	return *this;
+}
+
+
+// ---------------------------------------------------------------------------
+
+
+ShipClassEngine::ShipClassEngine( double fwd, double up, double right, std::string texture, double radius, float r, float g, float b, float a ) : Vec3D( fwd, up, right )
+{
+	Texture = texture;
+	Radius = radius;
+	DrawColor.Red   = r;
+	DrawColor.Green = g;
+	DrawColor.Blue  = b;
+	DrawColor.Alpha = a;
+}
+
+
+ShipClassEngine &ShipClassEngine::operator = ( const ShipClassEngine &other )
+{
+	Vec3D::Copy( &other );
+	Texture   = other.Texture;
+	Radius    = other.Radius;
+	DrawColor = other.DrawColor;
 	
 	return *this;
 }

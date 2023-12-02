@@ -1,6 +1,6 @@
 ----------------------------------------
 |            X-Wing Revival            |
-|       0.3.1 Alpha (2023-11-22)       |
+|       0.3.2 Alpha (2023-12-02)       |
 |     by Raptor007 (Blair Sherman)     |
 | http://raptor007.com/x-wing-revival/ |
 ----------------------------------------
@@ -23,6 +23,8 @@ If you're looking for the official X-Wing title of 2020, check out Star Wars Squ
 
 The quickest way to start is to click Play, then Host/Solo, adjust the game settings,
 and click Fly when you're ready to launch.
+
+To fly online, click Play, then Join.  The default server is "www.raptor007.com".
 
 
 == GAME TYPES ==
@@ -134,23 +136,23 @@ Linux asks what application to open files of type "executable" with.
     This shouldn't hurt performance much, but some old video cards don't support it.
     Framebuffers are also used for the VR eyes, so this is required for VR.
 
-  Draw With Shaders: Use GLSL vertex and fragment shaders.  Recommended for performance
-    and better appearance, but certain old motherboards perform better with this off
-    and some ancient video cards require this off.
+  Shaders: Use GLSL vertex and fragment shaders instead of old fixed-pipeline OpenGL.
+    Recommended for performance and better appearance, but a few old motherboards may
+    perform better with this off, and some ancient video cards require this off.
 
-  Light Quality: Per-pixel can be GPU-heavy, especially in VR, but looks much better on
-    large surfaces like capital ships and the Death Star trench.
-    NOTE: This only works if "Draw With Shaders" is enabled.
+  Lighting: Per-pixel can be GPU-heavy, especially in VR, but looks much better on
+    large surfaces like capital ships and the Death Star trench.  Requires shaders.
 
   Dynamic Lights: Number of point light sources (lasers, torpedos, explosions, etc) to
     use for lighting each object.  Higher values use a bit more CPU and GPU power.
-    NOTE: This only works if "Draw With Shaders" is enabled.
 
   Effects: Adjust the number of sprites per explosion.  Lowest removes shot impact
     effects entirely.  Most should leave this High, but lower settings may reduce
     the CPU load of dynamic lights and/or the GPU load of layered transparencies.
 
-  Asteroid Quality: Controls how far away asteroids render as model vs simple sphere.
+  Engine Glow: Draw engine glow effects.  Very little performance impact on most GPUs.
+
+  Asteroid Level of Detail: Controls how far away asteroids render in higher detail.
     Can be somewhat CPU-heavy and GPU-heavy with many asteroids, especially in VR.
     NOTE: This is even more CPU-heavy when shaders are disabled!
 
@@ -439,6 +441,11 @@ console commands to execute, such as "sv gametype yavin" or "sv rebel_fighter A/
 
 
 == VERSION HISTORY ==
+
+Alpha 0.3.2 (2023-12-02):
+ * Fixed several bugs related to networking and threading, especially on server.
+ * Engines now glow at full throttle.
+ * Slightly improved AI checkpoint chasing in Kessel Run.
 
 Alpha 0.3.1 (2023-11-22):
  * Fixed players losing sync when playing over the internet.

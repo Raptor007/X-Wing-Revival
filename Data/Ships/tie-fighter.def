@@ -19,6 +19,8 @@ explode 1
 weapon laser_green 0.2 -0.9 0
 weapon laser_green -0.2 -0.9 0
 firetime laser_green 0.25
+engine 0.88 0.03 -0.9 engine_yellow.ani 0.15 1 0.1 0.1 0.5
+engine -0.88 0.03 -0.9 engine_yellow.ani 0.15 1 0.1 0.1 0.5
 model tie-fighter_hq.obj
 cockpit tie-fighter_cockpit_vr.obj 0 0 0.07
 cockpit_vr tie-fighter_cockpit_vr.obj 0 0.1 -0.1

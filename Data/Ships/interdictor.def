@@ -16,6 +16,9 @@ ramming 8000
 explode 0.015
 firetime turbolaser 0.27
 turret_health 179
+engine 0 -11.6 -237 engine_blue.ani 35 1 1 1 0.5
+engine 56.9 -11.6 -237 engine_blue.ani 35 1 1 1 0.5
+engine -56.9 -11.6 -237 engine_blue.ani 35 1 1 1 0.5
 model interdictor.obj
 model_collision interdictor_col.obj
 cockpit interdictor.obj 0 45 -127

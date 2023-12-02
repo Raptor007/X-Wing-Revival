@@ -25,6 +25,8 @@ weapon missile 0.8 -0.054 0
 weapon missile -0.8 -0.054 0
 firetime missile 1
 ammo missile 8
+engine 0.96 -0.06 -2.2 engine_yellow.ani 0.95 1 1 1 0.5
+engine -0.96 -0.06 -2.2 engine_yellow.ani 0.95 1 1 1 0.5
 model a-wing.obj
 cockpit a-wing_cockpit.obj 0 0.56 -0.4
 group_skin 1 a-wing_red.obj a-wing_cockpit_red.obj

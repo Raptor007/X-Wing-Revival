@@ -28,6 +28,10 @@ weapon missile 0.5 -0.2 0
 weapon missile -0.5 -0.2 0
 firetime missile 1
 ammo missile 8
+engine 1.04 0.98 -5.6 engine_magenta.ani 1.1 1 1 1 0.5
+engine -1.04 0.98 -5.6 engine_magenta.ani 1.1 1 1 1 0.5
+engine 0.94 -1.06 -5.6 engine_magenta.ani 1.1 1 1 1 0.5
+engine -0.94 -1.06 -5.6 engine_magenta.ani 1.1 1 1 1 0.5
 model x-wing_hq_blue.obj
 cockpit x-wing_cockpit_hq_blue.obj 0 0.814 -0.704
 group_skin 1 x-wing_hq.obj x-wing_cockpit_hq.obj

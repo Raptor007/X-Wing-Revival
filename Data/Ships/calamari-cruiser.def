@@ -21,6 +21,10 @@ subsystem ShieldGenerator4 749
 subsystem CriticalBridge1 799
 subsystem CriticalBridge2 799
 firetime turbolaser 0.75
+engine 68 45 -545 engine_blue.ani 66 1 1 1 0.5
+engine -68 45 -545 engine_blue.ani 66 1 1 1 0.5
+engine 68 -45 -545 engine_blue.ani 66 1 1 1 0.5
+engine -68 -45 -545 engine_blue.ani 66 1 1 1 0.5
 model calamari-cruiser.obj
 model_collision calamari-cruiser.obj
 cockpit calamari-cruiser.obj 2.33 118 -198

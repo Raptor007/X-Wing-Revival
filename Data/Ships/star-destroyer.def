@@ -20,6 +20,13 @@ subsystem CriticalBridge1 94
 subsystem CriticalBridge2 94
 subsystem CriticalBridge3 94
 firetime turbolaser 0.57
+engine 0 -97.8 -675 engine_blue.ani 70 1 1 1 0.5
+engine 181.6 -97.8 -675 engine_blue.ani 70 1 1 1 0.5
+engine -181.6 -97.8 -675 engine_blue.ani 70 1 1 1 0.5
+engine 92.5 -70.5 -660 engine_blue.ani 30 1 1 1 0.5
+engine -92.5 -70.5 -660 engine_blue.ani 30 1 1 1 0.5
+engine 92.5 -131.2 -660 engine_blue.ani 30 1 1 1 0.5
+engine -92.5 -131.2 -660 engine_blue.ani 30 1 1 1 0.5
 model isd2_hq.obj
 model_collision isd2_hq_col.obj
 cockpit isd2_hq.obj -1.27 106 -480

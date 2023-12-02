@@ -403,6 +403,7 @@ void XWingGame::SetDefaults( void )
 	Cfg.Settings[ "g_bg" ] = "true";
 	Cfg.Settings[ "g_stars" ] = "0";
 	Cfg.Settings[ "g_debris" ] = "500";
+	Cfg.Settings[ "g_engine_glow" ] = "true";
 	Cfg.Settings[ "g_effects" ] = "1";
 	Cfg.Settings[ "g_asteroid_lod" ] = "1";
 	Cfg.Settings[ "g_deathstar_trench" ] = "4";
@@ -695,6 +696,12 @@ void XWingGame::Precache( void )
 						Res.GetModel( skin_iter->second );
 					for( std::map<uint8_t,std::string>::const_iterator skin_iter = sc.GroupCockpits.begin(); skin_iter != sc.GroupCockpits.end(); skin_iter ++ )
 						Res.GetModel( skin_iter->second );
+				}
+				
+				if( Cfg.SettingAsBool("g_engine_glow",true) )
+				{
+					for( std::vector<ShipClassEngine>::const_iterator engine_iter = sc.Engines.begin(); engine_iter != sc.Engines.end(); engine_iter ++ )
+						Res.GetAnimation( engine_iter->Texture );
 				}
 				
 				for( std::map< double, std::string >::const_iterator flyby_iter = sc.FlybySounds.begin(); flyby_iter != sc.FlybySounds.end(); flyby_iter ++ )
@@ -2777,6 +2784,7 @@ void XWingGame::ShowLobby( void )
 		if( Raptor::Server->IsRunning() && (State <= XWing::State::LOBBY) )
 		{
 			// FIXME: Should this send an INFO packet instead of directly modifying server data from the client thread?
+			Raptor::Server->Data.Lock.Lock();
 			Raptor::Server->Data.Properties["gametype"]              = Cfg.SettingAsString( "screensaver_gametype",        "fleet" );
 			Raptor::Server->Data.Properties["dm_kill_limit"]         = Cfg.SettingAsString( "screensaver_kill_limit",      "0"     );
 			Raptor::Server->Data.Properties["tdm_kill_limit"]        = Cfg.SettingAsString( "screensaver_kill_limit",      "0"     );
@@ -2807,6 +2815,7 @@ void XWingGame::ShowLobby( void )
 			Raptor::Server->Data.Properties["allow_ship_change"]     = "true";
 			Raptor::Server->Data.Properties["allow_team_change"]     = "true";
 			Data.Properties = Raptor::Server->Data.Properties;
+			Raptor::Server->Data.Lock.Unlock();
 			Cfg.Load( "screensaver.cfg" );
 		}
 		

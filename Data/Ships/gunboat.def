@@ -25,6 +25,8 @@ weapon missile 1.6 -0.4 -1.25
 weapon missile -1.6 -0.4 -1.25
 firetime missile 1
 ammo missile 12
+engine 1.42 -0.41 -4.8 engine_blue.png 1.1 1 1 1 0.33
+engine -1.42 -0.41 -4.8 engine_blue.png 1.1 1 1 1 0.33
 model gunboat.obj
 cockpit gunboat_cockpit.obj 0 0.36 0.98
 group_skin 2 gunboat_gold.obj gunboat_cockpit_gold.obj

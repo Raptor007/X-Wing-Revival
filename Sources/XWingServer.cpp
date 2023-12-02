@@ -73,6 +73,7 @@ void XWingServer::Started( void )
 	Waypoints.clear();
 	Squadrons.clear();
 	
+	Data.Lock.Lock();
 	Data.Properties["gametype"] = "fleet";
 	Data.Properties["ai_waves"] = "3";
 	Data.Properties["ai_skill"] = "1";
@@ -109,10 +110,12 @@ void XWingServer::Started( void )
 	Data.Properties["permissions"] = "all";
 	Data.Properties["skip_countdown"] = "false";
 	Data.Properties["time_scale"] = "1";
+	Data.Lock.Unlock();
 	
 	Raptor::Game->Cfg.Load( "server.cfg" );
 	
-	State = XWing::State::LOBBY;
+	if( State >= Raptor::State::CONNECTING )
+		State = XWing::State::LOBBY;
 }
 
 
@@ -135,7 +138,7 @@ bool XWingServer::ProcessPacket( Packet *packet, ConnectedClient *from_client )
 	{
 		if( State >= XWing::State::FLYING )
 			BeginFlying( from_client ? from_client->PlayerID : 0 );
-		else if( Data.PropertyAsBool("skip_countdown") || Raptor::Game->Cfg.SettingAsBool("screensaver") /* || ((Data.Players.size() <= 1) && (State < XWing::State::COUNTDOWN)) */ )
+		else if( Data.PropertyAsBool("skip_countdown") || Raptor::Game->Cfg.SettingAsBool("screensaver") )
 			BeginFlying();
 		else
 			ToggleCountdown();
@@ -475,7 +478,10 @@ void XWingServer::Update( double dt )
 		clock_iter->second.SetTimeScale( Data.TimeScale );
 	
 	// Endgame scores allow pausing, but otherwise ignore time scale.
-	if( (Data.TimeScale == 1.) || ((Data.TimeScale < 0.01) && (Data.Players.size() == 1)) )
+	Data.Lock.Lock();
+	size_t num_players = Data.Players.size();
+	Data.Lock.Unlock();
+	if( (Data.TimeScale == 1.) || ((Data.TimeScale < 0.01) && (num_players == 1)) )
 		RoundEndedTimer.SetTimeScale( Data.TimeScale );
 	
 	if( State >= XWing::State::FLYING )
@@ -821,7 +827,7 @@ void XWingServer::Update( double dt )
 					Net.SendAll( &message );
 				}
 				
-				if( Data.Properties.find("debug") != Data.Properties.end() )
+				if( Data.PropertyAsBool("debug") )
 				{
 					if( collision_iter->FirstObject.length() )
 					{
@@ -1871,6 +1877,8 @@ void XWingServer::Update( double dt )
 		std::map< uint8_t, std::map< uint8_t,std::list<Player*> > > gunners_waiting;
 		#define GUNNER_WAIT (std::min<double>( 4., RespawnDelay ))
 		
+		Data.Lock.Lock();
+		
 		for( std::map<uint16_t,Player*>::iterator player_iter = Data.Players.begin(); player_iter != Data.Players.end(); player_iter ++ )
 		{
 			Player *player = player_iter->second;
@@ -2021,6 +2029,8 @@ void XWingServer::Update( double dt )
 					RespawnClocks[ player->ID ].Reset();
 			}
 		}
+		
+		Data.Lock.Unlock();
 		
 		
 		// Determine pilot reassignments and control AI ships.
@@ -3032,6 +3042,18 @@ void XWingServer::Update( double dt )
 						{
 							size_t players_on_team = (ship->Team == XWing::Team::REBEL) ? (rebel_players && ! empire_players) : ((ship->Team == XWing::Team::EMPIRE) ? (empire_players && ! rebel_players) : 0);
 							throttle *= players_on_team ? 0.9375 : (0.875 + ai_skill * 0.0625);
+							
+							// Roll to get ready for the next waypoint.
+							if( w_dot_fwd > 0.98 )
+							{
+								Checkpoint *curr_checkpoint = (Checkpoint*) waypoint;
+								Checkpoint *next_checkpoint = (Checkpoint*) Data.GetObject( curr_checkpoint->Next );
+								if( next_checkpoint && next_checkpoint->Dist(curr_checkpoint) )
+								{
+									Vec3D ideal_up = (*next_checkpoint - *curr_checkpoint).Unit();
+									roll = ship->Right.Dot(&ideal_up);
+								}
+							}
 						}
 						
 						// Don't fire at the waypoint just because our target is somewhere near the front of us.
@@ -3818,6 +3840,8 @@ void XWingServer::Update( double dt )
 			all_players_dead = true;
 			bool all_players_spectating = true;
 			
+			Data.Lock.Lock();
+			
 			for( std::map<uint16_t,Player*>::const_iterator player_iter = Data.Players.begin(); player_iter != Data.Players.end(); player_iter ++ )
 			{
 				if( player_iter->second->PropertyAsString("team").length() && (player_iter->second->PropertyAsString("team") != "Spectator") )
@@ -3831,6 +3855,8 @@ void XWingServer::Update( double dt )
 					break;
 				}
 			}
+			
+			Data.Lock.Unlock();
 			
 			if( all_players_spectating )
 				all_players_dead = false;
@@ -3877,6 +3903,7 @@ void XWingServer::Update( double dt )
 			}
 			else if( (GameType == XWing::GameType::FFA_DEATHMATCH) && KillLimit )
 			{
+				Data.Lock.Lock();
 				for( std::map<uint16_t,Player*>::iterator player_iter = Data.Players.begin(); player_iter != Data.Players.end(); player_iter ++ )
 				{
 					if( player_iter->second->PropertyAsInt("kills") >= KillLimit )
@@ -3886,6 +3913,7 @@ void XWingServer::Update( double dt )
 						break;
 					}
 				}
+				Data.Lock.Unlock();
 				
 				for( std::map<uint32_t,int>::iterator score_iter = ShipScores.begin(); score_iter != ShipScores.end(); score_iter ++ )
 				{
@@ -3907,6 +3935,7 @@ void XWingServer::Update( double dt )
 			}
 			else if( (GameType == XWing::GameType::FFA_RACE) && Checkpoints )
 			{
+				Data.Lock.Lock();
 				for( std::map<uint16_t,Player*>::iterator player_iter = Data.Players.begin(); player_iter != Data.Players.end(); player_iter ++ )
 				{
 					if( player_iter->second->PropertyAsInt("score") >= Checkpoints )
@@ -3916,6 +3945,7 @@ void XWingServer::Update( double dt )
 						break;
 					}
 				}
+				Data.Lock.Unlock();
 				
 				for( std::map<uint32_t,int>::iterator score_iter = ShipScores.begin(); score_iter != ShipScores.end(); score_iter ++ )
 				{
@@ -3994,6 +4024,8 @@ void XWingServer::Update( double dt )
 				uint8_t player_team = XWing::Team::NONE;
 				if( ! ffa )
 				{
+					Data.Lock.Lock();
+					
 					for( std::map<uint16_t,Player*>::const_iterator player_iter = Data.Players.begin(); player_iter != Data.Players.end(); player_iter ++ )
 					{
 						if( Data.Players.begin()->second->PropertyAsString("team") == "Rebel" )
@@ -4017,6 +4049,8 @@ void XWingServer::Update( double dt )
 							player_team = XWing::Team::EMPIRE;
 						}
 					}
+					
+					Data.Lock.Unlock();
 				}
 				
 				// If the player(s) are all on one team and dead without respawn, treat it like a singleplayer/coop game: they lose.
@@ -4082,6 +4116,7 @@ void XWingServer::Update( double dt )
 				}
 				else if( GameType == XWing::GameType::FFA_DEATHMATCH )
 				{
+					Data.Lock.Lock();
 					for( std::map<uint16_t,Player*>::iterator player_iter = Data.Players.begin(); player_iter != Data.Players.end(); player_iter ++ )
 					{
 						if( player_iter->second->PropertyAsInt("kills") >= KillLimit )
@@ -4091,6 +4126,7 @@ void XWingServer::Update( double dt )
 							break;
 						}
 					}
+					Data.Lock.Unlock();
 					
 					if( ! victor )
 					{
@@ -4154,6 +4190,7 @@ void XWingServer::Update( double dt )
 				}
 				else if( GameType == XWing::GameType::FFA_RACE )
 				{
+					Data.Lock.Lock();
 					for( std::map<uint16_t,Player*>::iterator player_iter = Data.Players.begin(); player_iter != Data.Players.end(); player_iter ++ )
 					{
 						if( player_iter->second->PropertyAsInt("score") >= Checkpoints )
@@ -4163,6 +4200,7 @@ void XWingServer::Update( double dt )
 							break;
 						}
 					}
+					Data.Lock.Unlock();
 					
 					if( ! victor )
 					{
@@ -4201,6 +4239,8 @@ void XWingServer::Update( double dt )
 					{
 						int victor_score = 0;
 						
+						Data.Lock.Lock();
+						
 						for( std::map<uint16_t,Player*>::iterator player_iter = Data.Players.begin(); player_iter != Data.Players.end(); player_iter ++ )
 						{
 							int player_score = player_iter->second->PropertyAsInt("score");
@@ -4216,6 +4256,8 @@ void XWingServer::Update( double dt )
 								victor_name = "";
 							}
 						}
+						
+						Data.Lock.Unlock();
 						
 						for( std::map<uint32_t,int>::iterator score_iter = ShipScores.begin(); score_iter != ShipScores.end(); score_iter ++ )
 						{
@@ -4394,6 +4436,9 @@ void XWingServer::Update( double dt )
 				// Check for achievements.
 				bool death_star_destroyed = (GameType == XWing::GameType::BATTLE_OF_YAVIN) && (victor == XWing::Team::REBEL);
 				int ai_waves = Data.PropertyAsInt("ai_waves");
+				
+				Data.Lock.Lock();
+				
 				for( std::map<uint16_t,Player*>::iterator player_iter = Data.Players.begin(); player_iter != Data.Players.end(); player_iter ++ )
 				{
 					if( (player_iter->second->PropertyAsString("team") == eligible_team) || eligible_team.empty() )
@@ -4431,6 +4476,8 @@ void XWingServer::Update( double dt )
 						Net.SendToPlayer( &failed, player_iter->first );
 					}
 				}
+				
+				Data.Lock.Unlock();
 			}
 		}
 		
@@ -4447,7 +4494,7 @@ void XWingServer::Update( double dt )
 			
 			if( Data.PropertyAsDouble("time_scale",1.) != 1. )
 			{
-				Data.Properties["time_scale"] = "1";
+				Data.SetProperty( "time_scale", "1" );
 				
 				Packet info( Raptor::Packet::INFO );
 				info.AddUShort( 1 );
@@ -4488,6 +4535,8 @@ void XWingServer::Update( double dt )
 						empire_sound.AddString("empire_start.wav");
 					}
 					
+					Data.Lock.Lock();
+					
 					for( std::map<uint16_t,Player*>::const_iterator player_iter = Data.Players.begin(); player_iter != Data.Players.end(); player_iter ++ )
 					{
 						const ShipClass *ship_class = GetShipClass( player_iter->second->PropertyAsString("ship") );
@@ -4496,6 +4545,8 @@ void XWingServer::Update( double dt )
 						else
 							Net.SendToPlayer( &rebel_sound, player_iter->first );
 					}
+					
+					Data.Lock.Unlock();
 				}
 			}
 			else
@@ -4526,12 +4577,16 @@ void XWingServer::ResetToStartingObjects( void )
 	}
 	Net.SendAll( &objects_add );
 	
+	Data.Lock.Lock();
+	
 	// Clear assigned teams.
 	for( std::map<uint16_t,Player*>::iterator player_iter = Data.Players.begin(); player_iter != Data.Players.end(); player_iter ++ )
 	{
 		if( player_iter->second->PropertyAsString("team").length() )
 			SetPlayerProperty( player_iter->second, "team", "" );
 	}
+	
+	Data.Lock.Unlock();
 }
 
 
@@ -5239,6 +5294,9 @@ void XWingServer::BeginFlying( uint16_t player_id, bool respawn )
 		std::set<Player*> pilots;
 		uint32_t rebel_count = 0;
 		uint32_t empire_count = 0;
+		
+		Data.Lock.Lock();
+		
 		for( std::map<uint16_t,Player*>::iterator player_iter = Data.Players.begin(); player_iter != Data.Players.end(); player_iter ++ )
 		{
 			SetPlayerProperty( player_iter->second, "score",   "0" );
@@ -5281,6 +5339,8 @@ void XWingServer::BeginFlying( uint16_t player_id, bool respawn )
 				}
 			}
 		}
+		
+		Data.Lock.Unlock();
 		
 		std::map< uint8_t, std::map<uint8_t,Pos3D> > group_spawns;
 		
@@ -5487,10 +5547,10 @@ void XWingServer::BeginFlying( uint16_t player_id, bool respawn )
 		
 		// Test cases.
 		
-		std::map<std::string,std::string>::iterator spawn = Data.Properties.find("spawn");
-		if( spawn != Data.Properties.end() )
+		std::string spawn = Data.PropertyAsString("spawn");
+		if( ! spawn.empty() )
 		{
-			std::list<std::string> spawn_list = Str::SplitToList( spawn->second, "," );
+			std::list<std::string> spawn_list = Str::SplitToList( spawn, "," );
 			for( std::list<std::string>::iterator spawn_iter = spawn_list.begin(); spawn_iter != spawn_list.end(); spawn_iter ++ )
 			{
 				const ShipClass *sc = GetShipClass(*spawn_iter);
@@ -5555,6 +5615,8 @@ void XWingServer::BeginFlying( uint16_t player_id, bool respawn )
 		
 		uint32_t rebel_count = 0, empire_count = 0;
 		
+		Data.Lock.Lock();
+		
 		for( std::map<uint16_t,Player*>::iterator player_iter = Data.Players.begin(); player_iter != Data.Players.end(); player_iter ++ )
 		{
 			if( player_iter->second->PropertyAsString("team") == "Rebel" )
@@ -5562,6 +5624,8 @@ void XWingServer::BeginFlying( uint16_t player_id, bool respawn )
 			else if( player_iter->second->PropertyAsString("team") == "Empire" )
 				empire_count ++;
 		}
+		
+		Data.Lock.Unlock();
 		
 		
 		// Prepare a packet of existing objects to send to new players.
@@ -5583,6 +5647,8 @@ void XWingServer::BeginFlying( uint16_t player_id, bool respawn )
 		std::set<uint16_t> new_players;
 		std::set<uint32_t> add_object_ids;
 		std::string prefix = (GameType == XWing::GameType::BATTLE_OF_YAVIN) ? "yavin_" : "";
+		
+		Data.Lock.Lock();
 		
 		for( std::map<uint16_t,Player*>::iterator player_iter = Data.Players.begin(); player_iter != Data.Players.end(); player_iter ++ )
 		{
@@ -5763,14 +5829,20 @@ void XWingServer::BeginFlying( uint16_t player_id, bool respawn )
 			}
 		}
 		
+		Data.Lock.Unlock();
+		
 		
 		// Send objects that already existed to the new players.
+		
+		Net.Lock.Lock();
 		
 		for( std::list<ConnectedClient*>::iterator client = Net.Clients.begin(); client != Net.Clients.end(); client ++ )
 		{
 			if( new_players.count( (*client)->PlayerID ) )
 				(*client)->Send( &obj_list );
 		}
+		
+		Net.Lock.Unlock();
 		
 		
 		// Send any new objects added (spawned ships and turrets) to all players.
@@ -5909,6 +5981,8 @@ void XWingServer::ShipKilled( Ship *ship, GameObject *killer_obj )
 
 void XWingServer::SendScores( void )
 {
+	Data.Lock.Lock();
+	
 	Data.Properties["team_score_rebel"]  = Num::ToString( TeamScores[ XWing::Team::REBEL  ] );
 	Data.Properties["team_score_empire"] = Num::ToString( TeamScores[ XWing::Team::EMPIRE ] );
 	Data.Properties["ai_score_name"]     = "";
@@ -5938,6 +6012,8 @@ void XWingServer::SendScores( void )
 			Data.Properties["ai_score_kills"] = Num::ToString( best_score );
 		}
 	}
+	
+	Data.Lock.Unlock();
 	
 	Packet info( Raptor::Packet::INFO );
 	info.AddUShort( 4 );
