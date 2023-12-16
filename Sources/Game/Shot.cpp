@@ -75,10 +75,15 @@ void Shot::ClientInit( void )
 		{
 			Turret *fired_from_turret = NULL;
 			Ship *fired_from_ship = NULL;
-			if( fired_from && (fired_from->Type() == XWing::Object::TURRET) )
+			if( fired_from )
 			{
-				fired_from_turret = (Turret*) fired_from;
-				fired_from_ship = fired_from_turret->ParentShip();
+				if( fired_from->Type() == XWing::Object::TURRET )
+				{
+					fired_from_turret = (Turret*) fired_from;
+					fired_from_ship = fired_from_turret->ParentShip();
+				}
+				else if( fired_from->Type() == XWing::Object::SHIP )
+					fired_from_ship = (Ship*) fired_from;
 			}
 			
 			if( fired_from_turret && (fired_from_turret->PlayerID == Raptor::Game->PlayerID) )
@@ -87,7 +92,11 @@ void Shot::ClientInit( void )
 				Raptor::Game->Snd.Play( Raptor::Game->Res.GetSound("laser_turret_2.wav") );
 			}
 			else if( fired_from_ship && (fired_from_ship->PlayerID == Raptor::Game->PlayerID) )
+			{
 				Raptor::Game->Snd.PlayAt( Raptor::Game->Res.GetSound("laser_turret.wav"), X, Y, Z, 1.6 );
+				if( ! fired_from_turret )
+					Raptor::Game->Snd.Play( Raptor::Game->Res.GetSound("laser_turret_2.wav") );
+			}
 			else
 				Raptor::Game->Snd.PlayAt( Raptor::Game->Res.GetSound("laser_turret.wav"), X, Y, Z, 1.1 );
 		}
@@ -141,7 +150,7 @@ double Shot::Damage( void ) const
 	else if( ShotType == TYPE_TURBO_LASER_RED )
 		return 32.;
 	else if( ShotType == TYPE_QUAD_LASER_RED )
-		return 21.;
+		return 29.;
 	else if( ShotType == TYPE_ION_CANNON )
 		return 50.;
 	else if( ShotType == TYPE_TORPEDO )
@@ -286,7 +295,6 @@ bool Shot::ServerShouldUpdateOthers( void ) const
 
 bool Shot::CanCollideWithOwnType( void ) const
 {
-	// FIXME: This needs to be true to shoot down torpedos and missiles, but it bogs down the server checking laser-on-laser hits.
 	return false;
 }
 
@@ -298,16 +306,17 @@ bool Shot::CanCollideWithOtherTypes( void ) const
 
 void Shot::AddToInitPacket( Packet *packet, int8_t precision )
 {
+	const GameObject *fired_from = FiredFrom ? Data->GetObject( FiredFrom ) : NULL;
+	bool turret_left = fired_from && (fired_from->Type() == XWing::Object::TURRET) && ((const Turret*)( fired_from ))->GunWidth && (DistAlong( &Right, fired_from ) < 0.);
+	if( turret_left )
+		Up.ScaleBy( -1. ); // FIXME: Dirty hack to get this information to v0.3.3 clients while retaining compatibiltiy with v0.3.2 clients!
+	
 	GameObject::AddToInitPacket( packet, -127 );
 	packet->AddUChar( ShotType );
 	packet->AddUInt( FiredFrom );
 	
 	if( FiredFrom )
-	{
-		GameObject *fired_from = Data->GetObject( FiredFrom );
-		if( fired_from )
-			packet->AddFloat( DistAlong( &Fwd, fired_from ) );
-	}
+		packet->AddFloat( fired_from ? DistAlong( &Fwd, fired_from ) : 0.f );
 }
 
 
@@ -319,12 +328,25 @@ void Shot::ReadFromInitPacket( Packet *packet, int8_t precision )
 	
 	if( FiredFrom )
 	{
-		GameObject *fired_from = Data->GetObject( FiredFrom );
+		double dist_along_fwd = packet->NextFloat();
+		
+		const GameObject *fired_from = Data->GetObject( FiredFrom );
 		if( fired_from )
 		{
-			double dist_along_fwd = packet->NextFloat();
-			double current_dist_fwd = DistAlong( &Fwd, fired_from );
-			MoveAlong( &Fwd, dist_along_fwd - current_dist_fwd );
+			// Player turret gunners should always see their shots come straight out of the turret, even if their ship's predicted position is a bit off.
+			if( (fired_from->PlayerID == Raptor::Game->PlayerID) && (fired_from->Type() == XWing::Object::TURRET) )
+			{
+				const Turret *player_turret = (const Turret*) fired_from;
+				Pos3D gun = player_turret->GunPos();
+				double up_dot = gun.Up.Dot( &Up ); // FIXME: Dirty hack to determine which side fired: 1 = right, -1 = left.
+				Copy( &gun );
+				MoveAlong( &(gun.Right), player_turret->GunWidth * up_dot );
+			}
+			else
+			{
+				double current_dist_fwd = DistAlong( &Fwd, fired_from );
+				MoveAlong( &Fwd, dist_along_fwd - current_dist_fwd );
+			}
 		}
 	}
 }
@@ -352,6 +374,9 @@ bool Shot::WillCollide( const GameObject *other, double dt, std::string *this_ob
 {
 	if( other->Type() == XWing::Object::SHOT )
 	{
+		/*
+		// FIXME: Commented-out because Shot::CanCollideWithOwnType() is always false.
+		// If we ever want to be able to shoot down missiles and torpedoes, they'll need to be their own object type that can collide with shots.
 		Shot *shot = (Shot*) other;
 		if( (shot->FiredFrom != FiredFrom) && ((shot->ShotType == TYPE_TORPEDO) || (ShotType == TYPE_TORPEDO) || (shot->ShotType == TYPE_MISSILE) || (ShotType == TYPE_MISSILE)) )
 		{
@@ -359,7 +384,7 @@ bool Shot::WillCollide( const GameObject *other, double dt, std::string *this_ob
 			if( dist <= 1. )
 				return true;
 		}
-		
+		*/
 		return false;
 	}
 	
@@ -468,42 +493,9 @@ void Shot::Draw( void )
 		// Draw a laser, torpedo, or missile trail.
 		
 		// Size parameters.
-		double ahead = 15.;
-		double behind = 30.;
-		double width = 1.;
-		if( (ShotType == TYPE_TURBO_LASER_GREEN) || (ShotType == TYPE_TURBO_LASER_RED) )
-		{
-			ahead = 25.;
-			behind = 50.;
-			width = 1.5;
-		}
-		else if( ShotType == TYPE_ION_CANNON )
-		{
-			ahead = 20.;
-			behind = 40.;
-			width = 1.25;
-		}
-		else if( ShotType == TYPE_TORPEDO )
-		{
-			ahead = 3.;
-			behind = 25.;
-			width = 1.25;
-		}
-		else if( ShotType == TYPE_MISSILE )
-		{
-			ahead = 1.5;
-			behind = 20.;
-			width = 1.125;
-		}
-		else if( ShotType == TYPE_SUPERLASER )
-		{
-			ahead = 20.;
-			behind = Speed() * 1.5;
-			width = 40.;
-		}
-		double moved = Lifetime.ElapsedSeconds() * Speed() + width * 2.;
-		if( moved < behind )
-			behind = moved;
+		double ahead  = DrawAhead();
+		double behind = DrawBehind();
+		double width  = DrawWidth();
 		
 		// If the shot is behind us, don't draw it.
 		Vec3D vec_to_front( X + Fwd.X * ahead - Raptor::Game->Cam.X, Y + Fwd.Y * ahead - Raptor::Game->Cam.Y, Z + Fwd.Z * ahead - Raptor::Game->Cam.Z );
@@ -742,4 +734,61 @@ void Shot::Draw( void )
 		
 		glDisable( GL_TEXTURE_2D );
 	}
+}
+
+
+double Shot::DrawAhead( void ) const
+{
+	if( (ShotType == TYPE_TURBO_LASER_GREEN) || (ShotType == TYPE_TURBO_LASER_RED) )
+		return 25.;
+	else if( ShotType == TYPE_ION_CANNON )
+		return 20.;
+	else if( ShotType == TYPE_TORPEDO )
+		return 3.;
+	else if( ShotType == TYPE_MISSILE )
+		return 1.5;
+	else if( ShotType == TYPE_SUPERLASER )
+		return 20.;
+	
+	return 15.;
+}
+
+
+double Shot::DrawBehind( void ) const
+{
+	double behind = 30.;
+	
+	if( (ShotType == TYPE_TURBO_LASER_GREEN) || (ShotType == TYPE_TURBO_LASER_RED) )
+		behind = 50.;
+	else if( ShotType == TYPE_ION_CANNON )
+		behind = 40.;
+	else if( ShotType == TYPE_TORPEDO )
+		behind = 25.;
+	else if( ShotType == TYPE_MISSILE )
+		behind = 20.;
+	else if( ShotType == TYPE_SUPERLASER )
+		behind = Speed() * 1.5;
+	
+	double moved = Lifetime.ElapsedSeconds() * Speed() + DrawWidth() * 2.;
+	if( moved < behind )
+		behind = moved;
+	
+	return behind;
+}
+
+
+double Shot::DrawWidth( void ) const
+{
+	if( (ShotType == TYPE_TURBO_LASER_GREEN) || (ShotType == TYPE_TURBO_LASER_RED) )
+		return 1.5;
+	else if( ShotType == TYPE_ION_CANNON )
+		return 1.25;
+	else if( ShotType == TYPE_TORPEDO )
+		return 1.25;
+	else if( ShotType == TYPE_MISSILE )
+		return 1.125;
+	else if( ShotType == TYPE_SUPERLASER )
+		return 40.;
+	
+	return 1.;
 }

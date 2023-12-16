@@ -22,10 +22,10 @@ firetime laser_green 0.25
 weapon torpedo -1.45 0 0
 firetime torpedo 1.5
 ammo torpedo 10
-engine 1.69 0 -1.8 engine_yellow.ani 0.15 1 0.1 0.1 0.5
-engine -1.69 0 -1.8 engine_yellow.ani 0.15 1 0.1 0.1 0.5
-engine 1.22 0 -1.8 engine_yellow.ani 0.15 1 0.1 0.1 0.5
-engine -1.22 0 -1.8 engine_yellow.ani 0.15 1 0.1 0.1 0.5
+engine 1.69 0 -1.8 engine_red.ani 0.3 1 0.5 0.5 0.4
+engine -1.69 0 -1.8 engine_red.ani 0.3 1 0.5 0.5 0.4
+engine 1.22 0 -1.79 engine_red.ani 0.3 1 0.5 0.5 0.4
+engine -1.22 0 -1.79 engine_red.ani 0.3 1 0.5 0.5 0.4
 model tie-bomber.obj
 cockpit tie-bomber_cockpit_vr.obj 1.474 0 1.845
 cockpit_vr tie-bomber_cockpit_vr.obj 1.474 0.1 1.7152

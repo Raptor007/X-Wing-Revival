@@ -101,7 +101,7 @@ class ShipClassTurret : public Pos3D
 public:
 	bool Visible, CanBeHit;
 	double Health;
-	bool ParentControl;
+	bool ParentControl, Manual;
 	uint8_t Weapon;
 	uint8_t FiringMode;
 	double SingleShotDelay;

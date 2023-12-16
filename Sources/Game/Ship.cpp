@@ -1475,11 +1475,12 @@ bool Ship::WillCollide( const GameObject *other, double dt, std::string *this_ob
 	{
 		Shot *shot = (Shot*) other;
 		
-		// Ships can't shoot themselves.
-		if( shot->FiredFrom == ID )
+		// Ships can't shoot themselves immediately, but allow it later so missiles looping back can hit their own ship.
+		if( (shot->FiredFrom == ID) && (shot->Lifetime.ElapsedSeconds() < 2.) )
 			return false;
 		
 		// Ship turrets can't shoot the ship they're attached to.
+		// FIXME: Maybe the shots should hit the ship and disappear, but not deal damage?
 		GameObject *fired_from = Data->GetObject( shot->FiredFrom );
 		if( fired_from && (fired_from->Type() == XWing::Object::TURRET) && (((Turret*)( fired_from ))->ParentID == ID) )
 			return false;
@@ -2223,7 +2224,7 @@ ShipEngine &ShipEngine::operator = ( const ShipEngine &other )
 }
 
 
-void ShipEngine::DrawAt( const Pos3D *pos, float alpha )
+void ShipEngine::DrawAt( const Pos3D *pos, float alpha, double scale )
 {
 	bool use_shaders = Raptor::Game->ShaderMgr.Active();
 	if( use_shaders )
@@ -2234,8 +2235,9 @@ void ShipEngine::DrawAt( const Pos3D *pos, float alpha )
 	glColor4f( DrawColor.Red, DrawColor.Green, DrawColor.Blue, DrawColor.Alpha * alpha );
 	
 	// Calculate corners.
-	Vec3D tl = Raptor::Game->Cam.Up * Radius - Raptor::Game->Cam.Right * Radius;
-	Vec3D tr = tl + Raptor::Game->Cam.Right * Radius * 2.;
+	double radius = Radius * scale;
+	Vec3D tl = Raptor::Game->Cam.Up * radius - Raptor::Game->Cam.Right * radius;
+	Vec3D tr = tl + Raptor::Game->Cam.Right * radius * 2.;
 	Vec3D bl = tr;
 	Vec3D br = tl;
 	br.RotateAround( &(Raptor::Game->Cam.Fwd), 180. );

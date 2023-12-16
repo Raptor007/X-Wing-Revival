@@ -637,6 +637,7 @@ void XWingGame::Precache( void )
 		Res.GetSound("powerful.wav");
 		Res.GetSound("failed.wav");
 		/*
+		// Disabled to reduce precache time, because you'd never notice the delay loading these during countdown.
 		Res.GetSound("rebel_start.wav");
 		Res.GetSound("empire_start.wav");
 		Res.GetSound("good_luck.wav");
@@ -645,22 +646,33 @@ void XWingGame::Precache( void )
 	
 	if( DIR *dir_p = opendir("Ships") )
 	{
-		std::string screensaver_rebel, screensaver_empire, screensaver_rebel2, screensaver_empire2;
-		std::string gametype = Cfg.SettingAsString( "screensaver_gametype", "fleet" );
-		if( gametype == "yavin" )
+		std::set<std::string> screensaver_ships;
+		if( screensaver )
 		{
-			screensaver_rebel  = Cfg.SettingAsString( "screensaver_rebel_fighter",  "X/W" );
-			screensaver_rebel2 = Cfg.SettingAsString( "screensaver_rebel_bomber",   "Y/W" );
-			screensaver_empire = Cfg.SettingAsString( "screensaver_empire_fighter", "T/F" );
-		}
-		else
-		{
-			screensaver_rebel  = Cfg.SettingAsString( "screensaver_rebel_fighter",  "X/W" );
-			screensaver_empire = Cfg.SettingAsString( "screensaver_empire_fighter", "T/I" );
-			if( gametype == "fleet" )
+			std::string gametype = Cfg.SettingAsString( "screensaver_gametype", "fleet" );
+			if( gametype == "yavin" )
 			{
-				screensaver_rebel2  = Cfg.SettingAsString( "screensaver_rebel_bomber",  "Y/W" );
-				screensaver_empire2 = Cfg.SettingAsString( "screensaver_empire_bomber", "T/F" );
+				screensaver_ships.insert( Cfg.SettingAsString( "screensaver_rebel_fighter",  "X/W" ) );
+				screensaver_ships.insert( Cfg.SettingAsString( "screensaver_rebel_bomber",   "Y/W" ) );
+				screensaver_ships.insert( Cfg.SettingAsString( "screensaver_empire_fighter", "T/F" ) );
+			}
+			else
+			{
+				screensaver_ships.insert( Cfg.SettingAsString( "screensaver_rebel_fighter",  "X/W" ) );
+				screensaver_ships.insert( Cfg.SettingAsString( "screensaver_empire_fighter", "T/I" ) );
+				if( gametype == "fleet" )
+				{
+					screensaver_ships.insert( Cfg.SettingAsString( "screensaver_rebel_bomber",  "Y/W" ) );
+					screensaver_ships.insert( Cfg.SettingAsString( "screensaver_empire_bomber", "T/F" ) );
+				}
+			}
+			
+			std::string spawn = Cfg.SettingAsString( "screensaver_spawn", "YT1300" );
+			if( ! spawn.empty() )
+			{
+				std::list<std::string> spawn_list = Str::SplitToList( spawn, "," );
+				for( std::list<std::string>::iterator spawn_iter = spawn_list.begin(); spawn_iter != spawn_list.end(); spawn_iter ++ )
+					screensaver_ships.insert( *spawn_iter );
 			}
 		}
 		
@@ -676,7 +688,7 @@ void XWingGame::Precache( void )
 			{
 				if( sc.Secret )
 					continue;
-				if( screensaver && (sc.ShortName != screensaver_rebel) && (sc.ShortName != screensaver_empire) && (sc.ShortName != screensaver_rebel2) && (sc.ShortName != screensaver_empire2) )
+				if( screensaver && ! screensaver_ships.count(sc.ShortName) )
 					continue;
 				
 				if( sc.ExternalModel.length() )
@@ -2795,6 +2807,8 @@ void XWingGame::ShowLobby( void )
 			Raptor::Server->Data.Properties["race_time_limit"]       = Cfg.SettingAsString( "screensaver_time_limit",      "0"     );
 			Raptor::Server->Data.Properties["ai_waves"]              = Cfg.SettingAsString( "screensaver_ai_waves",        "7"     );
 			Raptor::Server->Data.Properties["ai_flock"]              = Cfg.SettingAsString( "screensaver_ai_flock",        "true"  );
+			Raptor::Server->Data.Properties["ai_respawn"]            = Cfg.SettingAsString( "screensaver_ai_respawn",      "true"  );
+			Raptor::Server->Data.Properties["spawn"]                 = Cfg.SettingAsString( "screensaver_spawn",           "YT1300");
 			Raptor::Server->Data.Properties["rebel_fighter"]         = Cfg.SettingAsString( "screensaver_rebel_fighter",   "X/W"   );
 			Raptor::Server->Data.Properties["rebel_bomber"]          = Cfg.SettingAsString( "screensaver_rebel_bomber",    "Y/W"   );
 			Raptor::Server->Data.Properties["rebel_cruiser"]         = Cfg.SettingAsString( "screensaver_rebel_cruiser",   "CRV"   );
@@ -2809,7 +2823,6 @@ void XWingGame::ShowLobby( void )
 			Raptor::Server->Data.Properties["yavin_rebel_bomber"]    = Cfg.SettingAsString( "screensaver_rebel_bomber",    "Y/W"   );
 			Raptor::Server->Data.Properties["yavin_empire_fighter"]  = Cfg.SettingAsString( "screensaver_empire_fighter",  "T/F"   );
 			Raptor::Server->Data.Properties["defending_team"]        = Cfg.SettingAsString( "screensaver_defending_team",  "rebel" );
-			Raptor::Server->Data.Properties["spawn"]                 = Cfg.SettingAsString( "screensaver_spawn",           ""      );
 			Raptor::Server->Data.Properties["asteroids"]             = Cfg.SettingAsString( "screensaver_asteroids",       "16"    );
 			Raptor::Server->Data.Properties["bg"]                    = Cfg.SettingAsString( "screensaver_bg",              "stars" );
 			Raptor::Server->Data.Properties["allow_ship_change"]     = "true";

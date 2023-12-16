@@ -19,6 +19,7 @@ Turret::Turret( uint32_t id ) : GameObject( id, XWing::Object::TURRET )
 	RelativeUp.Set( 0., 1., 0. );
 	RelativeFwd.Set( 1., 0., 0. );
 	ParentControl = false;
+	Manual = false;
 	Team = XWing::Team::NONE;
 	
 	MinGunPitch = 0.;
@@ -208,7 +209,7 @@ std::map<int,Shot*> Turret::NextShots( GameObject *target, uint8_t firing_mode )
 	std::map<int,Shot*> shots;
 	
 	Pos3D gun = GunPos();
-
+	
 	if( ! firing_mode )
 		firing_mode = FiringMode;
 	

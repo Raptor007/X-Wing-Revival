@@ -73,10 +73,11 @@ public:
 	ShipEngine *EnginePtr;
 	Pos3D EnginePos; // FIXME: This adds a bit of unnecessary overhead to other renderables.
 	float EngineAlpha;
+	double EngineScale;
 	
 	Renderable( Ship *ship );
 	Renderable( Shot *shot );
 	Renderable( Effect *effect );
-	Renderable( ShipEngine *engine, const Pos3D *pos, float alpha );
+	Renderable( ShipEngine *engine, const Pos3D *pos, float alpha, double scale = 1. );
 	~Renderable();
 };

@@ -2358,6 +2358,7 @@ void RenderLayer::Draw( void )
 			}
 			
 			// Technically the correct scale is 0.022, but we may need to make it higher to avoid near-plane clipping.
+			// NOTE: Changing the scale may bring engine glows too close, but that's probably okay since it doesn't happen in VR.
 			double model_scale = observed_ship->Class ? observed_ship->Class->ModelScale : 0.022;
 			double cockpit_scale = vr ? model_scale : std::max<double>( model_scale, Raptor::Game->Gfx.ZNear * 0.25 );
 			double cockpit_fwd = 0.;
@@ -2455,7 +2456,25 @@ void RenderLayer::Draw( void )
 			
 			// Don't draw an external view of a ship whose cockpit we're in.
 			if( (view == VIEW_COCKPIT) && (ship == observed_ship) && (ship->Health > 0.) )
+			{
+				if( ship->JumpProgress >= 1. )
+				{
+					// But do draw our engine glow if we're facing it.
+					double ship_throttle = ship->GetThrottle();
+					if( (ship_throttle >= 0.75) && ship->Engines.size() && Raptor::Game->Cfg.SettingAsBool("g_engine_glow",true) )
+					{
+						float engine_alpha = (ship_throttle - 0.75f) * 4.f * (float) Raptor::Game->Cfg.SettingAsDouble("g_engine_glow_cockpit",0.5);
+						std::map<ShipEngine*,Pos3D> engines = ship->EnginePositions();
+						for( std::map<ShipEngine*,Pos3D>::const_iterator engine_iter = engines.begin(); engine_iter != engines.end(); engine_iter ++ )
+						{
+							double dist_fwd = engine_iter->second.DistAlong( &(Raptor::Game->Cam.Fwd), &(Raptor::Game->Cam) );
+							if( dist_fwd > 0. )
+								sorted_renderables.insert( std::pair<double,Renderable>( dist_fwd, Renderable( engine_iter->first, &(engine_iter->second), engine_alpha ) ) );
+						}
+					}
+				}
 				continue;
+			}
 			
 			// Don't draw tiny ships far away.
 			double size = ship->Shape.GetTriagonal();
@@ -2473,9 +2492,17 @@ void RenderLayer::Draw( void )
 				if( (ship_throttle >= 0.75) && ship->Engines.size() && Raptor::Game->Cfg.SettingAsBool("g_engine_glow",true) )
 				{
 					float engine_alpha = (ship_throttle - 0.75f) * 4.f;
+					double engine_scale = 1.;
+					if( (view == VIEW_GUNNER) && (ship == observed_ship) )
+					{
+						double engine_glow_gunner = Raptor::Game->Cfg.SettingAsDouble("g_engine_glow_gunner",0.75);
+						engine_alpha *= (float) engine_glow_gunner;
+						if( observed_ship->Category() != ShipClass::CATEGORY_CAPITAL )
+							engine_scale = engine_glow_gunner;
+					}
 					std::map<ShipEngine*,Pos3D> engines = ship->EnginePositions();
 					for( std::map<ShipEngine*,Pos3D>::const_iterator engine_iter = engines.begin(); engine_iter != engines.end(); engine_iter ++ )
-						sorted_renderables.insert( std::pair<double,Renderable>( engine_iter->second.DistAlong( &(Raptor::Game->Cam.Fwd), &(Raptor::Game->Cam) ), Renderable( engine_iter->first, &(engine_iter->second), engine_alpha ) ) );
+						sorted_renderables.insert( std::pair<double,Renderable>( engine_iter->second.DistAlong( &(Raptor::Game->Cam.Fwd), &(Raptor::Game->Cam) ), Renderable( engine_iter->first, &(engine_iter->second), engine_alpha, engine_scale ) ) );
 				}
 			}
 		}
@@ -2528,8 +2555,24 @@ void RenderLayer::Draw( void )
 	
 	// Draw anything with alpha back-to-front.
 	
-	for( std::list<Shot*>::iterator shot_iter = shots.begin(); shot_iter != shots.end(); shot_iter ++ )
-		sorted_renderables.insert( std::pair<double,Renderable>( (*shot_iter)->DistAlong( &(Raptor::Game->Cam.Fwd), &(Raptor::Game->Cam) ), *shot_iter ) );
+	if( (view == VIEW_GUNNER) && observed_turret )
+	{
+		for( std::list<Shot*>::iterator shot_iter = shots.begin(); shot_iter != shots.end(); shot_iter ++ )
+		{
+			Pos3D pos = *shot_iter;
+			
+			// Draw our shots slightly later to reduce transparent depth-blocking of engine glow.
+			if( (*shot_iter)->FiredFrom == observed_turret->ID )
+				pos -= (*shot_iter)->Fwd * (*shot_iter)->DrawBehind() * 0.125;
+			
+			sorted_renderables.insert( std::pair<double,Renderable>( pos.DistAlong( &(Raptor::Game->Cam.Fwd), &(Raptor::Game->Cam) ), *shot_iter ) );
+		}
+	}
+	else
+	{
+		for( std::list<Shot*>::iterator shot_iter = shots.begin(); shot_iter != shots.end(); shot_iter ++ )
+			sorted_renderables.insert( std::pair<double,Renderable>( (*shot_iter)->DistAlong( &(Raptor::Game->Cam.Fwd), &(Raptor::Game->Cam) ), *shot_iter ) );
+	}
 	
 	for( std::list<Effect*>::iterator effect_iter = effects.begin(); effect_iter != effects.end(); effect_iter ++ )
 		sorted_renderables.insert( std::pair<double,Renderable>( (*effect_iter)->DistAlong( &(Raptor::Game->Cam.Fwd), &(Raptor::Game->Cam) ), *effect_iter ) );
@@ -2557,7 +2600,7 @@ void RenderLayer::Draw( void )
 				Raptor::Game->ShaderMgr.StopShaders();
 		}
 		else if( renderable->second.EnginePtr )
-			renderable->second.EnginePtr->DrawAt( &(renderable->second.EnginePos), renderable->second.EngineAlpha );
+			renderable->second.EnginePtr->DrawAt( &(renderable->second.EnginePos), renderable->second.EngineAlpha, renderable->second.EngineScale );
 		
 		glPopMatrix();
 	}
@@ -3653,6 +3696,7 @@ Renderable::Renderable( Ship *ship )
 	EffectPtr = NULL;
 	EnginePtr = NULL;
 	EngineAlpha = 0.f;
+	EngineScale = 1.;
 }
 
 Renderable::Renderable( Shot *shot )
@@ -3662,6 +3706,7 @@ Renderable::Renderable( Shot *shot )
 	EffectPtr = NULL;
 	EnginePtr = NULL;
 	EngineAlpha = 0.f;
+	EngineScale = 1.;
 }
 
 Renderable::Renderable( Effect *effect )
@@ -3671,9 +3716,10 @@ Renderable::Renderable( Effect *effect )
 	EffectPtr = effect;
 	EnginePtr = NULL;
 	EngineAlpha = 0.f;
+	EngineScale = 1.;
 }
 
-Renderable::Renderable( ShipEngine *engine, const Pos3D *pos, float alpha )
+Renderable::Renderable( ShipEngine *engine, const Pos3D *pos, float alpha, double scale )
 {
 	ShipPtr = NULL;
 	ShotPtr = NULL;
@@ -3681,6 +3727,7 @@ Renderable::Renderable( ShipEngine *engine, const Pos3D *pos, float alpha )
 	EnginePtr = engine;
 	EnginePos.Copy( pos );
 	EngineAlpha = alpha;
+	EngineScale = scale;
 }
 
 Renderable::~Renderable()

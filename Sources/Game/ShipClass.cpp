@@ -426,6 +426,10 @@ bool ShipClass::Load( const std::string &filename )
 				{
 					Turrets.back().ParentControl = true;
 				}
+				else if( subvar == "manual" )
+				{
+					Turrets.back().Manual = true;
+				}
 				else if( subvar == "single" )
 				{
 					Turrets.back().FiringMode = 1;
@@ -850,6 +854,7 @@ ShipClassTurret::ShipClassTurret( double fwd, double up, double right, uint8_t w
 	CanBeHit = true;
 	Health = 95.;
 	ParentControl = true;
+	Manual = false;
 	FiringMode = 0;  // Automatically determine mode in XWingServer::SpawnShipTurrets.
 	SingleShotDelay = 0.5;
 	TargetArc = 360.;
@@ -867,6 +872,7 @@ ShipClassTurret &ShipClassTurret::operator = ( const ShipClassTurret &other )
 	CanBeHit = other.CanBeHit;
 	Health = other.Health;
 	ParentControl = other.ParentControl;
+	Manual = other.Manual;
 	FiringMode = other.FiringMode;
 	SingleShotDelay = other.SingleShotDelay;
 	TargetArc = other.TargetArc;

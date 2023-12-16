@@ -1,5 +1,6 @@
 id YT1300
 name YT-1300
+squadron Echo
 category fighter
 team rebel
 radius 11.5
@@ -17,8 +18,10 @@ recover 5
 recharge 3
 ramming 900
 explode 0.5
-turret quad_laser 0 2.13 -2.09 up 0 1 0 pitch -2 90 dir 0 0 1 arc 360 invincible linked firetime 0.22 dual
-turret quad_laser 0 -2.13 -2.09 up 0 -1 0 pitch -1 90 dir 0 0 1 arc 360 invincible linked firetime 0.22 dual
+weapon quad_laser 10.1 2.4 3.7
+firetime quad_laser 0.44
+turret quad_laser 0 2.13 -2.09 up 0 0.99 -0.06 pitch -1.5 90 dir 0 0 1 arc 360 invincible manual independent firetime 0.22
+turret quad_laser 0 -2.13 -2.09 up 0 -0.99 -0.03 pitch -1.5 90 dir 0 0 1 arc 360 invincible manual independent firetime 0.22
 engine 0 0 -14.5 engine_blue.ani 7 1 1 1 0.2
 engine 2.4 0 -14.3 engine_blue.ani 7 1 1 1 0.2
 engine -2.4 0 -14.3 engine_blue.ani 7 1 1 1 0.2

@@ -176,5 +176,5 @@ public:
 	ShipEngine( const ShipClassEngine *engine );
 	ShipEngine &operator = ( const ShipEngine &other );
 	
-	void DrawAt( const Pos3D *pos, float alpha = 1.f );
+	void DrawAt( const Pos3D *pos, float alpha = 1.f, double scale = 1. );
 };

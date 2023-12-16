@@ -21,7 +21,7 @@ public:
 	uint32_t ParentID;
 	Vec3D Offset;
 	Vec3D RelativeUp, RelativeFwd;
-	bool ParentControl;
+	bool ParentControl, Manual;
 	double MinGunPitch, MaxGunPitch;
 	double YawSpeed, PitchSpeed;
 	uint8_t Team;

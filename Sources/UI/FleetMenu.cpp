@@ -177,6 +177,18 @@ void FleetMenu::Draw( void )
 	
 	// Enforce permissions about who can alter game settings.
 	bool enabled = Admin || (Raptor::Game->Data.PropertyAsString("permissions") == "all");
+	if( enabled )
+	{
+		// Don't allow changing fleet ships while a game is in progress.
+		for( std::map<uint32_t,GameObject*>::const_iterator obj = Raptor::Game->Data.GameObjects.begin(); obj != Raptor::Game->Data.GameObjects.end(); obj ++ )
+		{
+			if( obj->second->Type() != XWing::Object::SHIP_CLASS )
+			{
+				enabled = false;
+				break;
+			}
+		}
+	}
 	for( std::set<FleetMenuDropDown*>::iterator dropdown_iter = DropDowns.begin(); dropdown_iter != DropDowns.end(); dropdown_iter ++ )
 	{
 		(*dropdown_iter)->Enabled = enabled;

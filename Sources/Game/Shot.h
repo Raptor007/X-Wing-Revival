@@ -53,6 +53,9 @@ public:
 	void Update( double dt );
 	
 	void Draw( void );
+	double DrawAhead( void ) const;
+	double DrawBehind( void ) const;
+	double DrawWidth( void ) const;
 	
 	enum
 	{

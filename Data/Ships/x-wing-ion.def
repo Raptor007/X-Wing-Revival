@@ -21,8 +21,8 @@ ramming 500
 explode 1
 weapon ion_cannon 4.74 1.28 0
 weapon ion_cannon -4.74 1.28 0
-weapon ion_cannon -4.74 -1.28 0
-weapon ion_cannon 4.74 -1.28 0
+weapon ion_cannon -4.6 -1.7 0
+weapon ion_cannon 4.6 -1.7 0
 firetime ion_cannon 0.33
 weapon missile 0.5 -0.2 0
 weapon missile -0.5 -0.2 0

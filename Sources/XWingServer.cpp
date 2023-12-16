@@ -185,7 +185,7 @@ bool XWingServer::ProcessPacket( Packet *packet, ConnectedClient *from_client )
 				else
 				{
 					Ship *parent = player_turret->ParentShip();
-					if( parent && parent->PlayersCanFly() && ! parent->IsMissionObjective )
+					if( parent && (parent->Group != 255) && ! parent->IsMissionObjective )
 					{
 						if( parent->PlayerID && (parent->PlayerID != from_client->PlayerID) )
 						{
@@ -291,7 +291,7 @@ bool XWingServer::ProcessPacket( Packet *packet, ConnectedClient *from_client )
 			if( player_turret )
 			{
 				Ship *parent = player_turret->ParentShip();
-				if( parent && parent->PlayersCanFly() && ! parent->IsMissionObjective )
+				if( parent && (parent->Group != 255) && ! parent->IsMissionObjective )
 				{
 					bool changed = false;
 					std::list<Turret*> turrets = parent->AttachedTurrets();
@@ -440,6 +440,18 @@ bool XWingServer::ProcessPacket( Packet *packet, ConnectedClient *from_client )
 	}
 	
 	return RaptorServer::ProcessPacket( packet, from_client );
+}
+
+
+bool XWingServer::CompatibleVersion( std::string version ) const
+{
+	if( RaptorServer::CompatibleVersion( version ) )
+		return true;
+	
+	if( (version == "0.3.2 Alpha") && (Version == "0.3.3 Alpha") )  // FIXME: Temporary.
+		return true;
+	
+	return false;
 }
 
 
@@ -957,9 +969,8 @@ void XWingServer::Update( double dt )
 					}
 				}
 				
-				// Dirty hack to make sure the shot is only removed once.
-				shot->Lifetime.Reset();
-				remove_object_ids.insert( shot->ID );
+				if( (shot->ShotType != Shot::TYPE_SUPERLASER) || ! Data.PropertyAsBool("superlaser_penetrate",true) )
+					remove_object_ids.insert( shot->ID );
 				
 				// This ship just died.
 				if( (ship->Health <= 0.) && (prev_health > 0.) )
@@ -1010,7 +1021,9 @@ void XWingServer::Update( double dt )
 						char punctuation = (ship->IsMissionObjective || (ship->Group == 255)) ? '!' : '.';
 						
 						char cstr[ 1024 ] = "";
-						if( killer || killer_ship )
+						if( (killer_obj == ship) || (victim && (victim == killer)) )
+							snprintf( cstr, 1024, "%s bullseyed themself%c", victim_name, punctuation );
+						else if( killer || killer_ship )
 							snprintf( cstr, 1024, "%s was destroyed by %s%c", victim_name, killer ? killer->Name.c_str() : (killer_ship ? killer_ship->Name.c_str() : "somebody"), punctuation );
 						else if( (shot->ShotType == Shot::TYPE_TURBO_LASER_GREEN) || (shot->ShotType == Shot::TYPE_TURBO_LASER_RED) )
 							snprintf( cstr, 1024, "%s was destroyed by a turret%c", victim_name, punctuation );
@@ -1132,9 +1145,8 @@ void XWingServer::Update( double dt )
 					}
 				}
 				
-				// Dirty hack to make sure the shot is only removed once.
-				shot->Lifetime.Reset();
-				remove_object_ids.insert( shot->ID );
+				if( (shot->ShotType != Shot::TYPE_SUPERLASER) || ! Data.PropertyAsBool("superlaser_penetrate",true) )
+					remove_object_ids.insert( shot->ID );
 				
 				// This ship just died.
 				if( (ship->Health <= 0.) && (prev_health > 0.) )
@@ -1185,7 +1197,9 @@ void XWingServer::Update( double dt )
 						char punctuation = (ship->IsMissionObjective || (ship->Group == 255)) ? '!' : '.';
 						
 						char cstr[ 1024 ] = "";
-						if( killer || killer_ship )
+						if( (killer_obj == ship) || (victim && (victim == killer)) )
+							snprintf( cstr, 1024, "%s bullseyed themself%c", victim_name, punctuation );
+						else if( killer || killer_ship )
 							snprintf( cstr, 1024, "%s was destroyed by %s%c", victim_name, killer ? killer->Name.c_str() : (killer_ship ? killer_ship->Name.c_str() : "somebody"), punctuation );
 						else if( (shot->ShotType == Shot::TYPE_TURBO_LASER_GREEN) || (shot->ShotType == Shot::TYPE_TURBO_LASER_RED) )
 							snprintf( cstr, 1024, "%s was destroyed by a turret%c", victim_name, punctuation );
@@ -1226,9 +1240,8 @@ void XWingServer::Update( double dt )
 					Net.SendAll( &shot_hit );
 				}
 				
-				// Dirty hack to make sure the shot is only removed once.
-				shot->Lifetime.Reset();
-				remove_object_ids.insert( shot->ID );
+				if( (shot->ShotType != Shot::TYPE_SUPERLASER) || ! Data.PropertyAsBool("superlaser_penetrate",true) )
+					remove_object_ids.insert( shot->ID );
 				
 				// This turret just died.
 				if( (turret->Health <= 0.) && (prev_health > 0.) )
@@ -1300,9 +1313,8 @@ void XWingServer::Update( double dt )
 					Net.SendAll( &shot_hit );
 				}
 				
-				// Dirty hack to make sure the shot is only removed once.
-				shot->Lifetime.Reset();
-				remove_object_ids.insert( shot->ID );
+				if( (shot->ShotType != Shot::TYPE_SUPERLASER) || ! Data.PropertyAsBool("superlaser_penetrate",true) )
+					remove_object_ids.insert( shot->ID );
 				
 				// This turret just died.
 				if( (turret->Health <= 0.) && (prev_health > 0.) )
@@ -1642,9 +1654,8 @@ void XWingServer::Update( double dt )
 						continue;
 					*/
 					
-					// Dirty hack to make sure the shot is only removed once.
-					shot->Lifetime.Reset();
-					remove_object_ids.insert( shot->ID );
+					if( (shot->ShotType != Shot::TYPE_SUPERLASER) || ! Data.PropertyAsBool("superlaser_penetrate",true) )
+						remove_object_ids.insert( shot->ID );
 					
 					if( (shot->ShotType == Shot::TYPE_TORPEDO) || (shot->ShotType == Shot::TYPE_MISSILE) || ((hazard->Type() == XWing::Object::ASTEROID) && shot->AsteroidDamage()) )
 					{
@@ -1735,9 +1746,8 @@ void XWingServer::Update( double dt )
 						continue;
 					*/
 					
-					// Dirty hack to make sure the shot is only removed once.
-					shot->Lifetime.Reset();
-					remove_object_ids.insert( shot->ID );
+					if( (shot->ShotType != Shot::TYPE_SUPERLASER) || ! Data.PropertyAsBool("superlaser_penetrate",true) )
+						remove_object_ids.insert( shot->ID );
 					
 					if( (shot->ShotType == Shot::TYPE_TORPEDO) || (shot->ShotType == Shot::TYPE_MISSILE) || ((hazard->Type() == XWing::Object::ASTEROID) && shot->AsteroidDamage()) )
 					{
@@ -2095,7 +2105,7 @@ void XWingServer::Update( double dt )
 				double pitch = 0.;
 				double yaw = 0.;
 				double roll = 0.;
-				double throttle = ai_easy ? 0.5 : 0.75;
+				double throttle = (State == XWing::State::ROUND_ENDED) ? 0.9 : (ai_easy ? 0.5 : 0.75);
 				
 				GameObject *target = NULL;
 				
@@ -3501,10 +3511,14 @@ void XWingServer::Update( double dt )
 					GameObject *target = NULL;
 					Player *target_owner = NULL;
 					uint8_t target_subsystem = 0;
+					
+					Player *parent_owner = parent_ship ? parent_ship->Owner() : NULL;
 					size_t players_on_team = (turret->Team == XWing::Team::REBEL) ? (rebel_players && ! empire_players) : ((turret->Team == XWing::Team::EMPIRE) ? (empire_players && ! rebel_players) : 0);
 					
 					if( turret->PlayerID )
 						; // Turret is player controlled, so no AI control.
+					else if( turret->Manual && parent_owner )
+						turret->Target = 0;
 					else if( parent_ship && turret->ParentControl )
 					{
 						// This turret uses the parent's target.
@@ -3692,16 +3706,26 @@ void XWingServer::Update( double dt )
 								turret->Firing = parent_ship && parent_ship->Firing && ((i_dot_up > -0.02) || (t_dot_up > -0.02));
 							else if( ! ai_ceasefire )
 								turret->Firing = (dist_to_target < turret->MaxFiringDist) && ((i_dot_up > -0.01) || (t_dot_up > -0.01));
+							
+							if( turret->Firing && parent_ship && parent_ship->ComplexCollisionDetection() )
+							{
+								// Turrets should avoid shooting their parent ship.
+								Pos3D gunpos = turret->GunPos();
+								Pos3D ahead( &gunpos );
+								ahead.MoveAlong( &(gunpos.Fwd), 50000. );
+								gunpos.MoveAlong( &(gunpos.Fwd), 10. );
+								std::string hit;
+								double dist = parent_ship->Shape.DistanceFromLine( parent_ship, NULL, &hit, parent_ship->Exploded(), parent_ship->ExplosionSeed(), &gunpos, &ahead );
+								if( (dist < 0.1) && ! hit.empty() )
+									turret->Firing = false;
+							}
 						}
 						else
 							turret->SetYaw( i_dot_right ? Num::Sign(i_dot_right) : 1. );
 					}
-					else if( turret->ParentControl && parent_ship && parent_ship->PlayerID && (turret->RelativeFwd.AngleBetween( Vec3D(1.,0.,0) ) <= (turret->TargetArc / 2.)) )
+					else if( (turret->ParentControl || turret->Manual) && parent_owner && (turret->RelativeFwd.AngleBetween( Vec3D(1.,0.,0) ) <= (turret->TargetArc / 2.)) )
 					{
-						// Linked turret, attached to a player ship with no selected target, allowed to aim forward.
-						// Turn towards forward, and fire if the player is firing.
-						turret->Target = parent_ship->Target;
-						turret->Firing = parent_ship->Firing;
+						// Linked or manual turret, attached to a player ship with no selected target, allowed to aim forward: Turn towards forward.
 						Pos3D gun = turret->GunPos();
 						double dot_fwd = parent_ship->Fwd.Dot( &(gun.Fwd) );
 						double dot_up = parent_ship->Fwd.Dot( &(gun.Up) );
@@ -3711,6 +3735,13 @@ void XWingServer::Update( double dt )
 							turret->SetYaw( (fabs(dot_right) >= 0.25) ? Num::Sign(dot_right) : (dot_right * 4.) );
 						else
 							turret->SetYaw( Num::Sign(dot_right) );
+						
+						// Linked turrets without a target fire whenever pilot is firing.
+						if( turret->ParentControl )
+						{
+							turret->Target = parent_ship->Target;
+							turret->Firing = parent_ship->Firing;
+						}
 					}
 					else
 					{
@@ -4446,6 +4477,8 @@ void XWingServer::Update( double dt )
 						int kills   = player_iter->second->PropertyAsInt("kills");
 						int kills_c = player_iter->second->PropertyAsInt("kills_c");
 						int deaths  = player_iter->second->PropertyAsInt("deaths");
+						int impressive_ratio = ai_hard ? 1 : (ai_easy ? (ai_pudu ? 9000 : 10) : 2);
+						int impressive_kills = std::max<int>( impressive_ratio, ai_jedi ? 2 : 3 );
 						if( death_star_destroyed && (kills_c >= 1) )
 						{
 							// Hit the Death Star exhaust port.
@@ -4453,7 +4486,7 @@ void XWingServer::Update( double dt )
 							great_shot.AddString( "great_shot.wav" );
 							Net.SendToPlayer( &great_shot, player_iter->first );
 						}
-						if( (kills > deaths) && (kills >= (ai_jedi?2:3)) && (kills_c >= 0) && ai_hard && (ai_waves >= (((GameType == XWing::GameType::FFA_ELIMINATION) && ! deaths) ? 1 : 3)) && (Cheaters.find( player_iter->first ) == Cheaters.end()) )
+						if( (kills > deaths * impressive_ratio) && (kills >= impressive_kills) && (kills_c >= 0) && (ai_waves >= (((GameType == XWing::GameType::FFA_ELIMINATION) && ! deaths) ? 1 : 3)) && (Cheaters.find( player_iter->first ) == Cheaters.end()) )
 						{
 							// More kills than deaths vs Ace AI.
 							Packet impressive( XWing::Packet::ACHIEVEMENT );
@@ -4655,7 +4688,7 @@ void XWingServer::BeginFlying( uint16_t player_id, bool respawn )
 			GameType = XWing::GameType::TEAM_DEATHMATCH;
 			Respawn = true;
 			KillLimit = Data.PropertyAsInt("tdm_kill_limit");
-			RespawnDelay = 5.;
+			RespawnDelay = Data.PropertyAsDouble("dm_respawn",5.);
 		}
 		else if( gametype == "ffa_dm" )
 		{
@@ -4664,7 +4697,7 @@ void XWingServer::BeginFlying( uint16_t player_id, bool respawn )
 			AllowTeamChange = true;
 			Respawn = true;
 			KillLimit = Data.PropertyAsInt("dm_kill_limit");
-			RespawnDelay = 5.;
+			RespawnDelay = Data.PropertyAsDouble("dm_respawn",5.);
 		}
 		else if( gametype == "team_race" )
 		{
@@ -4674,7 +4707,7 @@ void XWingServer::BeginFlying( uint16_t player_id, bool respawn )
 			TimeLimit = Data.PropertyAsInt("race_time_limit");
 			Respawn = Data.PropertyAsBool("respawn");
 			//PlayersTakeEmptyShips = ! Respawn;  // FIXME: Should this be a game option?
-			RespawnDelay = 5.;
+			RespawnDelay = Data.PropertyAsDouble("race_respawn",5.);
 		}
 		else if( gametype == "ffa_race" )
 		{
@@ -4684,14 +4717,14 @@ void XWingServer::BeginFlying( uint16_t player_id, bool respawn )
 			Checkpoints = Data.PropertyAsInt("ffa_race_checkpoints",30);
 			TimeLimit = Data.PropertyAsInt("race_time_limit");
 			Respawn = Data.PropertyAsBool("respawn");
-			RespawnDelay = 5.;
+			RespawnDelay = Data.PropertyAsDouble("race_respawn",5.);
 		}
 		else if( gametype == "yavin" )
 		{
 			GameType = XWing::GameType::BATTLE_OF_YAVIN;
 			TimeLimit = Data.PropertyAsInt("yavin_time_limit");
 			Respawn = Data.PropertyAsBool("respawn");
-			RespawnDelay = 10.;
+			RespawnDelay = Data.PropertyAsDouble("yavin_respawn",15.);
 			
 			if( TimeLimit >= 30 )
 				Alerts[ 30. * 60. ] = XWingServerAlert( "deathstar_30min.wav", "The moon with the Rebel base will be in range in 30 minutes." );
@@ -4714,13 +4747,13 @@ void XWingServer::BeginFlying( uint16_t player_id, bool respawn )
 			TimeLimit = Data.PropertyAsInt("hunt_time_limit");
 			Respawn = Data.PropertyAsBool("respawn");
 			DefendingTeam = (Data.PropertyAsString("defending_team") == "rebel") ? XWing::Team::REBEL : XWing::Team::EMPIRE;
-			RespawnDelay = 15.;
+			RespawnDelay = Data.PropertyAsDouble("hunt_respawn",15.);
 		}
 		else if( gametype == "fleet" )
 		{
 			GameType = XWing::GameType::FLEET_BATTLE;
 			Respawn = Data.PropertyAsBool("respawn");
-			RespawnDelay = 15.;
+			RespawnDelay = Data.PropertyAsDouble("fleet_respawn",15.);
 			RebelCruiserRespawn  = 30. + 10. * Data.PropertyAsInt("rebel_cruisers");
 			EmpireCruiserRespawn = 30. + 10. * Data.PropertyAsInt("empire_cruisers");
 		}
@@ -5086,7 +5119,7 @@ void XWingServer::BeginFlying( uint16_t player_id, bool respawn )
 					else if( strcasecmp( rebel_flagship_cstr, "CRS" ) == 0 )
 						ship->Name = "Independence";
 					else if( strcasecmp( rebel_flagship_cstr, "YT1300" ) == 0 )
-						ship->Name = "Millenium Falcon";
+						ship->Name = "M.Falcon";
 					else if( ship->Class && (ship->Class->Type() != ShipClass::CATEGORY_CAPITAL) )
 						ship->Name = "Rogue Leader";
 					else
@@ -5149,7 +5182,7 @@ void XWingServer::BeginFlying( uint16_t player_id, bool respawn )
 				else if( strcasecmp( rebel_flagship_cstr, "CRS" ) == 0 )
 					rebel_flagship->Name = "Independence";
 				else if( strcasecmp( rebel_flagship_cstr, "YT1300" ) == 0 )
-					rebel_flagship->Name = "Millenium Falcon";
+					rebel_flagship->Name = "M.Falcon";
 				else if( rebel_flagship->Class && (rebel_flagship->Class->Type() != ShipClass::CATEGORY_CAPITAL) )
 					rebel_flagship->Name = "Rogue Leader";
 				else
@@ -5579,6 +5612,15 @@ void XWingServer::BeginFlying( uint16_t player_id, bool respawn )
 					}
 					ship->ResetTurrets();
 					ship->Name = sc->LongName;
+					const char *shortname = sc->ShortName.c_str();
+					if( strcasecmp( shortname, "CRV" ) == 0 )
+						ship->Name = "Tantive IV"; // FIXME: Make sure no other ship already has this name!
+					else if( strcasecmp( shortname, "FRG" ) == 0 )
+						ship->Name = "Redemption"; //
+					else if( strcasecmp( shortname, "CRS" ) == 0 )
+						ship->Name = "Stimsenjkat";
+					else if( strcasecmp( shortname, "YT1300" ) == 0 )
+						ship->Name = "M.Falcon";   //
 				}
 			}
 		}
@@ -6103,6 +6145,7 @@ void XWingServer::SpawnShipTurrets( const Ship *ship, std::set<uint32_t> *add_ob
 			else if( ship->Class->TurretHealth )
 				turret->SetHealth( ship->Class->TurretHealth );
 			turret->ParentControl = turret_iter->ParentControl;
+			turret->Manual = turret_iter->Manual;
 			turret->Weapon = turret_iter->Weapon;
 			
 			if( ship->Team == XWing::Team::EMPIRE )

@@ -49,6 +49,7 @@ public:
 	void Started( void );
 	void Stopped( void );
 	bool ProcessPacket( Packet *packet, ConnectedClient *from_client );
+	bool CompatibleVersion( std::string version ) const;
 	void AcceptedClient( ConnectedClient *client );
 	void DroppedClient( ConnectedClient *client );
 	

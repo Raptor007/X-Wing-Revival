@@ -1,6 +1,6 @@
 ----------------------------------------
 |            X-Wing Revival            |
-|       0.3.2 Alpha (2023-12-02)       |
+|       0.3.3 Alpha (2023-12-16)       |
 |     by Raptor007 (Blair Sherman)     |
 | http://raptor007.com/x-wing-revival/ |
 ----------------------------------------
@@ -441,6 +441,14 @@ console commands to execute, such as "sv gametype yavin" or "sv rebel_fighter A/
 
 
 == VERSION HISTORY ==
+
+Alpha 0.3.3 (2023-12-16):
+ * YT-1300 turrets deal more damage, but must be manned.  Cockpit has its own laser.
+ * Player turret shots no longer appear out of sync at certain firing angles.
+ * Capital ship turrets should no longer shoot through their own ship.
+ * Ships reducing speed no longer jerk backwards as suddenly.
+ * Improved engine glow effects.
+ * Missiles are now able to strike the ship that fired them (if extremely unlucky).
 
 Alpha 0.3.2 (2023-12-02):
  * Fixed several bugs related to networking and threading, especially on server.
