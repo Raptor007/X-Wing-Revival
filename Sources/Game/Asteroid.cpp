@@ -12,7 +12,11 @@
 #include "Num.h"
 
 
+#if ASTEROID_BLASTABLE
+Asteroid::Asteroid( uint32_t id ) : BlastableObject( id, XWing::Object::ASTEROID )
+#else
 Asteroid::Asteroid( uint32_t id ) : GameObject( id, XWing::Object::ASTEROID )
+#endif
 {
 	Shape = NULL;
 	
@@ -236,4 +240,30 @@ void Asteroid::Draw( void )
 		
 		game->Gfx.DrawSphere3D( X, Y, Z, Radius * ((detail == 3) ? 1.1 : 1.05), detail, Texture.CurrentFrame(), Graphics::TEXTURE_MODE_X_DIV_R );
 	}
+}
+
+
+Shader *Asteroid::WantShader( void ) const
+{
+	XWingGame *game = (XWingGame*) Raptor::Game;
+	
+	double dist = game->Cam.Dist( this );
+	if( dist < Radius )
+		return NULL;
+	
+	// Calculate asteroid detail based on distance and screen resolution.
+	int detail = game->AsteroidLOD * game->Gfx.H * Radius * 0.5 / dist;
+	
+	if( (detail >= 5) && Shape )
+	{
+		// Use ship model shader if asteroids are blastable and this one is hit.
+		#if ASTEROID_BLASTABLE
+			if( BlastPoints.size() )
+				return NULL;
+		#endif
+		
+		return game->Res.GetShader("asteroid");
+	}
+	
+	return game->Res.GetShader("asteroid_far");
 }

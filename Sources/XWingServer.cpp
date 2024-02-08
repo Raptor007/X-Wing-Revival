@@ -20,6 +20,7 @@
 #include "Turret.h"
 #include "DeathStar.h"
 #include "DeathStarBox.h"
+#include "DockingBay.h"
 #include "Checkpoint.h"
 #include "Math3D.h"
 #include "RaptorGame.h"
@@ -448,7 +449,8 @@ bool XWingServer::CompatibleVersion( std::string version ) const
 	if( RaptorServer::CompatibleVersion( version ) )
 		return true;
 	
-	if( (version == "0.3.2 Alpha") && (Version == "0.3.3 Alpha") )  // FIXME: Temporary.
+	// Prevent v0.3 and v0.3.1 with broken netcode from joining, but otherwise all v0.3.x are compatible.
+	if( (strncasecmp( version.c_str(), Version.c_str(), 3 ) == 0) && (version != "0.3 Alpha") && (version != "0.3.1 Alpha") )
 		return true;
 	
 	return false;
@@ -470,6 +472,7 @@ void XWingServer::AcceptedClient( ConnectedClient *client )
 	RaptorServer::AcceptedClient( client );
 	
 	Packet lobby_packet( XWing::Packet::LOBBY );
+	// FIXME: Send GameTypes in v0.4!
 	client->Send( &lobby_packet );
 }
 
@@ -568,12 +571,30 @@ void XWingServer::Update( double dt )
 				bool died1 = false, died2 = false;
 				char punctuation = '.';
 				
+				#define SLOW_SPEED (100.)
+				#define SLOW_DAMAGE (0.04)
+				
 				if( prev_health1 > 0. )
 				{
 					// If the other ship was already dead, divide its collision damage by how long it has been dead.
 					double collision_damage = ship2->CollisionPotential;
+					bool low_speed_complex = false;
 					if( prev_health2 <= 0. )
 						collision_damage /= (1 + ship2->DeathClock.ElapsedSeconds());
+					else
+					{
+						// Both ships alive.  If the speed difference is low, gradually damage them.
+						double relative_speed = (ship1->MotionVector - ship2->MotionVector).Length();
+						if( relative_speed < SLOW_SPEED )
+						{
+							// Repeat collision check at 4Hz.
+							if( (ship1->HitClock.ElapsedSeconds() < 0.25) && (ship2->HitClock.ElapsedSeconds() < 0.25) )
+								continue;
+							
+							collision_damage = std::max<double>( SLOW_DAMAGE, (relative_speed / SLOW_SPEED) ) * std::min<double>( ship1->CollisionPotential, ship2->CollisionPotential );
+							low_speed_complex = ship2->ComplexCollisionDetection();
+						}
+					}
 					
 					std::map<std::string,double>::const_iterator subsystem_iter = ship1->Subsystems.end();
 					bool subsystem_was_intact = false;
@@ -583,6 +604,8 @@ void XWingServer::Update( double dt )
 						subsystem_was_intact = (subsystem_iter != ship1->Subsystems.end()) && (subsystem_iter->second > 0.);
 						ship1->AddDamage( collision_damage / 2., collision_damage / 2., collision_iter->FirstObject.c_str() );
 					}
+					else if( low_speed_complex )
+						ship1->AddDamage( collision_damage / 2., collision_damage / 2. );  // FIXME: Determine direction to surface hit?
 					else
 					{
 						Vec3D vec_to_other( ship2->PrevPos.X - ship1->X, ship2->PrevPos.Y - ship1->Y, ship2->PrevPos.Z - ship1->Z );
@@ -665,7 +688,7 @@ void XWingServer::Update( double dt )
 							send_scores = true;
 						}
 					}
-					else
+					else if( ship2->CollisionPotential )
 					{
 						// Send the hit.
 						Packet hit( XWing::Packet::MISC_HIT_SHIP );
@@ -673,7 +696,7 @@ void XWingServer::Update( double dt )
 						hit.AddFloat( ship1->Health );
 						hit.AddFloat( ship1->ShieldF );
 						hit.AddFloat( ship1->ShieldR );
-						hit.AddUChar( ship1->HitRear ? 0x01 : 0x00 );
+						hit.AddUChar( ship1->HitFlags );
 						if( subsystem_iter != ship1->Subsystems.end() )
 						{
 							hit.AddString( subsystem_iter->first.c_str() );
@@ -684,6 +707,7 @@ void XWingServer::Update( double dt )
 						hit.AddDouble( ship2->PrevPos.X );
 						hit.AddDouble( ship2->PrevPos.Y );
 						hit.AddDouble( ship2->PrevPos.Z );
+						hit.AddDouble( sqrt( ship2->Radius() ) * 4. * collision_damage / ship2->CollisionPotential );  // NOTE: v0.3.2/0.3.3 clients ignore this!
 						Net.SendAll( &hit );
 					}
 				}
@@ -692,8 +716,19 @@ void XWingServer::Update( double dt )
 				{
 					// If the other ship was already dead, divide its collision damage by how long it has been dead.
 					double collision_damage = ship1->CollisionPotential;
+					bool low_speed_complex = false;
 					if( prev_health1 <= 0. )
 						collision_damage /= (1 + ship1->DeathClock.ElapsedSeconds());
+					else
+					{
+						// Both ships alive.  If the speed difference is low, gradually damage them.
+						double relative_speed = (ship1->MotionVector - ship2->MotionVector).Length();
+						if( relative_speed < SLOW_SPEED )
+						{
+							collision_damage = std::max<double>( SLOW_DAMAGE, (relative_speed / SLOW_SPEED) ) * std::min<double>( ship1->CollisionPotential, ship2->CollisionPotential );
+							low_speed_complex = ship1->ComplexCollisionDetection();
+						}
+					}
 					
 					std::map<std::string,double>::const_iterator subsystem_iter = ship2->Subsystems.end();
 					bool subsystem_was_intact = false;
@@ -703,6 +738,8 @@ void XWingServer::Update( double dt )
 						subsystem_was_intact = (subsystem_iter != ship2->Subsystems.end()) && (subsystem_iter->second > 0.);
 						ship2->AddDamage( collision_damage / 2., collision_damage / 2., collision_iter->SecondObject.c_str() );
 					}
+					else if( low_speed_complex )
+						ship2->AddDamage( collision_damage / 2., collision_damage / 2. );  // FIXME: Determine direction to surface hit?
 					else
 					{
 						Vec3D vec_to_other( ship1->PrevPos.X - ship2->X, ship1->PrevPos.Y - ship2->Y, ship1->PrevPos.Z - ship2->Z );
@@ -785,7 +822,7 @@ void XWingServer::Update( double dt )
 							send_scores = true;
 						}
 					}
-					else
+					else if( ship1->CollisionPotential )
 					{
 						// Send the hit.
 						Packet hit( XWing::Packet::MISC_HIT_SHIP );
@@ -793,7 +830,7 @@ void XWingServer::Update( double dt )
 						hit.AddFloat( ship2->Health );
 						hit.AddFloat( ship2->ShieldF );
 						hit.AddFloat( ship2->ShieldR );
-						hit.AddUChar( ship2->HitRear ? 0x01 : 0x00 );
+						hit.AddUChar( ship2->HitFlags );
 						if( subsystem_iter != ship2->Subsystems.end() )
 						{
 							hit.AddString( subsystem_iter->first.c_str() );
@@ -804,6 +841,7 @@ void XWingServer::Update( double dt )
 						hit.AddDouble( ship1->PrevPos.X );
 						hit.AddDouble( ship1->PrevPos.Y );
 						hit.AddDouble( ship1->PrevPos.Z );
+						hit.AddDouble( sqrt( ship1->Radius() ) * 4. * collision_damage / ship1->CollisionPotential );  // NOTE: v0.3.2/0.3.3 clients ignore this!
 						Net.SendAll( &hit );
 					}
 				}
@@ -900,7 +938,7 @@ void XWingServer::Update( double dt )
 					shot_hit.AddFloat( ship->Health );
 					shot_hit.AddFloat( ship->ShieldF );
 					shot_hit.AddFloat( ship->ShieldR );
-					shot_hit.AddUChar( ship->HitRear ? 0x01 : 0x00 );
+					shot_hit.AddUChar( ship->HitFlags );
 					if( subsystem_iter != ship->Subsystems.end() )
 					{
 						shot_hit.AddString( subsystem_iter->first.c_str() );
@@ -1002,11 +1040,14 @@ void XWingServer::Update( double dt )
 					GameObject *killer_obj = Data.GetObject( shot->FiredFrom );
 					if( killer_obj && ! killer )
 						killer = killer_obj->Owner();
-					Ship *killer_ship = (killer_obj && (killer_obj->Type() == XWing::Object::SHIP)) ? (Ship*) killer_obj : NULL;
+					Ship   *killer_ship   = (killer_obj && (killer_obj->Type() == XWing::Object::SHIP))   ? (Ship*)   killer_obj : NULL;
+					Turret *killer_turret = (killer_obj && (killer_obj->Type() == XWing::Object::TURRET)) ? (Turret*) killer_obj : NULL;
+					if( killer_turret )
+						killer_ship = killer_turret->ParentShip();
 					
 					if( State < XWing::State::ROUND_ENDED )
 					{
-						ShipKilled( ship, killer_obj );
+						ShipKilled( ship, killer_obj, killer );
 						send_scores = true;
 						
 						// Notify players.
@@ -1025,7 +1066,7 @@ void XWingServer::Update( double dt )
 							snprintf( cstr, 1024, "%s bullseyed themself%c", victim_name, punctuation );
 						else if( killer || killer_ship )
 							snprintf( cstr, 1024, "%s was destroyed by %s%c", victim_name, killer ? killer->Name.c_str() : (killer_ship ? killer_ship->Name.c_str() : "somebody"), punctuation );
-						else if( (shot->ShotType == Shot::TYPE_TURBO_LASER_GREEN) || (shot->ShotType == Shot::TYPE_TURBO_LASER_RED) )
+						else if( killer_turret )
 							snprintf( cstr, 1024, "%s was destroyed by a turret%c", victim_name, punctuation );
 						else
 							snprintf( cstr, 1024, "%s was destroyed%c", victim_name, punctuation );
@@ -1076,7 +1117,7 @@ void XWingServer::Update( double dt )
 					shot_hit.AddFloat( ship->Health );
 					shot_hit.AddFloat( ship->ShieldF );
 					shot_hit.AddFloat( ship->ShieldR );
-					shot_hit.AddUChar( ship->HitRear ? 0x01 : 0x00 );
+					shot_hit.AddUChar( ship->HitFlags );
 					if( subsystem_iter != ship->Subsystems.end() )
 					{
 						shot_hit.AddString( subsystem_iter->first.c_str() );
@@ -1178,11 +1219,14 @@ void XWingServer::Update( double dt )
 					GameObject *killer_obj = Data.GetObject( shot->FiredFrom );
 					if( killer_obj && ! killer )
 						killer = killer_obj->Owner();
-					Ship *killer_ship = (killer_obj && (killer_obj->Type() == XWing::Object::SHIP)) ? (Ship*) killer_obj : NULL;
+					Ship   *killer_ship   = (killer_obj && (killer_obj->Type() == XWing::Object::SHIP))   ? (Ship*)   killer_obj : NULL;
+					Turret *killer_turret = (killer_obj && (killer_obj->Type() == XWing::Object::TURRET)) ? (Turret*) killer_obj : NULL;
+					if( killer_turret )
+						killer_ship = killer_turret->ParentShip();
 					
 					if( State < XWing::State::ROUND_ENDED )
 					{
-						ShipKilled( ship, killer_obj );
+						ShipKilled( ship, killer_obj, killer );
 						send_scores = true;
 						
 						// Notify players.
@@ -1201,7 +1245,7 @@ void XWingServer::Update( double dt )
 							snprintf( cstr, 1024, "%s bullseyed themself%c", victim_name, punctuation );
 						else if( killer || killer_ship )
 							snprintf( cstr, 1024, "%s was destroyed by %s%c", victim_name, killer ? killer->Name.c_str() : (killer_ship ? killer_ship->Name.c_str() : "somebody"), punctuation );
-						else if( (shot->ShotType == Shot::TYPE_TURBO_LASER_GREEN) || (shot->ShotType == Shot::TYPE_TURBO_LASER_RED) )
+						else if( killer_turret )
 							snprintf( cstr, 1024, "%s was destroyed by a turret%c", victim_name, punctuation );
 						else
 							snprintf( cstr, 1024, "%s was destroyed%c", victim_name, punctuation );
@@ -1499,6 +1543,62 @@ void XWingServer::Update( double dt )
 				}
 			}
 			
+			else if( (collision_iter->first->Type() == XWing::Object::SHIP) && (collision_iter->second->Type() == XWing::Object::DOCKING_BAY) )
+			{
+				Ship *ship = (Ship*) collision_iter->first;
+				DockingBay *dock = (DockingBay*) collision_iter->second;
+				
+				if( (ship->Health > 0.) && (ship->Health < ship->MaxHealth()) && (ship->HitClock.ElapsedSeconds() >= 1.5) && (dock->RepairClock.ElapsedSeconds() >= 1.5) )
+				{
+					ship->HitClock.Reset();
+					dock->RepairClock.Reset();
+					ship->Repair( 10. );
+					ship->ShieldF = ship->ShieldR = 0.;  // Must drop shields to repair hull damage.
+					
+					// Send the repair.
+					Packet repair( XWing::Packet::MISC_HIT_SHIP );  // FIXME: Replace with REPAIR_REARM packet in v0.4!
+					repair.AddUInt( ship->ID );
+					repair.AddFloat( ship->Health );
+					repair.AddFloat( ship->ShieldF );
+					repair.AddFloat( ship->ShieldR );
+					repair.AddUChar( ship->HitFlags );
+					repair.AddString( "" );
+					repair.AddDouble( ship->X );
+					repair.AddDouble( ship->Y );
+					repair.AddDouble( ship->Z );
+					repair.AddDouble( 0. );  // NOTE: v0.3.2/0.3.3 clients ignore this!
+					Net.SendAll( &repair );
+				}
+			}
+			
+			else if( (collision_iter->first->Type() == XWing::Object::DOCKING_BAY) && (collision_iter->second->Type() == XWing::Object::SHIP) )
+			{
+				DockingBay *dock = (DockingBay*) collision_iter->first;
+				Ship *ship = (Ship*) collision_iter->second;
+				
+				if( (ship->Health > 0.) && (ship->Health < ship->MaxHealth()) && (ship->HitClock.ElapsedSeconds() >= 1.5) && (dock->RepairClock.ElapsedSeconds() >= 1.5) )
+				{
+					ship->HitClock.Reset();
+					dock->RepairClock.Reset();
+					ship->Repair( 10. );
+					ship->ShieldF = ship->ShieldR = 0.;  // Must drop shields to repair hull damage.
+					
+					// Send the repair.
+					Packet repair( XWing::Packet::MISC_HIT_SHIP );  // FIXME: Replace with REPAIR_REARM packet in v0.4!
+					repair.AddUInt( ship->ID );
+					repair.AddFloat( ship->Health );
+					repair.AddFloat( ship->ShieldF );
+					repair.AddFloat( ship->ShieldR );
+					repair.AddUChar( ship->HitFlags );
+					repair.AddString( "" );
+					repair.AddDouble( ship->X );
+					repair.AddDouble( ship->Y );
+					repair.AddDouble( ship->Z );
+					repair.AddDouble( 0. );  // NOTE: v0.3.2/0.3.3 clients ignore this!
+					Net.SendAll( &repair );
+				}
+			}
+			
 			else if( collision_iter->first->Type() == XWing::Object::SHIP )
 			{
 				Ship *ship = (Ship*) collision_iter->first;
@@ -1506,7 +1606,7 @@ void XWingServer::Update( double dt )
 				double prev_health = ship->Health;
 				ship->SetHealth( 0. );
 				
-				// This ship just died.
+				// This ship just died.  // FIXME: At low speed use MISC_HIT_SHIP to apply damage instead of instant death!
 				if( prev_health > 0. )
 				{
 					Player *victim = ship->Owner();
@@ -1577,7 +1677,7 @@ void XWingServer::Update( double dt )
 				double prev_health = ship->Health;
 				ship->SetHealth( 0. );
 				
-				// This ship just died.
+				// This ship just died.  // FIXME: At low speed use MISC_HIT_SHIP to apply damage instead of instant death!
 				if( prev_health > 0. )
 				{
 					Player *victim = ship->Owner();
@@ -1664,6 +1764,9 @@ void XWingServer::Update( double dt )
 						shot_hit.AddDouble( shot->PrevPos.X );
 						shot_hit.AddDouble( shot->PrevPos.Y );
 						shot_hit.AddDouble( shot->PrevPos.Z );
+						#if ASTEROID_BLASTABLE
+							shot_hit.AddUInt( hazard->ID );
+						#endif
 						Net.SendAll( &shot_hit );
 					}
 					
@@ -1756,6 +1859,7 @@ void XWingServer::Update( double dt )
 						shot_hit.AddDouble( shot->PrevPos.X );
 						shot_hit.AddDouble( shot->PrevPos.Y );
 						shot_hit.AddDouble( shot->PrevPos.Z );
+						shot_hit.AddUInt( hazard->ID );
 						Net.SendAll( &shot_hit );
 					}
 					
@@ -2263,7 +2367,7 @@ void XWingServer::Update( double dt )
 								if( potential_ship->IsMissionObjective || ((potential_ship->Group == 255) && able_to_respawn) )
 									primary_targets.push_back( *target_iter );
 								
-								// Jedi AI should prioritize players attacking them; Sith AI should always prioritize players.
+								// Jedi AI should prioritize players attacking them; Jedi Master AI should always prioritize players.
 								else if( ai_jedi && potential_ship->PlayerID )
 								{
 									if( ai_sith || (ship->HitByID == potential_ship->ID) || (potential_ship->Target == ship->ID) )
@@ -2309,7 +2413,7 @@ void XWingServer::Update( double dt )
 						if( ai_targets.size() )
 							potential_targets = ai_targets;
 					}
-					// Sith AI should prioritize attacking players.
+					// Jedi Master AI should prioritize attacking players.
 					else if( ai_sith )
 					{
 						std::vector<GameObject*> player_targets;
@@ -3264,6 +3368,7 @@ void XWingServer::Update( double dt )
 		uint32_t last_ship = 0;
 		std::map< uint8_t, std::map<uint8_t,Pos3D> > group_spawns;
 		std::map< uint8_t, std::map<uint8_t,int> > group_spawn_count;
+		std::set<DockingBay*> remove_docking_bays;
 		
 		for( std::map<uint32_t,GameObject*>::iterator obj_iter = Data.GameObjects.begin(); obj_iter != Data.GameObjects.end(); obj_iter ++ )
 		{
@@ -3483,7 +3588,7 @@ void XWingServer::Update( double dt )
 										ship->MoveAlong( &(ship->Right), Rand::Double(  2.5, 3.5 ) * spread * ((group_spawn_count[ ship->Team ][ ship->Group ] % 2) ? 1. : -1.) );
 										ship->MoveAlong( &(ship->Up),    Rand::Double( -4.0, 0.0 ) * spread );
 									}
-									group_spawn_count[ ship->Team ][ ship->Group ] ++;
+									group_spawn_count[ ship->Team ][ ship->Group ] ++;  // FIXME: Stagger group arrivals by delaying jump-in based on this?
 								}
 								else
 								{
@@ -3601,7 +3706,7 @@ void XWingServer::Update( double dt )
 							}
 							else if( ai_sith && (dist < turret->MaxFiringDist * 1.1) && (target_iter_owner || target_owner) )
 							{
-								// Sith AI should prioritize attacking players within range.
+								// Jedi Master AI should prioritize attacking players within range.
 								if( target_iter_owner && ((dist < nearest_enemy) || ! target_owner) )
 								{
 									target = target_iter->second;
@@ -3771,6 +3876,12 @@ void XWingServer::Update( double dt )
 				else
 					remove_object_ids.insert( turret->ID );
 			}
+			else if( obj_iter->second->Type() == XWing::Object::DOCKING_BAY )
+			{
+				DockingBay *dock = (DockingBay*) obj_iter->second;
+				if( dock->Radius <= 0. )  // DockingBay::Update sets Radius to 0 when parent ship dies.
+					remove_docking_bays.insert( dock );
+			}
 		}
 		
 		
@@ -3812,6 +3923,12 @@ void XWingServer::Update( double dt )
 			}
 			Net.SendAll( &objects_remove );
 		}
+		
+		
+		// Remove docking bays of dead ships.  No need to nofify clients.
+		
+		for( std::set<DockingBay*>::iterator dock_iter = remove_docking_bays.begin(); dock_iter != remove_docking_bays.end(); dock_iter ++ )
+			Data.RemoveObject( (*dock_iter)->ID );
 		
 		
 		// Check for any alerts to send.
@@ -4486,14 +4603,14 @@ void XWingServer::Update( double dt )
 							great_shot.AddString( "great_shot.wav" );
 							Net.SendToPlayer( &great_shot, player_iter->first );
 						}
-						if( (kills > deaths * impressive_ratio) && (kills >= impressive_kills) && (kills_c >= 0) && (ai_waves >= (((GameType == XWing::GameType::FFA_ELIMINATION) && ! deaths) ? 1 : 3)) && (Cheaters.find( player_iter->first ) == Cheaters.end()) )
+						if( ((kills + kills_c) > deaths * impressive_ratio) && (kills >= impressive_kills) && (kills_c >= 0) && (ai_waves >= (((GameType == XWing::GameType::FFA_ELIMINATION) && ! deaths) ? 1 : 3)) && (Cheaters.find( player_iter->first ) == Cheaters.end()) )
 						{
 							// More kills than deaths vs Ace AI.
 							Packet impressive( XWing::Packet::ACHIEVEMENT );
 							impressive.AddString( "impressive.wav" );
 							Net.SendToPlayer( &impressive, player_iter->first );
 						}
-						if( (! deaths) && (kills >= (ai_jedi?1:2)) && (! Respawn) && (ai_skill >= (PlayersTakeEmptyShips?2:1)) && (Cheaters.find( player_iter->first ) == Cheaters.end()) )
+						if( (! deaths) && ((kills + kills_c) >= (ai_jedi?1:2)) && (! Respawn) && (ai_skill >= (PlayersTakeEmptyShips?2:1)) && (Cheaters.find( player_iter->first ) == Cheaters.end()) )
 						{
 							// Survived without respawn.
 							Packet powerful( XWing::Packet::ACHIEVEMENT );
@@ -4756,6 +4873,8 @@ void XWingServer::BeginFlying( uint16_t player_id, bool respawn )
 			RespawnDelay = Data.PropertyAsDouble("fleet_respawn",15.);
 			RebelCruiserRespawn  = 30. + 10. * Data.PropertyAsInt("rebel_cruisers");
 			EmpireCruiserRespawn = 30. + 10. * Data.PropertyAsInt("empire_cruisers");
+			RebelCruiserRespawn  = Data.PropertyAsDouble( "rebel_cruiser_respawn",  RebelCruiserRespawn,  RebelCruiserRespawn );
+			EmpireCruiserRespawn = Data.PropertyAsDouble( "empire_cruiser_respawn", EmpireCruiserRespawn, EmpireCruiserRespawn );
 		}
 		
 		// Add gametype objects.
@@ -4870,6 +4989,50 @@ void XWingServer::BeginFlying( uint16_t player_id, bool respawn )
 				turret->MoveAlong( &(box->Up), box->H / 2. );
 				turret->MinGunPitch = -5.;
 				turret->AimAhead = 1.375f;
+				Data.AddObject( turret );
+			}
+			
+			// Repair bay.
+			if( Data.PropertyAsBool("yavin_repair_bay",true) )
+			{
+				DockingBay *dock = new DockingBay();
+				dock->Copy( deathstar );
+				dock->MoveAlong( &(deathstar->Up), 32. );
+				dock->MoveAlong( &(deathstar->Fwd), -3979. );
+				dock->MoveAlong( &(deathstar->Right), -399. );
+				dock->Radius = 36.;
+				dock->Team = XWing::Team::EMPIRE;
+				Data.AddObject( dock );
+				
+				DeathStarBox *box1 = new DeathStarBox();
+				box1->Copy( dock );
+				box1->W = 4.;
+				box1->L = 48.;
+				box1->H = 64.;
+				box1->MoveAlong( &(deathstar->Right), 32. );
+				Data.AddObject( box1 );
+				
+				DeathStarBox *box2 = new DeathStarBox();
+				box2->Copy( dock );
+				box2->W = 4.;
+				box2->L = 48.;
+				box2->H = 64.;
+				box2->MoveAlong( &(deathstar->Right), -32. );
+				Data.AddObject( box2 );
+				
+				DeathStarBox *box3 = new DeathStarBox();
+				box3->Copy( dock );
+				box3->W = 60.;
+				box3->L = 20.;
+				box3->H = 4.;
+				box3->MoveAlong( &(deathstar->Up), 30. );
+				Data.AddObject( box3 );
+				
+				Turret *turret = new Turret();
+				turret->Team = XWing::Team::EMPIRE;
+				turret->Copy( box3 );
+				turret->MoveAlong( &(box3->Up), box3->H / 2. );
+				turret->MinGunPitch = -10.;
 				Data.AddObject( turret );
 			}
 			
@@ -5636,15 +5799,23 @@ void XWingServer::BeginFlying( uint16_t player_id, bool respawn )
 		
 		// Send list of objects to all players.
 		
-		Packet obj_list = Packet( Raptor::Packet::OBJECTS_ADD );
-		obj_list.AddUInt( Data.GameObjects.size() - ShipClasses.size() );
+		std::vector<GameObject*> objects_to_send;
 		for( std::map<uint32_t,GameObject*>::iterator obj_iter = Data.GameObjects.begin(); obj_iter != Data.GameObjects.end(); obj_iter ++ )
 		{
 			if( obj_iter->second->Type() == XWing::Object::SHIP_CLASS )
 				continue;
-			obj_list.AddUInt( obj_iter->second->ID );
-			obj_list.AddUInt( obj_iter->second->Type() );
-			obj_iter->second->AddToInitPacket( &obj_list );
+			if( ! obj_iter->second->ServerShouldSend() )
+				continue;
+			objects_to_send.push_back( obj_iter->second );
+		}
+		
+		Packet obj_list = Packet( Raptor::Packet::OBJECTS_ADD );
+		obj_list.AddUInt( objects_to_send.size() );
+		for( std::vector<GameObject*>::iterator obj_iter = objects_to_send.begin(); obj_iter != objects_to_send.end(); obj_iter ++ )
+		{
+			obj_list.AddUInt( (*obj_iter)->ID );
+			obj_list.AddUInt( (*obj_iter)->Type() );
+			(*obj_iter)->AddToInitPacket( &obj_list );
 		}
 		Net.SendAll( &obj_list );
 	}
@@ -5926,12 +6097,19 @@ void XWingServer::BeginFlying( uint16_t player_id, bool respawn )
 }
 
 
-void XWingServer::ShipKilled( Ship *ship, GameObject *killer_obj )
+void XWingServer::ShipKilled( Ship *ship, GameObject *killer_obj, Player *killer )
 {
 	Player *victim = ship->Owner();
-	Player *killer = killer_obj ? killer_obj->Owner() : NULL;
-	Ship   *killer_ship   = (killer_obj && (killer_obj->Type() == XWing::Object::SHIP)) ? (Ship*) killer_obj : NULL;
+	if( killer_obj && ! killer )
+		killer = killer_obj->Owner();
+	Ship   *killer_ship   = (killer_obj && (killer_obj->Type() == XWing::Object::SHIP))   ? (Ship*)   killer_obj : NULL;
 	Turret *killer_turret = (killer_obj && (killer_obj->Type() == XWing::Object::TURRET)) ? (Turret*) killer_obj : NULL;
+	if( killer_turret )
+	{
+		killer_ship = killer_turret->ParentShip();
+		if( killer_ship && ! killer )
+			killer = killer_ship->Owner();
+	}
 	
 	if( victim && ! ship->PlayerID )
 	{
@@ -5989,6 +6167,7 @@ void XWingServer::ShipKilled( Ship *ship, GameObject *killer_obj )
 		if( killer )
 		{
 			std::string score_type = "kills";
+			// NOTE: Fighter kills always count as fighters, even when used as flagship or cruiser.
 			if( ship->Class && ((ship->Class->Category == ShipClass::CATEGORY_CAPITAL) || (ship->Class->Category == ShipClass::CATEGORY_TARGET)) )
 				score_type = "kills_c";
 			
@@ -6008,6 +6187,8 @@ void XWingServer::ShipKilled( Ship *ship, GameObject *killer_obj )
 		{
 			std::string score_type = "kills";
 			if( ship->Class && ((ship->Class->Category == ShipClass::CATEGORY_CAPITAL) || (ship->Class->Category == ShipClass::CATEGORY_TARGET)) )
+				score_type = "kills_c";
+			else if( ship->IsMissionObjective || (ship->Group == 255) )
 				score_type = "kills_c";
 			
 			SetPlayerProperty( victim, score_type, Num::ToString( victim->PropertyAsInt(score_type) - 1 ) );
@@ -6126,6 +6307,7 @@ Ship *XWingServer::SpawnShip( const ShipClass *ship_class, uint8_t team, std::se
 		add_object_ids->insert( ship->ID );
 	
 	SpawnShipTurrets( ship, add_object_ids );
+	SpawnShipDockingBays( ship );
 	return ship;
 }
 
@@ -6248,6 +6430,21 @@ void XWingServer::SpawnShipTurrets( const Ship *ship, std::set<uint32_t> *add_ob
 				if( add_object_ids )
 					add_object_ids->insert( turret->ID );
 			}
+		}
+	}
+}
+
+
+void XWingServer::SpawnShipDockingBays( const Ship *ship )
+{
+	if( ship->Class )
+	{
+		for( std::vector<ShipClassDockingBay>::const_iterator dock_iter = ship->Class->DockingBays.begin(); dock_iter != ship->Class->DockingBays.end(); dock_iter ++ )
+		{
+			DockingBay *dock = new DockingBay();
+			dock->Radius = dock_iter->Radius;
+			dock->Attach( ship, &*dock_iter );
+			Data.AddObject( dock );
 		}
 	}
 }

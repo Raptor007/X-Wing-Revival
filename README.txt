@@ -1,6 +1,6 @@
 ----------------------------------------
 |            X-Wing Revival            |
-|       0.3.3 Alpha (2023-12-16)       |
+|       0.3.4 Alpha (2024-02-07)       |
 |     by Raptor007 (Blair Sherman)     |
 | http://raptor007.com/x-wing-revival/ |
 ----------------------------------------
@@ -120,9 +120,13 @@ Linux asks what application to open files of type "executable" with.
   MSAA (Antialiasing): Use multiple samples to reduce jagged edges.  Can be GPU-heavy,
     especially when VR is enabled.  (Renamed from "FSAA" to avoid confusion with FXAA.)
 
-  Vertical Synchronization (VSync): Eliminate tearing by only drawing frames when the
+  VSync (Vertical Synchronization): Eliminate tearing by only drawing frames when the
     monitor is ready to refresh.  Recommended for fast systems, but turning this off is
     an easy way to improve framerate and reduce stuttering.
+
+  Framebuffer Textures: Use framebuffer objects as live textures for the cockpit.
+    This shouldn't hurt performance much, but some old video cards don't support it.
+    Framebuffers are also used for the VR eyes, so this is required for VR.
 
   Texture Quality: Limit the maximum texture resolution; downsample anything too large.
     This may improve performance with very limited VRAM and is required on some ancient
@@ -131,10 +135,6 @@ Linux asks what application to open files of type "executable" with.
   AF (Anisotropic Filtering): Improve texture clarity and detail.  Slightly GPU-heavy.
     Trilinear mode is the standard non-anisotropic mode.  Linear mode uses bilinear
     filtering without mipmapping, which looks sharp but sparkles at longer distances.
-
-  Framebuffer Textures: Use framebuffer objects as live textures for the cockpit.
-    This shouldn't hurt performance much, but some old video cards don't support it.
-    Framebuffers are also used for the VR eyes, so this is required for VR.
 
   Shaders: Use GLSL vertex and fragment shaders instead of old fixed-pipeline OpenGL.
     Recommended for performance and better appearance, but a few old motherboards may
@@ -145,6 +145,13 @@ Linux asks what application to open files of type "executable" with.
 
   Dynamic Lights: Number of point light sources (lasers, torpedos, explosions, etc) to
     use for lighting each object.  Higher values use a bit more CPU and GPU power.
+
+  Blastpoints: Number of damage blastpoints to draw per object.  Higher values can be
+    very GPU-heavy, especially at higher quality.  Requires shaders.
+
+  Blastpoint Quality: Controls shader complexity used to draw blastpoints.  Low does
+    most work per vertex.  Medium and High operate per pixel, which can be quite
+    GPU-heavy when combined with high blastpoint count, anti-aliasing, and/or VR.
 
   Effects: Adjust the number of sprites per explosion.  Lowest removes shot impact
     effects entirely.  Most should leave this High, but lower settings may reduce
@@ -441,6 +448,15 @@ console commands to execute, such as "sv gametype yavin" or "sv rebel_fighter A/
 
 
 == VERSION HISTORY ==
+
+Alpha 0.3.4 (2024-02-07):
+ * Ships and turrets show charring around recent blastpoints.
+ * Improved rendering of shots and engine glow.
+ * Improved shot synchronization in netcode.
+ * Low-speed collisions are sometimes survivable.
+ * Ships can now hover in docking bays to repair.  (Shields drop for repairs!)
+ * Cockpit target display shows impact and explosion effects.
+ * Control binds in console are no longer case-sensitive.
 
 Alpha 0.3.3 (2023-12-16):
  * YT-1300 turrets deal more damage, but must be manned.  Cockpit has its own laser.

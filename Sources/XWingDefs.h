@@ -54,6 +54,7 @@ namespace XWing
 			TURRET = 'Turr',
 			DEATH_STAR = 'Moon',
 			DEATH_STAR_BOX = 'aBox',
+			DOCKING_BAY = 'Dock',
 			CHECKPOINT = 'GoGo'
 		};
 	}

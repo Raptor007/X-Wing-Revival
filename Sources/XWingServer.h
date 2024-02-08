@@ -59,7 +59,7 @@ public:
 	void ToggleCountdown( void );
 	void BeginFlying( uint16_t player_id = 0, bool respawn = false );
 	
-	void ShipKilled( Ship *ship, GameObject *killer_obj = NULL );
+	void ShipKilled( Ship *ship, GameObject *killer_obj = NULL, Player *killer = NULL );
 	void SendScores( void );
 	
 	double RoundTimeRemaining( void ) const;
@@ -67,6 +67,7 @@ public:
 	const ShipClass *GetShipClass( const std::string &name ) const;
 	Ship *SpawnShip( const ShipClass *ship_class, uint8_t team, std::set<uint32_t> *add_object_ids = NULL );
 	void SpawnShipTurrets( const Ship *ship, std::set<uint32_t> *add_object_ids = NULL );
+	void SpawnShipDockingBays( const Ship *ship );
 };
 
 

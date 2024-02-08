@@ -1,3 +1,16 @@
+#if BLASTPOINTS > 0
+#undef BLASTPOINTS
+#endif
+
+#ifndef LIGHT_QUALITY
+#define LIGHT_QUALITY 1
+#elif LIGHT_QUALITY > 1
+#undef LIGHT_QUALITY
+#define LIGHT_QUALITY 1
+#endif
+
+// ---------------------------------------------------------------------------
+
 #ifdef GL_ES
 precision highp float;
 #endif

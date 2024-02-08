@@ -536,13 +536,13 @@ void LobbyMenu::UpdateInfoBoxes( void )
 	}
 	else if( ai_skill == 3 )
 	{
-		Configs["ai_skill"]->Value->LabelText = "Jedi";
+		Configs["ai_skill"]->Value->LabelText = "Jedi Knight";
 		Configs["ai_skill"]->Value->Red = 1.f;
 		Configs["ai_skill"]->Value->Green = Configs["ai_skill"]->Value->Blue = 0.5f;
 	}
 	else if( ai_skill >= 4 )
 	{
-		Configs["ai_skill"]->Value->LabelText = "Sith";
+		Configs["ai_skill"]->Value->LabelText = "Jedi Master";
 		Configs["ai_skill"]->Value->Red = 1.f;
 		Configs["ai_skill"]->Value->Green = Configs["ai_skill"]->Value->Blue = 0.125f;
 	}

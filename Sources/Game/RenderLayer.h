@@ -46,8 +46,10 @@ public:
 	void SetBackground( void );
 	void SetWorldLights( bool deathstar, float ambient_scale = 1.f, const std::vector<Vec3D> *obstructions = NULL );
 	void SetDynamicLights( Pos3D *pos, Pos3D *offset, int dynamic_lights, std::list<Shot*> *shots, std::list<Effect*> *effects );
+	void SetBlastPoints( const Pos3D *pos, const Pos3D *offset, int blastpoints, std::vector<BlastPoint> *bp_vec, double time_scale = 1. );
 	void ClearWorldLights( void );
 	void ClearDynamicLights( void );
+	void ClearBlastPoints( int blastpoints );
 	void ClearMaterial( void );
 	
 	void Draw( void );

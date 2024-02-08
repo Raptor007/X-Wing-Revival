@@ -149,11 +149,11 @@ void JoinMenu::Draw( void )
 				{
 					// If the server version doesn't match ours, append that to the list text.
 					if( properties["version"] != Raptor::Game->Version )
-						text += " [v " + properties["version"] + "]";
+						text += " [v" + properties["version"] + "]";
 				}
 				else
 					// If the server reported no version, append a note to the list text.
-					text += " [v ?]";
+					text += " [v?]";
 				
 				// Show the number of players.
 				if( announced_players )
@@ -185,6 +185,17 @@ void JoinMenu::Draw( void )
 						text += " [Team Kessel]";
 					else if( properties["gametype"] == "ffa_race" )
 						text += " [FFA Kessel]";
+					else if( properties["gametype"] == "mission" )
+					{
+						if( ! properties["mission_name"].empty() )
+							text += std::string(" [") + properties["mission_name"] + std::string("]");
+						else if( Str::BeginsWith( properties["mission"], "rebel" ) )
+							text += " [Rebel Campaign]";
+						else if( Str::BeginsWith( properties["mission"], "empire" ) )
+							text += " [Empire Campaign]";
+						else
+							text += " [Mission]";
+					}
 					else
 						text += " [" + properties["gametype"] + "]";
 				}

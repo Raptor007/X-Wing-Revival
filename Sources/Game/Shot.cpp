@@ -20,6 +20,7 @@ Shot::Shot( uint32_t id ) : GameObject( id, XWing::Object::SHOT )
 	FiredFrom = 0;
 	Seeking = 0;
 	SeekingSubsystem = 0;
+	Drawn = false;
 }
 
 
@@ -278,6 +279,30 @@ Color Shot::LightColor( void ) const
 }
 
 
+Player* Shot::Owner( void ) const
+{
+	Player *owner = GameObject::Owner();
+	
+	if( Data && ! owner )
+	{
+		GameObject *fired_from = Data->GetObject( FiredFrom );
+		if( fired_from )
+		{
+			owner = fired_from->Owner();
+			if( (! owner) && (fired_from->Type() == XWing::Object::TURRET) )
+			{
+				Turret *turret = (Turret*) fired_from;
+				fired_from = Data->GetObject( turret->ParentID );
+				if( fired_from )
+					owner = fired_from->Owner();
+			}
+		}
+	}
+	
+	return owner;
+}
+
+
 bool Shot::PlayerShouldUpdateServer( void ) const
 {
 	return false;
@@ -306,45 +331,110 @@ bool Shot::CanCollideWithOtherTypes( void ) const
 
 void Shot::AddToInitPacket( Packet *packet, int8_t precision )
 {
+	// FIXME: Dirty hacks to transmit relative weapon position without changing packet contents!  Remove in v0.4?
 	const GameObject *fired_from = FiredFrom ? Data->GetObject( FiredFrom ) : NULL;
-	bool turret_left = fired_from && (fired_from->Type() == XWing::Object::TURRET) && ((const Turret*)( fired_from ))->GunWidth && (DistAlong( &Right, fired_from ) < 0.);
-	if( turret_left )
-		Up.ScaleBy( -1. ); // FIXME: Dirty hack to get this information to v0.3.3 clients while retaining compatibiltiy with v0.3.2 clients!
+	Vec3D up( &Up );
+	double dist_along_fwd = 0.;
+	if( fired_from )
+	{
+		dist_along_fwd = DistAlong( &Fwd, fired_from );
+		if( fired_from->Type() == XWing::Object::SHIP )
+		{
+			Pos3D weapon( this );
+			weapon.MoveAlong( &(fired_from->Fwd), dist_along_fwd * -1. );
+			if( weapon.Dist(fired_from) )
+			{
+				Up = (weapon - *fired_from).Unit();
+				Up.RotateAround( &Fwd, -90. );
+			}
+		}
+		else if( (fired_from->Type() == XWing::Object::TURRET) && ((const Turret*)( fired_from ))->GunWidth && (DistAlong( &Right, fired_from ) < 0.) )
+			Up.ScaleBy( -1. );
+	}
 	
 	GameObject::AddToInitPacket( packet, -127 );
+	
 	packet->AddUChar( ShotType );
 	packet->AddUInt( FiredFrom );
 	
 	if( FiredFrom )
-		packet->AddFloat( fired_from ? DistAlong( &Fwd, fired_from ) : 0.f );
+	{
+		packet->AddFloat( dist_along_fwd );  // FIXME: Replace with weapon index in v0.4 netcode?
+		Up.Copy( &up );
+	}
 }
 
 
 void Shot::ReadFromInitPacket( Packet *packet, int8_t precision )
 {
 	GameObject::ReadFromInitPacket( packet, -127 );
+	
 	ShotType = packet->NextUChar();
 	FiredFrom = packet->NextUInt();
 	
 	if( FiredFrom )
 	{
-		double dist_along_fwd = packet->NextFloat();
+		double dist_along_fwd = packet->NextFloat();  // FIXME: Replace with weapon index in v0.4 netcode?
 		
 		const GameObject *fired_from = Data->GetObject( FiredFrom );
 		if( fired_from )
 		{
-			// Player turret gunners should always see their shots come straight out of the turret, even if their ship's predicted position is a bit off.
-			if( (fired_from->PlayerID == Raptor::Game->PlayerID) && (fired_from->Type() == XWing::Object::TURRET) )
+			if( fired_from->Type() == XWing::Object::TURRET )
 			{
-				const Turret *player_turret = (const Turret*) fired_from;
-				Pos3D gun = player_turret->GunPos();
-				double up_dot = gun.Up.Dot( &Up ); // FIXME: Dirty hack to determine which side fired: 1 = right, -1 = left.
-				Copy( &gun );
-				MoveAlong( &(gun.Right), player_turret->GunWidth * up_dot );
+				// Make sure turret shots always appear to come from the turret, even if its position may be slightly mis-predicted.
+				const Turret *turret = (const Turret*) fired_from;
+				Pos3D gun = turret->GunPos();
+				
+				if( turret->PlayerID == Raptor::Game->PlayerID )
+				{
+					Copy( &gun );
+					MoveAlong( &(gun.Fwd), 2.2 );
+				}
+				else
+				{
+					// Shots fired from someone else's turret should copy its position but not forward direction.
+					SetPos( gun.X, gun.Y, gun.Z );
+					MoveAlong( &(gun.Fwd), 2. );
+				}
+				
+				double right_dot = gun.Right.Dot( &Right ); // FIXME: Dirty hack to determine which side fired.
+				MoveAlong( &(gun.Right), turret->GunWidth * right_dot );
 			}
 			else
 			{
+				if( fired_from->Type() == XWing::Object::SHIP )
+				{
+					const Ship *ship = (const Ship*) fired_from;
+					if( ship->Class )
+					{
+						// Make sure ship shots appear to come from the ship's weapons by matching Up/Right offset to shot Right vector.
+						std::map< uint8_t, std::vector<Pos3D> >::const_iterator weapon_iter = ship->Class->Weapons.find( ShotType );
+						if( weapon_iter != ship->Class->Weapons.end() )
+						{
+							double best_dot = 0.5;  // Make sure ship's predicted rotation isn't too far off to guess the weapon index.
+							uint8_t weapon_index = 255;
+							for( uint8_t i = 0; i < (uint8_t) weapon_iter->second.size(); i ++ )
+							{
+								Vec3D to_weapon = ship->Up * weapon_iter->second.at( i ).Y + ship->Right * weapon_iter->second.at( i ).Z;
+								double dot = Right.Dot( &to_weapon );
+								if( dot > best_dot )
+								{
+									weapon_index = i;
+									best_dot = dot;
+								}
+							}
+							if( weapon_index != 255 )
+							{
+								SetPos( ship->X, ship->Y, ship->Z );
+								MoveAlong( &(ship->Up),    weapon_iter->second.at( weapon_index ).Y );
+								MoveAlong( &(ship->Right), weapon_iter->second.at( weapon_index ).Z );
+							}
+						}
+					}
+				}
+				
 				double current_dist_fwd = DistAlong( &Fwd, fired_from );
+				dist_along_fwd += 1.7;  // FIXME: Temporary hack to correct for sloppy gun placements in v0.3.x ship defs!
 				MoveAlong( &Fwd, dist_along_fwd - current_dist_fwd );
 			}
 		}
@@ -355,6 +445,7 @@ void Shot::ReadFromInitPacket( Packet *packet, int8_t precision )
 void Shot::AddToUpdatePacket( Packet *packet, int8_t precision )
 {
 	GameObject::AddToUpdatePacket( packet, -127 );
+	
 	packet->AddUInt( Seeking );
 	if( Seeking )
 		packet->AddUChar( SeekingSubsystem );
@@ -364,6 +455,7 @@ void Shot::AddToUpdatePacket( Packet *packet, int8_t precision )
 void Shot::ReadFromUpdatePacket( Packet *packet, int8_t precision )
 {
 	GameObject::ReadFromUpdatePacket( packet, -127 );
+	
 	Seeking = packet->NextUInt();
 	if( Seeking )
 		SeekingSubsystem = packet->NextUChar();
@@ -474,6 +566,20 @@ void Shot::Update( double dt )
 
 void Shot::Draw( void )
 {
+	// Size parameters.
+	double ahead  = DrawAhead();
+	double behind = DrawBehind();
+	double width  = DrawWidth();
+	
+	// If the shot is behind us, don't draw it.
+	Vec3D vec_to_front( X + Fwd.X * ahead  - Raptor::Game->Cam.X, Y + Fwd.Y * ahead  - Raptor::Game->Cam.Y, Z + Fwd.Z * ahead  - Raptor::Game->Cam.Z );
+	Vec3D vec_to_rear(  X - Fwd.X * behind - Raptor::Game->Cam.X, Y - Fwd.Y * behind - Raptor::Game->Cam.Y, Z - Fwd.Z * behind - Raptor::Game->Cam.Z );
+	if( (Raptor::Game->Cam.Fwd.Dot( &vec_to_front ) < 0.) && (Raptor::Game->Cam.Fwd.Dot( &vec_to_rear ) < 0.) )
+	{
+		Drawn = true;
+		return;
+	}
+	
 	if( Shape.Objects.size() )
 	{
 		// Draw the missile model.
@@ -492,29 +598,17 @@ void Shot::Draw( void )
 	{
 		// Draw a laser, torpedo, or missile trail.
 		
-		// Size parameters.
-		double ahead  = DrawAhead();
-		double behind = DrawBehind();
-		double width  = DrawWidth();
-		
-		// If the shot is behind us, don't draw it.
-		Vec3D vec_to_front( X + Fwd.X * ahead - Raptor::Game->Cam.X, Y + Fwd.Y * ahead - Raptor::Game->Cam.Y, Z + Fwd.Z * ahead - Raptor::Game->Cam.Z );
-		Vec3D vec_to_rear( X - Fwd.X * behind - Raptor::Game->Cam.X, Y - Fwd.Y * behind - Raptor::Game->Cam.Y, Z - Fwd.Z * behind - Raptor::Game->Cam.Z );
-		if( (Raptor::Game->Cam.Fwd.Dot( &vec_to_front ) < 0.) && (Raptor::Game->Cam.Fwd.Dot( &vec_to_rear ) < 0.) )
-			return;
-		
 		// Calculate corners.
 		Vec3D vec_to_shot( X - Raptor::Game->Cam.X, Y - Raptor::Game->Cam.Y, Z - Raptor::Game->Cam.Z );
 		vec_to_shot.ScaleTo( 1. );
-		Vec3D out = Raptor::Game->Cam.Up;
-		if( (fabs(Raptor::Game->Cam.Fwd.Dot(&Fwd)) > 0.95) || ((fabs(vec_to_shot.Dot(&Fwd)) > 0.99) && (ShotType != TYPE_SUPERLASER)) )
+		Vec3D out = Raptor::Game->Cam.Right * Raptor::Game->Cam.Right.Dot(&Fwd) + Raptor::Game->Cam.Up * Raptor::Game->Cam.Up.Dot(&Fwd);
+		if( out.Length() < 0.1 ) 
 		{
 			Vec2D vec( vec_to_shot.Dot(&(Raptor::Game->Cam.Right)), vec_to_shot.Dot(&(Raptor::Game->Cam.Up)) );
-			double rotation = Num::RadToDeg( -1. * atan2( -vec.X, vec.Y ) );
+			double rotation = -1. * Num::RadToDeg( atan2( vec.Y, vec.X ) );
+			out = Raptor::Game->Cam.Right;
 			out.RotateAround( &(Raptor::Game->Cam.Fwd), rotation );
 		}
-		else
-			out = Raptor::Game->Cam.Right * Raptor::Game->Cam.Right.Dot(&Fwd) + Raptor::Game->Cam.Up * Raptor::Game->Cam.Up.Dot(&Fwd);
 		out.ScaleTo( width );
 		Vec3D cw = out;
 		cw.RotateAround( &(Raptor::Game->Cam.Fwd), 90. );
@@ -533,7 +627,6 @@ void Shot::Draw( void )
 		
 		// Don't mipmap shots; they should look bright in the distance.
 		glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
-		
 		
 		if( going_away )
 		{
@@ -734,6 +827,8 @@ void Shot::Draw( void )
 		
 		glDisable( GL_TEXTURE_2D );
 	}
+	
+	Drawn = true;
 }
 
 
@@ -769,7 +864,8 @@ double Shot::DrawBehind( void ) const
 	else if( ShotType == TYPE_SUPERLASER )
 		behind = Speed() * 1.5;
 	
-	double moved = Lifetime.ElapsedSeconds() * Speed() + DrawWidth() * 2.;
+	double lifetime = Drawn ? Lifetime.ElapsedSeconds() : 0.;
+	double moved = lifetime * Speed() + DrawWidth();
 	if( moved < behind )
 		behind = moved;
 	
@@ -779,16 +875,23 @@ double Shot::DrawBehind( void ) const
 
 double Shot::DrawWidth( void ) const
 {
-	if( (ShotType == TYPE_TURBO_LASER_GREEN) || (ShotType == TYPE_TURBO_LASER_RED) )
-		return 1.5;
-	else if( ShotType == TYPE_ION_CANNON )
-		return 1.25;
-	else if( ShotType == TYPE_TORPEDO )
+	if( ShotType == TYPE_TORPEDO )
 		return 1.25;
 	else if( ShotType == TYPE_MISSILE )
 		return 1.125;
-	else if( ShotType == TYPE_SUPERLASER )
-		return 40.;
 	
-	return 1.;
+	double lifetime = Drawn ? Lifetime.ElapsedSeconds() : 0.;
+	
+	if( (ShotType == TYPE_TURBO_LASER_GREEN) || (ShotType == TYPE_TURBO_LASER_RED) )
+		return std::max<double>( 2. - lifetime, 1.5 );
+	else if( ShotType == TYPE_LASER_GREEN )
+		return std::min<double>( 0.5 + lifetime, 1. );
+	else if( ShotType == TYPE_ION_CANNON )
+		return std::min<double>( 0.5 + lifetime, 1.5 );
+	else if( ShotType == TYPE_QUAD_LASER_RED )
+		return std::max<double>( 1.25 - lifetime, 0.875 );
+	else if( ShotType == TYPE_SUPERLASER )
+		return std::min<double>( 10. + lifetime * 30., 40. );
+	
+	return std::max<double>( 1.125 - lifetime, 1. );
 }

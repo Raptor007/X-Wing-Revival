@@ -18,6 +18,7 @@ public:
 	uint8_t ShotType;
 	Model Shape;
 	Animation Anim;
+	bool Drawn;
 	
 	uint32_t FiredFrom;
 	uint32_t Seeking;
@@ -38,6 +39,7 @@ public:
 	double MaxLifetime( void ) const;
 	Color LightColor( void ) const;
 	
+	Player* Owner( void ) const;
 	bool PlayerShouldUpdateServer( void ) const;
 	bool ServerShouldUpdatePlayer( void ) const;
 	bool ServerShouldUpdateOthers( void ) const;

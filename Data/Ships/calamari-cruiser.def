@@ -21,6 +21,8 @@ subsystem ShieldGenerator4 749
 subsystem CriticalBridge1 799
 subsystem CriticalBridge2 799
 firetime turbolaser 0.75
+docking_bay 185 0.2 -159.8 40
+docking_bay -185 0.2 -159.8 40
 engine 68 45 -545 engine_blue.ani 66 1 1 1 0.5
 engine -68 45 -545 engine_blue.ani 66 1 1 1 0.5
 engine 68 -45 -545 engine_blue.ani 66 1 1 1 0.5

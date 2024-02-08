@@ -21,8 +21,8 @@ explode 1
 weapon laser_red 0.2 0 4.5
 weapon laser_red -0.2 0 4.5
 firetime laser_red 0.25
-weapon ion_cannon 0.14 1.27 3.2
-weapon ion_cannon -0.14 1.27 3.2
+weapon ion_cannon 0.15 1.27 3.2
+weapon ion_cannon -0.15 1.27 3.2
 firetime ion_cannon 0.33
 weapon torpedo 0.8 -0.2 4.5
 weapon torpedo -0.8 -0.2 4.5

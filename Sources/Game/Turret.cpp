@@ -6,14 +6,18 @@
 
 #include <cmath>
 #include "XWingDefs.h"
-#include "RaptorGame.h"
+#include "XWingGame.h"
 #include "Num.h"
 #include "Math3D.h"
 #include "Ship.h"
 #include "Shot.h"
 
 
+#if TURRET_BLASTABLE
+Turret::Turret( uint32_t id ) : BlastableObject( id, XWing::Object::TURRET )
+#else
 Turret::Turret( uint32_t id ) : GameObject( id, XWing::Object::TURRET )
+#endif
 {
 	ParentID = 0;
 	RelativeUp.Set( 0., 1., 0. );
@@ -131,6 +135,20 @@ void Turret::UpdatePos( const GameObject *parent )
 
 void Turret::SetHealth( double health )
 {
+	if( (health <= 0.) && (Health > 0.) && ParentID && Data )
+	{
+		// Find any shots owned by this turret and change their ownership to the parent ship.
+		for( std::map<uint32_t,GameObject*>::iterator obj_iter = Data->GameObjects.begin(); obj_iter != Data->GameObjects.end(); obj_iter ++ )
+		{
+			if( obj_iter->second->Type() == XWing::Object::SHOT )
+			{
+				Shot *shot = (Shot*) obj_iter->second;
+				if( shot->FiredFrom == ID )
+					shot->FiredFrom = ParentID;
+			}
+		}
+	}
+	
 	Health = health;
 }
 
@@ -139,6 +157,30 @@ void Turret::AddDamage( double damage )
 {
 	SetHealth( Health - damage );
 }
+
+
+#if TURRET_BLASTABLE
+void Turret::SetBlastPoint( double x, double y, double z, double radius, double time, const ModelObject *object )
+{
+	size_t blastpoints = ((XWingGame*)( Raptor::Game ))->BlastPoints;
+	if( ! blastpoints )
+		return;
+	
+	Pos3D shot( x, y, z );
+	double fwd   = shot.DistAlong( &Fwd,   this );
+	double up    = shot.DistAlong( &Up,    this );
+	double right = shot.DistAlong( &Right, this );
+	
+	fwd   *= std::min<double>( 1., BodyShape->GetLength() * 0.00244 / GunWidth );
+	up    *= std::min<double>( 1., BodyShape->GetHeight() * 0.00244 / GunWidth );
+	right *= std::min<double>( 1., BodyShape->GetWidth()  * 0.00244 / GunWidth );
+	
+	if( BlastPoints.size() < blastpoints )
+		BlastPoints.push_back( BlastPoint( fwd, up, right, radius, time, object ) );
+	else
+		LeastImportantBlastPoint()->Reset( fwd, up, right, radius, time, object );
+}
+#endif
 
 
 void Turret::PitchGun( double degrees )
@@ -227,7 +269,7 @@ std::map<int,Shot*> Turret::NextShots( GameObject *target, uint8_t firing_mode )
 		
 		Shot *shot = new Shot();
 		shot->Copy( &gun );
-		shot->FiredFrom = (ParentID && ! PlayerID) ? ParentID : ID;
+		shot->FiredFrom = ID;
 		shot->PlayerID = player_id;
 		shot->ShotType = Weapon;
 		shot->MotionVector.Set( shot->Fwd.X, shot->Fwd.Y, shot->Fwd.Z );
@@ -568,7 +610,8 @@ bool Turret::WillCollide( const GameObject *other, double dt, std::string *this_
 	
 	if( other->Type() == XWing::Object::SHOT )
 	{
-		// Turrets can't shoot themselves, and neither can other turrets on this ship.
+		// Turrets can't shoot themselves, and neither can fixed guns on their ship.
+		// NOTE: Because shots are now owned by turrets, they can commit friendly fire to other turrets on their ship!
 		Shot *shot = (Shot*) other;
 		if( (! shot->FiredFrom) || (shot->FiredFrom == ID) || (shot->FiredFrom == ParentID) )
 			return false;
@@ -620,8 +663,8 @@ void Turret::Update( double dt )
 	}
 	if( ParentID && (! parent) && ! ClientSide() )
 	{
-		ParentID = 0; // Forget dead parent.
-		Health = 0.;  // Commit sudoku.
+		SetHealth( 0. ); // Commit sudoku.
+		ParentID = 0;    // Forget dead parent.
 	}
 	
 	if( (Health <= 0.) || (parent && (parent->JumpProgress < 1.)) )
@@ -649,6 +692,8 @@ void Turret::Draw( void )
 
 void Turret::Draw( bool allow_shader_change )
 {
+	UpdatePos();
+	
 	if( (Health > 0.) && Visible )
 	{
 		bool change_shader = allow_shader_change && (! ParentID) && (Raptor::Game->Cfg.SettingAsInt("g_shader_light_quality") >= 2) && Raptor::Game->ShaderMgr.Active();

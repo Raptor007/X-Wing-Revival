@@ -31,12 +31,15 @@
 XWingGame::XWingGame( std::string version ) : RaptorGame( "X-Wing Revival", version )
 {
 	GameType = XWing::GameType::UNDEFINED;
+	// FIXME: Init/reset GameTypes in v0.4!
 	ObservedShipID = 0;
 	LookYaw = 0.;
 	LookPitch = 0.;
 	ThumbstickLook = true;
 	AsteroidLOD = 1.;
 	OverlayScroll = 0.;
+	BlastPoints = 0;
+	SpawnDelay = -1.;  // Prevent staggered spawns at game start.
 	Victor = XWing::Team::NONE;
 	memset( Controls, 0, sizeof(Controls) );
 	
@@ -390,6 +393,9 @@ void XWingGame::SetDefaultControls( void )
 
 void XWingGame::SetDefaults( void )
 {
+	std::string rebel_mission  = Cfg.SettingAsString( "rebel_mission",  "rebel0"  );
+	std::string empire_mission = Cfg.SettingAsString( "empire_mission", "empire0" );
+	
 	RaptorGame::SetDefaults();
 	
 	if( Cfg.Settings[ "name" ] == "Name" )
@@ -409,6 +415,8 @@ void XWingGame::SetDefaults( void )
 	Cfg.Settings[ "g_deathstar_trench" ] = "4";
 	Cfg.Settings[ "g_deathstar_surface" ] = "4";
 	Cfg.Settings[ "g_crosshair_thickness" ] = "1.5";
+	Cfg.Settings[ "g_shader_blastpoints" ] = "20";
+	Cfg.Settings[ "g_shader_blastpoint_quality" ] = "2";
 	
 	Cfg.Settings[ "s_engine_volume" ] = "0.8";
 	Cfg.Settings[ "s_menu_music" ] = "true";
@@ -427,6 +435,9 @@ void XWingGame::SetDefaults( void )
 	
 	Cfg.Settings[ "swap_yaw_roll" ] = "false";
 	Cfg.Settings[ "turret_invert" ] = "false";
+	
+	Cfg.Settings[ "rebel_mission"  ] = rebel_mission;
+	Cfg.Settings[ "empire_mission" ] = empire_mission;
 	
 	#ifdef APPLE_POWERPC
 		Cfg.Settings[ "g_dynamic_lights" ] = "1";
@@ -508,11 +519,14 @@ void XWingGame::Setup( int argc, char **argv )
 	}
 	
 	if( ! screensaver )
-	{
-		// Load other shaders.
-		Res.GetShader("model_hud");
 		Res.GetShader("deathstar");
-	}
+	
+	#if ! ASTEROID_BLASTABLE
+		Res.GetShader("asteroid");
+	#endif
+	Res.GetShader("asteroid_far");
+	
+	Res.GetShader("model_hud");
 	
 	// Load and select the model shader, but don't activate it yet.
 	ShaderMgr.Select( Res.GetShader("model") );
@@ -616,6 +630,7 @@ void XWingGame::Precache( void )
 		Res.GetSound("laser_turret_2.wav");
 		Res.GetSound("torpedo_enter.wav");
 		Res.GetSound("jump_in_cockpit.wav");
+		Res.GetSound("repair.wav");
 		
 		Res.GetMusic("rebel.dat");
 		Res.GetMusic("empire.dat");
@@ -636,12 +651,6 @@ void XWingGame::Precache( void )
 		Res.GetSound("impressive.wav");
 		Res.GetSound("powerful.wav");
 		Res.GetSound("failed.wav");
-		/*
-		// Disabled to reduce precache time, because you'd never notice the delay loading these during countdown.
-		Res.GetSound("rebel_start.wav");
-		Res.GetSound("empire_start.wav");
-		Res.GetSound("good_luck.wav");
-		*/
 	}
 	
 	if( DIR *dir_p = opendir("Ships") )
@@ -759,6 +768,8 @@ void XWingGame::AddScreensaverLayer( void )
 
 void XWingGame::Update( double dt )
 {
+	// Apply time_scale to various timers.
+	
 	dt *= Data.TimeScale;
 	
 	RoundTimer.SetTimeScale( Data.TimeScale );
@@ -769,8 +780,14 @@ void XWingGame::Update( double dt )
 		effect_iter->Anim.Timer.SetTimeScale( Data.TimeScale );
 	}
 	
+	double recent_pan_time_scale = (Data.TimeScale >= 1.) ? 1. : Data.TimeScale;
 	for( std::map<uint32_t,Clock>::iterator sound_iter = Snd.RecentPans.begin(); sound_iter != Snd.RecentPans.end(); sound_iter ++ )
-		sound_iter->second.SetTimeScale( Data.TimeScale );
+		sound_iter->second.SetTimeScale( recent_pan_time_scale );
+	
+	
+	BlastPoints = Cfg.SettingAsInt("g_shader_blastpoints");
+	
+	SpawnDelay = 0.;  // Reset the staggered respawn accumulator.
 	
 	
 	// Update ship's motion changes based on client's controls.
@@ -2391,7 +2408,7 @@ bool XWingGame::ProcessPacket( Packet *packet )
 			ship_dy = ship->MotionVector.Y;
 			ship_dz = ship->MotionVector.Z;
 			ship->HitClock.Reset();
-			ship->HitRear = flags & 0x01;
+			ship->HitFlags = flags;
 			ship->SetHealth( health );
 			ship->ShieldF = shield_f;
 			ship->ShieldR = shield_r;
@@ -2406,6 +2423,9 @@ bool XWingGame::ProcessPacket( Packet *packet )
 		{
 			Pos3D pos( x, y, z );
 			Vec3D motion_vec( ship_dx, ship_dy, ship_dz );
+			bool shielded = false;
+			double bp_radius = 4.;
+			double bp_time = 0.;
 			
 			if( ship )
 			{
@@ -2449,18 +2469,46 @@ bool XWingGame::ProcessPacket( Packet *packet )
 				if( knock.Length() > 1. )
 					knock.ScaleTo( 1. );
 				ship->KnockCockpit( &knock, knock_scale );
+				
+				shielded = (subsystem_health >= old_subsystem_health) && ! hull_damage;
 			}
 			
-			if( ship && (ship->Category() == ShipClass::CATEGORY_TARGET) )
-				;
+			if( ship && (ship->Category() == ShipClass::CATEGORY_TARGET) && (shot_type == Shot::TYPE_TORPEDO) )
+				bp_radius = 0.;
 			else if( shot_type == Shot::TYPE_TORPEDO )
-				Data.Effects.push_back( Effect( Res.GetAnimation("explosion.ani"), 10., Res.GetSound("explosion.wav"), (ship->PlayerID == Raptor::Game->PlayerID) ? 10. : 2.5, &pos, &motion_vec, Rand::Bool() ? 360. : -360., 1.5 ) );
-			else if( shot_type == Shot::TYPE_MISSILE )
-				Data.Effects.push_back( Effect( Res.GetAnimation("explosion.ani"), 17., Res.GetSound("explosion.wav"), (ship->PlayerID == Raptor::Game->PlayerID) ? 10. : 2.5, &pos, &motion_vec, Rand::Bool() ? 450. : -450., 2.5 ) );
-			else if( (shot_type != Shot::TYPE_ION_CANNON) && (Cfg.SettingAsDouble("g_effects",1.) > 0.) )
 			{
-				motion_vec.ScaleBy( 0.75 );
-				Data.Effects.push_back( Effect( Res.GetAnimation("explosion.ani"), ((! ship) || (ship->Health < old_health) || (subsystem_health < old_subsystem_health)) ? 4. : 3.5, NULL, 0., &pos, &motion_vec, 0., 7. ) );
+				Data.Effects.push_back( Effect( Res.GetAnimation("explosion.ani"), 10., Res.GetSound("explosion.wav"), (ship->PlayerID == Raptor::Game->PlayerID) ? 10. : 2.5, &pos, &motion_vec, Rand::Bool() ? 360. : -360., 1.5 ) );
+				bp_radius = shielded ? 4. : 8.;
+				bp_time = 0.125;
+			}
+			else if( shot_type == Shot::TYPE_MISSILE )
+			{
+				Data.Effects.push_back( Effect( Res.GetAnimation("explosion.ani"), 17., Res.GetSound("explosion.wav"), (ship->PlayerID == Raptor::Game->PlayerID) ? 10. : 2.5, &pos, &motion_vec, Rand::Bool() ? 450. : -450., 2.5 ) );
+				bp_radius = shielded ? 3. : 6.;
+				bp_time = 0.0625;
+			}
+			else if( shot_type == Shot::TYPE_ION_CANNON )
+				bp_radius = 3.;
+			else if( shot_type == Shot::TYPE_SUPERLASER )
+			{
+				bp_radius = 25.;
+				bp_time = 0.25;
+			}
+			else
+			{
+				if( Cfg.SettingAsDouble("g_effects",1.) > 0. )
+				{
+					motion_vec.ScaleBy( 0.75 );
+					Data.Effects.push_back( Effect( Res.GetAnimation("explosion.ani"), shielded ? 3.5 : 4., NULL, 0., &pos, &motion_vec, 0., 7. ) );
+				}
+				bp_radius = shielded ? 2. : 4.;
+			}
+			
+			if( BlastPoints && bp_radius )
+			{
+				if( !( shielded || ship->ComplexCollisionDetection() ) )
+					ship->SetBlastPoint( x, y, z, bp_radius, bp_time );
+				ship->SetBlastPoint( x + shot_dx * 0.007, y + shot_dy * 0.007, z + shot_dz * 0.007, bp_radius, bp_time );
 			}
 		}
 		
@@ -2493,6 +2541,10 @@ bool XWingGame::ProcessPacket( Packet *packet )
 		{
 			Pos3D pos( x, y, z );
 			Vec3D motion_vec( dx, dy, dz );
+			#if TURRET_BLASTABLE
+				double bp_radius = 4.;
+				double bp_time = 0.;
+			#endif
 			
 			if( turret )
 			{
@@ -2502,14 +2554,40 @@ bool XWingGame::ProcessPacket( Packet *packet )
 			}
 			
 			if( shot_type == Shot::TYPE_TORPEDO )
-				Data.Effects.push_back( Effect( Res.GetAnimation("explosion.ani"), 10., Res.GetSound("explosion.wav"), (turret->PlayerID == Raptor::Game->PlayerID) ? 10. : 2.5, &pos, &motion_vec, Rand::Bool() ? 360. : -360., 1.5 ) );
-			else if( shot_type == Shot::TYPE_MISSILE )
-				Data.Effects.push_back( Effect( Res.GetAnimation("explosion.ani"), 17., Res.GetSound("explosion.wav"), (turret->PlayerID == Raptor::Game->PlayerID) ? 10. : 2.5, &pos, &motion_vec, Rand::Bool() ? 450. : -450., 2.5 ) );
-			else if( (shot_type != Shot::TYPE_ION_CANNON) && (Cfg.SettingAsDouble("g_effects",1.) > 0.) )
 			{
-				motion_vec.ScaleBy( 0.75 );
-				Data.Effects.push_back( Effect( Res.GetAnimation("explosion.ani"), 4., NULL, 0., &pos, &motion_vec, 0., 7. ) );
+				Data.Effects.push_back( Effect( Res.GetAnimation("explosion.ani"), 10., Res.GetSound("explosion.wav"), (turret->PlayerID == Raptor::Game->PlayerID) ? 10. : 2.5, &pos, &motion_vec, Rand::Bool() ? 360. : -360., 1.5 ) );
+				#if TURRET_BLASTABLE
+					bp_radius = 16.;
+					bp_time = 0.125;
+				#endif
 			}
+			else if( shot_type == Shot::TYPE_MISSILE )
+			{
+				Data.Effects.push_back( Effect( Res.GetAnimation("explosion.ani"), 17., Res.GetSound("explosion.wav"), (turret->PlayerID == Raptor::Game->PlayerID) ? 10. : 2.5, &pos, &motion_vec, Rand::Bool() ? 450. : -450., 2.5 ) );
+				#if TURRET_BLASTABLE
+					bp_radius = 12.;
+					bp_time = 0.0625;
+				#endif
+			}
+			else if( shot_type == Shot::TYPE_ION_CANNON )
+				#if TURRET_BLASTABLE
+					bp_radius = 3.;
+				#else
+					;
+				#endif
+			else
+			{
+				if( Cfg.SettingAsDouble("g_effects",1.) > 0. )
+				{
+					motion_vec.ScaleBy( 0.75 );
+					Data.Effects.push_back( Effect( Res.GetAnimation("explosion.ani"), 4., NULL, 0., &pos, &motion_vec, 0., 7. ) );
+				}
+			}
+			
+			#if TURRET_BLASTABLE
+				if( BlastPoints )
+					turret->SetBlastPoint( x, y, z, bp_radius, bp_time );
+			#endif
 		}
 		
 		return true;
@@ -2522,23 +2600,55 @@ bool XWingGame::ProcessPacket( Packet *packet )
 		double y = packet->NextDouble();
 		double z = packet->NextDouble();
 		
-		double dx = 0., dy = 0., dz = 0.;
+		#if ASTEROID_BLASTABLE
+			uint32_t hazard_id = 0;
+			if( packet->Remaining() )
+				hazard_id = packet->NextUInt();
+		#endif
 		
 		if( State >= XWing::State::FLYING )
 		{
 			Pos3D pos( x, y, z );
-			Vec3D motion_vec( dx, dy, dz );
-			
+			Vec3D motion_vec( 0., 0., 0. );
+			#if ASTEROID_BLASTABLE
+				double bp_radius = 0.;
+				double bp_time = 0.;
+			#endif
 			if( shot_type == Shot::TYPE_TORPEDO )
+			{
 				Data.Effects.push_back( Effect( Res.GetAnimation("explosion.ani"), 10., Res.GetSound("explosion.wav"), 2.5, &pos, &motion_vec, Rand::Bool() ? 360. : -360., 1.5 ) );
+				#if ASTEROID_BLASTABLE
+					bp_radius = 40.;
+					bp_time = 0.125;
+				#endif
+			}
 			else if( shot_type == Shot::TYPE_MISSILE )
+			{
 				Data.Effects.push_back( Effect( Res.GetAnimation("explosion.ani"), 17., Res.GetSound("explosion.wav"), 2.5, &pos, &motion_vec, Rand::Bool() ? 450. : -450., 2.5 ) );
+				#if ASTEROID_BLASTABLE
+					bp_radius = 30.;
+					bp_time = 0.0625;
+				#endif
+			}
 			else if( (shot_type == Shot::TYPE_TURBO_LASER_GREEN) || (shot_type == Shot::TYPE_TURBO_LASER_RED) )
+			{
 				Data.Effects.push_back( Effect( Res.GetAnimation("explosion.ani"), 7., NULL, 0., &pos, &motion_vec, 0., 7. ) );
+				#if ASTEROID_BLASTABLE
+					bp_radius = 20.;
+				#endif
+			}
 			else if( (shot_type != Shot::TYPE_ION_CANNON) && (Cfg.SettingAsDouble("g_effects",1.) > 0.) )
 				Data.Effects.push_back( Effect( Res.GetAnimation("explosion.ani"), 2., NULL, 0., &pos, &motion_vec, 0., 7. ) );
+			
+			#if ASTEROID_BLASTABLE
+				if( BlastPoints && bp_radius )
+				{
+					Asteroid *hazard = (Asteroid*) Data.GetObject( hazard_id );
+					if( hazard && (hazard->Type() == XWing::Object::ASTEROID) )
+						hazard->SetBlastPoint( x, y, z, bp_radius, bp_time );
+				}
+			#endif
 		}
-		
 		return true;
 	}
 	
@@ -2554,6 +2664,7 @@ bool XWingGame::ProcessPacket( Packet *packet )
 		double x = packet->NextDouble();
 		double y = packet->NextDouble();
 		double z = packet->NextDouble();
+		double radius = packet->NextDouble();
 		
 		Ship *ship = NULL;
 		double old_health = 0.;
@@ -2566,7 +2677,7 @@ bool XWingGame::ProcessPacket( Packet *packet )
 			old_health = ship->Health;
 			old_shields = ship->ShieldF + ship->ShieldR;
 			ship->HitClock.Reset();
-			ship->HitRear = flags & 0x01;
+			ship->HitFlags = flags;
 			ship->SetHealth( health );
 			ship->ShieldF = shield_f;
 			ship->ShieldR = shield_r;
@@ -2580,7 +2691,24 @@ bool XWingGame::ProcessPacket( Packet *packet )
 			{
 				Mix_Chunk *sound = NULL;
 				double loudness = 1.;
-				if( ship->ID == ObservedShipID )
+				if( ship->Health > old_health )
+				{
+					sound = Res.GetSound("repair.wav");
+					if( ship->ID == ObservedShipID )
+						Snd.Play( sound );
+					
+					int sparks = 5.1 * Cfg.SettingAsDouble("g_effects",1.) + 0.5;
+					double spark_time = 0.75 / (sparks + 1.);
+					for( int i = 0; i < sparks; i ++ )
+					{
+						Pos3D pos = *ship + ( ship->Fwd * Rand::Double(-0.2,0.) * i + ship->Up * Rand::Double(-0.1,0.1) + ship->Right * Rand::Double(-0.1,0.1) ) * ship->Radius();
+						Vec3D motion_vec = ship->MotionVector + ship->Up * Rand::Double(-2.,0.) + ship->Fwd * Rand::Double(-0.5,0.) + ship->Right * Rand::Double(-0.5,0.5);
+						Data.Effects.push_back( Effect( Res.GetAnimation("explosion.ani"), 1., NULL, 0., &pos, &motion_vec, Rand::Bool() ? -600. : 600., 10. ) );
+						Data.Effects.back().Lifetime.CountUpToSecs = i * spark_time;
+						Data.Effects.back().MoveAlong( &(Data.Effects.back().MotionVector), Data.Effects.back().Lifetime.CountUpToSecs );
+					}
+				}
+				else if( ship->ID == ObservedShipID )
 				{
 					if( ship->Health < old_health )
 						sound = Res.GetSound("damage_hull.wav");
@@ -2592,11 +2720,15 @@ bool XWingGame::ProcessPacket( Packet *packet )
 					Snd.PlayAt( sound, x, y, z, loudness );
 				
 				double total_damage = (old_shields + old_health) - (ship->ShieldF + ship->ShieldR + ship->Health);
-				double knock_scale = total_damage / 20.;
-				Vec3D knock( ship->X - x, ship->Y - y, ship->Z - z );
-				if( knock.Length() > 1. )
-					knock.ScaleTo( 1. );
-				ship->KnockCockpit( &knock, knock_scale );
+				if( total_damage > 0. )
+				{
+					double knock_scale = total_damage / 20.;
+					Vec3D knock( ship->X - x, ship->Y - y, ship->Z - z );
+					if( knock.Length() > 1. )
+						knock.ScaleTo( 1. );
+					ship->KnockCockpit( &knock, knock_scale );
+					ship->SetBlastPoint( x, y, z, radius, 0.25 );
+				}
 			}
 		}
 		
@@ -2666,6 +2798,7 @@ bool XWingGame::ProcessPacket( Packet *packet )
 	else if( type == XWing::Packet::LOBBY )
 	{
 		ChangeState( XWing::State::LOBBY );
+		// FIXME: Read GameTypes in v0.4!
 		return true;
 	}
 	
@@ -2747,6 +2880,8 @@ bool XWingGame::ProcessPacket( Packet *packet )
 
 void XWingGame::ChangeState( int state )
 {
+	SpawnDelay = -1.;  // Prevent staggered spawns at game start.
+	
 	if( state < XWing::State::FLYING )
 		GameType = XWing::GameType::UNDEFINED;
 	
@@ -2784,6 +2919,8 @@ void XWingGame::Disconnected( void )
 		Layers.RemoveAll();
 		Layers.Add( new MainMenu() );
 	}
+	
+	// FIXME: Init/reset GameTypes in v0.4!
 	
 	RaptorGame::Disconnected();
 }

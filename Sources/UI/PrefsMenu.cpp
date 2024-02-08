@@ -52,6 +52,8 @@ PrefsMenu::PrefsMenu( void )
 	WatchSetting( "g_shader_version" );
 	WatchSetting( "g_shader_light_quality" );
 	WatchSetting( "g_shader_point_lights" );
+	WatchSetting( "g_shader_blastpoints" );
+	WatchSetting( "g_shader_blastpoint_quality" );
 }
 
 
@@ -182,10 +184,14 @@ void PrefsMenu::UpdateContents( void )
 		
 		rect.y += rect.h + 8;
 		rect.x = 10;
-		rect.w = 285;
-		PrefsMenuCheckBox *vsync_checkbox = new PrefsMenuCheckBox( &rect, LabelFont, "Vertical Synchronization (VSync)", "g_vsync" );
+		rect.w = 80;
+		PrefsMenuCheckBox *vsync_checkbox = new PrefsMenuCheckBox( &rect, LabelFont, "VSync", "g_vsync" );
 		group->AddElement( vsync_checkbox );
+		rect.x += rect.w + 5;
+		rect.w = 210;
+		group->AddElement( new PrefsMenuCheckBox( &rect, LabelFont, "Framebuffer Textures", "g_framebuffers" ) );
 		
+		rect.x = 10;
 		rect.y += rect.h + 8;
 		rect.w = 140;
 		group->AddElement( new Label( &rect, "Texture Quality:", LabelFont, Font::ALIGN_MIDDLE_LEFT ) );
@@ -213,11 +219,6 @@ void PrefsMenu::UpdateContents( void )
 		
 		rect.x = 10;
 		rect.y += rect.h + 8;
-		rect.w = 345;
-		group->AddElement( new PrefsMenuCheckBox( &rect, LabelFont, "Framebuffer Textures (Required for VR)", "g_framebuffers" ) );
-		
-		rect.x = 10;
-		rect.y += rect.h + 8;
 		rect.w = 90;
 		group->AddElement( new PrefsMenuCheckBox( &rect, LabelFont, "Shaders", "g_shader_enable" ) );
 		rect.x += rect.w + 10;
@@ -238,6 +239,50 @@ void PrefsMenu::UpdateContents( void )
 		dynamic_lights_dropdown->AddItem( "4", "4 Dynamic" );
 		dynamic_lights_dropdown->Update();
 		group->AddElement( dynamic_lights_dropdown );
+		
+		rect.x = 10;
+		rect.y += rect.h + 8;
+		rect.w = 97;
+		group->AddElement( new Label( &rect, "Blastpoints:", LabelFont, Font::ALIGN_MIDDLE_LEFT ) );
+		rect.x += rect.w + 5;
+		rect.w = 55;
+		PrefsMenuDropDown *blastpoints_dropdown = new PrefsMenuDropDown( &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, 0, "g_shader_blastpoints" );
+		int blastpoints = Raptor::Game->Cfg.SettingAsInt("g_shader_blastpoints");
+		blastpoints_dropdown->AddItem( "0", "Off" );
+		if( (blastpoints > 0) && (blastpoints < 10) )
+			blastpoints_dropdown->AddItem( Raptor::Game->Cfg.SettingAsString("g_shader_blastpoints"), Raptor::Game->Cfg.SettingAsString("g_shader_blastpoints") );
+		blastpoints_dropdown->AddItem( "10", "10" );
+		if( (blastpoints > 10) && (blastpoints < 20) )
+			blastpoints_dropdown->AddItem( Raptor::Game->Cfg.SettingAsString("g_shader_blastpoints"), Raptor::Game->Cfg.SettingAsString("g_shader_blastpoints") );
+		blastpoints_dropdown->AddItem( "20", "20" );
+		if( (blastpoints > 20) && (blastpoints < 30) )
+			blastpoints_dropdown->AddItem( Raptor::Game->Cfg.SettingAsString("g_shader_blastpoints"), Raptor::Game->Cfg.SettingAsString("g_shader_blastpoints") );
+		blastpoints_dropdown->AddItem( "30", "30" );
+		if( (blastpoints > 30) && (blastpoints < 40) )
+			blastpoints_dropdown->AddItem( Raptor::Game->Cfg.SettingAsString("g_shader_blastpoints"), Raptor::Game->Cfg.SettingAsString("g_shader_blastpoints") );
+		blastpoints_dropdown->AddItem( "40", "40" );
+		if( (blastpoints > 40) && (blastpoints < 50) )
+			blastpoints_dropdown->AddItem( Raptor::Game->Cfg.SettingAsString("g_shader_blastpoints"), Raptor::Game->Cfg.SettingAsString("g_shader_blastpoints") );
+		blastpoints_dropdown->AddItem( "50", "50" );
+		if( (blastpoints > 50) )
+			blastpoints_dropdown->AddItem( Raptor::Game->Cfg.SettingAsString("g_shader_blastpoints"), Raptor::Game->Cfg.SettingAsString("g_shader_blastpoints") );
+		blastpoints_dropdown->Update();
+		group->AddElement( blastpoints_dropdown );
+		rect.x += rect.w + 12;
+		rect.w = 151;
+		group->AddElement( new Label( &rect, "Blastpoint Quality:", LabelFont, Font::ALIGN_MIDDLE_LEFT ) );
+		rect.x += rect.w + 5;
+		rect.w = 75;
+		PrefsMenuDropDown *blastpoint_quality_dropdown = new PrefsMenuDropDown( &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, 0, "g_shader_blastpoint_quality" );
+		blastpoint_quality_dropdown->AddItem( "-1", "Lowest" );
+		blastpoint_quality_dropdown->AddItem( "0", "Low" );
+		blastpoint_quality_dropdown->AddItem( "1", "Medium" );
+		blastpoint_quality_dropdown->AddItem( "2", "High" );
+		int blastpoint_quality = Raptor::Game->Cfg.SettingAsInt("g_shader_blastpoint_quality",2);
+		if( blastpoint_quality > 2 )
+			blastpoint_quality_dropdown->AddItem( Raptor::Game->Cfg.SettingAsString("g_shader_blastpoint_quality"), "Ultra" );
+		blastpoint_quality_dropdown->Update();
+		group->AddElement( blastpoint_quality_dropdown );
 		
 		rect.x = 10;
 		rect.y += rect.h + 8;
@@ -269,6 +314,7 @@ void PrefsMenu::UpdateContents( void )
 		rect.w = 75;
 		PrefsMenuDropDown *asteroid_lod_dropdown = new PrefsMenuDropDown( &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, 0, "g_asteroid_lod" );
 		asteroid_lod_dropdown->AddItem( "0",    "Awful" );
+		asteroid_lod_dropdown->AddItem( "0.15", "Bad" );
 		asteroid_lod_dropdown->AddItem( "0.25", "Low" );
 		asteroid_lod_dropdown->AddItem( "0.5",  "Medium" );
 		asteroid_lod_dropdown->AddItem( "1",    "High" );
@@ -291,8 +337,8 @@ void PrefsMenu::UpdateContents( void )
 		deathstar_trench_dropdown->AddItem( "5", "Ultra" );
 		deathstar_trench_dropdown->Update();
 		group->AddElement( deathstar_trench_dropdown );
-		rect.x += rect.w + 10;
-		rect.w = 70;
+		rect.x += rect.w + 9;
+		rect.w = 71;
 		group->AddElement( new Label( &rect, "Surface:", LabelFont, Font::ALIGN_MIDDLE_LEFT ) );
 		rect.x += rect.w + 5;
 		rect.w = 75;
@@ -1361,6 +1407,10 @@ void PrefsMenuDefaultsButton::Clicked( Uint8 button )
 			int fsaa = Raptor::Game->Cfg.SettingAsInt( "g_fsaa", 4 );
 			if( fsaa > 2 )
 				Raptor::Game->Cfg.Settings[ "g_fsaa" ] = "2";
+			
+			int blastpoint_quality = Raptor::Game->Cfg.SettingAsInt( "g_shader_blastpoint_quality", 2 );
+			if( blastpoint_quality > 2 )
+				Raptor::Game->Cfg.Settings[ "g_shader_blastpoint_quality" ] = "2";
 			
 			int maxfps = Raptor::Game->Cfg.SettingAsInt( "maxfps", 60 );
 			if( maxfps && (maxfps < 90) )

@@ -7,13 +7,18 @@ class Asteroid;
 
 #include "PlatformSpecific.h"
 
-#include "GameObject.h"
+#include "BlastableObject.h"
 #include "Model.h"
 #include "Animation.h"
 #include "Color.h"
 
 
+#define ASTEROID_BLASTABLE 1
+#if ASTEROID_BLASTABLE
+class Asteroid : public BlastableObject
+#else
 class Asteroid : public GameObject
+#endif
 {
 public:
 	double Radius;
@@ -45,4 +50,5 @@ public:
 	bool WillCollide( const GameObject *other, double dt, std::string *this_object = NULL, std::string *other_object = NULL ) const;
 	
 	void Draw( void );
+	Shader *WantShader( void ) const;
 };

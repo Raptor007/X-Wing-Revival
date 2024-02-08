@@ -1,3 +1,10 @@
+// Death Star does not currently track blast points, so keep rendering simple.
+#if BLASTPOINTS > 0
+#undef BLASTPOINTS
+#endif
+
+// ---------------------------------------------------------------------------
+
 #ifdef GL_ES
 precision highp float;
 #endif
@@ -139,7 +146,23 @@ float point_light_specular( vec3 normal, vec3 light_vec, vec3 vec_to_cam, float 
 }
 #endif
 
+#endif  // if LIGHT_QUALITY
+
+
+#if BLASTPOINTS > 0
+
+#if (BLASTPOINT_QUALITY >= 1) && (LIGHT_QUALITY < 2)
+// Provide the fragment shader with the data it needs to operate per-pixel.
+varying vec3 WorldPos;
 #endif
+
+#if BLASTPOINT_QUALITY <= 0
+uniform vec3 BlastPoint[ BLASTPOINTS ];
+uniform float BlastRadius[ BLASTPOINTS ];
+varying float BlastDarken;
+#endif
+
+#endif  // if BLASTPOINTS
 
 
 void main( void )
@@ -150,6 +173,34 @@ void main( void )
 	
 	// Pass along texture coordinates to be interpolated for the fragment shader.
 	gl_TexCoord[0] = gl_MultiTexCoord0;
+	
+	#if BLASTPOINTS > 0
+		#if BLASTPOINT_QUALITY >= 1
+			#if LIGHT_QUALITY < 2
+				// Get the position of each vertex to interpolate in the fragment shader.
+				WorldPos = world_vertex.xyz;
+			#endif
+		#else
+			// Low quality blastpoint is done per vertex.
+			BlastDarken = 1.0;
+			
+			float blast_radius = 0.0;
+			for( int i = 0; i < BLASTPOINTS; i ++ )
+			{
+				float dist = length( BlastPoint[ i ] - world_vertex.xyz );
+				float dark = dist / max( BlastRadius[ i ], dist );
+				#if BLASTPOINT_QUALITY >= 0
+					BlastDarken = min( BlastDarken * pow( dark, 0.375 ), dark );
+				#else
+					BlastDarken = min( BlastDarken, dark );
+				#endif
+				blast_radius = max( blast_radius, BlastRadius[ i ] );
+			}
+			
+			// Avoid darkening screens and glowing engines.
+			BlastDarken = min( 1.0, max( BlastDarken, length(AmbientColor) * 10.0 ) );
+		#endif
+	#endif
 	
 	#if LIGHT_QUALITY >= 2
 		// We'll do most of the work in the fragment shader, per-pixel.

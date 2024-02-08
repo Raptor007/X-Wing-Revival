@@ -16,6 +16,7 @@ class XWingGame : public RaptorGame
 {
 public:
 	uint32_t GameType;
+	//std::vector< std::pair<std::string,std::string> > GameTypes;  // FIXME: Use something like this in v0.4.
 	Clock RoundTimer;
 	
 	uint32_t ObservedShipID;
@@ -24,6 +25,8 @@ public:
 	double AsteroidLOD;
 	double OverlayScroll;
 	Clock EjectHeld;
+	size_t BlastPoints;
+	double SpawnDelay;  // FIXME: Should the server handle staggered group respawns instead of faking it client-side?
 	
 	uint16_t Victor;
 	std::queue<std::string> Achievements;

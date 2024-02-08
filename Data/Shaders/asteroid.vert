@@ -1,3 +1,9 @@
+#if BLASTPOINTS > 0
+#undef BLASTPOINTS
+#endif
+
+// ---------------------------------------------------------------------------
+
 #ifdef GL_ES
 precision highp float;
 #endif

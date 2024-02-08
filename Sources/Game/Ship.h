@@ -8,7 +8,7 @@ class ShipEngine;
 
 #include "PlatformSpecific.h"
 
-#include "GameObject.h"
+#include "BlastableObject.h"
 #include <string>
 #include <map>
 #include <cfloat>
@@ -18,7 +18,7 @@ class ShipEngine;
 #include "Turret.h"
 
 
-class Ship : public GameObject
+class Ship : public BlastableObject
 {
 public:
 	const ShipClass *Class;
@@ -32,7 +32,7 @@ public:
 	double Health;
 	Clock HitClock;
 	uint32_t HitByID;
-	bool HitRear;
+	uint8_t HitFlags;
 	Vec3D CockpitOffset;
 	Clock DeathClock;
 	double JumpProgress;
@@ -72,9 +72,12 @@ public:
 	void SetClass( const ShipClass *ship_class );
 	void Reset( void );
 	
+	void DelaySpawn( double secs );
 	void SetHealth( double health );
 	void AddDamage( double front, double rear, const char *subsystem = NULL, uint32_t hit_by_id = 0, double max_hull_damage = FLT_MAX );
+	void Repair( double heal );
 	void KnockCockpit( const Vec3D *dir, double force );
+	void SetBlastPoint( double x, double y, double z, double radius, double time = 0., const ModelObject *object = NULL );
 	
 	void SetRoll( double roll, double dt );
 	void SetPitch( double pitch, double dt );
@@ -153,6 +156,7 @@ public:
 	
 	void Draw( void );
 	void DrawWireframe( Color *color = NULL, double scale = 1. );
+	Shader *WantShader( void ) const;
 	
 	std::map<ShipEngine*,Pos3D> EnginePositions( void );
 	std::map<ShipEngine*,Pos3D> EnginePositions( const Pos3D *pos );
@@ -162,6 +166,13 @@ public:
 		SHIELD_CENTER = 0,
 		SHIELD_FRONT,
 		SHIELD_REAR
+	};
+	enum
+	{
+		HIT_REAR_OLD = 0x01, // FIXME: For compatibility with v0.3.2/v0.3.3.
+		HIT_FRONT    = 0x02,
+		HIT_REAR     = 0x04,
+		HIT_HULL     = 0x08
 	};
 };
 

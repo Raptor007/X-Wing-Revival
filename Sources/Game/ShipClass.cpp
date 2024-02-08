@@ -107,6 +107,7 @@ ShipClass::ShipClass( const ShipClass &other ) : GameObject( 0, XWing::Object::S
 	CockpitPosVR.Copy( &(other.CockpitPosVR) );
 	GlanceUpFwd  = other.GlanceUpFwd;
 	GlanceUpBack = other.GlanceUpBack;
+	DockingBays = other.DockingBays;
 	Engines = other.Engines;
 	ModelScale = other.ModelScale;
 	Shape.BecomeCopy( &(other.Shape) );
@@ -472,6 +473,15 @@ bool ShipClass::Load( const std::string &filename )
 		{
 			TurretYawSpeed = atof( args.at(0).c_str() );
 			TurretPitchSpeed = (args.size() >= 2) ? atof( args.at(1).c_str() ) : TurretYawSpeed;
+		}
+		else if( (var == "docking_bay") && (args.size() >= 3) )
+		{
+			double right = atof( args.at(0).c_str() );
+			double up    = atof( args.at(1).c_str() );
+			double fwd   = atof( args.at(2).c_str() );
+			DockingBays.push_back( ShipClassDockingBay( fwd, up, right ) );
+			if( args.size() >= 4 )
+				DockingBays.back().Radius = atof( args.at(3).c_str() );
 		}
 		else if( (var == "engine") && (args.size() >= 5) )
 		{
@@ -883,6 +893,33 @@ ShipClassTurret &ShipClassTurret::operator = ( const ShipClassTurret &other )
 }
 
 
+ShipClassTurret::~ShipClassTurret()
+{
+}
+
+// ---------------------------------------------------------------------------
+
+
+ShipClassDockingBay::ShipClassDockingBay( double fwd, double up, double right, double radius ) : Vec3D( fwd, up, right )
+{
+	Radius = radius;
+}
+
+
+ShipClassDockingBay &ShipClassDockingBay::operator = ( const ShipClassDockingBay &other )
+{
+	Vec3D::Copy( &other );
+	Radius = other.Radius;
+	
+	return *this;
+}
+
+
+ShipClassDockingBay::~ShipClassDockingBay()
+{
+}
+
+
 // ---------------------------------------------------------------------------
 
 
@@ -905,4 +942,9 @@ ShipClassEngine &ShipClassEngine::operator = ( const ShipClassEngine &other )
 	DrawColor = other.DrawColor;
 	
 	return *this;
+}
+
+
+ShipClassEngine::~ShipClassEngine()
+{
 }

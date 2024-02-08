@@ -17,13 +17,13 @@
 #include "Checkpoint.h"
 
 
-Ship::Ship( uint32_t id ) : GameObject( id, XWing::Object::SHIP )
+Ship::Ship( uint32_t id ) : BlastableObject( id, XWing::Object::SHIP )
 {
 	Clear();
 }
 
 
-Ship::Ship( const ShipClass *ship_class ) : GameObject( 0, XWing::Object::SHIP )
+Ship::Ship( const ShipClass *ship_class ) : BlastableObject( 0, XWing::Object::SHIP )
 {
 	Clear();
 	SetClass( ship_class );
@@ -49,7 +49,8 @@ void Ship::Clear( void )
 	ShieldR = 0.;
 	ShieldPos = SHIELD_CENTER;
 	HitByID = 0;
-	HitRear = false;
+	HitFlags = 0x00;
+	BlastPoints.clear();
 	JumpProgress = 0.;
 	
 	Firing = false;
@@ -143,12 +144,11 @@ void Ship::SetClass( const ShipClass *ship_class )
 void Ship::Reset( void )
 {
 	// Reset typically clears JumpProgress, but clients that joined late or resynced should keep value of 1 from init packet.
-	if( (JumpProgress != 1.) || ! ClientSide() )
+	// If JumpProgress is negative, we already have a delayed respawn.  Don't do it again because each time queues a jump-in sound!
+	if( (JumpProgress >= 0.) && ((JumpProgress != 1.) || ! ClientSide()) )
 		JumpProgress = 0.;
 	
 	double jump_time = ((Category() == ShipClass::CATEGORY_CAPITAL) && ! IsMissionObjective) ? 0.7 : 0.5;
-	if( ClientSide() && ! PlayerID )
-		jump_time -= Rand::Double( 0., 0.2 );
 	Lifetime.Reset( jump_time );
 	Health = MaxHealth();
 	ShieldF = MaxShield();
@@ -158,6 +158,7 @@ void Ship::Reset( void )
 	SubsystemNames.clear();
 	CollisionPotential = 500.;
 	HitByID = 0;
+	BlastPoints.clear();
 	
 	Target = NextCheckpoint;
 	TargetLock = 0.f;
@@ -199,13 +200,56 @@ void Ship::Reset( void )
 		}
 	}
 	
-	if( ClientSide() && (Category() != ShipClass::CATEGORY_TARGET) )
+	if( (JumpProgress == 0.) && ClientSide() && (Category() != ShipClass::CATEGORY_TARGET) )
 	{
 		XWingGame *game = (XWingGame*) Raptor::Game;
 		if( PlayerID == game->PlayerID )
-			game->Snd.Play( game->Res.GetSound("jump_in_cockpit.wav") );
+		{
+			double hyperspace = game->Data.PropertyAsDouble("hyperspace");
+			DelaySpawn( hyperspace - 1. );
+			Mix_Chunk *sound = game->Res.GetSound("jump_in.wav");
+			//if( hyperspace <= 1.25 )
+				game->Snd.Play( sound );
+			//else
+			//	game->Snd.PlayDelayed( sound, hyperspace - 1.25 ); // FIXME: Implement this in SoundOut!
+		}
 		else if( Raptor::Game->State >= XWing::State::FLYING )
-			game->Snd.PlayFromObject( game->Res.GetSound("jump_in.wav"), ID, ((ID == game->ObservedShipID) || (Category() == ShipClass::CATEGORY_CAPITAL)) ? 20. : 1. );
+		{
+			// Stagger group arrivals.
+			
+			Mix_Chunk *sound = game->Res.GetSound("jump_in.wav");
+			double loudness = ((ID == game->ObservedShipID) || (Category() == ShipClass::CATEGORY_CAPITAL)) ? 30. : 1.;
+			
+			if( Group && (game->SpawnDelay > 0.) )
+			{
+				DelaySpawn( game->SpawnDelay );
+				game->Snd.PlayDelayedFromObject( sound, game->SpawnDelay * game->Data.TimeScale, ID, loudness );
+				game->Snd.PlayDelayedFromObject( sound, game->SpawnDelay * game->Data.TimeScale, ID, loudness / 2. );
+			}
+			else
+			{
+				game->Snd.PlayFromObject( sound, ID, loudness );
+				game->Snd.PlayFromObject( sound, ID, loudness / 2. );
+			}
+			
+			if( Group && (game->SpawnDelay >= 0.) )
+				game->SpawnDelay += Rand::Double( 0.1, 0.4 );
+		}
+	}
+	else if( PlayerID && ! ClientSide() )
+	{
+		XWingServer *server = (XWingServer*) Raptor::Server;
+		DelaySpawn( server->Data.PropertyAsDouble("hyperspace") );
+	}
+}
+
+
+void Ship::DelaySpawn( double secs )
+{
+	if( secs > 0. )
+	{
+		Lifetime.Advance( secs );
+		JumpProgress = -1.;
 	}
 }
 
@@ -322,10 +366,24 @@ void Ship::AddDamage( double front, double rear, const char *subsystem, uint32_t
 	if( hit_by_id )
 		HitByID = hit_by_id;
 	
-	SetHealth( Health - hull_damage );
+	SetHealth( std::min<double>( Health - hull_damage, MaxHealth() ) );
 	
 	HitClock.Reset();
-	HitRear = (rear > front);
+	HitFlags = 0x00;
+	if( rear > front )
+		HitFlags |= HIT_REAR_OLD; // FIXME: For compatibility with v0.3.2/v0.3.3.
+	if( front > 0. )
+		HitFlags |= HIT_FRONT;
+	if( rear > 0. )
+		HitFlags |= HIT_REAR;
+	if( hull_damage )
+		HitFlags |= HIT_HULL;
+}
+
+
+void Ship::Repair( double heal )
+{
+	AddDamage( 0., 0., NULL, 0, heal * -1. );
 }
 
 
@@ -334,6 +392,34 @@ void Ship::KnockCockpit( const Vec3D *dir, double force )
 	CockpitOffset.X += Fwd.Dot(dir) * force;
 	CockpitOffset.Y += Up.Dot(dir) * force;
 	CockpitOffset.Z += Right.Dot(dir) * force;
+}
+
+
+void Ship::SetBlastPoint( double x, double y, double z, double radius, double time, const ModelObject *object )
+{
+	size_t blastpoints = ((XWingGame*)( Raptor::Game ))->BlastPoints;
+	if( blastpoints <= 0 )
+		return;
+	
+	Pos3D shot( x, y, z );
+	double fwd   = shot.DistAlong( &Fwd,   this );
+	double up    = shot.DistAlong( &Up,    this );
+	double right = shot.DistAlong( &Right, this );
+	
+	if( Category() == ShipClass::CATEGORY_CAPITAL )
+		radius *= 3.;
+	else
+	{
+		radius *= Radius() / 10.;
+		fwd   *= std::min<double>( 1., Shape.GetLength() * 0.5 / Radius() );
+		up    *= std::min<double>( 1., Shape.GetHeight() * 0.5 / Radius() );
+		right *= std::min<double>( 1., Shape.GetWidth()  * 0.5 / Radius() );
+	}
+	
+	if( BlastPoints.size() < blastpoints )
+		BlastPoints.push_back( BlastPoint( fwd, up, right, radius, time, object ) );
+	else
+		LeastImportantBlastPoint()->Reset( fwd, up, right, radius, time, object );
 }
 
 
@@ -1372,6 +1458,7 @@ void Ship::ReadFromUpdatePacketFromServer( Packet *packet, int8_t precision )
 {
 	GameObject::ReadFromUpdatePacketFromServer( packet, precision );
 	
+	double prev_health = Health;
 	SetHealth( packet->NextFloat() );
 	uint8_t weapon_shield = packet->NextUChar();
 	SetShieldPos(   (weapon_shield & 0xC0) >> 6 );
@@ -1390,7 +1477,7 @@ void Ship::ReadFromUpdatePacketFromServer( Packet *packet, int8_t precision )
 		Group = packet->NextUChar();
 		const ShipClass *prev_class = Class;
 		SetClass( packet->NextUInt() ); // This also resets the ship and starts jump-in animation.
-		if( (Class != prev_class) || ((Group != prev_group) && Raptor::Game->Cfg.SettingAsBool("g_group_skins",true)) || (Category() == ShipClass::CATEGORY_CAPITAL) )
+		if( (Class != prev_class) || ((Group != prev_group) && Raptor::Game->Cfg.SettingAsBool("g_group_skins",true)) || ((Category() == ShipClass::CATEGORY_CAPITAL) && (prev_health <= 0.)) )
 			ClientInit(); // Load model for new ship class (or refresh capital ship model).
 		
 		SubsystemCenters.clear();
@@ -1403,12 +1490,20 @@ void Ship::ReadFromUpdatePacketFromServer( Packet *packet, int8_t precision )
 			SubsystemCenters.push_back( Vec3D( fwd, up, right ) );
 		}
 	}
+	else if( (Health < 0.) && (prev_health < 0.) && ! ComplexCollisionDetection() )
+	{
+		// Attempting to fix explosion jitter on fighters by preventing Fwd vector from being modified after death (effecting ExplosionSeed).
+		Fwd.Copy(   &(PrevPos.Fwd) );
+		Up.Copy(    &(PrevPos.Up) );
+		Right.Copy( &(PrevPos.Right) );
+	}
 }
 
 
 void Ship::AddToUpdatePacketFromClient( Packet *packet, int8_t precision )
 {
 	GameObject::AddToUpdatePacketFromClient( packet, precision );
+	
 	packet->AddUChar( SelectedWeapon | (ShieldPos << 6) );
 	packet->AddUChar( Firing ? (CurrentFiringMode() | 0x80) : CurrentFiringMode() );
 	packet->AddUInt( Target );
@@ -2050,6 +2145,13 @@ void Ship::Update( double dt )
 	if( CockpitOffset.Length() > 1. )
 		CockpitOffset.ScaleTo( 1. );
 	
+	if( ClientSide() && (BlastPoints.size() == ((XWingGame*)( Raptor::Game ))->BlastPoints) )
+	{
+		BlastPoint *shrink_blastpoint = LeastImportantBlastPoint();
+		if( shrink_blastpoint )
+			shrink_blastpoint->Radius *= pow( 0.9, dt );
+	}
+	
 	double jump_progress = Lifetime.Progress();
 	if( jump_progress > JumpProgress )
 		JumpProgress = jump_progress;
@@ -2093,6 +2195,8 @@ void Ship::Draw( void )
 {
 	Pos3D *pos = this;
 	
+	if( JumpProgress < 0. )
+		return;
 	if( (Health <= 0.) && ComplexCollisionDetection() && (DeathClock.ElapsedSeconds() > (PiecesDangerousTime() + 2.)) )
 		return;
 	
@@ -2168,8 +2272,17 @@ void Ship::DrawWireframe( Color *color, double scale )
 }
 
 
+Shader *Ship::WantShader( void ) const
+{
+	return Raptor::Game->Res.GetShader("model");
+}
+
+
 std::map<ShipEngine*,Pos3D> Ship::EnginePositions( void )
 {
+	if( JumpProgress < 0. )
+		return std::map<ShipEngine*,Pos3D>();
+	
 	if( (JumpProgress < 1.) && (Category() != ShipClass::CATEGORY_TARGET) )
 	{
 		Pos3D pos( this );

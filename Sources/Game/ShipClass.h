@@ -4,6 +4,8 @@
 
 #pragma once
 class ShipClass;
+class ShipClassTurret;
+class ShipClassDockingBay;
 class ShipClassEngine;
 
 #include "PlatformSpecific.h"
@@ -54,6 +56,7 @@ public:
 	std::string TurretBody, TurretGun;
 	double TurretGunWidth;
 	double TurretGunUp, TurretGunFwd, TurretHeadUp, TurretHeadFwd;
+	std::vector<ShipClassDockingBay> DockingBays;
 	std::vector<ShipClassEngine> Engines;
 	std::string CollisionModel;
 	std::string ExternalModel;
@@ -111,6 +114,18 @@ public:
 	
 	ShipClassTurret( double fwd, double up, double right, uint8_t weapon );
 	ShipClassTurret &operator = ( const ShipClassTurret &other );
+	virtual ~ShipClassTurret();
+};
+
+
+class ShipClassDockingBay : public Vec3D
+{
+public:
+	double Radius;
+	
+	ShipClassDockingBay( double fwd, double up, double right, double radius = 35. );
+	ShipClassDockingBay &operator = ( const ShipClassDockingBay &other );
+	virtual ~ShipClassDockingBay();
 };
 
 
@@ -123,4 +138,5 @@ public:
 	
 	ShipClassEngine( double fwd, double up, double right, std::string texture, double radius, float r = 1.f, float g = 1.f, float b = 1.f, float a = 1.f );
 	ShipClassEngine &operator = ( const ShipClassEngine &other );
+	virtual ~ShipClassEngine();
 };

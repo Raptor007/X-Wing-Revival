@@ -1,3 +1,10 @@
+// Death Star does not currently track blast points, so keep rendering simple.
+#if BLASTPOINTS > 0
+#undef BLASTPOINTS
+#endif
+
+// ---------------------------------------------------------------------------
+
 #ifdef GL_ES
 precision highp float;
 #endif
@@ -37,7 +44,7 @@ precision highp float;
 // Material properties:
 uniform sampler2D Texture;
 uniform float Alpha;
-
+uniform vec3 AmbientColor;
 
 #if LIGHT_QUALITY
 // Interpolates automatically from vertex shader.
@@ -48,7 +55,6 @@ varying vec3 Color;
 #if LIGHT_QUALITY >= 2
 
 uniform vec3 AmbientLight;
-uniform vec3 AmbientColor;
 uniform vec3 DiffuseColor;
 uniform vec3 SpecularColor;
 uniform float Shininess;
@@ -129,6 +135,20 @@ float point_light_specular( vec3 normal, vec3 light_vec, vec3 vec_to_cam, float 
 }
 #endif
 
+#elif BLASTPOINTS > 0 // && (LIGHT_QUALITY < 2)
+varying vec3 WorldPos;
+#endif
+
+
+#if BLASTPOINTS > 0
+
+#if BLASTPOINT_QUALITY >= 1
+uniform vec3 BlastPoint[ BLASTPOINTS ];
+uniform float BlastRadius[ BLASTPOINTS ];
+#else
+varying float BlastDarken;
+#endif
+
 #endif
 
 
@@ -136,6 +156,43 @@ void main( void )
 {
 	// Apply interpolated texture coordinates.
 	gl_FragColor = texture2D( Texture, gl_TexCoord[0].st );
+	
+	#if BLASTPOINTS > 0
+		#if BLASTPOINT_QUALITY >= 1
+			float darken = 1.0;
+			
+			float blast_radius = 0.0;
+			for( int i = 0; i < BLASTPOINTS; i ++ )
+			{
+				float dist = length( BlastPoint[ i ] - WorldPos );
+				float dark = dist / max( BlastRadius[ i ], dist );
+				#if BLASTPOINT_QUALITY >= 3
+					darken = min( darken * pow( dark, 0.375 ), dark );
+				#else
+					darken = min( darken, dark );
+				#endif
+				blast_radius = max( blast_radius, BlastRadius[ i ] );
+			}
+			
+			// Avoid darkening screens and glowing engines.
+			darken = min( 1.0, max( darken, length(AmbientColor) * 10.0 ) );
+		#else
+			float darken = BlastDarken;
+		#endif
+		
+		#if BLASTPOINT_QUALITY >= 2
+			// Adjust darkness curve by blast radius.
+			darken = pow( darken, max( 1., min( 0.2, blast_radius * 0.0625 ) ) );
+			
+			#if LIGHT_QUALITY >= 2
+				float shininess = Shininess * 0.5 + 0.5 * darken;
+				#undef SHININESS
+				#define SHININESS shininess
+			#endif
+		#endif
+		
+		gl_FragColor.rgb *= 0.25 + 0.75 * darken;
+	#endif
 	
 	#if LIGHT_QUALITY >= 2
 		vec3 world_normal = normalize( WorldNormal );
@@ -174,6 +231,10 @@ void main( void )
 			light_vec = PointLight3Pos - WorldPos;
 			diffuse += point_light( world_normal, light_vec, 0.0, PointLight3Radius ) * PointLight3Color;
 			specular += point_light_specular( world_normal, light_vec, vec_to_cam, 0.0, PointLight3Radius, SHININESS ) * PointLight3Color;
+		#endif
+		
+		#if BLASTPOINTS > 0
+			specular *= darken;
 		#endif
 		
 		// Apply per-pixel calculated color.
