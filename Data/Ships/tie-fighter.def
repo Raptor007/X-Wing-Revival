@@ -16,8 +16,8 @@ health 100
 shield 0
 ramming 500
 explode 1
-weapon laser_green 0.21 -0.9 0
-weapon laser_green -0.21 -0.9 0
+weapon laser_green 0.21 -0.9 1
+weapon laser_green -0.21 -0.9 1
 firetime laser_green 0.25
 engine 0.88 0.03 -0.94 engine_yellow.ani 0.4 1 0.1 0.1 0.4
 engine -0.88 0.03 -0.94 engine_yellow.ani 0.4 1 0.1 0.1 0.4

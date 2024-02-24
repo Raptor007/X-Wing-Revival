@@ -19,13 +19,13 @@ recover 5
 recharge 3
 ramming 500
 explode 1
-weapon ion_cannon 4.74 1.28 0
-weapon ion_cannon -4.74 1.28 0
-weapon ion_cannon -4.6 -1.7 0
-weapon ion_cannon 4.6 -1.7 0
+weapon ion_cannon 4.74 1.28 1.7
+weapon ion_cannon -4.74 1.28 1.7
+weapon ion_cannon -4.6 -1.7 1.7
+weapon ion_cannon 4.6 -1.7 1.7
 firetime ion_cannon 0.33
-weapon missile 0.5 -0.2 0
-weapon missile -0.5 -0.2 0
+weapon missile 0.5 -0.2 -1.4
+weapon missile -0.5 -0.2 -1.4
 firetime missile 1
 ammo missile 8
 engine 1.04 0.98 -5.6 engine_magenta.ani 1.1 1 1 1 0.5

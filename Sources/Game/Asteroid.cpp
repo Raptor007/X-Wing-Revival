@@ -12,11 +12,7 @@
 #include "Num.h"
 
 
-#if ASTEROID_BLASTABLE
 Asteroid::Asteroid( uint32_t id ) : BlastableObject( id, XWing::Object::ASTEROID )
-#else
-Asteroid::Asteroid( uint32_t id ) : GameObject( id, XWing::Object::ASTEROID )
-#endif
 {
 	Shape = NULL;
 	
@@ -256,11 +252,9 @@ Shader *Asteroid::WantShader( void ) const
 	
 	if( (detail >= 5) && Shape )
 	{
-		// Use ship model shader if asteroids are blastable and this one is hit.
-		#if ASTEROID_BLASTABLE
-			if( BlastPoints.size() )
-				return NULL;
-		#endif
+		// Use ship model shader if asteroid has any blastpoints.
+		if( BlastPoints.size() )
+			return NULL;
 		
 		return game->Res.GetShader("asteroid");
 	}

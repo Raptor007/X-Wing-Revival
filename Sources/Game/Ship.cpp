@@ -406,14 +406,19 @@ void Ship::SetBlastPoint( double x, double y, double z, double radius, double ti
 	double up    = shot.DistAlong( &Up,    this );
 	double right = shot.DistAlong( &Right, this );
 	
-	if( Category() == ShipClass::CATEGORY_CAPITAL )
-		radius *= 3.;
-	else
+	radius *= (Category() == ShipClass::CATEGORY_CAPITAL) ? 3. : (Radius() / 10.);
+	
+	if( ! ComplexCollisionDetection() )
 	{
-		radius *= Radius() / 10.;
-		fwd   *= std::min<double>( 1., Shape.GetLength() * 0.5 / Radius() );
-		up    *= std::min<double>( 1., Shape.GetHeight() * 0.5 / Radius() );
-		right *= std::min<double>( 1., Shape.GetWidth()  * 0.5 / Radius() );
+		double front = Shape.GetLength() * 0.5;
+		double top   = Shape.GetHeight() * 0.5;
+		double side  = Shape.GetWidth()  * 0.5;
+		if( fabs(fwd) > front )
+			fwd = front * Num::Sign(fwd);
+		if( fabs(up) > top )
+			up = top * Num::Sign(up);
+		if( fabs(right) > side )
+			right = side * Num::Sign(right);
 	}
 	
 	if( BlastPoints.size() < blastpoints )
@@ -797,6 +802,19 @@ Pos3D Ship::HeadPos( void ) const
 }
 
 
+Pos3D Ship::HeadPosVR( void ) const
+{
+	Pos3D head( this );
+	if( Class )
+	{
+		head.MoveAlong( &Fwd,   Class->CockpitPosVR.X );
+		head.MoveAlong( &Up,    Class->CockpitPosVR.Y );
+		head.MoveAlong( &Right, Class->CockpitPosVR.Z );
+	}
+	return head;
+}
+
+
 double Ship::Exploded( void ) const
 {
 	if( Health <= 0. )
@@ -885,6 +903,7 @@ std::map<int,Shot*> Ship::NextShots( GameObject *target, uint8_t firing_mode ) c
 					weapon_index += weapon_count - firing_mode - 1;
 				
 				weapon_index %= weapon_iter->second.size();
+				shot->WeaponIndex = weapon_index;
 				
 				fwd   = weapon_iter->second.at( weapon_index ).X;
 				up    = weapon_iter->second.at( weapon_index ).Y;
@@ -1967,7 +1986,8 @@ bool Ship::WillCollide( const GameObject *other, double dt, std::string *this_ob
 	
 	// Let the Death Star and other misc objects determine whether collisions with ships occur.
 	else if( (other->Type() == XWing::Object::DEATH_STAR_BOX) || (other->Type() == XWing::Object::DEATH_STAR)
-	||       (other->Type() == XWing::Object::TURRET)         || (other->Type() == XWing::Object::CHECKPOINT) )
+	||       (other->Type() == XWing::Object::TURRET)         || (other->Type() == XWing::Object::CHECKPOINT)
+	||       (other->Type() == XWing::Object::DOCKING_BAY) )
 		return other->WillCollide( this, dt, other_object, this_object );
 	
 	return false;
@@ -2248,7 +2268,13 @@ void Ship::Draw( void )
 }
 
 
-void Ship::DrawWireframe( Color *color, double scale )
+void Ship::DrawWireframe( const Color *color, double scale )
+{
+	DrawWireframeAt( this, color, scale );
+}
+
+
+void Ship::DrawWireframeAt( const Pos3D *pos, const Color *color, double scale )
 {
 	Color default_color(0.5,0.5,1,1);
 	if( ! color )
@@ -2265,10 +2291,10 @@ void Ship::DrawWireframe( Color *color, double scale )
 				objects.insert( obj_iter->first );
 		}
 		
-		Shape.Draw( this, (objects.size() < Shape.Objects.size()) ? &objects : NULL, color, Exploded(), ExplosionSeed(), scale, scale, scale );
+		Shape.Draw( pos, (objects.size() < Shape.Objects.size()) ? &objects : NULL, color, Exploded(), ExplosionSeed(), scale, scale, scale );
 	}
 	else
-		Shape.Draw( this, NULL, color, Exploded(), ExplosionSeed(), scale, scale, scale );
+		Shape.Draw( pos, NULL, color, Exploded(), ExplosionSeed(), scale, scale, scale );
 }
 
 

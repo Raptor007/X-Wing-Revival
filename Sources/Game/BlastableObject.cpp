@@ -48,12 +48,14 @@ BlastPoint* BlastableObject::LeastImportantBlastPoint( void )
 	
 	BlastPoint *least_important = &*(BlastPoints.begin());
 	double least_importance = least_important->Importance();
-	for( std::vector<BlastPoint>::iterator blast_iter = BlastPoints.begin(); blast_iter != BlastPoints.end(); blast_iter ++ )
+	size_t blastpoints = std::min<size_t>( BlastPoints.size(), ((XWingGame*)( Raptor::Game ))->BlastPoints );
+	for( size_t i = 0; i < blastpoints; i ++ )
 	{
-		double importance = blast_iter->Importance();
+		BlastPoint *blastpoint = &(BlastPoints[ i ]);
+		double importance = blastpoint->Importance();
 		if( importance < least_importance )
 		{
-			least_important = &*blast_iter;
+			least_important = blastpoint;
 			least_importance = importance;
 		}
 	}

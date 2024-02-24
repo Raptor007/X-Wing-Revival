@@ -33,7 +33,7 @@ model yt-1300.obj
 cockpit yt-1300_cockpit.obj 10 1.25 7.64
 turret_model yt-1300_turret_body.obj yt-1300_turret_gun.obj
 turret_gunpos 0.717
-turret_separation 0.21
+turret_separation 0.19
 turret_headpos 0.61 -0.29
 turret_speed 90
 model_scale 0.022

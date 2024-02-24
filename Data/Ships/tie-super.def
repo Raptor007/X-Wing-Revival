@@ -17,7 +17,7 @@ health 100
 shield 0
 ramming 500
 explode 1
-weapon superlaser 0 -0.9 0
+weapon superlaser 0 -0.9 1
 firetime superlaser 5
 engine 0.88 0.03 -0.94 engine_yellow.ani 0.4 1 0.1 0.1 0.4
 engine -0.88 0.03 -0.94 engine_yellow.ani 0.4 1 0.1 0.1 0.4

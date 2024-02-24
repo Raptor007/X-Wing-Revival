@@ -108,6 +108,7 @@ public:
 	bool PlayersCanFly( void ) const;
 	
 	Pos3D HeadPos( void ) const;
+	Pos3D HeadPosVR( void ) const;
 	double Exploded( void ) const;
 	int ExplosionSeed( void ) const;
 	const char *FlybySound( double speed ) const;
@@ -155,7 +156,8 @@ public:
 	double CockpitDrawOffset( void ) const;
 	
 	void Draw( void );
-	void DrawWireframe( Color *color = NULL, double scale = 1. );
+	void DrawWireframe( const Color *color = NULL, double scale = 1. );
+	void DrawWireframeAt( const Pos3D *pos, const Color *color = NULL, double scale = 1. );
 	Shader *WantShader( void ) const;
 	
 	std::map<ShipEngine*,Pos3D> EnginePositions( void );

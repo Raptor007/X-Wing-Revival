@@ -340,6 +340,8 @@ bool ShipClass::Load( const std::string &filename )
 			double right = atof( args.at(1).c_str() );
 			double up    = atof( args.at(2).c_str() );
 			double fwd   = atof( args.at(3).c_str() );
+			if( type == Shot::TYPE_MISSILE )
+				fwd -= 2.75;  // Missiles spawn with just the nose ahead of weapon position, not the whole model.
 			Weapons[ type ].push_back( Pos3D( fwd, up, right ) );
 		}
 		else if( (var == "firetime") && (args.size() >= 2) )

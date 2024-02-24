@@ -1647,7 +1647,9 @@ void RenderLayer::Draw( void )
 						
 						if( target->Health < (target->MaxHealth() * 0.7) )
 							target_status = "Hull Damaged";
-						else if( (target->MaxShield() > 0.) && ((target->ShieldF <= 0.) || (target->ShieldR <= 0.)) )
+						else if( (target->MaxShield() > 0.)
+						&&  (   ((target->ShieldF <= 0.) && (target->ShieldPos != Ship::SHIELD_REAR))
+						     || ((target->ShieldR <= 0.) && (target->ShieldPos != Ship::SHIELD_FRONT)) ) )
 							target_status = "Shields Down";
 						else
 							target_status = "OK";
@@ -2514,12 +2516,8 @@ void RenderLayer::Draw( void )
 		double draw_dist = Raptor::Game->Cfg.SettingAsDouble( "g_draw_dist", 6000. );
 		double blast_capital = Raptor::Game->Cfg.SettingAsDouble( "g_blast_capital", FLT_MAX );
 		double blast_fighter = Raptor::Game->Cfg.SettingAsDouble( "g_blast_fighter", 10000. );
-		#if TURRET_BLASTABLE
-			double blast_turret = Raptor::Game->Cfg.SettingAsDouble( "g_blast_turret", 10000. );
-		#endif
-		#if ASTEROID_BLASTABLE
-			double blast_asteroid = Raptor::Game->Cfg.SettingAsDouble( "g_blast_asteroid", 2000. );
-		#endif
+		double blast_turret = Raptor::Game->Cfg.SettingAsDouble( "g_blast_turret", 10000. );
+		double blast_asteroid = Raptor::Game->Cfg.SettingAsDouble( "g_blast_asteroid", 2000. );
 		
 		std::multimap<double,Renderable> sorted_renderables;
 		std::map< Shader*, std::set<Asteroid*> > asteroid_shaders;
@@ -2639,14 +2637,12 @@ void RenderLayer::Draw( void )
 						continue;
 					}
 					
-					#if ASTEROID_BLASTABLE
-						// Show asteroid blastpoints if enabled and close enough.
-						if( dist <= blast_asteroid )
-						{
-							bp_pos = asteroid;
-							bp_vec = &(asteroid->BlastPoints);
-						}
-					#endif
+					// Show asteroid blastpoints if enabled and close enough.
+					if( dist <= blast_asteroid )
+					{
+						bp_pos = asteroid;
+						bp_vec = &(asteroid->BlastPoints);
+					}
 				}
 			}
 			else if( obj_iter->second->Type() == XWing::Object::TURRET )
@@ -2662,14 +2658,12 @@ void RenderLayer::Draw( void )
 				if( turret->DistAlong( &(Raptor::Game->Cam.Fwd), &(Raptor::Game->Cam) ) < -100. )
 					continue;
 				
-				#if TURRET_BLASTABLE
-					// Show turret blastpoints if enabled and close enough.
-					if( dist <= blast_turret )
-					{
-						bp_pos = turret;
-						bp_vec = &(turret->BlastPoints);
-					}
-				#endif
+				// Show turret blastpoints if enabled and close enough.
+				if( dist <= blast_turret )
+				{
+					bp_pos = turret;
+					bp_vec = &(turret->BlastPoints);
+				}
 			}
 			else if( obj_iter->second->Type() == XWing::Object::DEATH_STAR_BOX )
 			{
@@ -2712,10 +2706,8 @@ void RenderLayer::Draw( void )
 				{
 					if( dynamic_lights )
 						SetDynamicLights( *asteroid_iter, NULL, dynamic_lights, &shots, &effects );
-					#if ASTEROID_BLASTABLE
-						if( blastpoints )
-							SetBlastPoints( *asteroid_iter, NULL, blastpoints, &((*asteroid_iter)->BlastPoints), Raptor::Game->Data.TimeScale );
-					#endif
+					if( blastpoints )
+						SetBlastPoints( *asteroid_iter, NULL, blastpoints, &((*asteroid_iter)->BlastPoints), Raptor::Game->Data.TimeScale );
 					
 					glPushMatrix();
 					(*asteroid_iter)->Draw();
@@ -3056,18 +3048,9 @@ void RenderLayer::Draw( void )
 				
 				Ship *observed_target = target ? target : dead_target;
 				Vec3D vec_to_target( observed_target->X - observed_object->X, observed_target->Y - observed_object->Y, observed_target->Z - observed_object->Z );
-				vec_to_target.ScaleTo( 1. );
-				Camera cam_to_target( Raptor::Game->Cam );
-				cam_to_target.Fwd.Copy( &vec_to_target );
-				cam_to_target.Up.Copy( &(observed_object->Up) );
-				cam_to_target.FixVectors();
-				cam_to_target.SetPos( observed_target->X, observed_target->Y, observed_target->Z );
-				cam_to_target.MoveAlong( &(cam_to_target.Fwd), -0.75 );
-				cam_to_target.Pitch( 25. );
-				cam_to_target.Yaw( ((XWingGame*)( Raptor::Game ))->LookYaw );
-				cam_to_target.Pitch( ((XWingGame*)( Raptor::Game ))->LookPitch );
-				double holo_scale = 0.125 / observed_target->Shape.GetTriagonal();
+				int dist = vec_to_target.Length();
 				
+				double holo_scale = 0.125 / observed_target->Shape.GetTriagonal();
 				Color holo_color1( 0.25f, 0.75f, 1.f, 0.7f );
 				Color holo_color2( 1.f,   1.f,   1.f, 0.4f );
 				float red = 1.f, green = 1.f, blue = 1.f, alpha = 1.f;
@@ -3082,13 +3065,55 @@ void RenderLayer::Draw( void )
 					holo_scale /= 1. + dead_time * dead_target->ExplosionRate();
 				}
 				
-				Raptor::Game->Gfx.Setup3D( &(cam_to_target) );
+				Pos3D holo_pos( observed_target ), head_pos( observed_object );
+				
+				if( ! vr )
+				{
+					Camera cam_to_target( Raptor::Game->Cam );
+					cam_to_target.Fwd = vec_to_target.Unit();
+					cam_to_target.Up.Copy( &(observed_object->Up) );
+					cam_to_target.FixVectors();
+					cam_to_target.SetPos( observed_target->X, observed_target->Y, observed_target->Z );
+					cam_to_target.MoveAlong( &(cam_to_target.Fwd), -0.75 );
+					cam_to_target.Pitch( 25. );
+					cam_to_target.Yaw( ((XWingGame*)( Raptor::Game ))->LookYaw );
+					cam_to_target.Pitch( ((XWingGame*)( Raptor::Game ))->LookPitch );
+					Raptor::Game->Gfx.Setup3D( &(cam_to_target) );
+				}
+				else if( observed_turret )
+				{
+					head_pos = observed_turret->HeadPos();
+					holo_pos.SetPos( head_pos.X, head_pos.Y, head_pos.Z );
+					holo_pos.MoveAlong( &(head_pos.Fwd), 0.45 );
+					holo_pos.MoveAlong( &(head_pos.Up), -0.2 );
+				}
+				else if( observed_ship )
+				{
+					head_pos = observed_ship->HeadPosVR();
+					holo_pos.SetPos( head_pos.X, head_pos.Y, head_pos.Z );
+					holo_pos.MoveAlong( &(head_pos.Fwd), 0.675 );
+					holo_pos.MoveAlong( &(head_pos.Up), -0.315 );
+				}
 				
 				glLineWidth( 1.f );
-				observed_target->DrawWireframe( &holo_color1, holo_scale );
+				observed_target->DrawWireframeAt( &holo_pos, &holo_color1, holo_scale );
+				
+				// Draw hit/explosion effect when target is recently damaged.
+				double hit_time = observed_target->HitClock.ElapsedSeconds();
+				if( hit_time < (target ? 0.125 : 0.5) )
+				{
+					float alpha = 1. - hit_time * (target ? 4. : 2.);
+					float r = 1.f, g = 1.f;
+					if( ! target )
+					{
+						r = sqrtf(alpha);
+						g = sqrtf(r);
+					}
+					Raptor::Game->Gfx.DrawSphere3D( holo_pos.X, holo_pos.Y, holo_pos.Z, holo_scale * sqrt(observed_target->Radius()) * hit_time * (target ? (vr ? 10. : 7.) : 15.), 8, 0, r,g,1.f,alpha );
+				}
 				
 				glLineWidth( 2.f );
-				observed_target->DrawWireframe( &holo_color2, holo_scale );
+				observed_target->DrawWireframeAt( &holo_pos, &holo_color2, holo_scale );
 				
 				std::string target_name = observed_target->Name;
 				Player *target_player = observed_target->Owner();
@@ -3111,18 +3136,55 @@ void RenderLayer::Draw( void )
 					blue = 0.f;
 				}
 				
+				std::string target_status;
+				if( ! target )
+					target_status = "Destroyed";
+				else if( target->Health < (target->MaxHealth() * 0.7) )
+					target_status = "Hull Damaged";
+				else if( (target->MaxShield() > 0.)
+				&&  (   ((target->ShieldF <= 0.) && (target->ShieldPos != Ship::SHIELD_REAR))
+				     || ((target->ShieldR <= 0.) && (target->ShieldPos != Ship::SHIELD_FRONT)) ) )
+					target_status = "Shields Down";
+				else
+					target_status = "OK";
+				
 				if( vr )
 				{
-					Pos3D name_pos = cam_to_target;
-					name_pos.SetPos( observed_target->X, observed_target->Y, observed_target->Z );
-					name_pos.MoveAlong( &(name_pos.Up), -0.1 );
-					BigFont->DrawText3D( target_name, &name_pos, Font::ALIGN_TOP_CENTER, red, green, blue, holo_color1.Alpha, 0.002 );
+					Pos3D text_pos( &head_pos );
+					text_pos.SetPos( holo_pos.X, holo_pos.Y, holo_pos.Z );
+					
+					// Draw target name.
+					text_pos.Pitch( -45. );
+					text_pos.MoveAlong( &(text_pos.Up), -0.1 );
+					BigFont->DrawText3D( target_name, &text_pos, Font::ALIGN_BOTTOM_CENTER, red, green, blue, holo_color1.Alpha, 0.0015 );
+					
+					// Draw target status (health).
+					BigFont->DrawText3D( target_status, &text_pos, Font::ALIGN_TOP_CENTER, 1.f, 1.f, 0.5f, holo_color1.Alpha, 0.001 );
+					
+					// Draw target distance.
+					text_pos.MoveAlong( &(text_pos.Up), -0.025 );
+					text_pos.MoveAlong( &(text_pos.Right), -0.075 );
+					BigFont->DrawText3D( "Dist: ", &text_pos, Font::ALIGN_TOP_LEFT, holo_color1.Red, holo_color2.Green, holo_color2.Blue, holo_color1.Alpha, 0.001 );
+					text_pos.MoveAlong( &(text_pos.Right), 0.15 );
+					BigFont->DrawText3D( Num::ToString(dist), &text_pos, Font::ALIGN_TOP_RIGHT, holo_color1.Red, holo_color2.Green, holo_color2.Blue, holo_color1.Alpha, 0.001 );
 				}
 				else
 				{
 					Raptor::Game->Gfx.Setup2D();
-					BigFont->DrawText( target_name, Rect.x + Rect.w/2 + 2, Rect.h - 8, Font::ALIGN_BOTTOM_CENTER, 0.f, 0.f, 0.f, alpha * 0.8f );
-					BigFont->DrawText( target_name, Rect.x + Rect.w/2, Rect.h - 10, Font::ALIGN_BOTTOM_CENTER, red, green, blue, alpha * 1.f );
+					
+					// Draw target name.
+					BigFont->DrawText( target_name, Rect.x + Rect.w/2 + 1, Rect.h - 32,  Font::ALIGN_BOTTOM_CENTER, 0.f, 0.f, 0.f, alpha * 0.8f );
+					BigFont->DrawText( target_name, Rect.x + Rect.w/2,     Rect.h - 33, Font::ALIGN_BOTTOM_CENTER, red, green, blue, alpha );
+					
+					// Draw target status (health).
+					SmallFont->DrawText( target_status, Rect.x + Rect.w/2 + 1, Rect.h - 16, Font::ALIGN_BOTTOM_CENTER, 0.f, 0.f, 0.f, alpha * 0.8f );
+					SmallFont->DrawText( target_status, Rect.x + Rect.w/2,     Rect.h - 17, Font::ALIGN_BOTTOM_CENTER, 1.f, 1.f, 0.f, alpha );
+					
+					// Draw target distance.
+					SmallFont->DrawText( "Dist: ", Rect.x + Rect.w/2 - 59, Rect.h,     Font::ALIGN_BOTTOM_LEFT, 0.f,  0.f,  0.f, alpha * 0.8f );
+					SmallFont->DrawText( "Dist: ", Rect.x + Rect.w/2 - 60, Rect.h - 2, Font::ALIGN_BOTTOM_LEFT, holo_color1.Red, holo_color1.Green, holo_color1.Blue, alpha );
+					SmallFont->DrawText( Num::ToString(dist), Rect.x + Rect.w/2 + 61, Rect.h,     Font::ALIGN_BOTTOM_RIGHT, 0.f,  0.f,  0.f, alpha * 0.8f );
+					SmallFont->DrawText( Num::ToString(dist), Rect.x + Rect.w/2 + 60, Rect.h - 1, Font::ALIGN_BOTTOM_RIGHT, holo_color1.Red, holo_color1.Green, holo_color1.Blue, alpha );
 				}
 			}
 			

@@ -15,12 +15,7 @@ class Turret;
 #include "Ship.h"
 
 
-#define TURRET_BLASTABLE 1
-#if TURRET_BLASTABLE
 class Turret : public BlastableObject
-#else
-class Turret : public GameObject
-#endif
 {
 public:
 	uint32_t ParentID;
@@ -65,9 +60,7 @@ public:
 	void Reset( void );
 	void SetHealth( double health );
 	void AddDamage( double damage );
-	#if TURRET_BLASTABLE
 	void SetBlastPoint( double x, double y, double z, double radius, double time = 0., const ModelObject *object = NULL );
-	#endif
 	
 	void PitchGun( double degrees );
 	void SetPitch( double pitch );

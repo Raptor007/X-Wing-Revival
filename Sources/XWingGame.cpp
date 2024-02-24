@@ -521,11 +521,10 @@ void XWingGame::Setup( int argc, char **argv )
 	if( ! screensaver )
 		Res.GetShader("deathstar");
 	
-	#if ! ASTEROID_BLASTABLE
+	if( Cfg.SettingAsInt("g_shader_blastpoints") )
 		Res.GetShader("asteroid");
-	#endif
-	Res.GetShader("asteroid_far");
 	
+	Res.GetShader("asteroid_far");
 	Res.GetShader("model_hud");
 	
 	// Load and select the model shader, but don't activate it yet.
@@ -1475,9 +1474,9 @@ void XWingGame::Update( double dt )
 				{
 					if( ((*turret_iter)->PlayerID != PlayerID) && ((*turret_iter)->PlayerID || ! (*turret_iter)->ParentControl) && (*turret_iter)->Target )
 					{
-						// Only receive target data about alive ships.
+						// Only receive target data about alive ships that are not our own.
 						const Ship *potential_target = (const Ship*) Data.GetObject( (*turret_iter)->Target );
-						if( (! potential_target) || (potential_target->Type() != XWing::Object::SHIP) || (potential_target->Health <= 0.f) )
+						if( (! potential_target) || (potential_target->Type() != XWing::Object::SHIP) || (potential_target->Health <= 0.f) || (potential_target == ship) )
 							continue;
 						
 						id = (*turret_iter)->Target;
@@ -1499,9 +1498,9 @@ void XWingGame::Update( double dt )
 					{
 						if( (*ship_iter != ship) && ((*ship_iter)->Team == my_team) && ((*ship_iter)->Group == my_group) && ((*ship_iter)->Health > 0.) && (*ship_iter)->Target )
 						{
-							// Only receive target data about alive ships.
+							// Only receive target data about alive ships that are not our own.
 							const Ship *potential_target = (const Ship*) Data.GetObject( (*ship_iter)->Target );
-							if( (! potential_target) || (potential_target->Type() != XWing::Object::SHIP) || (potential_target->Health <= 0.f) )
+							if( (! potential_target) || (potential_target->Type() != XWing::Object::SHIP) || (potential_target->Health <= 0.f) || (potential_target == ship) )
 								continue;
 							
 							// When not in a flight group, target other players on your team not in a flight group, or friendly AI ships of same category.
@@ -2541,10 +2540,8 @@ bool XWingGame::ProcessPacket( Packet *packet )
 		{
 			Pos3D pos( x, y, z );
 			Vec3D motion_vec( dx, dy, dz );
-			#if TURRET_BLASTABLE
-				double bp_radius = 4.;
-				double bp_time = 0.;
-			#endif
+			double bp_radius = 4.;
+			double bp_time = 0.;
 			
 			if( turret )
 			{
@@ -2556,25 +2553,17 @@ bool XWingGame::ProcessPacket( Packet *packet )
 			if( shot_type == Shot::TYPE_TORPEDO )
 			{
 				Data.Effects.push_back( Effect( Res.GetAnimation("explosion.ani"), 10., Res.GetSound("explosion.wav"), (turret->PlayerID == Raptor::Game->PlayerID) ? 10. : 2.5, &pos, &motion_vec, Rand::Bool() ? 360. : -360., 1.5 ) );
-				#if TURRET_BLASTABLE
-					bp_radius = 16.;
-					bp_time = 0.125;
-				#endif
+				bp_radius = 16.;
+				bp_time = 0.125;
 			}
 			else if( shot_type == Shot::TYPE_MISSILE )
 			{
 				Data.Effects.push_back( Effect( Res.GetAnimation("explosion.ani"), 17., Res.GetSound("explosion.wav"), (turret->PlayerID == Raptor::Game->PlayerID) ? 10. : 2.5, &pos, &motion_vec, Rand::Bool() ? 450. : -450., 2.5 ) );
-				#if TURRET_BLASTABLE
-					bp_radius = 12.;
-					bp_time = 0.0625;
-				#endif
+				bp_radius = 12.;
+				bp_time = 0.0625;
 			}
 			else if( shot_type == Shot::TYPE_ION_CANNON )
-				#if TURRET_BLASTABLE
-					bp_radius = 3.;
-				#else
-					;
-				#endif
+				bp_radius = 3.;
 			else
 			{
 				if( Cfg.SettingAsDouble("g_effects",1.) > 0. )
@@ -2584,10 +2573,8 @@ bool XWingGame::ProcessPacket( Packet *packet )
 				}
 			}
 			
-			#if TURRET_BLASTABLE
-				if( BlastPoints )
-					turret->SetBlastPoint( x, y, z, bp_radius, bp_time );
-			#endif
+			if( BlastPoints )
+				turret->SetBlastPoint( x, y, z, bp_radius, bp_time );
 		}
 		
 		return true;
@@ -2600,54 +2587,42 @@ bool XWingGame::ProcessPacket( Packet *packet )
 		double y = packet->NextDouble();
 		double z = packet->NextDouble();
 		
-		#if ASTEROID_BLASTABLE
-			uint32_t hazard_id = 0;
-			if( packet->Remaining() )
-				hazard_id = packet->NextUInt();
-		#endif
+		uint32_t hazard_id = 0;
+		if( packet->Remaining() )
+			hazard_id = packet->NextUInt();
 		
 		if( State >= XWing::State::FLYING )
 		{
 			Pos3D pos( x, y, z );
 			Vec3D motion_vec( 0., 0., 0. );
-			#if ASTEROID_BLASTABLE
-				double bp_radius = 0.;
-				double bp_time = 0.;
-			#endif
+			double bp_radius = 0.;
+			double bp_time = 0.;
 			if( shot_type == Shot::TYPE_TORPEDO )
 			{
 				Data.Effects.push_back( Effect( Res.GetAnimation("explosion.ani"), 10., Res.GetSound("explosion.wav"), 2.5, &pos, &motion_vec, Rand::Bool() ? 360. : -360., 1.5 ) );
-				#if ASTEROID_BLASTABLE
-					bp_radius = 40.;
-					bp_time = 0.125;
-				#endif
+				bp_radius = 40.;
+				bp_time = 0.125;
 			}
 			else if( shot_type == Shot::TYPE_MISSILE )
 			{
 				Data.Effects.push_back( Effect( Res.GetAnimation("explosion.ani"), 17., Res.GetSound("explosion.wav"), 2.5, &pos, &motion_vec, Rand::Bool() ? 450. : -450., 2.5 ) );
-				#if ASTEROID_BLASTABLE
-					bp_radius = 30.;
-					bp_time = 0.0625;
-				#endif
+				bp_radius = 30.;
+				bp_time = 0.0625;
 			}
 			else if( (shot_type == Shot::TYPE_TURBO_LASER_GREEN) || (shot_type == Shot::TYPE_TURBO_LASER_RED) )
 			{
 				Data.Effects.push_back( Effect( Res.GetAnimation("explosion.ani"), 7., NULL, 0., &pos, &motion_vec, 0., 7. ) );
-				#if ASTEROID_BLASTABLE
-					bp_radius = 20.;
-				#endif
+				bp_radius = 20.;
 			}
 			else if( (shot_type != Shot::TYPE_ION_CANNON) && (Cfg.SettingAsDouble("g_effects",1.) > 0.) )
 				Data.Effects.push_back( Effect( Res.GetAnimation("explosion.ani"), 2., NULL, 0., &pos, &motion_vec, 0., 7. ) );
 			
-			#if ASTEROID_BLASTABLE
-				if( BlastPoints && bp_radius )
-				{
-					Asteroid *hazard = (Asteroid*) Data.GetObject( hazard_id );
-					if( hazard && (hazard->Type() == XWing::Object::ASTEROID) )
-						hazard->SetBlastPoint( x, y, z, bp_radius, bp_time );
-				}
-			#endif
+			if( BlastPoints && bp_radius )
+			{
+				Asteroid *hazard = (Asteroid*) Data.GetObject( hazard_id );
+				if( hazard && (hazard->Type() == XWing::Object::ASTEROID) )
+					hazard->SetBlastPoint( x, y, z, bp_radius, bp_time );
+			}
 		}
 		return true;
 	}

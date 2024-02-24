@@ -18,6 +18,7 @@ MainMenu::MainMenu( void )
 	Background.BecomeInstance( Raptor::Game->Res.GetAnimation("bg_menu.ani") );
 	Fog.BecomeInstance( Raptor::Game->Res.GetAnimation("fog.ani") );
 	FogTime = 0.;
+	IdleTime = 0.;
 	
 	NeedPrecache = false;
 	Loading = false;
@@ -205,15 +206,21 @@ void MainMenu::Draw( void )
 		else
 			MainMenuPrecacheThread( this );
 	}
-	else if( (FogTime > 5.) && (Raptor::Game->State == Raptor::State::DISCONNECTED) && Raptor::Game->Cfg.SettingAsBool("screensaver") && IsTop() && ! Raptor::Server->IsRunning() )
+	else if( is_top && (IdleTime > 3.) && (Raptor::Game->State == Raptor::State::DISCONNECTED) && Raptor::Game->Cfg.SettingAsBool("screensaver") && ! Raptor::Server->IsRunning() )
 	{
 		// If the screensaver ended up at the main menu somehow, try restarting it.
 		// NOTE: Could use similar logic to have a demo play after some amount of idle time.
-		FogTime = 0.;
+		IdleTime = 0.;
 		Raptor::Game->Host();
 	}
 	
-	FogTime += std::min<double>( Raptor::Game->FrameTime, 0.125 );
+	double frame_time = std::min<double>( 0.125, Raptor::Game->FrameTime );
+	FogTime += frame_time;
+	
+	if( is_top )
+		IdleTime += frame_time;
+	else
+		IdleTime = 0.;
 }
 
 
@@ -238,6 +245,8 @@ void MainMenu::DrawElements( void )
 
 bool MainMenu::HandleEvent( SDL_Event *event )
 {
+	IdleTime = 0.;
+	
 	if( Loading || NeedPrecache )
 		return false;
 	

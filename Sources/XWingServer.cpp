@@ -446,14 +446,12 @@ bool XWingServer::ProcessPacket( Packet *packet, ConnectedClient *from_client )
 
 bool XWingServer::CompatibleVersion( std::string version ) const
 {
-	if( RaptorServer::CompatibleVersion( version ) )
-		return true;
+	// Blacklist specific builds known to have broken netcode.
+	if( (version == "0.3 Alpha") || (version == "0.3.1 Alpha") )
+		return false;
 	
-	// Prevent v0.3 and v0.3.1 with broken netcode from joining, but otherwise all v0.3.x are compatible.
-	if( (strncasecmp( version.c_str(), Version.c_str(), 3 ) == 0) && (version != "0.3 Alpha") && (version != "0.3.1 Alpha") )
-		return true;
-	
-	return false;
+	// Allow compatibility between minor revisions (such as 0.4 and 0.4.1).
+	return RaptorServer::CompatibleVersion(version) || (strncasecmp( version.c_str(), Version.c_str(), 3 ) == 0);
 }
 
 
@@ -1764,9 +1762,7 @@ void XWingServer::Update( double dt )
 						shot_hit.AddDouble( shot->PrevPos.X );
 						shot_hit.AddDouble( shot->PrevPos.Y );
 						shot_hit.AddDouble( shot->PrevPos.Z );
-						#if ASTEROID_BLASTABLE
-							shot_hit.AddUInt( hazard->ID );
-						#endif
+						shot_hit.AddUInt( hazard->ID );
 						Net.SendAll( &shot_hit );
 					}
 					
@@ -4873,6 +4869,8 @@ void XWingServer::BeginFlying( uint16_t player_id, bool respawn )
 			RespawnDelay = Data.PropertyAsDouble("fleet_respawn",15.);
 			RebelCruiserRespawn  = 30. + 10. * Data.PropertyAsInt("rebel_cruisers");
 			EmpireCruiserRespawn = 30. + 10. * Data.PropertyAsInt("empire_cruisers");
+			RebelCruiserRespawn  = Data.PropertyAsDouble( "fleet_cruiser_respawn",  RebelCruiserRespawn,  RebelCruiserRespawn );
+			EmpireCruiserRespawn = Data.PropertyAsDouble( "fleet_cruiser_respawn",  EmpireCruiserRespawn, EmpireCruiserRespawn );
 			RebelCruiserRespawn  = Data.PropertyAsDouble( "rebel_cruiser_respawn",  RebelCruiserRespawn,  RebelCruiserRespawn );
 			EmpireCruiserRespawn = Data.PropertyAsDouble( "empire_cruiser_respawn", EmpireCruiserRespawn, EmpireCruiserRespawn );
 		}

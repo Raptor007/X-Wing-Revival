@@ -21,7 +21,7 @@ class MainMenu : public Layer
 {
 public:
 	Animation Background, Fog;
-	double FogTime;
+	double FogTime, IdleTime;
 	
 	bool NeedPrecache;
 	volatile bool Loading;

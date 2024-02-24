@@ -13,11 +13,7 @@
 #include "Shot.h"
 
 
-#if TURRET_BLASTABLE
 Turret::Turret( uint32_t id ) : BlastableObject( id, XWing::Object::TURRET )
-#else
-Turret::Turret( uint32_t id ) : GameObject( id, XWing::Object::TURRET )
-#endif
 {
 	ParentID = 0;
 	RelativeUp.Set( 0., 1., 0. );
@@ -159,7 +155,6 @@ void Turret::AddDamage( double damage )
 }
 
 
-#if TURRET_BLASTABLE
 void Turret::SetBlastPoint( double x, double y, double z, double radius, double time, const ModelObject *object )
 {
 	size_t blastpoints = ((XWingGame*)( Raptor::Game ))->BlastPoints;
@@ -180,7 +175,6 @@ void Turret::SetBlastPoint( double x, double y, double z, double radius, double 
 	else
 		LeastImportantBlastPoint()->Reset( fwd, up, right, radius, time, object );
 }
-#endif
 
 
 void Turret::PitchGun( double degrees )
@@ -270,6 +264,7 @@ std::map<int,Shot*> Turret::NextShots( GameObject *target, uint8_t firing_mode )
 		Shot *shot = new Shot();
 		shot->Copy( &gun );
 		shot->FiredFrom = ID;
+		shot->WeaponIndex = weapon_index;
 		shot->PlayerID = player_id;
 		shot->ShotType = Weapon;
 		shot->MotionVector.Set( shot->Fwd.X, shot->Fwd.Y, shot->Fwd.Z );

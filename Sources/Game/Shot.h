@@ -21,6 +21,7 @@ public:
 	bool Drawn;
 	
 	uint32_t FiredFrom;
+	uint8_t WeaponIndex;
 	uint32_t Seeking;
 	uint32_t SeekingSubsystem;
 	

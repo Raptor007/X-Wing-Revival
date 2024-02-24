@@ -18,6 +18,7 @@ Shot::Shot( uint32_t id ) : GameObject( id, XWing::Object::SHOT )
 {
 	ShotType = TYPE_LASER_RED;
 	FiredFrom = 0;
+	WeaponIndex = 0;
 	Seeking = 0;
 	SeekingSubsystem = 0;
 	Drawn = false;
@@ -331,7 +332,23 @@ bool Shot::CanCollideWithOtherTypes( void ) const
 
 void Shot::AddToInitPacket( Packet *packet, int8_t precision )
 {
-	// FIXME: Dirty hacks to transmit relative weapon position without changing packet contents!  Remove in v0.4?
+#ifdef FUTURE_NETCODE  // v0.4
+	
+	packet->AddFloat( X );
+	packet->AddFloat( Y );
+	packet->AddFloat( Z );
+	
+	packet->AddFloat( MotionVector.X );
+	packet->AddFloat( MotionVector.Y );
+	packet->AddFloat( MotionVector.Z );
+	
+	packet->AddUChar( ShotType );
+	packet->AddUInt( FiredFrom );
+	if( FiredFrom )
+		packet->AddUChar( WeaponIndex );
+	
+#else  // v0.3.x
+	
 	const GameObject *fired_from = FiredFrom ? Data->GetObject( FiredFrom ) : NULL;
 	Vec3D up( &Up );
 	double dist_along_fwd = 0.;
@@ -340,15 +357,15 @@ void Shot::AddToInitPacket( Packet *packet, int8_t precision )
 		dist_along_fwd = DistAlong( &Fwd, fired_from );
 		if( fired_from->Type() == XWing::Object::SHIP )
 		{
-			Pos3D weapon( this );
-			weapon.MoveAlong( &(fired_from->Fwd), dist_along_fwd * -1. );
-			if( weapon.Dist(fired_from) )
+			const Ship *ship = (const Ship*) fired_from;
+			if( ship->Class )
 			{
-				Up = (weapon - *fired_from).Unit();
-				Up.RotateAround( &Fwd, -90. );
+				std::map< uint8_t, std::vector<Pos3D> >::const_iterator weapon_iter = ship->Class->Weapons.find( ShotType );
+				if( (weapon_iter != ship->Class->Weapons.end()) && (WeaponIndex < weapon_iter->second.size()) )
+					Up = (ship->Up * weapon_iter->second.at( WeaponIndex ).Z - ship->Right * weapon_iter->second.at( WeaponIndex ).Y).Unit();
 			}
 		}
-		else if( (fired_from->Type() == XWing::Object::TURRET) && ((const Turret*)( fired_from ))->GunWidth && (DistAlong( &Right, fired_from ) < 0.) )
+		else if( (fired_from->Type() == XWing::Object::TURRET) && WeaponIndex )
 			Up.ScaleBy( -1. );
 	}
 	
@@ -359,22 +376,85 @@ void Shot::AddToInitPacket( Packet *packet, int8_t precision )
 	
 	if( FiredFrom )
 	{
-		packet->AddFloat( dist_along_fwd );  // FIXME: Replace with weapon index in v0.4 netcode?
+		dist_along_fwd -= 1.7;  // Hack for compatibility with older clients that had sloppier weapon positions.
+		packet->AddFloat( dist_along_fwd );
 		Up.Copy( &up );
 	}
+	
+#endif  // ! FUTURE_NETCODE
 }
 
 
 void Shot::ReadFromInitPacket( Packet *packet, int8_t precision )
 {
-	GameObject::ReadFromInitPacket( packet, -127 );
+#ifdef FUTURE_NETCODE  // v0.4
+	
+	X = packet->NextFloat();
+	Y = packet->NextFloat();
+	Z = packet->NextFloat();
+	
+	MotionVector.X = packet->NextFloat();
+	MotionVector.Y = packet->NextFloat();
+	MotionVector.Z = packet->NextFloat();
+	Fwd = MotionVector.Unit();
 	
 	ShotType = packet->NextUChar();
 	FiredFrom = packet->NextUInt();
 	
 	if( FiredFrom )
 	{
-		double dist_along_fwd = packet->NextFloat();  // FIXME: Replace with weapon index in v0.4 netcode?
+		WeaponIndex = packet->NextUChar();
+		
+		const GameObject *fired_from = Data->GetObject( FiredFrom );
+		if( fired_from )
+		{
+			Up.Copy( &(fired_from->Up) );
+			
+			if( fired_from->Type() == XWing::Object::TURRET )
+			{
+				// Make sure turret shots always appear to come from the turret, even if its position may be slightly mis-predicted.
+				const Turret *turret = (const Turret*) fired_from;
+				Pos3D gun = turret->GunPos();
+				Copy( &gun );
+				MoveAlong( &(gun.Fwd), 2.2 );
+				MoveAlong( &(gun.Right), (WeaponIndex % 2) ? (turret->GunWidth * -1.) : turret->GunWidth );
+			}
+			else
+			{
+				if( fired_from->Type() == XWing::Object::SHIP )
+				{
+					const Ship *ship = (const Ship*) fired_from;
+					if( ship->Class )
+					{
+						// Make sure ship shots appear to come from the ship's weapons.
+						std::map< uint8_t, std::vector<Pos3D> >::const_iterator weapon_iter = ship->Class->Weapons.find( ShotType );
+						if( (weapon_iter != ship->Class->Weapons.end()) && (WeaponIndex < weapon_iter->second.size()) )
+						{
+							SetPos( ship->X, ship->Y, ship->Z );
+							MoveAlong( &(ship->Fwd),   weapon_iter->second.at( WeaponIndex ).X );
+							MoveAlong( &(ship->Up),    weapon_iter->second.at( WeaponIndex ).Y );
+							MoveAlong( &(ship->Right), weapon_iter->second.at( WeaponIndex ).Z );
+						}
+					}
+				}
+			}
+		}
+	}
+	
+	FixVectors();
+	
+#else  // v0.3.x
+	
+	GameObject::ReadFromInitPacket( packet, -127 );
+	
+	ShotType = packet->NextUChar();
+	FiredFrom = packet->NextUInt();
+	
+	WeaponIndex = 255;
+	
+	if( FiredFrom )
+	{
+		double dist_along_fwd = packet->NextFloat();
 		
 		const GameObject *fired_from = Data->GetObject( FiredFrom );
 		if( fired_from )
@@ -384,21 +464,10 @@ void Shot::ReadFromInitPacket( Packet *packet, int8_t precision )
 				// Make sure turret shots always appear to come from the turret, even if its position may be slightly mis-predicted.
 				const Turret *turret = (const Turret*) fired_from;
 				Pos3D gun = turret->GunPos();
-				
-				if( turret->PlayerID == Raptor::Game->PlayerID )
-				{
-					Copy( &gun );
-					MoveAlong( &(gun.Fwd), 2.2 );
-				}
-				else
-				{
-					// Shots fired from someone else's turret should copy its position but not forward direction.
-					SetPos( gun.X, gun.Y, gun.Z );
-					MoveAlong( &(gun.Fwd), 2. );
-				}
-				
-				double right_dot = gun.Right.Dot( &Right ); // FIXME: Dirty hack to determine which side fired.
-				MoveAlong( &(gun.Right), turret->GunWidth * right_dot );
+				WeaponIndex = (gun.Right.Dot(&Right) >= 0.) ? 0 : 1;
+				Copy( &gun );
+				MoveAlong( &(gun.Fwd), 2.2 );
+				MoveAlong( &(gun.Right), WeaponIndex ? (turret->GunWidth * -1.) : turret->GunWidth );
 			}
 			else
 			{
@@ -412,33 +481,38 @@ void Shot::ReadFromInitPacket( Packet *packet, int8_t precision )
 						if( weapon_iter != ship->Class->Weapons.end() )
 						{
 							double best_dot = 0.5;  // Make sure ship's predicted rotation isn't too far off to guess the weapon index.
-							uint8_t weapon_index = 255;
 							for( uint8_t i = 0; i < (uint8_t) weapon_iter->second.size(); i ++ )
 							{
 								Vec3D to_weapon = ship->Up * weapon_iter->second.at( i ).Y + ship->Right * weapon_iter->second.at( i ).Z;
 								double dot = Right.Dot( &to_weapon );
 								if( dot > best_dot )
 								{
-									weapon_index = i;
+									WeaponIndex = i;
 									best_dot = dot;
 								}
 							}
-							if( weapon_index != 255 )
+							if( WeaponIndex != 255 )
 							{
 								SetPos( ship->X, ship->Y, ship->Z );
-								MoveAlong( &(ship->Up),    weapon_iter->second.at( weapon_index ).Y );
-								MoveAlong( &(ship->Right), weapon_iter->second.at( weapon_index ).Z );
+								MoveAlong( &(ship->Fwd),   weapon_iter->second.at( WeaponIndex ).X );
+								MoveAlong( &(ship->Up),    weapon_iter->second.at( WeaponIndex ).Y );
+								MoveAlong( &(ship->Right), weapon_iter->second.at( WeaponIndex ).Z );
 							}
 						}
 					}
 				}
-				
+			}
+			
+			if( WeaponIndex == 255 )
+			{
 				double current_dist_fwd = DistAlong( &Fwd, fired_from );
-				dist_along_fwd += 1.7;  // FIXME: Temporary hack to correct for sloppy gun placements in v0.3.x ship defs!
+				dist_along_fwd += 1.7;  // Hack for compatibility with older clients that had sloppier weapon positions.
 				MoveAlong( &Fwd, dist_along_fwd - current_dist_fwd );
 			}
 		}
 	}
+	
+#endif  // ! FUTURE_NETCODE
 }
 
 

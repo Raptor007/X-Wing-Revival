@@ -1,6 +1,6 @@
 ----------------------------------------
 |            X-Wing Revival            |
-|       0.3.4 Alpha (2024-02-07)       |
+|       0.3.5 Alpha (2024-02-24)       |
 |     by Raptor007 (Blair Sherman)     |
 | http://raptor007.com/x-wing-revival/ |
 ----------------------------------------
@@ -448,6 +448,13 @@ console commands to execute, such as "sv gametype yavin" or "sv rebel_fighter A/
 
 
 == VERSION HISTORY ==
+
+Alpha 0.3.5 (2024-02-24):
+ * Fixed VR bug that prevented objects from moving.
+ * Fixed "Shields Down" status on targets with full shields double-front/rear.
+ * Improved turret gunner targeting hologram and info, especially in VR mode.
+ * Cleaned up weapon placements on starfighters.
+ * Target Data-Link can no longer be used to target your own ship.
 
 Alpha 0.3.4 (2024-02-07):
  * Ships and turrets show charring around recent blastpoints.

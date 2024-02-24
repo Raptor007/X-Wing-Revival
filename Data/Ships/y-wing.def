@@ -18,14 +18,14 @@ recover 5
 recharge 4
 ramming 500
 explode 1
-weapon laser_red 0.2 0 4.5
-weapon laser_red -0.2 0 4.5
+weapon laser_red 0.2 0 7.6
+weapon laser_red -0.2 0 7.6
 firetime laser_red 0.25
-weapon ion_cannon 0.15 1.27 3.2
-weapon ion_cannon -0.15 1.27 3.2
+weapon ion_cannon 0.15 1.27 4.1
+weapon ion_cannon -0.15 1.27 4.1
 firetime ion_cannon 0.33
-weapon torpedo 0.8 -0.2 4.5
-weapon torpedo -0.8 -0.2 4.5
+weapon torpedo 0.7 -0.1 5
+weapon torpedo -0.7 -0.1 5
 firetime torpedo 1.5
 ammo torpedo 8
 engine 2.97 0.15 -4 engine_yellow.ani 0.5 1 1 1 0.75
