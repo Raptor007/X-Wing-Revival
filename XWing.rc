@@ -11,8 +11,8 @@ LANGUAGE 9, 1
 
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 0,3,5,0
- PRODUCTVERSION 0,3,5,0
+ FILEVERSION 0,4,0,0
+ PRODUCTVERSION 0,4,0,0
  FILEFLAGSMASK 0x17L
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -30,12 +30,12 @@ BEGIN
             VALUE "Comments", "raptor007.com/x-wing-revival"
             VALUE "CompanyName", "Raptor007"
             VALUE "FileDescription", "X-Wing Revival"
-            VALUE "FileVersion", "0.3.5 Alpha"
+            VALUE "FileVersion", "0.4 Alpha"
             VALUE "InternalName", "X-Wing Revival"
             VALUE "LegalCopyright", "Written by Raptor007, 2011-2024"
             VALUE "OriginalFilename", "X-Wing Revival.exe"
             VALUE "ProductName", "X-Wing Revival"
-            VALUE "ProductVersion", "0.3.5 Alpha"
+            VALUE "ProductVersion", "0.4 Alpha"
         END
     END
 	BLOCK "VarFileInfo"

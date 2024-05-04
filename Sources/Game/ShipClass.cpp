@@ -8,9 +8,9 @@
 #include "RaptorGame.h"
 #include "Shot.h"
 #include "Str.h"
+#include "Num.h"
 #include <fstream>
 #include <algorithm>
-#include "Num.h"
 
 
 ShipClass::ShipClass( uint32_t id ) : GameObject( id, XWing::Object::SHIP_CLASS )
@@ -43,6 +43,7 @@ ShipClass::ShipClass( uint32_t id ) : GameObject( id, XWing::Object::SHIP_CLASS 
 	TurretGunFwd = 0.022 * 50.;
 	TurretHeadUp = 2.;
 	TurretHeadFwd = 5.;
+	Dockable = false;
 	GlanceUpFwd = 85.;
 	GlanceUpBack = 20.;
 	ModelScale = 1.;
@@ -108,6 +109,7 @@ ShipClass::ShipClass( const ShipClass &other ) : GameObject( 0, XWing::Object::S
 	GlanceUpFwd  = other.GlanceUpFwd;
 	GlanceUpBack = other.GlanceUpBack;
 	DockingBays = other.DockingBays;
+	Dockable = other.Dockable;
 	Engines = other.Engines;
 	ModelScale = other.ModelScale;
 	Shape.BecomeCopy( &(other.Shape) );
@@ -196,6 +198,8 @@ bool ShipClass::Load( const std::string &filename )
 				Category = CATEGORY_GUNBOAT;
 			else if( category == "bomber" )
 				Category = CATEGORY_BOMBER;
+			else if( category == "transport" )
+				Category = CATEGORY_TRANSPORT;
 			else if( category == "capital" )
 				Category = CATEGORY_CAPITAL;
 			else if( category == "target" )
@@ -482,6 +486,7 @@ bool ShipClass::Load( const std::string &filename )
 			double up    = atof( args.at(1).c_str() );
 			double fwd   = atof( args.at(2).c_str() );
 			DockingBays.push_back( ShipClassDockingBay( fwd, up, right ) );
+			Dockable = true;
 			if( args.size() >= 4 )
 				DockingBays.back().Radius = atof( args.at(3).c_str() );
 		}
@@ -568,7 +573,12 @@ void ShipClass::AddToInitPacket( Packet *packet, int8_t precision )
 {
 	packet->AddString( ShortName );
 	packet->AddString( LongName );
-	packet->AddUChar( Secret ? (Category | 0x80) : Category );
+	uint8_t category_and_flags = Category;
+	if( Secret )
+		category_and_flags |= 0x80;
+	if( Dockable )
+		category_and_flags |= 0x40;
+	packet->AddUChar( category_and_flags );
 	packet->AddUChar( Team );
 	packet->AddFloat( Radius );
 	packet->AddFloat( MaxSpeed );
@@ -609,6 +619,9 @@ void ShipClass::AddToInitPacket( Packet *packet, int8_t precision )
 		
 		std::map<uint8_t,int8_t>::const_iterator ammo_iter = Ammo.find( weapon_iter->first );
 		packet->AddChar( (ammo_iter != Ammo.end()) ? ammo_iter->second : -1 );
+		
+		std::map<uint8_t,double>::const_iterator rate_iter = FireTime.find( weapon_iter->first );
+		packet->AddFloat( (rate_iter != FireTime.end()) ? rate_iter->second : 0.f );
 		
 		packet->AddUChar( weapon_iter->second.size() );
 		for( size_t i = 0; i < weapon_iter->second.size(); i ++ )
@@ -684,8 +697,9 @@ void ShipClass::ReadFromInitPacket( Packet *packet, int8_t precision )
 	ShortName           = packet->NextString();
 	LongName            = packet->NextString();
 	Category            = packet->NextUChar();
-	Secret = Category & 0x80;
-	Category &= 0x7F;
+	Secret   = Category & 0x80;
+	Dockable = Category & 0x40;
+	Category &= 0x3F;
 	Team                = packet->NextUChar();
 	Radius              = packet->NextFloat();
 	MaxSpeed            = packet->NextFloat();
@@ -725,6 +739,10 @@ void ShipClass::ReadFromInitPacket( Packet *packet, int8_t precision )
 		uint8_t weapon_id = packet->NextUInt();
 		
 		Ammo[ weapon_id ] = packet->NextChar();
+		
+		double fire_time = packet->NextFloat();
+		if( fire_time )
+			FireTime[ weapon_id ] = fire_time;
 		
 		size_t weapon_count = packet->NextUChar();
 		Weapons[ weapon_id ] = std::vector<Pos3D>();

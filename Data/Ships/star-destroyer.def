@@ -16,7 +16,7 @@ ramming 500000
 explode 0.015
 subsystem ShieldGenerator1 1599
 subsystem ShieldGenerator2 1599
-subsystem CriticalBridge1 94
+subsystem CriticalBridge1 59
 subsystem CriticalBridge2 94
 subsystem CriticalBridge3 94
 firetime turbolaser 0.57

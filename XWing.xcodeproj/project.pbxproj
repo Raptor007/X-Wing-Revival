@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		2C05598929F3B821009CF3A4 /* FleetMenu.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2C05598729F3B81F009CF3A4 /* FleetMenu.cpp */; };
 		2C27177417501FFE005CCFF4 /* xwing128.icns in Resources */ = {isa = PBXBuildFile; fileRef = 2C27177317501FFE005CCFF4 /* xwing128.icns */; };
+		2C53CE912BE05ACF007F7E8C /* Mission.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2C53CE8F2BE05ACF007F7E8C /* Mission.cpp */; };
 		2C814FFB29DD27F600AE7B00 /* InputManager.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2C814FF929DD27F600AE7B00 /* InputManager.cpp */; };
 		2C814FFE29DD282000AE7B00 /* strtok_r.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2C814FFC29DD282000AE7B00 /* strtok_r.cpp */; };
 		2C81500129DD283C00AE7B00 /* Randomizer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2C814FFF29DD283C00AE7B00 /* Randomizer.cpp */; };
@@ -127,6 +128,8 @@
 		2C05598729F3B81F009CF3A4 /* FleetMenu.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = FleetMenu.cpp; sourceTree = "<group>"; };
 		2C05598829F3B821009CF3A4 /* FleetMenu.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FleetMenu.h; sourceTree = "<group>"; };
 		2C27177317501FFE005CCFF4 /* xwing128.icns */ = {isa = PBXFileReference; lastKnownFileType = image.icns; path = xwing128.icns; sourceTree = "<group>"; };
+		2C53CE8F2BE05ACF007F7E8C /* Mission.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Mission.cpp; sourceTree = "<group>"; };
+		2C53CE902BE05ACF007F7E8C /* Mission.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Mission.h; sourceTree = "<group>"; };
 		2C814FF929DD27F600AE7B00 /* InputManager.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = InputManager.cpp; sourceTree = "<group>"; };
 		2C814FFA29DD27F600AE7B00 /* InputManager.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = InputManager.h; sourceTree = "<group>"; };
 		2C814FFC29DD282000AE7B00 /* strtok_r.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = strtok_r.cpp; sourceTree = "<group>"; };
@@ -429,6 +432,8 @@
 				2CD2DD1A191D6D08003E46AA /* DeathStarBox.h */,
 				2CCB58F02B745B5F00A8B03A /* DockingBay.cpp */,
 				2CCB58F12B745B5F00A8B03A /* DockingBay.h */,
+				2C53CE8F2BE05ACF007F7E8C /* Mission.cpp */,
+				2C53CE902BE05ACF007F7E8C /* Mission.h */,
 				2CD2DD1B191D6D08003E46AA /* RenderLayer.cpp */,
 				2CD2DD1C191D6D08003E46AA /* RenderLayer.h */,
 				2CD2DD1D191D6D08003E46AA /* Ship.cpp */,
@@ -870,6 +875,7 @@
 				2CAACE972AEA7CEC0049807F /* Checkpoint.cpp in Sources */,
 				2CCB58EF2B745B5400A8B03A /* BlastableObject.cpp in Sources */,
 				2CCB58F22B745B5F00A8B03A /* DockingBay.cpp in Sources */,
+				2C53CE912BE05ACF007F7E8C /* Mission.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

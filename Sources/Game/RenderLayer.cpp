@@ -28,20 +28,6 @@
 #endif
 
 
-enum
-{
-	VIEW_AUTO = 0,
-	VIEW_COCKPIT,
-	VIEW_GUNNER,
-	VIEW_CHASE,
-	VIEW_CINEMA,
-	VIEW_FIXED,
-	VIEW_STATIONARY,
-	VIEW_INSTRUMENTS,
-	VIEW_CYCLE
-};
-
-
 RenderLayer::RenderLayer( void )
 {
 	Rect.x = 0;
@@ -416,29 +402,31 @@ void RenderLayer::Draw( void )
 {
 	glPushMatrix();
 	
+	XWingGame *game = (XWingGame*) Raptor::Game;
+	
 	
 	// Update the 2D drawable area.
 	
 	Rect.x = 0;
 	Rect.y = 0;
-	Rect.w = Raptor::Game->Gfx.W;
-	Rect.h = Raptor::Game->Gfx.H;
+	Rect.w = game->Gfx.W;
+	Rect.h = game->Gfx.H;
 	
-	bool vr = Raptor::Game->Head.VR && Raptor::Game->Gfx.DrawTo;
+	bool vr = game->Head.VR && game->Gfx.DrawTo;
 	if( vr )
 	{
-		Rect.x = Raptor::Game->Gfx.W/2 - 640/2;
-		Rect.y = Raptor::Game->Gfx.H/2 - 480/2;
+		Rect.x = game->Gfx.W/2 - 640/2;
+		Rect.y = game->Gfx.H/2 - 480/2;
 		Rect.w = 640;
 		Rect.h = 480;
 	}
 	
-	bool screensaver = Raptor::Game->Cfg.SettingAsBool("screensaver") || Raptor::Game->Cfg.SettingAsBool("cinematic");
+	bool screensaver = game->Cfg.SettingAsBool("screensaver") || game->Cfg.SettingAsBool("cinematic");
 	
 	
 	// Update contained elements.
 	
-	if( Raptor::Game->Console.IsActive() )
+	if( game->Console.IsActive() )
 	{
 		Selected = NULL;
 		MessageInput->Visible = false;
@@ -459,8 +447,8 @@ void RenderLayer::Draw( void )
 	
 	if( IsTop() )
 	{
-		Raptor::Game->Mouse.ShowCursor = false;
-		((XWingGame*)( Raptor::Game ))->ReadMouse = (Raptor::Game->Cfg.SettingAsString("mouse_mode") != "disabled");
+		game->Mouse.ShowCursor = false;
+		game->ReadMouse = (game->Cfg.SettingAsString("mouse_mode") != "disabled");
 	}
 	
 	
@@ -474,7 +462,7 @@ void RenderLayer::Draw( void )
 	std::list<Shot*> shots;
 	std::list<Asteroid*> asteroids;
 	DeathStar *deathstar = NULL;
-	for( std::map<uint32_t,GameObject*>::iterator obj_iter = Raptor::Game->Data.GameObjects.begin(); obj_iter != Raptor::Game->Data.GameObjects.end(); obj_iter ++ )
+	for( std::map<uint32_t,GameObject*>::iterator obj_iter = game->Data.GameObjects.begin(); obj_iter != game->Data.GameObjects.end(); obj_iter ++ )
 	{
 		if( obj_iter->second->Type() == XWing::Object::SHIP )
 			ships.push_back( (Ship*) obj_iter->second );
@@ -487,13 +475,13 @@ void RenderLayer::Draw( void )
 		else if( obj_iter->second->Type() == XWing::Object::TURRET )
 		{
 			turrets.push_back( (Turret*) obj_iter->second );
-			if( obj_iter->second->PlayerID == Raptor::Game->PlayerID )
+			if( obj_iter->second->PlayerID == game->PlayerID )
 				player_turret = (Turret*) obj_iter->second;
 		}
 	}
 	
 	std::list<Effect*> effects;
-	for( std::list<Effect>::iterator effect_iter = Raptor::Game->Data.Effects.begin(); effect_iter != Raptor::Game->Data.Effects.end(); effect_iter ++ )
+	for( std::list<Effect>::iterator effect_iter = game->Data.Effects.begin(); effect_iter != game->Data.Effects.end(); effect_iter ++ )
 	{
 		if( effect_iter->Lifetime.Progress() >= 1. )  // Don't use effects that haven't started yet as light sources.
 			effects.push_back( &*effect_iter );
@@ -505,7 +493,7 @@ void RenderLayer::Draw( void )
 	Ship *observed_ship = NULL;
 	Ship *player_ship = NULL;
 	Turret *observed_turret = NULL;
-	int view = VIEW_AUTO;
+	game->View = XWing::View::AUTO;
 	
 	if( player_turret )
 	{
@@ -514,7 +502,7 @@ void RenderLayer::Draw( void )
 		observed_turret = player_turret;
 		player_ship = player_turret->ParentShip();
 		observed_ship = player_ship;
-		view = VIEW_GUNNER;
+		game->View = XWing::View::GUNNER;
 	}
 	else
 	{
@@ -522,7 +510,7 @@ void RenderLayer::Draw( void )
 		
 		for( std::list<Ship*>::iterator ship_iter = ships.begin(); ship_iter != ships.end(); ship_iter ++ )
 		{
-			if( (*ship_iter)->PlayerID == Raptor::Game->PlayerID )
+			if( (*ship_iter)->PlayerID == game->PlayerID )
 			{
 				player_ship = *ship_iter;
 				
@@ -530,7 +518,7 @@ void RenderLayer::Draw( void )
 				if( (player_ship->Health > 0.) || (player_ship->DeathClock.ElapsedSeconds() < 6.) )
 				{
 					observed_ship = player_ship;
-					view = VIEW_COCKPIT;
+					game->View = XWing::View::COCKPIT;
 				}
 				break;
 			}
@@ -540,34 +528,36 @@ void RenderLayer::Draw( void )
 	
 	// Determine the selected view.
 	
-	std::string view_str = Raptor::Game->Cfg.SettingAsString( ((view == VIEW_COCKPIT) || (view == VIEW_GUNNER)) ? "view" : "spectator_view" );
+	std::string view_str = game->Cfg.SettingAsString( ((game->View == XWing::View::COCKPIT) || (game->View == XWing::View::GUNNER)) ? "view" : "spectator_view" );
 	if( view_str == "auto" )
-		view_str = Raptor::Game->Cfg.SettingAsString("view");  // If spectator_view is auto but view is not, use view.
+		view_str = game->Cfg.SettingAsString("view");  // If spectator_view is auto but view is not, use view.
 	if( view_str == "cockpit" )
-		view = VIEW_COCKPIT;
+		game->View = XWing::View::COCKPIT;
 	else if( view_str == "gunner" )
-		view = VIEW_GUNNER;
-	else if( view_str == "crosshair" )
-		view = observed_turret ? VIEW_GUNNER : VIEW_COCKPIT;
+		game->View = XWing::View::GUNNER;
+	else if( (view_str == "crosshair") || (view_str == "padlock") )
+		game->View = observed_turret ? XWing::View::GUNNER : XWing::View::COCKPIT;
+	else if( view_str == "selfie" )
+		game->View = XWing::View::SELFIE;
 	else if( view_str == "chase" )
-		view = VIEW_CHASE;
+		game->View = XWing::View::CHASE;
 	else if( Str::BeginsWith( view_str, "cinema" ) )
-		view = VIEW_CINEMA;
+		game->View = XWing::View::CINEMA;
 	else if( view_str == "fixed" )
-		view = VIEW_FIXED;
+		game->View = XWing::View::FIXED;
 	else if( view_str == "stationary" )
-		view = VIEW_STATIONARY;
+		game->View = XWing::View::STATIONARY;
 	else if( view_str == "instruments" )
-		view = VIEW_INSTRUMENTS;
+		game->View = XWing::View::INSTRUMENTS;
 	else if( view_str == "cycle" )
-		view = VIEW_CYCLE;
+		game->View = XWing::View::CYCLE;
 	
 	if( ! (observed_ship || observed_turret) )
 	{
 		// This player has no ship or turret alive; let's watch somebody else.
 		// FIXME: Refactor the huge mess below into a single loop to find the best ship to observe.
 		
-		Player *player = Raptor::Game->Data.GetPlayer( Raptor::Game->PlayerID );
+		Player *player = game->Data.GetPlayer( game->PlayerID );
 		uint8_t player_team = XWing::Team::NONE;
 		uint8_t player_group = 0;
 		
@@ -585,18 +575,18 @@ void RenderLayer::Draw( void )
 			player_group = player->PropertyAsInt("group",player_group);
 		
 		// First try to observe a specific ship ID (who we were watching before).
-		if( ((XWingGame*)( Raptor::Game ))->ObservedShipID )
+		if( game->ObservedShipID )
 		{
 			for( std::list<Ship*>::iterator ship_iter = ships.begin(); ship_iter != ships.end(); ship_iter ++ )
 			{
-				// Don't spectate the Death Star exhaust port or any long-dead ships.
+				// Don't spectate the Death Star exhaust port or any long-dead or jumped-out ships.
 				if( (*ship_iter)->Category() == ShipClass::CATEGORY_TARGET )
 					continue;
-				if( ((*ship_iter)->Health <= 0.) && ((*ship_iter)->DeathClock.ElapsedSeconds() >= 6.) && (view != VIEW_INSTRUMENTS) )
+				if( ( (((*ship_iter)->Health <= 0.) && ((*ship_iter)->DeathClock.ElapsedSeconds() >= 6.)) || ((*ship_iter)->JumpedOut && ((*ship_iter)->JumpProgress >= 1.)) ) && (game->View != XWing::View::INSTRUMENTS) )
 					continue;
 				
 				// If we'd selected a specific ship to watch, keep going until we find it.
-				if( (*ship_iter)->ID == ((XWingGame*)( Raptor::Game ))->ObservedShipID )
+				if( (*ship_iter)->ID == game->ObservedShipID )
 				{
 					observed_ship = *ship_iter;
 					break;
@@ -609,10 +599,10 @@ void RenderLayer::Draw( void )
 		{
 			for( std::list<Ship*>::iterator ship_iter = ships.begin(); ship_iter != ships.end(); ship_iter ++ )
 			{
-				// Don't spectate the Death Star exhaust port or any long-dead ships.
+				// Don't spectate the Death Star exhaust port or any long-dead or jumped-out ships.
 				if( (*ship_iter)->Category() == ShipClass::CATEGORY_TARGET )
 					continue;
-				if( ((*ship_iter)->Health <= 0.) && ((*ship_iter)->DeathClock.ElapsedSeconds() >= 6.) && (view != VIEW_INSTRUMENTS) )
+				if( ( (((*ship_iter)->Health <= 0.) && ((*ship_iter)->DeathClock.ElapsedSeconds() >= 6.)) || ((*ship_iter)->JumpedOut && ((*ship_iter)->JumpProgress >= 1.)) ) && (game->View != XWing::View::INSTRUMENTS) )
 					continue;
 				
 				// If our flight group has other player-controlled ships, watch them.
@@ -629,10 +619,10 @@ void RenderLayer::Draw( void )
 		{
 			for( std::list<Ship*>::iterator ship_iter = ships.begin(); ship_iter != ships.end(); ship_iter ++ )
 			{
-				// Don't spectate the Death Star exhaust port or any long-dead ships.
+				// Don't spectate the Death Star exhaust port or any long-dead or jumped-out ships.
 				if( (*ship_iter)->Category() == ShipClass::CATEGORY_TARGET )
 					continue;
-				if( ((*ship_iter)->Health <= 0.) && ((*ship_iter)->DeathClock.ElapsedSeconds() >= 6.) && (view != VIEW_INSTRUMENTS) )
+				if( ( (((*ship_iter)->Health <= 0.) && ((*ship_iter)->DeathClock.ElapsedSeconds() >= 6.)) || ((*ship_iter)->JumpedOut && ((*ship_iter)->JumpProgress >= 1.)) ) && (game->View != XWing::View::INSTRUMENTS) )
 					continue;
 				
 				// If our flight group has other ships, watch them.
@@ -653,12 +643,12 @@ void RenderLayer::Draw( void )
 				if( (*ship_iter)->Category() == ShipClass::CATEGORY_TARGET )
 					continue;
 				
-				// Don't start observing dead ships.
-				if( (*ship_iter)->Health <= 0. )
+				// Don't start observing dead or jumped-out ships.
+				if( ((*ship_iter)->Health <= 0.) || (*ship_iter)->JumpedOut )
 					continue;
 				
 				// If we'd selected a specific ship to watch, keep going until we find it.
-				if( ((*ship_iter)->Team == player_team) && ((*ship_iter)->ID >= ((XWingGame*)( Raptor::Game ))->ObservedShipID) )
+				if( ((*ship_iter)->Team == player_team) && ((*ship_iter)->ID >= game->ObservedShipID) )
 				{
 					observed_ship = *ship_iter;
 					break;
@@ -675,8 +665,8 @@ void RenderLayer::Draw( void )
 				if( (*ship_iter)->Category() == ShipClass::CATEGORY_TARGET )
 					continue;
 				
-				// Don't start observing dead ships.
-				if( (*ship_iter)->Health <= 0. )
+				// Don't start observing dead or jumped-out ships.
+				if( ((*ship_iter)->Health <= 0.) || (*ship_iter)->JumpedOut )
 					continue;
 				
 				// If our team has other ships, watch them.
@@ -693,10 +683,10 @@ void RenderLayer::Draw( void )
 		{
 			for( std::list<Ship*>::iterator ship_iter = ships.begin(); ship_iter != ships.end(); ship_iter ++ )
 			{
-				// Don't spectate the Death Star exhaust port or any long-dead ships.
+				// Don't spectate the Death Star exhaust port or any long-dead or jumped-out ships.
 				if( (*ship_iter)->Category() == ShipClass::CATEGORY_TARGET )
 					continue;
-				if( ((*ship_iter)->Health <= 0.) && ((*ship_iter)->DeathClock.ElapsedSeconds() >= 6.) && (view != VIEW_INSTRUMENTS) )
+				if( ( (((*ship_iter)->Health <= 0.) && ((*ship_iter)->DeathClock.ElapsedSeconds() >= 6.)) || ((*ship_iter)->JumpedOut && ((*ship_iter)->JumpProgress >= 1.)) ) && (game->View != XWing::View::INSTRUMENTS) )
 					continue;
 				
 				// If our team has other ships, watch them.
@@ -717,12 +707,12 @@ void RenderLayer::Draw( void )
 				if( (*ship_iter)->Category() == ShipClass::CATEGORY_TARGET )
 					continue;
 				
-				// Don't observe dead ships.
-				if( (*ship_iter)->Health <= 0. )
+				// Don't observe dead or jumped-out ships.
+				if( ((*ship_iter)->Health <= 0.) || (*ship_iter)->JumpedOut )
 					continue;
 				
 				// If we'd selected a specific ship to watch, keep going until we find it.
-				if( ((*ship_iter)->ID >= ((XWingGame*)( Raptor::Game ))->ObservedShipID) && (*ship_iter)->PlayersCanFly() )
+				if( ((*ship_iter)->ID >= game->ObservedShipID) && (*ship_iter)->PlayersCanFly() )
 				{
 					observed_ship = *ship_iter;
 					break;
@@ -739,8 +729,8 @@ void RenderLayer::Draw( void )
 				if( (*ship_iter)->Category() == ShipClass::CATEGORY_TARGET )
 					continue;
 				
-				// Don't observe dead ships.
-				if( (*ship_iter)->Health <= 0. )
+				// Don't observe dead or jumped-out ships.
+				if( ((*ship_iter)->Health <= 0.) || (*ship_iter)->JumpedOut )
 					continue;
 				
 				// If this is not a capital ship, observe it.
@@ -761,8 +751,8 @@ void RenderLayer::Draw( void )
 				if( (*ship_iter)->Category() == ShipClass::CATEGORY_TARGET )
 					continue;
 				
-				// Don't observe dead ships.
-				if( (*ship_iter)->Health <= 0. )
+				// Don't observe dead or jumped-out ships.
+				if( ((*ship_iter)->Health <= 0.) || (*ship_iter)->JumpedOut )
 					continue;
 				
 				observed_ship = *ship_iter;
@@ -779,8 +769,8 @@ void RenderLayer::Draw( void )
 				if( (*ship_iter)->Category() == ShipClass::CATEGORY_TARGET )
 					continue;
 				
-				// Don't observe long-dead ships.
-				if( ((*ship_iter)->Health <= 0.) && ((*ship_iter)->DeathClock.ElapsedSeconds() >= 6.) && (view != VIEW_INSTRUMENTS) )
+				// Don't observe long-dead or jumped-out ships.
+				if( ( (((*ship_iter)->Health <= 0.) && ((*ship_iter)->DeathClock.ElapsedSeconds() >= 6.)) || ((*ship_iter)->JumpedOut && ((*ship_iter)->JumpProgress >= 1.)) ) && (game->View != XWing::View::INSTRUMENTS) )
 					continue;
 				
 				observed_ship = *ship_iter;
@@ -790,31 +780,35 @@ void RenderLayer::Draw( void )
 	}
 	
 	
-	if( view == VIEW_CYCLE )
+	if( game->View == XWing::View::CYCLE )
 	{
-		double cycle_time = Raptor::Game->Cfg.SettingAsDouble("view_cycle_time",7.);
+		double cycle_time = game->Cfg.SettingAsDouble("view_cycle_time",7.);
 		if( cycle_time <= 0. )
 			cycle_time = 7.;
 		
-		double cam_picker = observed_ship ? fmod( observed_ship->Lifetime.ElapsedSeconds(), cycle_time * 5. * Raptor::Game->Data.TimeScale ) : fmod( PlayTime.ElapsedSeconds(), cycle_time * 5. );
+		double cam_picker = observed_ship ? fmod( observed_ship->Lifetime.ElapsedSeconds(), cycle_time * 5. ) : fmod( PlayTime.ElapsedSeconds(), cycle_time * 7. );
 		if( cam_picker < cycle_time )
-			view = VIEW_CINEMA;
+			game->View = XWing::View::CINEMA;
 		else if( cam_picker < cycle_time * 2. )
-			view = (observed_ship && (observed_ship->Category() == ShipClass::CATEGORY_CAPITAL) && observed_ship->AttachedTurret()) ? VIEW_GUNNER : VIEW_COCKPIT;
+			game->View = (observed_ship && (observed_ship->Category() == ShipClass::CATEGORY_CAPITAL) && observed_ship->AttachedTurret()) ? XWing::View::GUNNER : XWing::View::COCKPIT;
 		else if( cam_picker < cycle_time * 3. )
-			view = (observed_ship && observed_ship->Category() == ShipClass::CATEGORY_CAPITAL) ? VIEW_CINEMA : VIEW_CHASE;
+			game->View = (observed_ship && (observed_ship->Category() == ShipClass::CATEGORY_CAPITAL)) ? XWing::View::FIXED : XWing::View::SELFIE;
 		else if( cam_picker < cycle_time * 4. )
-			view = VIEW_FIXED;
+			game->View = (observed_ship && (observed_ship->Category() == ShipClass::CATEGORY_CAPITAL)) ? XWing::View::CINEMA : XWing::View::CHASE;
+		else if( cam_picker < cycle_time * 5. )
+			game->View = (observed_ship && observed_ship->AttachedTurret()) ? XWing::View::GUNNER : XWing::View::COCKPIT;
+		else if( cam_picker < cycle_time * 6. )
+			game->View = XWing::View::CINEMA;
 		else
-			view = (observed_ship && observed_ship->AttachedTurret()) ? VIEW_GUNNER : VIEW_CHASE;
+			game->View = (observed_ship && observed_ship->AttachedTurret()) ? XWing::View::GUNNER : XWing::View::FIXED;
 	}
 	
 	
-	if( (view == VIEW_GUNNER) && ! player_turret )
+	if( (game->View == XWing::View::GUNNER) && ! player_turret )
 	{
 		// Spectating from gunner view.  Find a turret to watch.
 		
-		const Player *me = Raptor::Game->Data.GetPlayer( Raptor::Game->PlayerID );
+		const Player *me = game->Data.GetPlayer( game->PlayerID );
 		uint8_t my_team = XWing::Team::NONE;
 		std::string team_str = me->PropertyAsString("team");
 		if( team_str == "Rebel" )
@@ -845,7 +839,7 @@ void RenderLayer::Draw( void )
 				score += std::min<int>( 0x000000FF, std::max<int>( 0, height ) );
 			}
 			
-			if( parent_id == ((XWingGame*)( Raptor::Game ))->ObservedShipID )
+			if( parent_id == game->ObservedShipID )
 				score += 0x01000000;
 			
 			if( turret->Team == my_team )
@@ -889,27 +883,27 @@ void RenderLayer::Draw( void )
 		}
 		
 		if( (observed_ship && (observed_ship->Health < 0.))
-		||  (player_ship && (observed_turret->ParentShip() != player_ship)) )
+		||  (observed_turret && player_ship && (observed_turret->ParentShip() != player_ship)) )
 			observed_turret = NULL;
 		
 		if( observed_turret )
 			observed_ship = observed_turret->ParentShip();
 		else
-			view = observed_ship ? VIEW_CHASE : VIEW_AUTO;
+			game->View = observed_ship ? XWing::View::CHASE : XWing::View::AUTO;
 	}
 	
 	
 	// Determine which view we'll actually render.
 	
-	if( view == VIEW_AUTO )
-		view = vr ? VIEW_FIXED : VIEW_CINEMA;
+	if( game->View == XWing::View::AUTO )
+		game->View = vr ? XWing::View::FIXED : XWing::View::CINEMA;
 	
-	if( (view == VIEW_COCKPIT) && ((! observed_ship) || (observed_ship->Health <= 0.)) )
-		view = (observed_turret && ! observed_ship) ? VIEW_GUNNER : VIEW_CHASE;
-	else if( (view == VIEW_GUNNER) && ! observed_turret )
-		view = VIEW_CHASE;
+	if( (game->View == XWing::View::COCKPIT) && ((! observed_ship) || (observed_ship->Health <= 0.)) )
+		game->View = (observed_turret && ! observed_ship) ? XWing::View::GUNNER : XWing::View::CHASE;
+	else if( (game->View == XWing::View::GUNNER) && ! observed_turret )
+		game->View = XWing::View::CHASE;
 	
-	if( view == VIEW_STATIONARY )
+	if( game->View == XWing::View::STATIONARY )
 	{
 		observed_ship = NULL;
 		observed_turret = NULL;
@@ -921,17 +915,20 @@ void RenderLayer::Draw( void )
 	Ship *target = NULL;
 	Ship *dead_target = NULL;
 	double jump_progress = 2.;
+	bool jumped_out = false, in_hyperspace = false;
 	
 	
 	if( observed_ship )
 	{
-		((XWingGame*)( Raptor::Game ))->ObservedShipID = observed_ship->ID;
+		game->ObservedShipID = observed_ship->ID;
 		
 		jump_progress = observed_ship->JumpProgress;
+		jumped_out    = observed_ship->JumpedOut;
+		in_hyperspace = jumped_out ? (jump_progress > 1.) : (jump_progress < 0.);
 		
 		if( observed_ship->Target )
 		{
-			target_obj = Raptor::Game->Data.GetObject( observed_ship->Target );
+			target_obj = game->Data.GetObject( observed_ship->Target );
 			if( target_obj && (target_obj->Type() == XWing::Object::SHIP) )
 			{
 				target = (Ship*) target_obj;
@@ -946,7 +943,7 @@ void RenderLayer::Draw( void )
 		
 		
 		Ship *cinema_view_with = NULL;
-		if( view == VIEW_CINEMA )
+		if( game->View == XWing::View::CINEMA )
 		{
 			double best = 0.;
 			
@@ -989,13 +986,18 @@ void RenderLayer::Draw( void )
 			}
 			
 			if( ! cinema_view_with )
-				view = VIEW_FIXED;
+				game->View = XWing::View::FIXED;
 		}
 		
 		
-		if( view == VIEW_COCKPIT )
+		if( game->View == XWing::View::COCKPIT )
 			Cam = observed_ship->HeadPos();
-		else if( (view == VIEW_GUNNER) && observed_turret )
+		else if( game->View == XWing::View::SELFIE )
+		{
+			Cam = observed_ship->HeadPos();
+			Cam.RotateAround( &(observed_ship->Up), 180. );
+		}
+		else if( (game->View == XWing::View::GUNNER) && observed_turret )
 		{
 			observed_turret->UpdatePos();
 			Cam = observed_turret->HeadPos();
@@ -1003,7 +1005,7 @@ void RenderLayer::Draw( void )
 		else
 		{
 			Cam.Copy( observed_ship );
-			if( view == VIEW_CHASE )
+			if( game->View == XWing::View::CHASE )
 			{
 				Cam.Yaw  ( observed_ship->YawRate   * -0.045 );
 				Cam.Pitch( observed_ship->PitchRate * -0.025 );
@@ -1011,7 +1013,17 @@ void RenderLayer::Draw( void )
 			}
 		}
 		
-		if( view == VIEW_FIXED )
+		if( (view_str == "padlock") && (observed_ship->Health > 0.) )
+		{
+			GameObject *target_obj = Raptor::Game->Data.GetObject( observed_turret ? observed_turret->Target : observed_ship->Target );
+			if( target_obj )
+			{
+				Cam.Fwd = (((target && observed_ship->TargetSubsystem) ? target->TargetCenter( observed_ship->TargetSubsystem ) : *target_obj) - *observed_ship).Unit();
+				Cam.FixVectors();
+			}
+		}
+		
+		if( game->View == XWing::View::FIXED )
 		{
 			// Fixed-angle external camera.
 			Cam.Fwd.Set( 1., 0., 0. );
@@ -1020,10 +1032,10 @@ void RenderLayer::Draw( void )
 		}
 		
 		// Apply camera angle change.
-		Cam.Yaw( ((XWingGame*)( Raptor::Game ))->LookYaw );
-		Cam.Pitch( ((XWingGame*)( Raptor::Game ))->LookPitch );
+		Cam.Yaw( game->LookYaw );
+		Cam.Pitch( game->LookPitch );
 		
-		if( view == VIEW_CINEMA )
+		if( game->View == XWing::View::CINEMA )
 		{
 			// Cinematic camera.
 			
@@ -1035,8 +1047,8 @@ void RenderLayer::Draw( void )
 			Cam.FixVectors();
 			
 			// Apply camera angle change.
-			Cam.Yaw( ((XWingGame*)( Raptor::Game ))->LookYaw );
-			Cam.Pitch( ((XWingGame*)( Raptor::Game ))->LookPitch );
+			Cam.Yaw( game->LookYaw );
+			Cam.Pitch( game->LookPitch );
 			
 			// Move camera back from the ship, moreso when jumping in from hyperspace.
 			double camera_dist = -30. - observed_ship->Shape.GetTriagonal();
@@ -1073,11 +1085,11 @@ void RenderLayer::Draw( void )
 			}
 			
 			// Apply camera angle change again.
-			Cam.Yaw( ((XWingGame*)( Raptor::Game ))->LookYaw );
-			Cam.Pitch( ((XWingGame*)( Raptor::Game ))->LookPitch );
+			Cam.Yaw( game->LookYaw );
+			Cam.Pitch( game->LookPitch );
 		}
 		
-		else if( (view == VIEW_CHASE) || (view == VIEW_FIXED) )
+		else if( (game->View == XWing::View::CHASE) || (game->View == XWing::View::FIXED) )
 		{
 			// Move camera back from the ship, moreso when dead or jumping in from hyperspace.
 			double camera_dist = -20. - observed_ship->Shape.GetTriagonal();
@@ -1116,16 +1128,48 @@ void RenderLayer::Draw( void )
 				}
 			}
 		}
+		
+		else if( game->View == XWing::View::SELFIE )
+		{
+			// Move camera in front of head position (looking back), moreso when dead.
+			std::string ship_class = (observed_ship && observed_ship->Class) ? observed_ship->Class->ShortName : "T/F";
+			double camera_dist = game->Cfg.SettingAsDouble("g_selfie_dist"); // FIXME: Read from ShipClass?
+			double camera_up   = game->Cfg.SettingAsDouble("g_selfie_up");   //
+			if( ! camera_dist )
+			{
+				if( observed_ship->Category() == ShipClass::CATEGORY_CAPITAL )
+					camera_dist = 160.;
+				// FIXME: Offsets to selfie cam should be defined in ShipClass, not hard-coded here!
+				else if( Str::BeginsWith( ship_class, "T/" ) )
+					camera_dist = 16.;
+				else if( Str::BeginsWith( ship_class, "YT" ) )
+				{
+					camera_dist = 1.;
+					if( ! camera_up )
+						camera_up = 0.3;
+				}
+				else if( Str::BeginsWith( ship_class, "GUN" ) )
+					camera_dist = 1.4;
+				else
+					camera_dist = 1.3;
+			}
+			
+			if( observed_ship->Health <= 0. )
+				camera_dist += observed_ship->DeathClock.ElapsedSeconds() * 50.;
+			
+			Cam.MoveAlong( &(observed_ship->Up), camera_up );
+			Cam.MoveAlong( &(Cam.Fwd), camera_dist * -1. );
+		}
 	}
 	else
 	{
-		((XWingGame*)( Raptor::Game ))->ObservedShipID = 0;
+		game->ObservedShipID = 0;
 		
 		if( observed_turret )
 		{
 			// Viewing a Death Star surface turret.
 			Cam = observed_turret->HeadPos();
-			view = VIEW_GUNNER;
+			game->View = XWing::View::GUNNER;
 		}
 	}
 	
@@ -1136,19 +1180,19 @@ void RenderLayer::Draw( void )
 		observed_player = observed_ship->Owner();
 	
 	// Move the first person view while jumping in from hyperspace.
-	if( observed_ship && (jump_progress < 1.) && (view == VIEW_COCKPIT) )
+	if( observed_ship && (jump_progress < 1.) && (game->View == XWing::View::COCKPIT) )
 		Cam.MoveAlong( &(observed_ship->Fwd), observed_ship->CockpitDrawOffset() );
-	else if( observed_ship && (jump_progress < 1.) && (view == VIEW_GUNNER) && (observed_ship == observed_turret->ParentShip()) )
+	else if( observed_ship && (jump_progress < 1.) && (game->View == XWing::View::GUNNER) && (observed_ship == observed_turret->ParentShip()) )
 		Cam.MoveAlong( &(observed_ship->Fwd), observed_ship->DrawOffset() );
 	
 	// This allows head tracking to happen after camera placement.
-	Raptor::Game->Cam.Copy( &Cam );
+	game->Cam.Copy( &Cam );
 	
 	
 	// When viewing from turret, show its selected target instead of the ship's.
-	if( observed_turret && (view == VIEW_GUNNER) )
+	if( observed_turret && (game->View == XWing::View::GUNNER) )
 	{
-		target_obj = Raptor::Game->Data.GetObject( observed_turret->Target );
+		target_obj = game->Data.GetObject( observed_turret->Target );
 		if( target_obj && (target_obj->Type() == XWing::Object::SHIP) )
 		{
 			target = (Ship*) target_obj;
@@ -1171,19 +1215,19 @@ void RenderLayer::Draw( void )
 	
 	// Set up shaders.
 	
-	bool use_shaders = Raptor::Game->Cfg.SettingAsBool("g_shader_enable");
+	bool use_shaders = game->Cfg.SettingAsBool("g_shader_enable");
 	int blastpoints = 0;
 	static int prev_blastpoints = 0;
 	if( use_shaders )
 	{
-		Raptor::Game->ShaderMgr.ResumeShaders();
-		Raptor::Game->ShaderMgr.Set3f( "CamPos", Raptor::Game->Cam.X, Raptor::Game->Cam.Y, Raptor::Game->Cam.Z );
+		game->ShaderMgr.ResumeShaders();
+		game->ShaderMgr.Set3f( "CamPos", game->Cam.X, game->Cam.Y, game->Cam.Z );
 		SetWorldLights( deathstar );
 		ClearDynamicLights();
-		blastpoints = ((XWingGame*)( Raptor::Game ))->BlastPoints;
+		blastpoints = game->BlastPoints;
 		ClearBlastPoints( std::max<int>( blastpoints, prev_blastpoints ) );
 		prev_blastpoints = blastpoints;
-		Raptor::Game->ShaderMgr.StopShaders();
+		game->ShaderMgr.StopShaders();
 	}
 	
 	
@@ -1218,11 +1262,11 @@ void RenderLayer::Draw( void )
 			}
 		}
 		
-		if( (enemy_lock >= 1.f) && (observed_ship->PlayerID == Raptor::Game->PlayerID) )
+		if( (enemy_lock >= 1.f) && (observed_ship->PlayerID == game->PlayerID) )
 		{
 			static Clock lock_warn;
 			if( (lock_warn.Progress() >= 1.) && ! incoming )
-				Raptor::Game->Snd.Play( Raptor::Game->Res.GetSound("lock_warn.wav") );
+				game->Snd.Play( game->Res.GetSound("lock_warn.wav") );
 			lock_warn.Reset( 2. );
 		}
 	}
@@ -1230,15 +1274,15 @@ void RenderLayer::Draw( void )
 	
 	// Render to textures before drawing anything else.
 	
-	bool need_target_holo = Raptor::Game->FrameTime || (observed_turret && (view == VIEW_GUNNER));
-	if( Raptor::Game->Gfx.Framebuffers && Raptor::Game->FrameTime )
+	bool need_target_holo = game->FrameTime || (observed_turret && (game->View == XWing::View::GUNNER));
+	if( game->Gfx.Framebuffers && game->FrameTime )
 	{
 		bool changed_framebuffer = false;
-		double display_noise = (observed_ship && (observed_ship->Health < (observed_ship->MaxHealth() * 0.5))) ? Raptor::Game->Cfg.SettingAsDouble("g_display_noise",1.) : 0.;
+		double display_noise = (observed_ship && (observed_ship->Health < (observed_ship->MaxHealth() * 0.5))) ? game->Cfg.SettingAsDouble("g_display_noise",1.) : 0.;
 		
-		if( observed_ship && (observed_ship->Health > 0.) && ((view == VIEW_COCKPIT) || (view == VIEW_INSTRUMENTS) || Raptor::Game->Cfg.SettingAsBool("saitek_enable")) )
+		if( observed_ship && (observed_ship->Health > 0.) && ((game->View == XWing::View::COCKPIT) || (game->View == XWing::View::INSTRUMENTS) || game->Cfg.SettingAsBool("saitek_enable")) )
 		{
-			Framebuffer *health_framebuffer = Raptor::Game->Res.GetFramebuffer( "health" );
+			Framebuffer *health_framebuffer = game->Res.GetFramebuffer( "health" );
 			if( health_framebuffer && health_framebuffer->Select() )
 			{
 				// Render hull and shield status.
@@ -1255,14 +1299,14 @@ void RenderLayer::Draw( void )
 				else if( enemy_lock && ((int) observed_ship->Lifetime.ElapsedMilliseconds() % ((enemy_lock >= 1.f) ? 200 : 600) <= 50) )
 					r = g = 0.25f;
 				
-				Raptor::Game->Gfx.Clear( r, g, b );
+				game->Gfx.Clear( r, g, b );
 				
 				
 				// Render shield display.
 				
 				health_framebuffer->Setup2D();
 				
-				GLuint shield_texture = Raptor::Game->Res.GetAnimation("shield.ani")->CurrentFrame();
+				GLuint shield_texture = game->Res.GetAnimation("shield.ani")->CurrentFrame();
 				
 				double shield_f = observed_ship->ShieldF;
 				double shield_r = observed_ship->ShieldR;
@@ -1293,16 +1337,17 @@ void RenderLayer::Draw( void )
 						green = shield_percent * 2.f;
 					}
 					
-					if( recent_hit && (observed_ship->HitFlags & Ship::HIT_FRONT) )
+					float recent_hit_f = (observed_ship->HitFlags & Ship::HIT_FRONT) ? recent_hit : 0.f;
+					if( recent_hit_f )
 					{
-						red   = std::max<float>( red,   recent_hit );
-						green = std::max<float>( green, recent_hit );
-						blue  = std::max<float>( blue,  recent_hit );
+						red   = std::max<float>( red,   recent_hit_f );
+						green = std::max<float>( green, recent_hit_f );
+						blue  = std::max<float>( blue,  recent_hit_f );
 					}
 					
 					float alpha = std::min<float>( shield_f / 10., jump_progress - 1.3 );
-					if( alpha < recent_hit )
-						alpha = recent_hit;
+					if( alpha < recent_hit_f )
+						alpha = recent_hit_f;
 					if( alpha < 1.f )
 					{
 						red   *= alpha;
@@ -1310,7 +1355,7 @@ void RenderLayer::Draw( void )
 						blue  *= alpha;
 					}
 					
-					Raptor::Game->Gfx.DrawRect2D( 0, 0, health_framebuffer->W, health_framebuffer->H / 2, shield_texture, red, green, blue, 1.f );
+					game->Gfx.DrawRect2D( 0, 0, health_framebuffer->W, health_framebuffer->H / 2, shield_texture, red, green, blue, 1.f );
 				}
 				
 				if( shield_r > 0. )
@@ -1331,16 +1376,17 @@ void RenderLayer::Draw( void )
 						green = shield_percent * 2.f;
 					}
 					
-					if( recent_hit && (observed_ship->HitFlags & Ship::HIT_REAR) )
+					float recent_hit_r = (observed_ship->HitFlags & Ship::HIT_REAR) ? recent_hit : 0.f;
+					if( recent_hit_r )
 					{
-						red   = std::max<float>( red,   recent_hit );
-						green = std::max<float>( green, recent_hit );
-						blue  = std::max<float>( blue,  recent_hit );
+						red   = std::max<float>( red,   recent_hit_r );
+						green = std::max<float>( green, recent_hit_r );
+						blue  = std::max<float>( blue,  recent_hit_r );
 					}
 					
 					float alpha = std::min<float>( shield_r / 10., jump_progress - 1.3 );
-					if( alpha < recent_hit )
-						alpha = recent_hit;
+					if( alpha < recent_hit_r )
+						alpha = recent_hit_r;
 					if( alpha < 1.f )
 					{
 						red   *= alpha;
@@ -1348,13 +1394,13 @@ void RenderLayer::Draw( void )
 						blue  *= alpha;
 					}
 					
-					Raptor::Game->Gfx.DrawRect2D( 0, health_framebuffer->H, health_framebuffer->W, health_framebuffer->H / 2, shield_texture, red, green, blue, 1.f );
+					game->Gfx.DrawRect2D( 0, health_framebuffer->H, health_framebuffer->W, health_framebuffer->H / 2, shield_texture, red, green, blue, 1.f );
 				}
 				
 				
 				// Render ship to display hull status.
 				
-				Camera above_cam( Raptor::Game->Cam );
+				Camera above_cam( game->Cam );
 				above_cam.Copy( observed_ship );
 				above_cam.Fwd.Copy( &(observed_ship->Up) );
 				above_cam.Fwd *= -1.;
@@ -1385,17 +1431,17 @@ void RenderLayer::Draw( void )
 				
 				if( use_shaders )
 				{
-					Raptor::Game->ShaderMgr.Select( Raptor::Game->Res.GetShader("model_hud") );
-					Raptor::Game->ShaderMgr.ResumeShaders();
-					Raptor::Game->ShaderMgr.Set3f( "AmbientLight", red, green, blue );
+					game->ShaderMgr.Select( game->Res.GetShader("model_hud") );
+					game->ShaderMgr.ResumeShaders();
+					game->ShaderMgr.Set3f( "AmbientLight", red, green, blue );
 				}
 				
 				observed_ship->Draw();
 				
 				if( use_shaders )
 				{
-					Raptor::Game->ShaderMgr.StopShaders();
-					Raptor::Game->ShaderMgr.Select( Raptor::Game->Res.GetShader("model") );
+					game->ShaderMgr.StopShaders();
+					game->ShaderMgr.Select( game->Res.GetShader("model") );
 				}
 				
 				glColor4f( 1.f, 1.f, 1.f, 1.f );
@@ -1409,22 +1455,22 @@ void RenderLayer::Draw( void )
 					
 					GLuint pos_texture = 0;
 					if( observed_ship->ShieldPos == Ship::SHIELD_FRONT )
-						pos_texture = Raptor::Game->Res.GetAnimation("shields_f.ani")->CurrentFrame();
+						pos_texture = game->Res.GetAnimation("shields_f.ani")->CurrentFrame();
 					else if( observed_ship->ShieldPos == Ship::SHIELD_REAR )
-						pos_texture = Raptor::Game->Res.GetAnimation("shields_r.ani")->CurrentFrame();
+						pos_texture = game->Res.GetAnimation("shields_r.ani")->CurrentFrame();
 					else
-						pos_texture = Raptor::Game->Res.GetAnimation("shields_c.ani")->CurrentFrame();
+						pos_texture = game->Res.GetAnimation("shields_c.ani")->CurrentFrame();
 					
-					Raptor::Game->Gfx.DrawRect2D( health_framebuffer->W - 42, 10, health_framebuffer->W - 10, 74, pos_texture );
+					game->Gfx.DrawRect2D( health_framebuffer->W - 42, 10, health_framebuffer->W - 10, 74, pos_texture );
 				}
 				
 				
 				// Fade screens in when jumping in from hyperspace.
 				
-				if( jump_progress < 1.3 )
+				if( (jump_progress < 1.3) || in_hyperspace )
 				{
 					health_framebuffer->Setup2D( 0., 0., 1., 1. );
-					Raptor::Game->Gfx.DrawRect2D( 0., 0., 1., 1., 0, 0.f,0.f,0.f,1.f );
+					game->Gfx.DrawRect2D( 0., 0., 1., 1., 0, 0.f,0.f,0.f,1.f );
 				}
 				
 				
@@ -1452,22 +1498,22 @@ void RenderLayer::Draw( void )
 			}
 			
 			
-			Framebuffer *target_framebuffer = Raptor::Game->Res.GetFramebuffer( "target" );
+			Framebuffer *target_framebuffer = game->Res.GetFramebuffer( "target" );
 			if( target_framebuffer && target_framebuffer->Select() )
 			{
 				// Render target display.
 				
 				changed_framebuffer = true;
-				if( ((view != VIEW_GUNNER) || ! observed_turret) && (observed_ship->Category() != ShipClass::CATEGORY_CAPITAL) && (observed_ship->Category() != ShipClass::CATEGORY_TARGET) )
+				if( ((game->View != XWing::View::GUNNER) || ! observed_turret) && (observed_ship->Category() != ShipClass::CATEGORY_CAPITAL) && (observed_ship->Category() != ShipClass::CATEGORY_TARGET) )
 					need_target_holo = false;
-				Raptor::Game->Gfx.Clear();
+				game->Gfx.Clear();
 				
-				double eject_held = ((XWingGame*)( Raptor::Game ))->EjectHeld.ElapsedSeconds();
+				double eject_held = game->Input.ControlPressed(game->Controls[ XWing::Control::EJECT ]) ? game->EjectHeld.ElapsedSeconds() : 0.;
 				if( eject_held >= 0.5 )
 				{
 					double unused = 0.;
 					if( modf( eject_held * 6., &unused ) >= 0.5 )
-						Raptor::Game->Gfx.Clear( 1.f, 0.f, 0.f );
+						game->Gfx.Clear( 1.f, 0.f, 0.f );
 					
 					target_framebuffer->Setup2D();
 					ScreenFont->DrawText( "EJECTING", target_framebuffer->W / 2, target_framebuffer->H / 2, Font::ALIGN_MIDDLE_CENTER, 1.f, 1.f, 1.f, 1.f );
@@ -1482,7 +1528,7 @@ void RenderLayer::Draw( void )
 					
 					// FIXME: Some edge cases look wrong, such as when the target is a Star Destroyer and the observed ship is behind its origin facing the tower.
 					Vec3D vec_to_target( target_obj->X - observed_ship->X, target_obj->Y - observed_ship->Y, target_obj->Z - observed_ship->Z );
-					Camera cam_to_target( Raptor::Game->Cam );
+					Camera cam_to_target( game->Cam );
 					cam_to_target.Offset.SetPos( 0., 0., 0. );
 					cam_to_target.Fwd.Copy( &vec_to_target );
 					cam_to_target.Fwd.ScaleTo( 1. );
@@ -1500,17 +1546,17 @@ void RenderLayer::Draw( void )
 						
 						if( use_shaders )
 						{
-							Raptor::Game->ShaderMgr.Select( Raptor::Game->Res.GetShader("model_hud") );
-							Raptor::Game->ShaderMgr.ResumeShaders();
-							Raptor::Game->ShaderMgr.Set3f( "AmbientLight", 0., 0., 0. );
+							game->ShaderMgr.Select( game->Res.GetShader("model_hud") );
+							game->ShaderMgr.ResumeShaders();
+							game->ShaderMgr.Set3f( "AmbientLight", 0., 0., 0. );
 						}
 						
 						target_ship->Draw();
 						
 						if( use_shaders )
 						{
-							Raptor::Game->ShaderMgr.StopShaders();
-							Raptor::Game->ShaderMgr.Select( Raptor::Game->Res.GetShader("model") );
+							game->ShaderMgr.StopShaders();
+							game->ShaderMgr.Select( game->Res.GetShader("model") );
 						}
 						
 						glLineWidth( 2.f );
@@ -1556,7 +1602,7 @@ void RenderLayer::Draw( void )
 							}
 							
 							float alpha = 1. - (target_alive ? (hit_time * 3.) : hit_time);
-							Raptor::Game->Gfx.DrawSphere3D( target_ship->X, target_ship->Y, target_ship->Z, sqrt(target_ship->Radius()) * hit_time * (target_alive ? 10. : 20.), 8, 0, alpha,alpha,alpha,1.f );
+							game->Gfx.DrawSphere3D( target_ship->X, target_ship->Y, target_ship->Z, sqrt(target_ship->Radius()) * hit_time * (target_alive ? 10. : 20.), 8, 0, alpha,alpha,alpha,1.f );
 						}
 						
 						if( disabled_depth )
@@ -1571,17 +1617,17 @@ void RenderLayer::Draw( void )
 						
 						if( use_shaders )
 						{
-							Raptor::Game->ShaderMgr.Select( Raptor::Game->Res.GetShader("model_hud") );
-							Raptor::Game->ShaderMgr.ResumeShaders();
-							Raptor::Game->ShaderMgr.Set3f( "AmbientLight", 0., 0., 0. );
+							game->ShaderMgr.Select( game->Res.GetShader("model_hud") );
+							game->ShaderMgr.ResumeShaders();
+							game->ShaderMgr.Set3f( "AmbientLight", 0., 0., 0. );
 						}
 						
 						target_turret->Draw( false );  // Prevent changing to deathstar shader on Battle of Yavin.
 						
 						if( use_shaders )
 						{
-							Raptor::Game->ShaderMgr.StopShaders();
-							Raptor::Game->ShaderMgr.Select( Raptor::Game->Res.GetShader("model") );
+							game->ShaderMgr.StopShaders();
+							game->ShaderMgr.Select( game->Res.GetShader("model") );
 						}
 						
 						glLineWidth( 2.f );
@@ -1602,25 +1648,25 @@ void RenderLayer::Draw( void )
 							r = 1.f;
 							g = b = 0.f;
 						}
-						Raptor::Game->Gfx.DrawLine3D(
+						game->Gfx.DrawLine3D(
 							target_obj->X + front.X * 15., target_obj->Y + front.Y * 15., target_obj->Z + front.Z * 15.,
 							target_obj->X - front.X * 10., target_obj->Y - front.Y * 10., target_obj->Z - front.Z * 10.,
 							7.f, r,g,b,1.f );
-						Raptor::Game->Gfx.DrawLine3D(
+						game->Gfx.DrawLine3D(
 							target_obj->X + front.X * 15.,              target_obj->Y + front.Y * 15.,              target_obj->Z + front.Z * 15.,
 							target_obj->X + front.X * 5. + out.X * 10., target_obj->Y + front.Y * 5. + out.Y * 10., target_obj->Z + front.Z * 5. + out.Z * 10.,
 							5.f, r,g,b,1.f );
-						Raptor::Game->Gfx.DrawLine3D(
+						game->Gfx.DrawLine3D(
 							target_obj->X + front.X * 15.,              target_obj->Y + front.Y * 15.,              target_obj->Z + front.Z * 15.,
 							target_obj->X + front.X * 5. - out.X * 10., target_obj->Y + front.Y * 5. - out.Y * 10., target_obj->Z + front.Z * 5. - out.Z * 10.,
 							5.f, r,g,b,1.f );
 					}
 					else
 					{
-						Camera original_cam( Raptor::Game->Cam );
-						Raptor::Game->Cam = cam_to_target;  // Shot::Draw looks at Raptor::Game->Cam to calculate draw vectors.
+						Camera original_cam( game->Cam );
+						game->Cam = cam_to_target;  // Shot::Draw looks at Raptor::Game->Cam to calculate draw vectors.
 						target_obj->Draw();
-						Raptor::Game->Cam = original_cam;
+						game->Cam = original_cam;
 					}
 					
 					
@@ -1641,8 +1687,8 @@ void RenderLayer::Draw( void )
 						
 						if( target->Class && (target->Class->Category != ShipClass::CATEGORY_TARGET) )
 						{
-							size_t max_name_length = std::max<int>( 1, 14 - target->Class->ShortName.length() );
-							target_name = target->Class->ShortName + std::string(": ") + ((target_name.length() > max_name_length) ? target_name.substr(0,max_name_length) : target_name);
+							size_t max_name_length = std::max<int>( 1, 15 - target->Class->ShortName.length() );
+							target_name = target->Class->ShortName + ((target_name.length() == max_name_length) ? std::string(":") : std::string(": ")) + ((target_name.length() > max_name_length) ? target_name.substr(0,max_name_length) : target_name);
 						}
 						
 						if( target->Health < (target->MaxHealth() * 0.7) )
@@ -1669,7 +1715,7 @@ void RenderLayer::Draw( void )
 							else if( target_shot->ShotType == Shot::TYPE_MISSILE )
 								target_name = "Missile";
 							
-							const GameObject *from_obj = Raptor::Game->Data.GetObject( target_shot->FiredFrom );
+							const GameObject *from_obj = game->Data.GetObject( target_shot->FiredFrom );
 							if( from_obj->Type() == XWing::Object::SHIP )
 								target_team = ((const Ship*)( from_obj ))->Team;
 							else if( from_obj->Type() == XWing::Object::TURRET )
@@ -1677,8 +1723,8 @@ void RenderLayer::Draw( void )
 							
 							if( target_shot->Seeking )
 							{
-								const GameObject *seeking_obj = Raptor::Game->Data.GetObject( target_shot->Seeking );
-								if( seeking_obj && (seeking_obj->PlayerID == Raptor::Game->PlayerID) && (seeking_obj->Type() != XWing::Object::SHOT) )
+								const GameObject *seeking_obj = game->Data.GetObject( target_shot->Seeking );
+								if( seeking_obj && (seeking_obj->PlayerID == game->PlayerID) && (seeking_obj->Type() != XWing::Object::SHOT) )
 									target_seeking_us = true;
 							}
 						}
@@ -1717,7 +1763,7 @@ void RenderLayer::Draw( void )
 						{
 							std::string subsystem_name = target->SubsystemName( observed_ship->TargetSubsystem );
 							
-							if( ! Raptor::Game->Cfg.SettingAsBool("ugly_names",false) )
+							if( ! game->Cfg.SettingAsBool("ugly_names",false) )
 							{
 								// Clean up name.
 								const char *subsystem_name_cstr = subsystem_name.c_str();
@@ -1753,10 +1799,10 @@ void RenderLayer::Draw( void )
 				
 				// Fade screens in when jumping in from hyperspace.
 				
-				if( jump_progress < 1.5 )
+				if( (jump_progress < 1.5) || in_hyperspace )
 				{
 					target_framebuffer->Setup2D( 0., 0., 1., 1. );
-					Raptor::Game->Gfx.DrawRect2D( 0., 0., 1., 1., 0, 0.f,0.f,0.f,1.f );
+					game->Gfx.DrawRect2D( 0., 0., 1., 1., 0, 0.f,0.f,0.f,1.f );
 				}
 				
 				
@@ -1784,7 +1830,7 @@ void RenderLayer::Draw( void )
 			}
 			
 			
-			Framebuffer *intercept_framebuffer = Raptor::Game->Res.GetFramebuffer( "intercept" );
+			Framebuffer *intercept_framebuffer = game->Res.GetFramebuffer( "intercept" );
 			if( intercept_framebuffer && intercept_framebuffer->Select() )
 			{
 				// Render intercept display.
@@ -1796,7 +1842,7 @@ void RenderLayer::Draw( void )
 				{
 					// Draw torpedo lock-on display.
 					
-					Raptor::Game->Gfx.Clear( 0.f, 0.0f, 0.f );
+					game->Gfx.Clear( 0.f, 0.0f, 0.f );
 					intercept_framebuffer->Setup2D();
 					
 					float lock_wait = std::max<float>( 0.f, 1.f - observed_ship->TargetLock );
@@ -1948,7 +1994,7 @@ void RenderLayer::Draw( void )
 							double x = cx + vec_to_target.Dot( &(observed_ship->Right) ) * intercept_framebuffer->W * 0.75;
 							double y = cy - vec_to_target.Dot( &(observed_ship->Up) ) * intercept_framebuffer->W * 0.75;
 							if( (x > 15) && (x < intercept_framebuffer->W - 15) && (y > 15) && (y < intercept_framebuffer->H - 65) )
-								Raptor::Game->Gfx.DrawCircle2D( x, y, 10., 6, 0, 1.f, 1.f, 0.f, 1.f );
+								game->Gfx.DrawCircle2D( x, y, 10., 6, 0, 1.f, 1.f, 0.f, 1.f );
 						}
 					}
 					
@@ -1962,9 +2008,9 @@ void RenderLayer::Draw( void )
 					// Draw laser intercept display.
 					
 					if( observed_ship->SelectedWeapon == Shot::TYPE_ION_CANNON )
-						Raptor::Game->Gfx.Clear( 0.f, 0.f, 0.5f );
+						game->Gfx.Clear( 0.f, 0.f, 0.5f );
 					else
-						Raptor::Game->Gfx.Clear( 0.f, 0.25f, 0.f );
+						game->Gfx.Clear( 0.f, 0.25f, 0.f );
 					
 					
 					// See if the crosshair is lined up so the next shot would hit.
@@ -1978,7 +2024,7 @@ void RenderLayer::Draw( void )
 						for( std::map<int,Shot*>::iterator shot_iter = test_shots.begin(); shot_iter != test_shots.end(); shot_iter ++ )
 						{
 							shot_vec.Copy( &(shot_iter->second->MotionVector) );
-							if( target_obj->WillCollide( shot_iter->second, 4. ) )
+							if( target_obj->WillCollide( shot_iter->second, shot_iter->second->MaxLifetime() ) )
 								will_hit = true;
 							
 							delete shot_iter->second;
@@ -2109,23 +2155,23 @@ void RenderLayer::Draw( void )
 						if( draw_target )
 						{
 							if( observed_ship->SelectedWeapon == Shot::TYPE_ION_CANNON )
-								Raptor::Game->Gfx.DrawCircle2D( tx, ty, 0.07, 6, 0, 0.f, 0.25f, 1.f, 1.f );
+								game->Gfx.DrawCircle2D( tx, ty, 0.07, 6, 0, 0.f, 0.25f, 1.f, 1.f );
 							else
-								Raptor::Game->Gfx.DrawCircle2D( tx, ty, 0.07, 6, 0, 0.f, 0.5f, 0.f, 1.f );
+								game->Gfx.DrawCircle2D( tx, ty, 0.07, 6, 0, 0.f, 0.5f, 0.f, 1.f );
 						}
 						
 						if( draw_intercept )
-							Raptor::Game->Gfx.DrawCircle2D( ix, iy, 0.1, 4, 0, r, g, b, 1.f );
+							game->Gfx.DrawCircle2D( ix, iy, 0.1, 4, 0, r, g, b, 1.f );
 					}
 				}
 				
 				
 				// Fade screens in when jumping in from hyperspace.
 				
-				if( jump_progress < 1.4 )
+				if( (jump_progress < 1.4) || in_hyperspace )
 				{
 					intercept_framebuffer->Setup2D( 0., 0., 1., 1. );
-					Raptor::Game->Gfx.DrawRect2D( 0., 0., 1., 1., 0, 0.f,0.f,0.f,1.f );
+					game->Gfx.DrawRect2D( 0., 0., 1., 1., 0, 0.f,0.f,0.f,1.f );
 				}
 				
 				
@@ -2157,25 +2203,25 @@ void RenderLayer::Draw( void )
 			}
 			
 			
-			Framebuffer *throttle_framebuffer = Raptor::Game->Res.GetFramebuffer( "throttle" );
+			Framebuffer *throttle_framebuffer = game->Res.GetFramebuffer( "throttle" );
 			if( throttle_framebuffer && throttle_framebuffer->Select() )
 			{
 				// Render throttle display.
 				
 				changed_framebuffer = true;
-				Raptor::Game->Gfx.Clear( 0.f, 0.f, 0.f );
+				game->Gfx.Clear( 0.f, 0.f, 0.f );
 				
 				
 				throttle_framebuffer->Setup2D( 0., 0., 1., 1. );
 				
 				double throttle = observed_ship->GetThrottle();
-				Raptor::Game->Gfx.DrawRect2D( 0., 1. - throttle, 1., 1., 0, 0.125f * (float)throttle, 0.25f + 0.25f * (float)throttle, 1.f, 1.f );
+				game->Gfx.DrawRect2D( 0., 1. - throttle, 1., 1., 0, 0.125f * (float)throttle, 0.25f + 0.25f * (float)throttle, 1.f, 1.f );
 				
 				
 				// Fade screens in when jumping in from hyperspace.
 				
-				if( jump_progress < 1.15 )
-					Raptor::Game->Gfx.DrawRect2D( 0., 0., 1., 1., 0, 0.f,0.f,0.f,1.f );
+				if( (jump_progress < 1.15) || in_hyperspace )
+					game->Gfx.DrawRect2D( 0., 0., 1., 1., 0, 0.f,0.f,0.f,1.f );
 			}
 			
 			
@@ -2184,54 +2230,54 @@ void RenderLayer::Draw( void )
 		
 		// Return to default framebuffer.
 		if( changed_framebuffer )
-			Raptor::Game->Gfx.SelectDefaultFramebuffer();
+			game->Gfx.SelectDefaultFramebuffer();
 	}
 	
 	
 	// Update Saitek LEDs and MFDs based on player state.
 	
 	#ifdef WIN32
-	if( Raptor::Game->FrameTime )
-		UpdateSaitek( observed_ship, (observed_ship == player_ship), view );
+	if( game->FrameTime )
+		UpdateSaitek( observed_ship, (observed_ship == player_ship) );
 	#endif
 	
 	
 	// Special case "spectator_view instruments" to draw instrument panel on a second PC.
 	
-	if( view == VIEW_INSTRUMENTS )
+	if( game->View == XWing::View::INSTRUMENTS )
 	{
 		glColor4f( 1.f, 1.f, 1.f, 1.f );
-		Raptor::Game->Gfx.Clear();
+		game->Gfx.Clear();
 		
 		if( observed_ship && (observed_ship->Health > 0.) )
 		{
-			if( Raptor::Game->Gfx.AspectRatio < 1.5 )
+			if( game->Gfx.AspectRatio < 1.5 )
 			{
-				Raptor::Game->Gfx.Setup2D( 0., 1. );
-				Raptor::Game->Gfx.DrawRect2D( -0.5, 0.,   1.5,  1.,   Raptor::Game->Res.GetAnimation("brushed.ani")->CurrentFrame() );
-				Raptor::Game->Gfx.DrawRect2D( 0.1,  0.65, 0.9,  0.05, Raptor::Game->Res.GetTexture("*intercept") );
-				Raptor::Game->Gfx.DrawRect2D( 0.1,  0.99, 0.35, 0.66, Raptor::Game->Res.GetTexture("*health") );
-				Raptor::Game->Gfx.DrawRect2D( 0.65, 0.99, 0.9,  0.66, Raptor::Game->Res.GetTexture("*target") );
-				Raptor::Game->Gfx.DrawRect2D( 0.45, 0.95, 0.55, 0.7,  Raptor::Game->Res.GetTexture("*throttle") );
+				game->Gfx.Setup2D( 0., 1. );
+				game->Gfx.DrawRect2D( -0.5, 0.,   1.5,  1.,   game->Res.GetAnimation("brushed.ani")->CurrentFrame() );
+				game->Gfx.DrawRect2D( 0.1,  0.65, 0.9,  0.05, game->Res.GetTexture("*intercept") );
+				game->Gfx.DrawRect2D( 0.1,  0.99, 0.35, 0.66, game->Res.GetTexture("*health") );
+				game->Gfx.DrawRect2D( 0.65, 0.99, 0.9,  0.66, game->Res.GetTexture("*target") );
+				game->Gfx.DrawRect2D( 0.45, 0.95, 0.55, 0.7,  game->Res.GetTexture("*throttle") );
 			}
 			else
 			{
-				Raptor::Game->Gfx.Setup2D( -1., 1. );
-				Raptor::Game->Gfx.DrawRect2D( -2., -1., 2., 1., Raptor::Game->Res.GetAnimation("brushed.ani")->CurrentFrame() );
-				double side_w = std::max<double>( 0.72, std::min<double>( 1.5, Raptor::Game->Gfx.AspectRatio - 1.3 ) );
+				game->Gfx.Setup2D( -1., 1. );
+				game->Gfx.DrawRect2D( -2., -1., 2., 1., game->Res.GetAnimation("brushed.ani")->CurrentFrame() );
+				double side_w = std::max<double>( 0.72, std::min<double>( 1.5, game->Gfx.AspectRatio - 1.3 ) );
 				double side_h = side_w * 4. / 3.;
-				double mid_w = std::min<double>( 2., 2. * (Raptor::Game->Gfx.AspectRatio - side_w) - 0.05 );
+				double mid_w = std::min<double>( 2., 2. * (game->Gfx.AspectRatio - side_w) - 0.05 );
 				double mid_h = mid_w * 0.75;
-				Raptor::Game->Gfx.DrawRect2D( mid_w * -0.5, mid_h - 0.9, mid_w * 0.5, -0.9, Raptor::Game->Res.GetTexture("*intercept") );
-				Raptor::Game->Gfx.DrawRect2D( 0.02 - Raptor::Game->Gfx.AspectRatio, 0.98, side_w + 0.02 - Raptor::Game->Gfx.AspectRatio, 0.98 - side_h, Raptor::Game->Res.GetTexture("*health") );
-				Raptor::Game->Gfx.DrawRect2D( Raptor::Game->Gfx.AspectRatio - side_w - 0.02, 0.98, Raptor::Game->Gfx.AspectRatio - 0.02, 0.98 - side_h, Raptor::Game->Res.GetTexture("*target") );
-				Raptor::Game->Gfx.DrawRect2D( -0.1, 0.95, 0.1, mid_h - 0.85, Raptor::Game->Res.GetTexture("*throttle") );
+				game->Gfx.DrawRect2D( mid_w * -0.5, mid_h - 0.9, mid_w * 0.5, -0.9, game->Res.GetTexture("*intercept") );
+				game->Gfx.DrawRect2D( 0.02 - game->Gfx.AspectRatio, 0.98, side_w + 0.02 - game->Gfx.AspectRatio, 0.98 - side_h, game->Res.GetTexture("*health") );
+				game->Gfx.DrawRect2D( game->Gfx.AspectRatio - side_w - 0.02, 0.98, game->Gfx.AspectRatio - 0.02, 0.98 - side_h, game->Res.GetTexture("*target") );
+				game->Gfx.DrawRect2D( -0.1, 0.95, 0.1, mid_h - 0.85, game->Res.GetTexture("*throttle") );
 			}
 		}
 		
 		if( (observed_player || observed_ship) && ! MessageInput->Visible )
 		{
-			Raptor::Game->Gfx.Setup2D();
+			game->Gfx.Setup2D();
 			int x = Rect.x + Rect.w/2;
 			int y = Rect.y + 2;
 			Font *font = (Rect.h >= 600) ? BigFont : SmallFont;
@@ -2246,7 +2292,7 @@ void RenderLayer::Draw( void )
 		}
 		
 		MessageOutput->Visible = MessageInput->Visible;
-		MessageOutput->ScrollTime = ((const XWingGame*)( Raptor::Game ))->OverlayScroll;
+		MessageOutput->ScrollTime = game->OverlayScroll;
 		
 		glColor4f( 1.f, 1.f, 1.f, 1.f );
 		glPopMatrix();
@@ -2256,11 +2302,11 @@ void RenderLayer::Draw( void )
 	
 	// Set up 3D rendering for the scene.
 	
-	Raptor::Game->Cam.FOV = vr ? Raptor::Game->Cfg.SettingAsDouble("vr_fov") : Raptor::Game->Cfg.SettingAsDouble("g_fov");
-	Raptor::Game->Gfx.Setup3D( &(Raptor::Game->Cam) );
-	Raptor::Game->Gfx.Clear();
+	game->Cam.FOV = vr ? game->Cfg.SettingAsDouble("vr_fov") : game->Cfg.SettingAsDouble("g_fov");
+	game->Gfx.Setup3D( &(game->Cam) );
+	game->Gfx.Clear();
 	
-	int dynamic_lights = Raptor::Game->Cfg.SettingAsInt("g_shader_point_lights");
+	int dynamic_lights = game->Cfg.SettingAsInt("g_shader_point_lights");
 	
 	float crosshair_red = 0.5f;
 	float crosshair_green = 0.75f;
@@ -2280,14 +2326,19 @@ void RenderLayer::Draw( void )
 	
 	// Draw the cockpit if we're doing 3D cockpit.
 	
-	if( observed_ship && ((view == VIEW_COCKPIT) || (view == VIEW_GUNNER)) )
+	if( observed_ship && ((game->View == XWing::View::COCKPIT) || (game->View == XWing::View::GUNNER)) )
 	{
-		if( jump_progress < 1. )
+		if( (jump_progress < 1.) || in_hyperspace )
 		{
 			// Background visuals fade in when arriving from hyperspace.
-			Raptor::Game->Gfx.Setup2D( 0., 0., 1., 1. );
-			Raptor::Game->Gfx.DrawRect2D( 0,0,1,1, 0, 0.f,0.f,std::min<float>(0.5f,(jump_progress * -0.5)),(1.f - jump_progress) );
-			Raptor::Game->Gfx.Setup3D( &(Raptor::Game->Cam) );
+			float red = 0.f, green = 0.f;
+			float blue = std::min<float>( 0.25f, jumped_out ? (jump_progress - 1.) * 2. : (jump_progress * -0.5) );
+			float alpha = jumped_out ? 1.f : (1.f - jump_progress);
+			if( jumped_out && (jump_progress > 0.99) && (jump_progress < 1.01) )
+				red = green = blue = 1.f;
+			game->Gfx.Setup2D( 0., 0., 1., 1. );
+			game->Gfx.DrawRect2D( 0,0,1,1, 0, red,green,blue,alpha );
+			game->Gfx.Setup3D( &(game->Cam) );
 		}
 		
 		if( observed_turret )
@@ -2300,7 +2351,7 @@ void RenderLayer::Draw( void )
 				std::map<int,Shot*> test_shots = observed_turret->NextShots();
 				for( std::map<int,Shot*>::iterator shot_iter = test_shots.begin(); shot_iter != test_shots.end(); shot_iter ++ )
 				{
-					if( target->WillCollide( shot_iter->second, 4. ) )
+					if( target->WillCollide( shot_iter->second, shot_iter->second->MaxLifetime() ) )
 					{
 						crosshair_red = 0.25f;
 						crosshair_green = 1.f;
@@ -2308,7 +2359,7 @@ void RenderLayer::Draw( void )
 						
 						static Clock beep_aim;
 						if( beep_aim.Progress() >= 1. )
-							Raptor::Game->Snd.Play( Raptor::Game->Res.GetSound("beep_aim.wav") );
+							game->Snd.Play( game->Res.GetSound("beep_aim.wav") );
 						beep_aim.Reset( 0.2 );
 					}
 					delete shot_iter->second;
@@ -2330,7 +2381,7 @@ void RenderLayer::Draw( void )
 			std::map<int,Shot*> test_shots = observed_ship->NextShots();
 			for( std::map<int,Shot*>::iterator shot_iter = test_shots.begin(); shot_iter != test_shots.end(); shot_iter ++ )
 			{
-				if( target->WillCollide( shot_iter->second, 4. ) )
+				if( target->WillCollide( shot_iter->second, shot_iter->second->MaxLifetime() ) )
 				{
 					crosshair_red = 0.25f;
 					crosshair_green = 1.f;
@@ -2338,7 +2389,7 @@ void RenderLayer::Draw( void )
 					
 					static Clock beep_aim;
 					if( beep_aim.Progress() >= 1. )
-						Raptor::Game->Snd.Play( Raptor::Game->Res.GetSound("beep_aim.wav") );
+						game->Snd.Play( game->Res.GetSound("beep_aim.wav") );
 					beep_aim.Reset( 0.2 );
 				}
 				delete shot_iter->second;
@@ -2355,21 +2406,21 @@ void RenderLayer::Draw( void )
 		
 		// Cockpit.
 		
-		if( observed_ship->Class && (view == VIEW_COCKPIT) && (view_str != "crosshair") )
+		if( observed_ship->Class && (game->View == XWing::View::COCKPIT) && (view_str != "crosshair") )
 		{
-			if( observed_ship->Group && Raptor::Game->Cfg.SettingAsBool("g_group_skins",true) )
+			if( observed_ship->Group && game->Cfg.SettingAsBool("g_group_skins",true) )
 			{
 				std::map<uint8_t,std::string>::const_iterator skin_iter = observed_ship->Class->GroupCockpits.find( observed_ship->Group );
 				if( (skin_iter != observed_ship->Class->GroupCockpits.end()) && skin_iter->second.length() )
-					cockpit_3d = Raptor::Game->Res.GetModel( skin_iter->second );
+					cockpit_3d = game->Res.GetModel( skin_iter->second );
 			}
 			
 			if( !( cockpit_3d && cockpit_3d->VertexCount() ) )
 			{
 				if( vr && ! observed_ship->Class->CockpitModelVR.empty() )
-					cockpit_3d = Raptor::Game->Res.GetModel( observed_ship->Class->CockpitModelVR );
+					cockpit_3d = game->Res.GetModel( observed_ship->Class->CockpitModelVR );
 				else
-					cockpit_3d = Raptor::Game->Res.GetModel( observed_ship->Class->CockpitModel );
+					cockpit_3d = game->Res.GetModel( observed_ship->Class->CockpitModel );
 			}
 		}
 		
@@ -2378,10 +2429,10 @@ void RenderLayer::Draw( void )
 			// Draw the 3D cockpit.
 			
 			if( use_shaders )
-				Raptor::Game->ShaderMgr.ResumeShaders();
+				game->ShaderMgr.ResumeShaders();
 			
 			bool change_light_for_cockpit = false;
-			if( Raptor::Game->ShaderMgr.Active() )
+			if( game->ShaderMgr.Active() )
 			{
 				float ambient_scale = 1.f;
 				std::vector<Vec3D> obstructions;
@@ -2432,13 +2483,13 @@ void RenderLayer::Draw( void )
 					SetDynamicLights( observed_ship, observed_ship, dynamic_lights, &shots, &effects );
 				
 				if( blastpoints )
-					SetBlastPoints( observed_ship, observed_ship, blastpoints, &(observed_ship->BlastPoints), Raptor::Game->Data.TimeScale );
+					SetBlastPoints( observed_ship, observed_ship, blastpoints, &(observed_ship->BlastPoints), game->Data.TimeScale );
 			}
 			
 			// Technically the correct scale is 0.022, but we may need to make it higher to avoid near-plane clipping.
 			// NOTE: Changing the scale may bring engine glows too close, but that's probably okay since it doesn't happen in VR.
 			double model_scale = observed_ship->Class ? observed_ship->Class->ModelScale : 0.022;
-			double cockpit_scale = vr ? model_scale : std::max<double>( model_scale, Raptor::Game->Gfx.ZNear * 0.25 );
+			double cockpit_scale = vr ? model_scale : std::max<double>( model_scale, game->Gfx.ZNear * 0.25 );
 			double cockpit_fwd = 0.;
 			double cockpit_up = 0.;
 			double cockpit_right = 0.;
@@ -2467,14 +2518,23 @@ void RenderLayer::Draw( void )
 			// Draw the cockpit as though it were at 0,0,0 to avoid Z-fighting issues.
 			Pos3D cockpit_pos( observed_ship );
 			cockpit_pos.SetPos(0,0,0);
-			cockpit_pos.FixVectors();
-			Raptor::Game->Cam.Copy( &cockpit_pos );
-			Raptor::Game->Cam.Yaw( ((XWingGame*)( Raptor::Game ))->LookYaw );
-			Raptor::Game->Cam.Pitch( ((XWingGame*)( Raptor::Game ))->LookPitch );
-			Raptor::Game->Gfx.Setup3D( &(Raptor::Game->Cam) );
+			Pos3D camera_pos( &cockpit_pos );
+			if( view_str == "padlock" )
+			{
+				GameObject *target_obj = Raptor::Game->Data.GetObject( observed_turret ? observed_turret->Target : observed_ship->Target );
+				if( target_obj )
+				{
+					camera_pos.Fwd = (((target && observed_ship->TargetSubsystem) ? target->TargetCenter( observed_ship->TargetSubsystem ) : *target_obj) - *observed_ship).Unit();
+					camera_pos.FixVectors();
+				}
+			}
+			game->Cam.Copy( &camera_pos );
+			game->Cam.Yaw( game->LookYaw );
+			game->Cam.Pitch( game->LookPitch );
+			game->Gfx.Setup3D( &(game->Cam) );
 			if( use_shaders )
-				Raptor::Game->ShaderMgr.Set3f( "CamPos", Raptor::Game->Cam.X, Raptor::Game->Cam.Y, Raptor::Game->Cam.Z );
-			if( (! vr) || Raptor::Game->Cfg.SettingAsBool("vr_sway",false) )
+				game->ShaderMgr.Set3f( "CamPos", game->Cam.X, game->Cam.Y, game->Cam.Z );
+			if( (! vr) || game->Cfg.SettingAsBool("vr_sway",false) )
 			{
 				cockpit_pos.Yaw(   observed_ship->YawRate   * 0.01 );
 				cockpit_pos.Pitch( observed_ship->PitchRate * 0.005 );
@@ -2483,11 +2543,13 @@ void RenderLayer::Draw( void )
 			cockpit_pos.MoveAlong( &(cockpit_pos.Fwd),   cockpit_fwd   * cockpit_scale );
 			cockpit_pos.MoveAlong( &(cockpit_pos.Up),    cockpit_up    * cockpit_scale );
 			cockpit_pos.MoveAlong( &(cockpit_pos.Right), cockpit_right * cockpit_scale );
+			glEnable( GL_CULL_FACE );
 			cockpit_3d->DrawAt( &cockpit_pos, cockpit_scale );
+			glDisable( GL_CULL_FACE );
 			
 			// Restore camera position for scene render.
-			Raptor::Game->Cam.Copy( &Cam );
-			Raptor::Game->Gfx.Setup3D( &(Raptor::Game->Cam) );
+			game->Cam.Copy( &Cam );
+			game->Gfx.Setup3D( &(game->Cam) );
 			
 			// Reset world lights to normal.
 			if( change_light_for_cockpit )
@@ -2496,8 +2558,8 @@ void RenderLayer::Draw( void )
 			if( use_shaders )
 			{
 				// Restore camera position in shaders for lighting effects.
-				Raptor::Game->ShaderMgr.Set3f( "CamPos", Raptor::Game->Cam.X, Raptor::Game->Cam.Y, Raptor::Game->Cam.Z );
-				Raptor::Game->ShaderMgr.StopShaders();
+				game->ShaderMgr.Set3f( "CamPos", game->Cam.X, game->Cam.Y, game->Cam.Z );
+				game->ShaderMgr.StopShaders();
 			}
 		}
 		else
@@ -2506,26 +2568,26 @@ void RenderLayer::Draw( void )
 	}
 	
 	
-	if( (jump_progress >= 0.) || (view != VIEW_COCKPIT) )
+	if( ((jump_progress >= 0.) && ! jumped_out) || (game->View != XWing::View::COCKPIT) )
 	{
 		// Draw game objects.
 		
 		if( use_shaders )
-			Raptor::Game->ShaderMgr.ResumeShaders();
+			game->ShaderMgr.ResumeShaders();
 		
-		double draw_dist = Raptor::Game->Cfg.SettingAsDouble( "g_draw_dist", 6000. );
-		double blast_capital = Raptor::Game->Cfg.SettingAsDouble( "g_blast_capital", FLT_MAX );
-		double blast_fighter = Raptor::Game->Cfg.SettingAsDouble( "g_blast_fighter", 10000. );
-		double blast_turret = Raptor::Game->Cfg.SettingAsDouble( "g_blast_turret", 10000. );
-		double blast_asteroid = Raptor::Game->Cfg.SettingAsDouble( "g_blast_asteroid", 2000. );
+		double draw_dist = game->Cfg.SettingAsDouble( "g_draw_dist", 6000. );
+		double blast_capital = game->Cfg.SettingAsDouble( "g_blast_capital", FLT_MAX );
+		double blast_fighter = game->Cfg.SettingAsDouble( "g_blast_fighter", 10000. );
+		double blast_turret = game->Cfg.SettingAsDouble( "g_blast_turret", 10000. );
+		double blast_asteroid = game->Cfg.SettingAsDouble( "g_blast_asteroid", 4000. );
 		
 		std::multimap<double,Renderable> sorted_renderables;
 		std::map< Shader*, std::set<Asteroid*> > asteroid_shaders;
 		
-		for( std::map<uint32_t,GameObject*>::iterator obj_iter = Raptor::Game->Data.GameObjects.begin(); obj_iter != Raptor::Game->Data.GameObjects.end(); obj_iter ++ )
+		for( std::map<uint32_t,GameObject*>::iterator obj_iter = game->Data.GameObjects.begin(); obj_iter != game->Data.GameObjects.end(); obj_iter ++ )
 		{
 			// When in hyperspace, turret gunner should only see their attached ship and its turrets.
-			if( (jump_progress < 0.) && (view == VIEW_GUNNER) && observed_turret && (observed_turret->ID != obj_iter->first) && (observed_turret->ParentID != obj_iter->first) )
+			if( in_hyperspace && (game->View == XWing::View::GUNNER) && observed_turret && (observed_turret->ID != obj_iter->first) && (observed_turret->ParentID != obj_iter->first) )
 			{
 				if( (obj_iter->second->Type() == XWing::Object::TURRET) )
 				{
@@ -2540,7 +2602,7 @@ void RenderLayer::Draw( void )
 			// We'll draw shots after everything else, so don't draw them now.
 			if( obj_iter->second->Type() == XWing::Object::SHOT )
 			{
-				sorted_renderables.insert( std::pair<double,Renderable>( obj_iter->second->DistAlong( &(Raptor::Game->Cam.Fwd), &(Raptor::Game->Cam) ), (Shot*) obj_iter->second ) );
+				sorted_renderables.insert( std::pair<double,Renderable>( obj_iter->second->DistAlong( &(game->Cam.Fwd), &(game->Cam) ), (Shot*) obj_iter->second ) );
 				continue;
 			}
 			
@@ -2554,27 +2616,24 @@ void RenderLayer::Draw( void )
 				if( (ship->Health <= 0.) && (ship->Category() == ShipClass::CATEGORY_CAPITAL) && (ship->DeathClock.ElapsedSeconds() > ship->PiecesDangerousTime()) )
 				{
 					// Disintegrating ships draw later.
-					sorted_renderables.insert( std::pair<double,Renderable>( ship->DistAlong( &(Raptor::Game->Cam.Fwd), &(Raptor::Game->Cam) ) + sqrt(ship->Radius()), ship ) );
+					sorted_renderables.insert( std::pair<double,Renderable>( ship->DistAlong( &(game->Cam.Fwd), &(game->Cam) ) + sqrt(ship->Radius()), ship ) );
 					continue;
 				}
 				
 				// Don't draw an external view of a ship whose cockpit we're in.
-				if( (view == VIEW_COCKPIT) && (ship == observed_ship) && (ship->Health > 0.) )
+				if( (game->View == XWing::View::COCKPIT) && (ship == observed_ship) && (ship->Health > 0.) )
 				{
-					if( ship->JumpProgress >= 1. )
+					// But do draw our engine glow.
+					double ship_throttle = (ship->JumpProgress < 1.) ? 0. : ship->GetThrottle();
+					if( (ship_throttle >= 0.75) && ship->Engines.size() && game->Cfg.SettingAsBool("g_engine_glow",true) )
 					{
-						// But do draw our engine glow if we're facing it.
-						double ship_throttle = ship->GetThrottle();
-						if( (ship_throttle >= 0.75) && ship->Engines.size() && Raptor::Game->Cfg.SettingAsBool("g_engine_glow",true) )
+						float engine_alpha = (ship_throttle - 0.75f) * 4.f * (float) game->Cfg.SettingAsDouble("g_engine_glow_cockpit",0.5);
+						std::map<ShipEngine*,Pos3D> engines = ship->EnginePositions();
+						for( std::map<ShipEngine*,Pos3D>::const_iterator engine_iter = engines.begin(); engine_iter != engines.end(); engine_iter ++ )
 						{
-							float engine_alpha = (ship_throttle - 0.75f) * 4.f * (float) Raptor::Game->Cfg.SettingAsDouble("g_engine_glow_cockpit",0.5);
-							std::map<ShipEngine*,Pos3D> engines = ship->EnginePositions();
-							for( std::map<ShipEngine*,Pos3D>::const_iterator engine_iter = engines.begin(); engine_iter != engines.end(); engine_iter ++ )
-							{
-								double dist_fwd = engine_iter->second.DistAlong( &(Raptor::Game->Cam.Fwd), &(Raptor::Game->Cam) );
-								if( dist_fwd > 0. )
-									sorted_renderables.insert( std::pair<double,Renderable>( dist_fwd, Renderable( engine_iter->first, &(engine_iter->second), engine_alpha, ship_throttle ) ) );
-							}
+							double dist_fwd = engine_iter->second.DistAlong( &(game->Cam.Fwd), &(game->Cam) );
+							if( dist_fwd > 0. )
+								sorted_renderables.insert( std::pair<double,Renderable>( dist_fwd, Renderable( engine_iter->first, &(engine_iter->second), engine_alpha, ship_throttle ) ) );
 						}
 					}
 					continue;
@@ -2582,32 +2641,32 @@ void RenderLayer::Draw( void )
 				
 				// Don't draw tiny ships far away.
 				double size = ship->Shape.GetTriagonal();
-				double dist = Raptor::Game->Cam.Dist(ship);
+				double dist = game->Cam.Dist(ship);
 				if( (dist * (vr ? 20. : 10.) / size) > draw_dist )
 					continue;
 				
 				// Don't draw ships that are entirely behind us.
-				if( ship->DistAlong( &(Raptor::Game->Cam.Fwd), &(Raptor::Game->Cam) ) < -size )
+				if( ship->DistAlong( &(game->Cam.Fwd), &(game->Cam) ) < -size )
 					continue;
 				
 				// Draw engine glows later, with the other transparent renderables.
 				if( ship->Health > 0. )
 				{
 					double ship_throttle = ship->GetThrottle();
-					if( (ship_throttle >= 0.75) && ship->Engines.size() && Raptor::Game->Cfg.SettingAsBool("g_engine_glow",true) )
+					if( (ship_throttle >= 0.75) && ship->Engines.size() && game->Cfg.SettingAsBool("g_engine_glow",true) )
 					{
 						float engine_alpha = (ship_throttle - 0.75f) * 4.f;
-						double engine_scale = ship_throttle;
-						if( (view == VIEW_GUNNER) && (ship == observed_ship) )
+						double engine_scale = std::min<double>( 2., ship_throttle );
+						if( (game->View == XWing::View::GUNNER) && (ship == observed_ship) )
 						{
-							double engine_glow_gunner = Raptor::Game->Cfg.SettingAsDouble("g_engine_glow_gunner",0.75);
+							double engine_glow_gunner = game->Cfg.SettingAsDouble("g_engine_glow_gunner",0.75);
 							engine_alpha *= (float) engine_glow_gunner;
 							if( observed_ship->Category() != ShipClass::CATEGORY_CAPITAL )
 								engine_scale *= engine_glow_gunner;
 						}
 						std::map<ShipEngine*,Pos3D> engines = ship->EnginePositions();
 						for( std::map<ShipEngine*,Pos3D>::const_iterator engine_iter = engines.begin(); engine_iter != engines.end(); engine_iter ++ )
-							sorted_renderables.insert( std::pair<double,Renderable>( engine_iter->second.DistAlong( &(Raptor::Game->Cam.Fwd), &(Raptor::Game->Cam) ), Renderable( engine_iter->first, &(engine_iter->second), engine_alpha, engine_scale ) ) );
+							sorted_renderables.insert( std::pair<double,Renderable>( engine_iter->second.DistAlong( &(game->Cam.Fwd), &(game->Cam) ), Renderable( engine_iter->first, &(engine_iter->second), engine_alpha, engine_scale ) ) );
 					}
 				}
 				
@@ -2621,7 +2680,7 @@ void RenderLayer::Draw( void )
 			else if( obj_iter->second->Type() == XWing::Object::ASTEROID )
 			{
 				Asteroid *asteroid = (Asteroid*) obj_iter->second;
-				double dist = Raptor::Game->Cam.Dist(asteroid) - asteroid->Radius;
+				double dist = game->Cam.Dist(asteroid) - asteroid->Radius;
 				
 				// Don't draw asteroids far away.  (Asteroid::Draw does the rest of the checks.)
 				if( dist > draw_dist )
@@ -2648,14 +2707,14 @@ void RenderLayer::Draw( void )
 			else if( obj_iter->second->Type() == XWing::Object::TURRET )
 			{
 				Turret *turret = (Turret*) obj_iter->second;
-				double dist = Raptor::Game->Cam.Dist(turret);
+				double dist = game->Cam.Dist(turret);
 				
 				// Don't draw turrets far away.
 				if( dist > draw_dist )
 					continue;
 				
 				// Don't draw turrets that are entirely behind us.
-				if( turret->DistAlong( &(Raptor::Game->Cam.Fwd), &(Raptor::Game->Cam) ) < -100. )
+				if( turret->DistAlong( &(game->Cam.Fwd), &(game->Cam) ) < -100. )
 					continue;
 				
 				// Show turret blastpoints if enabled and close enough.
@@ -2670,36 +2729,36 @@ void RenderLayer::Draw( void )
 				DeathStarBox *box = (DeathStarBox*) obj_iter->second;
 				
 				// Don't draw boxes far away.
-				if( Raptor::Game->Cam.Dist(box) > draw_dist )
+				if( game->Cam.Dist(box) > draw_dist )
 					continue;
 				
 				// Don't draw boxes that are entirely behind us.
-				if( obj_iter->second->DistAlong( &(Raptor::Game->Cam.Fwd), &(Raptor::Game->Cam) ) < (box->L + box->W + box->H) / -2. )
+				if( obj_iter->second->DistAlong( &(game->Cam.Fwd), &(game->Cam) ) < (box->L + box->W + box->H) / -2. )
 					continue;
 			}
 			
-			if( dynamic_lights && Raptor::Game->ShaderMgr.Active() )
+			if( dynamic_lights && game->ShaderMgr.Active() )
 			{
-				Pos3D *pos = (obj_iter->second->Type() == XWing::Object::DEATH_STAR) ? (Pos3D*) &(Raptor::Game->Cam) : (Pos3D*) obj_iter->second;
+				Pos3D *pos = (obj_iter->second->Type() == XWing::Object::DEATH_STAR) ? (Pos3D*) &(game->Cam) : (Pos3D*) obj_iter->second;
 				SetDynamicLights( pos, NULL, dynamic_lights, &shots, &effects );
 			}
 			
-			if( blastpoints && Raptor::Game->ShaderMgr.Active() )
-				SetBlastPoints( bp_pos, NULL, blastpoints, bp_vec, Raptor::Game->Data.TimeScale );
+			if( blastpoints && game->ShaderMgr.Active() )
+				SetBlastPoints( bp_pos, NULL, blastpoints, bp_vec, game->Data.TimeScale );
 			
 			glPushMatrix();
 			obj_iter->second->Draw();
 			glPopMatrix();
 		}
 		
-		if( Raptor::Game->ShaderMgr.Active() )
+		if( game->ShaderMgr.Active() )
 		{
-			Shader *prev_shader = Raptor::Game->ShaderMgr.Selected;
+			Shader *prev_shader = game->ShaderMgr.Selected;
 			bool changed_shader = false;
 			
 			for( std::map< Shader*, std::set<Asteroid*> >::iterator shader_iter = asteroid_shaders.begin(); shader_iter != asteroid_shaders.end(); shader_iter ++ )
 			{
-				Raptor::Game->ShaderMgr.SelectAndCopyVars( shader_iter->first );
+				game->ShaderMgr.SelectAndCopyVars( shader_iter->first );
 				changed_shader = true;
 				
 				for( std::set<Asteroid*>::iterator asteroid_iter = shader_iter->second.begin(); asteroid_iter != shader_iter->second.end(); asteroid_iter ++ )
@@ -2707,7 +2766,7 @@ void RenderLayer::Draw( void )
 					if( dynamic_lights )
 						SetDynamicLights( *asteroid_iter, NULL, dynamic_lights, &shots, &effects );
 					if( blastpoints )
-						SetBlastPoints( *asteroid_iter, NULL, blastpoints, &((*asteroid_iter)->BlastPoints), Raptor::Game->Data.TimeScale );
+						SetBlastPoints( *asteroid_iter, NULL, blastpoints, &((*asteroid_iter)->BlastPoints), game->Data.TimeScale );
 					
 					glPushMatrix();
 					(*asteroid_iter)->Draw();
@@ -2716,7 +2775,7 @@ void RenderLayer::Draw( void )
 			}
 			
 			if( changed_shader )
-				Raptor::Game->ShaderMgr.Select( prev_shader );
+				game->ShaderMgr.Select( prev_shader );
 			
 			// Remove dynamic lights and material properties so other things will render correctly.
 			ClearMaterial();
@@ -2724,7 +2783,7 @@ void RenderLayer::Draw( void )
 		}
 		
 		if( use_shaders )
-			Raptor::Game->ShaderMgr.StopShaders();
+			game->ShaderMgr.StopShaders();
 		
 		glColor4f( 1.f, 1.f, 1.f, 1.f );
 		
@@ -2734,7 +2793,7 @@ void RenderLayer::Draw( void )
 		glDepthMask( GL_FALSE );  // Disable writing to depth buffer to avoid transparent edge fighting.
 		
 		for( std::list<Effect*>::iterator effect_iter = effects.begin(); effect_iter != effects.end(); effect_iter ++ )
-			sorted_renderables.insert( std::pair<double,Renderable>( (*effect_iter)->DistAlong( &(Raptor::Game->Cam.Fwd), &(Raptor::Game->Cam) ), *effect_iter ) );
+			sorted_renderables.insert( std::pair<double,Renderable>( (*effect_iter)->DistAlong( &(game->Cam.Fwd), &(game->Cam) ), *effect_iter ) );
 		
 		for( std::multimap<double,Renderable>::reverse_iterator renderable = sorted_renderables.rbegin(); renderable != sorted_renderables.rend(); renderable ++ )
 		{
@@ -2748,11 +2807,11 @@ void RenderLayer::Draw( void )
 			{
 				if( use_shaders )
 				{
-					Raptor::Game->ShaderMgr.ResumeShaders();
+					game->ShaderMgr.ResumeShaders();
 					if( dynamic_lights )
 						SetDynamicLights( renderable->second.ShipPtr, NULL, dynamic_lights, &shots, &effects );
 					if( blastpoints )
-						SetBlastPoints( renderable->second.ShipPtr, NULL, blastpoints, &(renderable->second.ShipPtr->BlastPoints), Raptor::Game->Data.TimeScale );
+						SetBlastPoints( renderable->second.ShipPtr, NULL, blastpoints, &(renderable->second.ShipPtr->BlastPoints), game->Data.TimeScale );
 				}
 				glDepthMask( GL_TRUE );
 				
@@ -2760,7 +2819,7 @@ void RenderLayer::Draw( void )
 				
 				glDepthMask( GL_FALSE );
 				if( use_shaders )
-					Raptor::Game->ShaderMgr.StopShaders();
+					game->ShaderMgr.StopShaders();
 			}
 			else if( renderable->second.EnginePtr )
 				renderable->second.EnginePtr->DrawAt( &(renderable->second.EnginePos), renderable->second.EngineAlpha, renderable->second.EngineScale );
@@ -2776,15 +2835,15 @@ void RenderLayer::Draw( void )
 	
 	if( use_shaders )
 	{
-		Raptor::Game->ShaderMgr.ResumeShaders();
+		game->ShaderMgr.ResumeShaders();
 		
-		if( Raptor::Game->ShaderMgr.Active() )
+		if( game->ShaderMgr.Active() )
 		{
 			ClearMaterial();
 			ClearDynamicLights();
 		}
 		
-		Raptor::Game->ShaderMgr.StopShaders();
+		game->ShaderMgr.StopShaders();
 	}
 	
 	glColor4f( 1.f, 1.f, 1.f, 1.f );
@@ -2793,20 +2852,21 @@ void RenderLayer::Draw( void )
 	// Draw 2D UI elements.
 	
 	GameObject *observed_object = NULL;
-	if( observed_ship && (view == VIEW_COCKPIT) )
+	if( observed_ship && (game->View == XWing::View::COCKPIT) )
 		observed_object = observed_ship;
-	else if( observed_turret && (view == VIEW_GUNNER) )
+	else if( observed_turret && (game->View == XWing::View::GUNNER) )
 		observed_object = observed_turret;
 	
 	if( observed_object )
 	{
 		uint8_t observed_team = (observed_object == observed_ship) ? observed_ship->Team : observed_turret->Team;
 		
-		if( (jump_progress < 1.) && observed_ship )
+		if( observed_ship && ((jump_progress < 1.) || in_hyperspace) )
 		{
 			// Draw hyperspace lines.
 			
-			Randomizer r( (jump_progress >= 0.) ? observed_ship->Lifetime.TimeVal.tv_sec : Rand::Int() );
+			double line_progress = jumped_out ? jump_progress : (1. - jump_progress);
+			Randomizer r( in_hyperspace ? Rand::Int() : observed_ship->Lifetime.TimeVal.tv_sec );
 			for( size_t i = 0; i < 333; i ++ )
 			{
 				Pos3D pos1( observed_object );
@@ -2814,8 +2874,8 @@ void RenderLayer::Draw( void )
 				pos1.MoveAlong( &(observed_ship->Up),    r.Double( -2000., 2000. ) );
 				pos1.MoveAlong( &(observed_ship->Fwd),   r.Double(  5000., 5500. ) );
 				Pos3D pos2( &pos1 );
-				pos2.MoveAlong( &(observed_ship->Fwd),  -9900. * (1. - jump_progress) );
-				Raptor::Game->Gfx.DrawLine3D( pos1.X, pos1.Y, pos1.Z, pos2.X, pos2.Y, pos2.Z, (i % 3) ? 2.5f : 1.f, 1.f,1.f,1.f,1.f );
+				pos2.MoveAlong( &(observed_ship->Fwd),  -9900. * line_progress );
+				game->Gfx.DrawLine3D( pos1.X, pos1.Y, pos1.Z, pos2.X, pos2.Y, pos2.Z, (i % 3) ? 2.5f : 1.f, 1.f,1.f,1.f,1.f );
 			}
 		}
 		
@@ -2830,8 +2890,8 @@ void RenderLayer::Draw( void )
 			
 			if( target )
 			{
-				h = fabs( Raptor::Game->Cam.Up.Dot( &(target->Up) ) * target->Shape.GetHeight() ) + fabs( Raptor::Game->Cam.Up.Dot( &(target->Fwd) ) * target->Shape.GetLength() ) + fabs( Raptor::Game->Cam.Up.Dot( &(target->Right) ) * target->Shape.GetWidth() );
-				w = fabs( Raptor::Game->Cam.Right.Dot( &(target->Up) ) * target->Shape.GetHeight() ) + fabs( Raptor::Game->Cam.Right.Dot( &(target->Fwd) ) * target->Shape.GetLength() ) + fabs( Raptor::Game->Cam.Right.Dot( &(target->Right) ) * target->Shape.GetWidth() );
+				h = fabs( game->Cam.Up.Dot( &(target->Up) ) * target->Shape.GetHeight() ) + fabs( game->Cam.Up.Dot( &(target->Fwd) ) * target->Shape.GetLength() ) + fabs( game->Cam.Up.Dot( &(target->Right) ) * target->Shape.GetWidth() );
+				w = fabs( game->Cam.Right.Dot( &(target->Up) ) * target->Shape.GetHeight() ) + fabs( game->Cam.Right.Dot( &(target->Fwd) ) * target->Shape.GetLength() ) + fabs( game->Cam.Right.Dot( &(target->Right) ) * target->Shape.GetWidth() );
 				max_dist = target->Shape.GetTriagonal() * 50.;
 			}
 			else if( target_obj->Type() == XWing::Object::CHECKPOINT )
@@ -2840,8 +2900,8 @@ void RenderLayer::Draw( void )
 				w = h = (checkpoint->Radius * 0.75);
 			}
 			
-			Vec3D up = Raptor::Game->Cam.Up * h / 2.;
-			Vec3D right = Raptor::Game->Cam.Right * w / 2.;
+			Vec3D up = game->Cam.Up * h / 2.;
+			Vec3D right = game->Cam.Right * w / 2.;
 			float red = 1.f, green = 1.f, blue = 1.f, alpha = 1.f;
 			
 			std::deque<Pos3D> positions;
@@ -2872,7 +2932,7 @@ void RenderLayer::Draw( void )
 			for( std::deque<Pos3D>::iterator pos_iter = positions.begin(); pos_iter != positions.end(); pos_iter ++ )
 			{
 				Pos3D pos = *pos_iter;
-				Vec3D vec_to_target( pos.X - Raptor::Game->Cam.X, pos.Y - Raptor::Game->Cam.Y, pos.Z - Raptor::Game->Cam.Z );
+				Vec3D vec_to_target( pos.X - game->Cam.X, pos.Y - game->Cam.Y, pos.Z - game->Cam.Z );
 				double dist = vec_to_target.Length();
 				if( dist > max_dist )
 				{
@@ -2880,17 +2940,17 @@ void RenderLayer::Draw( void )
 					pos.MoveAlong( &vec_to_target, max_dist - dist );
 				}
 				
-				Raptor::Game->Gfx.DrawLine3D( pos.X - right.X + up.X, pos.Y - right.Y + up.Y, pos.Z - right.Z + up.Z, pos.X - right.X / 2. + up.X, pos.Y - right.Y / 2. + up.Y, pos.Z - right.Z / 2. + up.Z, 1.f, red, green, blue, alpha );
-				Raptor::Game->Gfx.DrawLine3D( pos.X - right.X + up.X, pos.Y - right.Y + up.Y, pos.Z - right.Z + up.Z, pos.X - right.X + up.X / 2., pos.Y - right.Y + up.Y / 2., pos.Z - right.Z + up.Z / 2., 1.f, red, green, blue, alpha );
+				game->Gfx.DrawLine3D( pos.X - right.X + up.X, pos.Y - right.Y + up.Y, pos.Z - right.Z + up.Z, pos.X - right.X / 2. + up.X, pos.Y - right.Y / 2. + up.Y, pos.Z - right.Z / 2. + up.Z, 1.f, red, green, blue, alpha );
+				game->Gfx.DrawLine3D( pos.X - right.X + up.X, pos.Y - right.Y + up.Y, pos.Z - right.Z + up.Z, pos.X - right.X + up.X / 2., pos.Y - right.Y + up.Y / 2., pos.Z - right.Z + up.Z / 2., 1.f, red, green, blue, alpha );
 				
-				Raptor::Game->Gfx.DrawLine3D( pos.X + right.X + up.X, pos.Y + right.Y + up.Y, pos.Z + right.Z + up.Z, pos.X + right.X / 2. + up.X, pos.Y + right.Y / 2. + up.Y, pos.Z + right.Z / 2. + up.Z, 1.f, red, green, blue, alpha );
-				Raptor::Game->Gfx.DrawLine3D( pos.X + right.X + up.X, pos.Y + right.Y + up.Y, pos.Z + right.Z + up.Z, pos.X + right.X + up.X / 2., pos.Y + right.Y + up.Y / 2., pos.Z + right.Z + up.Z / 2., 1.f, red, green, blue, alpha );
+				game->Gfx.DrawLine3D( pos.X + right.X + up.X, pos.Y + right.Y + up.Y, pos.Z + right.Z + up.Z, pos.X + right.X / 2. + up.X, pos.Y + right.Y / 2. + up.Y, pos.Z + right.Z / 2. + up.Z, 1.f, red, green, blue, alpha );
+				game->Gfx.DrawLine3D( pos.X + right.X + up.X, pos.Y + right.Y + up.Y, pos.Z + right.Z + up.Z, pos.X + right.X + up.X / 2., pos.Y + right.Y + up.Y / 2., pos.Z + right.Z + up.Z / 2., 1.f, red, green, blue, alpha );
 				
-				Raptor::Game->Gfx.DrawLine3D( pos.X + right.X - up.X, pos.Y + right.Y - up.Y, pos.Z + right.Z - up.Z, pos.X + right.X / 2. - up.X, pos.Y + right.Y / 2. - up.Y, pos.Z + right.Z / 2. - up.Z, 1.f, red, green, blue, alpha );
-				Raptor::Game->Gfx.DrawLine3D( pos.X + right.X - up.X, pos.Y + right.Y - up.Y, pos.Z + right.Z - up.Z, pos.X + right.X - up.X / 2., pos.Y + right.Y - up.Y / 2., pos.Z + right.Z - up.Z / 2., 1.f, red, green, blue, alpha );
+				game->Gfx.DrawLine3D( pos.X + right.X - up.X, pos.Y + right.Y - up.Y, pos.Z + right.Z - up.Z, pos.X + right.X / 2. - up.X, pos.Y + right.Y / 2. - up.Y, pos.Z + right.Z / 2. - up.Z, 1.f, red, green, blue, alpha );
+				game->Gfx.DrawLine3D( pos.X + right.X - up.X, pos.Y + right.Y - up.Y, pos.Z + right.Z - up.Z, pos.X + right.X - up.X / 2., pos.Y + right.Y - up.Y / 2., pos.Z + right.Z - up.Z / 2., 1.f, red, green, blue, alpha );
 				
-				Raptor::Game->Gfx.DrawLine3D( pos.X - right.X - up.X, pos.Y - right.Y - up.Y, pos.Z - right.Z - up.Z, pos.X - right.X / 2. - up.X, pos.Y - right.Y / 2. - up.Y, pos.Z - right.Z / 2. - up.Z, 1.f, red, green, blue, alpha );
-				Raptor::Game->Gfx.DrawLine3D( pos.X - right.X - up.X, pos.Y - right.Y - up.Y, pos.Z - right.Z - up.Z, pos.X - right.X - up.X / 2., pos.Y - right.Y - up.Y / 2., pos.Z - right.Z - up.Z / 2., 1.f, red, green, blue, alpha );
+				game->Gfx.DrawLine3D( pos.X - right.X - up.X, pos.Y - right.Y - up.Y, pos.Z - right.Z - up.Z, pos.X - right.X / 2. - up.X, pos.Y - right.Y / 2. - up.Y, pos.Z - right.Z / 2. - up.Z, 1.f, red, green, blue, alpha );
+				game->Gfx.DrawLine3D( pos.X - right.X - up.X, pos.Y - right.Y - up.Y, pos.Z - right.Z - up.Z, pos.X - right.X - up.X / 2., pos.Y - right.Y - up.Y / 2., pos.Z - right.Z - up.Z / 2., 1.f, red, green, blue, alpha );
 				
 				if( observed_turret )
 				{
@@ -2913,7 +2973,7 @@ void RenderLayer::Draw( void )
 		}
 		
 		
-		if( jump_progress >= 1. )
+		if( (jump_progress >= 1.) && ! in_hyperspace )
 		{
 			// Draw the 3D crosshair.
 			
@@ -2939,7 +2999,7 @@ void RenderLayer::Draw( void )
 			Pos3D weapon_pos;
 			
 			// Draw lines for all selected weapon ports.
-			glLineWidth( Raptor::Game->Cfg.SettingAsDouble("g_crosshair_thickness",1.5) );
+			glLineWidth( game->Cfg.SettingAsDouble("g_crosshair_thickness",1.5) );
 			glBegin( GL_LINES );
 				glVertex3d( crosshair_pos.X - right.X + up.X, crosshair_pos.Y - right.Y + up.Y, crosshair_pos.Z - right.Z + up.Z );
 				glVertex3d( crosshair_pos.X - right.X / 2. + up.X, crosshair_pos.Y - right.Y / 2. + up.Y, crosshair_pos.Z - right.Z / 2. + up.Z );
@@ -2958,12 +3018,13 @@ void RenderLayer::Draw( void )
 				glVertex3d( crosshair_pos.X - right.X - up.X, crosshair_pos.Y - right.Y - up.Y, crosshair_pos.Z - right.Z - up.Z );
 				glVertex3d( crosshair_pos.X - right.X - up.X / 2., crosshair_pos.Y - right.Y - up.Y / 2., crosshair_pos.Z - right.Z - up.Z / 2. );
 				
+				// FIXME: Just iterate on the list of weapon ports in ShipClass instead of calling AllShots!
 				std::map<int,Shot*> all_weapons = (observed_object == observed_ship) ? observed_ship->AllShots() : std::map<int,Shot*>();
 				for( std::map<int,Shot*>::iterator shot_iter = all_weapons.begin(); shot_iter != all_weapons.end(); shot_iter ++ )
 				{
 					weapon_vec.Set( shot_iter->second->X - observed_object->X, shot_iter->second->Y - observed_object->Y, shot_iter->second->Z - observed_object->Z );
 					relative_weapon_vec.Set( weapon_vec.Dot(&(observed_object->Right)), weapon_vec.Dot(&(observed_object->Up)) );
-					relative_weapon_vec.ScaleTo( 1. );
+					relative_weapon_vec.ScaleTo( (relative_weapon_vec.Length() > 0.001) ? 1. : 0. );
 					weapon_pos.Copy( &crosshair_pos );
 
 					if( (shot_iter->second->ShotType == Shot::TYPE_TORPEDO) || (shot_iter->second->ShotType == Shot::TYPE_MISSILE) )
@@ -2988,7 +3049,7 @@ void RenderLayer::Draw( void )
 				{
 					weapon_vec.Set( shot_iter->second->X - observed_object->X, shot_iter->second->Y - observed_object->Y, shot_iter->second->Z - observed_object->Z );
 					relative_weapon_vec.Set( weapon_vec.Dot(&(observed_object->Right)), weapon_vec.Dot(&(observed_object->Up)) );
-					relative_weapon_vec.ScaleTo( 1. );
+					relative_weapon_vec.ScaleTo( (relative_weapon_vec.Length() > 0.001) ? 1. : 0. );
 					weapon_pos.Copy( &crosshair_pos );
 					
 					if( (shot_iter->second->ShotType == Shot::TYPE_TORPEDO) || (shot_iter->second->ShotType == Shot::TYPE_MISSILE) )
@@ -3012,7 +3073,7 @@ void RenderLayer::Draw( void )
 				{
 					weapon_vec.Set( shot_iter->second->X - observed_object->X, shot_iter->second->Y - observed_object->Y, shot_iter->second->Z - observed_object->Z );
 					relative_weapon_vec.Set( weapon_vec.Dot(&(observed_object->Right)), weapon_vec.Dot(&(observed_object->Up)) );
-					relative_weapon_vec.ScaleTo( 1. );
+					relative_weapon_vec.ScaleTo( (relative_weapon_vec.Length() > 0.001) ? 1. : 0. );
 					weapon_pos.Copy( &crosshair_pos );
 					
 					if( (shot_iter->second->ShotType == Shot::TYPE_TORPEDO) || (shot_iter->second->ShotType == Shot::TYPE_MISSILE) )
@@ -3069,16 +3130,16 @@ void RenderLayer::Draw( void )
 				
 				if( ! vr )
 				{
-					Camera cam_to_target( Raptor::Game->Cam );
+					Camera cam_to_target( game->Cam );
 					cam_to_target.Fwd = vec_to_target.Unit();
 					cam_to_target.Up.Copy( &(observed_object->Up) );
 					cam_to_target.FixVectors();
 					cam_to_target.SetPos( observed_target->X, observed_target->Y, observed_target->Z );
 					cam_to_target.MoveAlong( &(cam_to_target.Fwd), -0.75 );
 					cam_to_target.Pitch( 25. );
-					cam_to_target.Yaw( ((XWingGame*)( Raptor::Game ))->LookYaw );
-					cam_to_target.Pitch( ((XWingGame*)( Raptor::Game ))->LookPitch );
-					Raptor::Game->Gfx.Setup3D( &(cam_to_target) );
+					cam_to_target.Yaw( game->LookYaw );
+					cam_to_target.Pitch( game->LookPitch );
+					game->Gfx.Setup3D( &(cam_to_target) );
 				}
 				else if( observed_turret )
 				{
@@ -3109,7 +3170,7 @@ void RenderLayer::Draw( void )
 						r = sqrtf(alpha);
 						g = sqrtf(r);
 					}
-					Raptor::Game->Gfx.DrawSphere3D( holo_pos.X, holo_pos.Y, holo_pos.Z, holo_scale * sqrt(observed_target->Radius()) * hit_time * (target ? (vr ? 10. : 7.) : 15.), 8, 0, r,g,1.f,alpha );
+					game->Gfx.DrawSphere3D( holo_pos.X, holo_pos.Y, holo_pos.Z, holo_scale * sqrt(observed_target->Radius()) * hit_time * (target ? (vr ? 10. : 7.) : 15.), 8, 0, r,g,1.f,alpha );
 				}
 				
 				glLineWidth( 2.f );
@@ -3170,7 +3231,7 @@ void RenderLayer::Draw( void )
 				}
 				else
 				{
-					Raptor::Game->Gfx.Setup2D();
+					game->Gfx.Setup2D();
 					
 					// Draw target name.
 					BigFont->DrawText( target_name, Rect.x + Rect.w/2 + 1, Rect.h - 32,  Font::ALIGN_BOTTOM_CENTER, 0.f, 0.f, 0.f, alpha * 0.8f );
@@ -3193,20 +3254,18 @@ void RenderLayer::Draw( void )
 			{
 				// Draw the radar.
 				
-				Raptor::Game->Gfx.Setup2D( Raptor::Game->Gfx.H / -2, Raptor::Game->Gfx.H / 2 );
-				double h = Raptor::Game->Gfx.H / 2.;
+				game->Gfx.Setup2D( game->Gfx.H / -2, game->Gfx.H / 2 );
+				double h = game->Gfx.H / 2.;
 				RadarDirectionFont->DrawText( "F", -1.304 * h, -0.829 * h, Font::ALIGN_TOP_RIGHT, 0.f, 0.f, 1.f, 0.75f );
 				RadarDirectionFont->DrawText( "R", 1.304 * h, -0.829 * h, Font::ALIGN_TOP_LEFT, 0.f, 0.f, 1.f, 0.75f );
 				
-				Raptor::Game->Gfx.Setup2D( -1., 1. );
-				Raptor::Game->Gfx.DrawCircle2D( -1.233, -0.9, 0.1, 32, 0, 0.f, 0.f, 0.f, 0.75f );
-				Raptor::Game->Gfx.DrawCircle2D( 1.233, -0.9, 0.1, 32, 0, 0.f, 0.f, 0.f, 0.75f );
-				Raptor::Game->Gfx.DrawCircleOutline2D( -1.233, -0.9, 0.1, 32, 1.f, 0.f, 0.f, 1.f, 0.75f );
-				Raptor::Game->Gfx.DrawCircleOutline2D( 1.233, -0.9, 0.1, 32, 1.f, 0.f, 0.f, 1.f, 0.75f );
+				game->Gfx.Setup2D( -1., 1. );
+				game->Gfx.DrawCircle2D( -1.233, -0.9, 0.1, 32, 0, 0.f, 0.f, 0.f, 0.75f );
+				game->Gfx.DrawCircle2D( 1.233, -0.9, 0.1, 32, 0, 0.f, 0.f, 0.f, 0.75f );
 				
-				Pos3D *radar_ref = (Pos3D*) &(Raptor::Game->Cam);
+				Pos3D *radar_ref = (Pos3D*) &(game->Cam);
 				
-				for( std::map<uint32_t,GameObject*>::iterator obj_iter = Raptor::Game->Data.GameObjects.begin(); obj_iter != Raptor::Game->Data.GameObjects.end(); obj_iter ++ )
+				for( std::map<uint32_t,GameObject*>::iterator obj_iter = game->Data.GameObjects.begin(); obj_iter != game->Data.GameObjects.end(); obj_iter ++ )
 				{
 					uint32_t type = obj_iter->second->Type();
 					if( ((type == XWing::Object::SHIP) || (type == XWing::Object::ASTEROID) || (type == XWing::Object::SHOT) || (type == XWing::Object::CHECKPOINT))
@@ -3227,21 +3286,21 @@ void RenderLayer::Draw( void )
 						{
 							ship = (Ship*) obj_iter->second;
 							
-							if( ship->Health <= 0. )
+							if( (ship->Health <= 0.) || ship->JumpedOut )
 								continue;
 						}
 
 						Vec3D vec_to_obj( obj->X - radar_ref->X, obj->Y - radar_ref->Y, obj->Z - radar_ref->Z );
 						vec_to_obj.ScaleTo( 1. );
-						double x = vec_to_obj.Dot( &(radar_ref->Right) ) * 0.1;
-						double y = -0.9 - vec_to_obj.Dot( &(radar_ref->Up) ) * 0.1;
+						double x = vec_to_obj.Dot( &(radar_ref->Right) ) * 0.096;
+						double y = -0.9 - vec_to_obj.Dot( &(radar_ref->Up) ) * 0.096;
 						if( vec_to_obj.Dot( &(radar_ref->Fwd) ) >= 0. )
 							x -= 1.233;
 						else
 							x += 1.233;
 						
 						float red = 0.5f, green = 0.5f, blue = 0.5f;
-						double radius = 0.005;
+						double radius = 0.0035;
 						
 						if( ship )
 						{
@@ -3257,18 +3316,23 @@ void RenderLayer::Draw( void )
 								green = 0.f;
 								blue = 0.f;
 							}
+							if( ship->Category() == ShipClass::CATEGORY_CAPITAL )
+								radius = 0.005;
+							else if( (ship->Target == observed_ship->ID) && ((int) observed_ship->Lifetime.ElapsedMilliseconds() % ((ship->TargetLock >= 1.f) ? 200 : 600) <= 50) )
+								radius = 0.0055;
 						}
 						else if( shot )
 						{
 							red = 1.f;
 							green = 1.f;
 							blue = 0.f;
-							radius = 0.003;
+							radius = ((shot->Seeking == observed_ship->ID) && ((int) observed_ship->Lifetime.ElapsedMilliseconds() % 200 <= 50)) ? 0.0035 : 0.002;
 						}
 						else if( type == XWing::Object::ASTEROID )
 						{
 							green = 0.4f;
 							blue = 0.3f;
+							radius += 0.0005 + ((const Asteroid*) obj )->Radius * 0.00001;
 						}
 						else if( type == XWing::Object::CHECKPOINT )
 						{
@@ -3283,13 +3347,16 @@ void RenderLayer::Draw( void )
 								red = 0.f;
 								green = 0.5f;
 								blue = 0.5f;
-								radius = 0.004;
+								radius = 0.0035;
 							}
 						}
 						
-						Raptor::Game->Gfx.DrawCircle2D( x, y, radius, 6, 0, red, green, blue, 1.f );
+						game->Gfx.DrawCircle2D( x, y, radius, 6, 0, red, green, blue, 1.f );
 					}
 				}
+				
+				game->Gfx.DrawCircleOutline2D( -1.233, -0.9, 0.1, 32, 1.f, 0.f, 0.f, 1.f, 0.75f );
+				game->Gfx.DrawCircleOutline2D( 1.233, -0.9, 0.1, 32, 1.f, 0.f, 0.f, 1.f, 0.75f );
 				
 				if( target_obj )
 				{
@@ -3300,15 +3367,15 @@ void RenderLayer::Draw( void )
 						vec_to_target = target->TargetCenter( observed_ship->TargetSubsystem ) - *radar_ref;
 					
 					vec_to_target.ScaleTo( 1. );
-					double x = vec_to_target.Dot( &(radar_ref->Right) ) * 0.1;
-					double y = -0.9 - vec_to_target.Dot( &(radar_ref->Up) ) * 0.1;
+					double x = vec_to_target.Dot( &(radar_ref->Right) ) * 0.096;
+					double y = -0.9 - vec_to_target.Dot( &(radar_ref->Up) ) * 0.096;
 					if( vec_to_target.Dot( &(radar_ref->Fwd) ) >= 0. )
 						x -= 1.233;
 					else
 						x += 1.233;
 					
 					float red = 1.f, green = 1.f, blue = 1.f;
-					double radius = 0.005;
+					double radius = 0.0045;
 					
 					if( target )
 					{
@@ -3324,13 +3391,17 @@ void RenderLayer::Draw( void )
 							green = 0.f;
 							blue = 0.f;
 						}
+						if( target->Category() == ShipClass::CATEGORY_CAPITAL )
+							radius = 0.006;
+						else if( (target->Target == observed_ship->ID) && ((int) observed_ship->Lifetime.ElapsedMilliseconds() % ((target->TargetLock >= 1.f) ? 200 : 600) <= 50) )
+							radius = 0.0055;
 					}
 					else if( target_obj->Type() == XWing::Object::SHOT )
 					{
 						red = 1.f;
 						green = 1.f;
 						blue = 0.f;
-						radius = 0.003;
+						radius = ((((Shot*)target_obj)->Seeking == observed_ship->ID) && ((int) observed_ship->Lifetime.ElapsedMilliseconds() % 200 <= 50)) ? 0.0035 : 0.002;
 					}
 					else if( target_obj->Type() == XWing::Object::CHECKPOINT )
 					{
@@ -3351,8 +3422,8 @@ void RenderLayer::Draw( void )
 						blue = 0.f;
 					}
 					
-					Raptor::Game->Gfx.DrawBox2D( x - 0.01, y - 0.01, x + 0.01, y + 0.01, 1.f, 1.f, 1.f, 1.f, 1.f );
-					Raptor::Game->Gfx.DrawCircle2D( x, y, radius, 6, 0, red, green, blue, 1.f );
+					game->Gfx.DrawBox2D( x - 0.01, y - 0.01, x + 0.01, y + 0.01, 1.f, 1.f, 1.f, 1.f, 1.f );
+					game->Gfx.DrawCircle2D( x, y, radius, 6, 0, red, green, blue, 1.f );
 				}
 			}
 		}
@@ -3361,17 +3432,17 @@ void RenderLayer::Draw( void )
 	
 	// If we're spectating, show who we're watching.
 	
-	if( (observed_player && (observed_player->ID == Raptor::Game->PlayerID)) || screensaver || vr )
+	if( (observed_player && (observed_player->ID == game->PlayerID)) || screensaver || vr )
 		;
 	else if( observed_player )
 	{
-		Raptor::Game->Gfx.Setup2D();
+		game->Gfx.Setup2D();
 		BigFont->DrawText( "Watching: " + observed_player->Name, Rect.x + Rect.w/2 + 2, Rect.y + 12, Font::ALIGN_TOP_CENTER, 0.f,0.f,0.f,0.8f );
 		BigFont->DrawText( "Watching: " + observed_player->Name, Rect.x + Rect.w/2, Rect.y + 10, Font::ALIGN_TOP_CENTER );
 	}
 	else if( observed_ship )
 	{
-		Raptor::Game->Gfx.Setup2D();
+		game->Gfx.Setup2D();
 		BigFont->DrawText( "Watching: " + observed_ship->Name, Rect.x + Rect.w/2 + 2, Rect.y + 12, Font::ALIGN_TOP_CENTER, 0.f,0.f,0.f,0.8f );
 		BigFont->DrawText( "Watching: " + observed_ship->Name, Rect.x + Rect.w/2, Rect.y + 10, Font::ALIGN_TOP_CENTER );
 	}
@@ -3379,32 +3450,32 @@ void RenderLayer::Draw( void )
 	
 	// If the round is over, player is holding the scores key, or player is dead in VR, show the scores.
 	
-	bool draw_scores = (Raptor::Game->State >= XWing::State::ROUND_ENDED) && ! screensaver;
+	bool draw_scores = (game->State >= XWing::State::ROUND_ENDED) && ! screensaver;
 	if( ! draw_scores )
-		draw_scores = Raptor::Game->Input.ControlPressed( ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::SCORES ] );
+		draw_scores = game->Input.ControlPressed( game->Controls[ XWing::Control::SCORES ] );
 	if( ! draw_scores )
-		draw_scores = vr && observed_ship && (observed_ship->PlayerID == Raptor::Game->PlayerID) && (observed_ship->Health <= 0.);
+		draw_scores = vr && observed_ship && (observed_ship->PlayerID == game->PlayerID) && (observed_ship->Health <= 0.);
 	if( draw_scores )
 		DrawScores();
 	
 	
 	// Flash "PAUSED" or current time scale if altered, unless in screensaver or cinematic mode.
 	
-	if( (Raptor::Game->Data.TimeScale != 1.) && ! screensaver )
+	if( (game->Data.TimeScale != 1.) && ! screensaver )
 	{
 		float r = fabsf( cos( PlayTime.ElapsedSeconds() * M_PI ) );
 		float g = 0.5f + r * 0.5f;
 		float b = 1.f;
-		Raptor::Game->Gfx.Setup2D();
-		if( Raptor::Game->Data.TimeScale < 0.01 )
+		game->Gfx.Setup2D();
+		if( game->Data.TimeScale < 0.01 )
 		{
 			BigFont->DrawText( "PAUSED", Rect.x + Rect.w/2 + 2, Rect.y + Rect.h * 0.47 + 2, Font::ALIGN_MIDDLE_CENTER, 0.f,0.f,0.f,0.8f );
 			BigFont->DrawText( "PAUSED", Rect.x + Rect.w/2,     Rect.y + Rect.h * 0.47,     Font::ALIGN_MIDDLE_CENTER, r,  g,  b,  1.f );
 		}
 		else
 		{
-			BigFont->DrawText( Num::ToString(Raptor::Game->Data.TimeScale) + std::string(" X"), Rect.x + Rect.w/2 + 2, Rect.y + 66, Font::ALIGN_MIDDLE_CENTER, 0.f,0.f,0.f,0.8f );
-			BigFont->DrawText( Num::ToString(Raptor::Game->Data.TimeScale) + std::string(" X"), Rect.x + Rect.w/2,     Rect.y + 64, Font::ALIGN_MIDDLE_CENTER, r,  g,  b,  1.f );
+			BigFont->DrawText( Num::ToString(game->Data.TimeScale) + std::string(" X"), Rect.x + Rect.w/2 + 2, Rect.y + 66, Font::ALIGN_MIDDLE_CENTER, 0.f,0.f,0.f,0.8f );
+			BigFont->DrawText( Num::ToString(game->Data.TimeScale) + std::string(" X"), Rect.x + Rect.w/2,     Rect.y + 64, Font::ALIGN_MIDDLE_CENTER, r,  g,  b,  1.f );
 		}
 	}
 	
@@ -3412,8 +3483,9 @@ void RenderLayer::Draw( void )
 	// Don't show non-chat messages in VR unless the chat box is open or show scores button is held.
 	
 	MessageOutput->Visible = true;
-	MessageOutput->SetTypeToDraw( TextConsole::MSG_NORMAL, draw_scores || MessageInput->Visible || (! (vr || screensaver)) || Raptor::Game->Cfg.SettingAsBool("vr_messages") );
-	MessageOutput->ScrollTime = ((const XWingGame*)( Raptor::Game ))->OverlayScroll;
+	MessageOutput->SetTypeToDraw( TextConsole::MSG_NORMAL, draw_scores || MessageInput->Visible || (! (vr || screensaver)) || game->Cfg.SettingAsBool("vr_messages") );
+	MessageOutput->ScrollTime = ((const XWingGame*)( game ))->OverlayScroll;
+	
 	
 	glPopMatrix();
 }
@@ -3543,7 +3615,7 @@ void RenderLayer::DrawScores( void )
 	
 	int y = Rect.y + 100;
 	
-	const XWingGame *game = (const XWingGame*) Raptor::Game;
+	XWingGame *game = (XWingGame*) Raptor::Game;
 	uint32_t gametype = game->GameType;
 	bool ffa = (gametype == XWing::GameType::FFA_ELIMINATION) || (gametype == XWing::GameType::FFA_DEATHMATCH) || (gametype == XWing::GameType::FFA_RACE);
 	bool objective = (gametype != XWing::GameType::TEAM_ELIMINATION) && (gametype != XWing::GameType::TEAM_DEATHMATCH) && (gametype != XWing::GameType::TEAM_RACE) && ! ffa;
@@ -3560,7 +3632,7 @@ void RenderLayer::DrawScores( void )
 		BigFont->DrawText( "Empire", Rect.x + Rect.w/2 + 322, y + 2, Font::ALIGN_MIDDLE_RIGHT, 0.f, 0.f, 0.f, 0.8f );
 		BigFont->DrawText( "Empire", Rect.x + Rect.w/2 + 320, y, Font::ALIGN_MIDDLE_RIGHT, 0.25f, empire_g, 1.f, 1.f );
 		
-		if( ! objective )
+		if( (! objective) && (game->Data.PropertyAsString("gametype") != "mission") )
 		{
 			double rebel_score  = Raptor::Game->Data.PropertyAsInt("team_score_rebel");
 			double empire_score = Raptor::Game->Data.PropertyAsInt("team_score_rebel");
@@ -3695,7 +3767,7 @@ void RenderLayer::DrawScores( void )
 
 
 #ifdef WIN32
-void RenderLayer::UpdateSaitek( const Ship *ship, bool is_player, int view )
+void RenderLayer::UpdateSaitek( const Ship *ship, bool is_player )
 {
 	if( ! Raptor::Game->Cfg.SettingAsBool("saitek_enable") )
 		return;

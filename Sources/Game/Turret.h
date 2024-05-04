@@ -38,8 +38,9 @@ public:
 	bool Firing;
 	Clock FiringClock;
 	uint8_t Weapon;
-	int WeaponIndex;
-	int FiringMode;
+	uint8_t WeaponIndex;
+	uint8_t FiredThisFrame;
+	uint8_t FiringMode;
 	double SingleShotDelay;
 	double MaxFiringDist;
 	float AimAhead;

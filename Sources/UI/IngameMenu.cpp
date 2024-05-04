@@ -23,7 +23,7 @@ IngameMenu::IngameMenu( void )
 	VersionFont = Raptor::Game->Res.GetFont( "Verdana.ttf", 15 );
 	
 	SDL_Rect button_rect;
-	button_rect.w = 560;
+	button_rect.w = 700;
 	button_rect.h = ButtonFont->GetHeight() + 2;
 	button_rect.x = 0;
 	button_rect.y = 0;
@@ -33,22 +33,17 @@ IngameMenu::IngameMenu( void )
 	
 	AddElement( new IngameMenuResumeButton( &button_rect, ButtonFont ));
 	
-	if( Raptor::Game->Data.PropertyAsBool("allow_ship_change",true) )
+	if( Raptor::Game->Data.PropertyAsBool("respawn")
+	&&  Raptor::Game->Data.PropertyAsBool("allow_ship_change",true)
+	&& (Raptor::Game->Data.PropertyAsString("player_ship").empty()  || Str::Count(Raptor::Game->Data.PropertyAsString("player_ship"), " "))
+	&& (Raptor::Game->Data.PropertyAsString("player_ships").empty() || Str::Count(Raptor::Game->Data.PropertyAsString("player_ships")," ")) )
 	{
 		AddElement( new IngameMenuShipDropDown( &button_rect, ButtonFont ));
 		AddElement( new IngameMenuGroupDropDown( &button_rect, ButtonFont ));
 	}
-	else
-	{
-		if( player_team != "Spectator" )
-			AddElement( new IngameMenuGroupDropDown( &button_rect, ButtonFont ));
-	}
-	
-	if( player->PropertyAsString("ship") == "Spectator" )
-		AddElement( new IngameMenuViewDropDown( &button_rect, ButtonFont ));
-	
+	else if( player_team != "Spectator" )
+		AddElement( new IngameMenuGroupDropDown( &button_rect, ButtonFont ));
 	AddElement( new IngameMenuPrefsButton( &button_rect, ButtonFont ));
-	//AddElement( new IngameMenuHelpButton( &button_rect, ButtonFont ));
 	AddElement( new IngameMenuLeaveButton( &button_rect, ButtonFont ));
 	
 	UpdateRects();
@@ -225,12 +220,14 @@ void IngameMenuHelpButton::Clicked( Uint8 button )
 
 
 IngameMenuLeaveButton::IngameMenuLeaveButton( SDL_Rect *rect, Font *button_font, uint8_t align )
-: LabelledButton( rect, button_font, (Raptor::Server->IsRunning() ? ((Raptor::Server->State == XWing::State::FLYING) ? "    End Round" : "    Stop Game") : "    Leave"), align, Raptor::Game->Res.GetAnimation("fade.ani") )
+: LabelledButton( rect, button_font, "    Return to Lobby", align, Raptor::Game->Res.GetAnimation("fade.ani") )
 {
 	Red = 0.f;
 	Green = 0.f;
 	Blue = 0.f;
 	Alpha = 0.75f;
+	
+	LobbyAttempted = false;
 }
 
 
@@ -247,13 +244,14 @@ void IngameMenuLeaveButton::Clicked( Uint8 button )
 	// Close the ingame menu.
 	Container->Remove();
 	
-	// If we're hosting and the round is in progress, end the round.
-	if( Raptor::Server->IsRunning() && (Raptor::Server->State == XWing::State::FLYING) )
+	if( ! LobbyAttempted )
 	{
-		Raptor::Server->State = XWing::State::ROUND_WILL_END;
-		Raptor::Game->Mouse.ShowCursor = false;
+		// Tell the server we want to go back to the lobby.
+		Packet lobby( XWing::Packet::LOBBY );
+		Raptor::Game->Net.Send( &lobby );
+		
+		LobbyAttempted = true;
 	}
-	// Any other state, leave the game.
 	else
 		Raptor::Game->Net.DisconnectNice();
 }
@@ -270,12 +268,27 @@ IngameMenuShipDropDown::IngameMenuShipDropDown( SDL_Rect *rect, Font *font, uint
 	Alpha = 0.75f;
 	
 	uint32_t gametype = ((const XWingGame*)( Raptor::Game ))->GameType;
+	bool allow_team_change = (gametype == XWing::GameType::FFA_ELIMINATION) || (gametype == XWing::GameType::FFA_DEATHMATCH) || Raptor::Game->Data.PropertyAsBool("allow_team_change");
+	bool darkside = (Raptor::Game->Cfg.SettingAsBool("darkside",false) || Raptor::Game->Data.PropertyAsBool("darkside",false)) && ! Raptor::Game->Data.PropertyAsBool("lightside",false);
+	
+	std::vector<std::string> allowed_ships;
+	if( Raptor::Game->Data.PropertyAsString("gametype") == "mission" )
+	{
+		std::string player_ships = Raptor::Game->Data.PropertyAsString("player_ships");
+		if( player_ships.empty() )
+			player_ships = Raptor::Game->Data.PropertyAsString("player_ship");
+		if( ! player_ships.empty() )
+			allowed_ships = Str::SplitToVector( player_ships, " " );
+	}
+	
 	std::string player_ship;
 	uint8_t player_team = XWing::Team::NONE;
 	Player *player = Raptor::Game->Data.GetPlayer( Raptor::Game->PlayerID );
 	if( player )
 	{
 		player_ship = player->PropertyAsString("ship");
+		if( player_ship.empty() && allowed_ships.size() )
+			player_ship = allowed_ships.at(0);
 		std::string prefix = (gametype == XWing::GameType::BATTLE_OF_YAVIN) ? "yavin_" : "";
 		std::string team = player->PropertyAsString("team");
 		if( team == "Rebel" )
@@ -294,30 +307,65 @@ IngameMenuShipDropDown::IngameMenuShipDropDown( SDL_Rect *rect, Font *font, uint
 			player_ship = "Spectator";
 	}
 	
-	bool allow_team_change = (gametype == XWing::GameType::FFA_ELIMINATION) || (gametype == XWing::GameType::FFA_DEATHMATCH) || Raptor::Game->Data.PropertyAsBool("allow_team_change");
-	
 	if( player_ship == "Spectator" )
 		AddItem( "Spectator", "    Select Ship" );
 	
-	for( std::map<uint32_t,GameObject*>::const_iterator obj_iter = Raptor::Game->Data.GameObjects.begin(); obj_iter != Raptor::Game->Data.GameObjects.end(); obj_iter ++ )
+	if( allowed_ships.size() && ! darkside )
 	{
-		if( obj_iter->second->Type() == XWing::Object::SHIP_CLASS )
+		for( std::vector<std::string>::const_iterator allowed_iter = allowed_ships.begin(); allowed_iter != allowed_ships.end(); allowed_iter ++ )
 		{
-			const ShipClass *sc = (const ShipClass*) obj_iter->second;
-			if( ( (sc->PlayersCanFly() || Raptor::Game->Data.PropertyAsBool("darkside",false)) && ((sc->Team == player_team) || ! sc->Team || ! player_team || allow_team_change) )
-			||  (sc->ShortName == player_ship) )
+			const ShipClass *sc = ((const XWingGame*)( Raptor::Game ))->GetShipClass( *allowed_iter );
+			if( sc )
 				AddItem( sc->ShortName, std::string("    Ship: ") + sc->LongName );
+			else if( *allowed_iter == "rebel_gunner" )
+				AddItem( "Rebel Gunner", "    Role: Rebel Gunner" );
+			else if( *allowed_iter == "empire_gunner" )
+				AddItem( "Imperial Gunner", "    Role: Imperial Gunner" );
+			else if( *allowed_iter == "spectator" )
+			{
+				if( player_ship != "Spectator" )
+					AddItem( "Spectator", "    Spectate" );
+			}
+			else
+				AddItem( *allowed_iter, std::string("    Ship: ") + *allowed_iter );
 		}
 	}
-	
-	if( (player_team != XWing::Team::EMPIRE) || allow_team_change )
-		AddItem( "Rebel Gunner",    "    Role: Rebel Gunner" );
-	
-	if( (player_team != XWing::Team::REBEL) || allow_team_change )
-		AddItem( "Imperial Gunner", "    Role: Imperial Gunner" );
-	
-	if( player_ship != "Spectator" )
-		AddItem( "Spectator", "    Spectate" );
+	else
+	{
+		for( std::map<uint32_t,GameObject*>::const_iterator obj_iter = Raptor::Game->Data.GameObjects.begin(); obj_iter != Raptor::Game->Data.GameObjects.end(); obj_iter ++ )
+		{
+			if( obj_iter->second->Type() == XWing::Object::SHIP_CLASS )
+			{
+				const ShipClass *sc = (const ShipClass*) obj_iter->second;
+				bool allowed = darkside || sc->PlayersCanFly();
+				
+				if( allowed_ships.size() && ! darkside )
+				{
+					allowed = false;
+					for( std::vector<std::string>::const_iterator ship_iter = allowed_ships.begin(); ship_iter != allowed_ships.end(); ship_iter ++ )
+					{
+						if( Str::EqualsInsensitive( sc->ShortName, *ship_iter ) )
+						{
+							allowed = true;
+							break;
+						}
+					}
+				}
+				
+				if( allowed )
+					AddItem( sc->ShortName, std::string("    Ship: ") + sc->LongName );
+			}
+		}
+		
+		if( (player_team != XWing::Team::EMPIRE) || allow_team_change )
+			AddItem( "Rebel Gunner",    "    Role: Rebel Gunner" );
+		
+		if( (player_team != XWing::Team::REBEL) || allow_team_change )
+			AddItem( "Imperial Gunner", "    Role: Imperial Gunner" );
+		
+		if( player_ship != "Spectator" )
+			AddItem( "Spectator", "    Spectate" );
+	}
 	
 	Value = player_ship;
 	Update();
@@ -429,12 +477,15 @@ IngameMenuViewDropDown::IngameMenuViewDropDown( SDL_Rect *rect, Font *font, uint
 	else
 		AddItem( "auto",    "    View: Auto" );
 	
-	AddItem( "cinema",      "    View: Cinema" );
-	AddItem( "cockpit",     "    View: Cockpit" );
-	AddItem( "chase",       "    View: Chase" );
-	AddItem( "fixed",       "    View: Fixed" );
-	AddItem( "gunner",      "    View: Gunner" );
 	AddItem( "cycle",       "    View: Cycle" );
+	AddItem( "cinema",      "    View: Cinema" );
+	AddItem( "fixed",       "    View: Fixed" );
+	AddItem( "chase",       "    View: Chase" );
+	AddItem( "cockpit",     "    View: Cockpit" );
+	AddItem( "crosshair",   "    View: Crosshair" );
+	AddItem( "padlock",     "    View: Padlock" );
+	AddItem( "gunner",      "    View: Gunner" );
+	AddItem( "selfie",      "    View: Selfie" );
 	AddItem( "stationary",  "    View: Stationary" );
 	AddItem( "instruments", "    View: Instruments" );
 	

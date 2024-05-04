@@ -256,5 +256,9 @@ void main( void )
 	#endif
 	
 	// Apply material alpha.
-	gl_FragColor.a *= Alpha;
+	#if (BLASTPOINTS > 0) && (BLASTPOINT_QUALITY >= 2)
+		gl_FragColor.a *= pow( Alpha, darken );
+	#else
+		gl_FragColor.a *= Alpha;
+	#endif
 }

@@ -1,0 +1,59 @@
+mission_name Rebel 3: Cold Crescent
+mission_desc Destroy an Imperial Star Destroyer during a resupply operation.
+gametype hunt
+player_team rebel
+player_ship T/F T/I
+defending_team empire
+empire_flagship ISD
+empire_flagship_shields 0
+empire_flagship_hull 66
+empire_flagship_name Indubidable
+rebel_fighter T/F
+rebel_bomber T/I
+rebel_fighter_squadron Eyeball
+rebel_bomber_squadron Squint
+ai_waves 2
+ai_per_wave 5
+ai_empire_ratio 1.5
+ai_ceasefire true
+player_spawn 4000 0 0
+rebel_spawn 3900 0 -50
+
+at 0:04 while player alive
+alert r3_reinforce.wav Squadron reinforcements, reporting as ordered.
+wait 4
+alert r3_standby.wav Stand by.
+wait 5
+alert r3_proceed.wav You are cleared to proceed.
+wait 3
+alert r3_shields.wav Good, they've still got their shields down.
+wait 2.5
+alert r3_bridge.wav Hit the 3 bridge sections and then get out of there.
+
+on empire hit while player alive
+wait 4
+alert r3_blown.wav Well, that got their attention!
+wait 1.5
+ai_ceasefire false
+
+on empire objective destroyed while player alive
+end_delay 4
+gametype team_elim
+
+on victory
+next_mission rebel4
+ai_skill -1
+wait 2
+alert r3_win.wav One less Star Destroyer in the galaxy!  Nicely done.
+
+on defeat
+wait 1.5
+alert Silly/failed.wav You blew it, and you took me down with you!
+wait 1.5
+message I thought you had great reflexes!
+wait 1.7
+message What happened to you??
+wait 0.8
+message I used to have, like, a good pilot!
+wait 1.5
+message Man, you're slipping.

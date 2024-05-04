@@ -68,6 +68,8 @@ public:
 class IngameMenuLeaveButton : public LabelledButton
 {
 public:
+	bool LobbyAttempted;
+	
 	IngameMenuLeaveButton( SDL_Rect *rect, Font *button_font, uint8_t align = Font::ALIGN_MIDDLE_LEFT );
 	virtual ~IngameMenuLeaveButton();
 	void Clicked( Uint8 button = SDL_BUTTON_LEFT );

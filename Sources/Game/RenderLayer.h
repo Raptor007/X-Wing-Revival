@@ -59,7 +59,7 @@ public:
 	void DrawScores( void );
 	
 	#ifdef WIN32
-	void UpdateSaitek( const Ship *player_ship, bool is_player, int view );
+	void UpdateSaitek( const Ship *player_ship, bool is_player );
 	#endif
 	
 	bool HandleEvent( SDL_Event *event );

@@ -87,7 +87,7 @@ bool DockingBay::CanCollideWithOwnType( void ) const
 bool DockingBay::CanCollideWithOtherTypes( void ) const
 {
 	const Ship *parent = ParentShip();
-	if( parent && (parent->JumpProgress < 1.) )
+	if( parent && ((parent->JumpProgress < 1.) || parent->JumpedOut) )
 		return false;
 	
 	return true;

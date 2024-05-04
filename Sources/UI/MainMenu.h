@@ -30,10 +30,7 @@ public:
 	Font *TitleFont, *TitleFontBig, *TitleFontSmall;
 	Font *VersionFont;
 	Font *ButtonFont;
-	MainMenuPlayButton *PlayButton;
-	MainMenuPrefsButton *PrefsButton;
-	MainMenuHelpButton *HelpButton;
-	MainMenuQuitButton *QuitButton;
+	LabelledButton *StartButton, *AButton, *XButton, *YButton;
 	
 	MainMenu( void );
 	virtual ~MainMenu();
@@ -45,11 +42,29 @@ public:
 };
 
 
-class MainMenuPlayButton : public LabelledButton
+class MainMenuCampaignButton : public LabelledButton
 {
 public:
-	MainMenuPlayButton( SDL_Rect *rect, Font *button_font, uint8_t align = Font::ALIGN_MIDDLE_LEFT );
-	virtual ~MainMenuPlayButton();
+	MainMenuCampaignButton( SDL_Rect *rect, Font *button_font, uint8_t align = Font::ALIGN_MIDDLE_LEFT );
+	virtual ~MainMenuCampaignButton();
+	void Clicked( Uint8 button = SDL_BUTTON_LEFT );
+};
+
+
+class MainMenuOnlineButton : public LabelledButton
+{
+public:
+	MainMenuOnlineButton( SDL_Rect *rect, Font *button_font, uint8_t align = Font::ALIGN_MIDDLE_LEFT );
+	virtual ~MainMenuOnlineButton();
+	void Clicked( Uint8 button = SDL_BUTTON_LEFT );
+};
+
+
+class MainMenuCustomButton : public LabelledButton
+{
+public:
+	MainMenuCustomButton( SDL_Rect *rect, Font *button_font, uint8_t align = Font::ALIGN_MIDDLE_LEFT );
+	virtual ~MainMenuCustomButton();
 	void Clicked( Uint8 button = SDL_BUTTON_LEFT );
 };
 

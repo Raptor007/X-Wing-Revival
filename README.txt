@@ -1,6 +1,6 @@
 ----------------------------------------
 |            X-Wing Revival            |
-|       0.3.5 Alpha (2024-02-24)       |
+|        0.4 Alpha (2024-05-04)        |
 |     by Raptor007 (Blair Sherman)     |
 | http://raptor007.com/x-wing-revival/ |
 ----------------------------------------
@@ -12,19 +12,20 @@ modern PCs.  We've come a long way since then!  The goal is still to recreate th
 of a classic LucasArts X-Wing game, but X-Wing Revival has developed into its own unique
 take on the genre, with a focus on fast dogfighting, epic battles, multiplayer balance,
 and staying true to classic Star Wars ship designs.  (TIE Fighters don't have missiles!)
-X-Wing Revival finally feels like a proper sequel to the X-Wing Demo for Macintosh that
-I played over and over on a Quadra 605 while listening to the Star Wars soundtrack CDs.
 
 If you're looking for the official X-Wing title of 2020, check out Star Wars Squadrons:
   https://store.steampowered.com/app/1222730/STAR_WARS_Squadrons/
 
 
-== GETTING STARTED ==
+== CREDITS AND THANKS ==
 
-The quickest way to start is to click Play, then Host/Solo, adjust the game settings,
-and click Fly when you're ready to launch.
+Ship models were shamelessly pilfered from X-Wing Alliance asset files, including many
+beautiful high-res models from the X-Wing Alliance Upgrade Project.
+  https://xwaupgrade.com/
 
-To fly online, click Play, then Join.  The default server is "www.raptor007.com".
+Special thanks to NoJoe, Peter, and Sawyer for all the test flights, and to The Rebel
+Alliance for helping me bring balance to the forces.
+  https://therebelalliance.zyp.mx/
 
 
 == GAME TYPES ==
@@ -59,6 +60,8 @@ To fly online, click Play, then Join.  The default server is "www.raptor007.com"
 
   FFA Kessel Run: Race through the checkpoints in the asteroid field.  First player to
     reach the score limit (or last player alive) wins.  Basically Carmageddon in space.
+
+  Mission: Play a campaign level or custom scripted mission.
 
 
 == TROUBLESHOOTING / FAQ ==
@@ -116,6 +119,8 @@ Linux asks what application to open files of type "executable" with.
 
   Fullscreen: Toggle fullscreen, and set the resolution for fullscreen mode.
     Windowed resolution can be changed by dragging the lower-right corner.
+
+  FOV: Set horizontal field of view in degrees.  Default "auto" uses vFOV 60.
 
   MSAA (Antialiasing): Use multiple samples to reduce jagged edges.  Can be GPU-heavy,
     especially when VR is enabled.  (Renamed from "FSAA" to avoid confusion with FXAA.)
@@ -195,6 +200,13 @@ Linux asks what application to open files of type "executable" with.
 
   Game Music: Play background music while flying.
 
+--Networking--
+
+  Rate: Send updates to the server at this rate.  Default: 30
+
+  Predict: Provide immediate shot feedback instead of waiting for server.
+    Default is My Lasers to avoid ammo sync issues and rubber-banding seekers.
+
 
 == CONTROLS ==
 
@@ -251,10 +263,10 @@ Linux asks what application to open files of type "executable" with.
    Joy Button 6: Target Ahead
    Joy Button 7: Target Attacker
    Joy Button 8: Target Incoming Warhead
-   Joy Button 9: Target Next Enemy
-   Joy Button 10: Target Previous Enemy
+   Joy Button 9: Recall Stored Target 1
+   Joy Button 10: Recall Stored Target 2
    Joy Button 11: Change Shield Direction
-   Joy Button 12: Target Objective
+   Joy Button 12: Show Scores
 
    X52 Button 1 (Trigger): Fire
    X52 Button 2 (Fire): Change Weapon
@@ -265,19 +277,19 @@ Linux asks what application to open files of type "executable" with.
    X52 Button 7 (D): Change Shield Direction
    X52 Button 8 (E): Target Attacker
    X52 Button 9 (T1): Target Incoming Warhead
-   X52 Button 10 (T2): Target None
-   X52 Button 11 (T3): Target Data-Link
-   X52 Button 12 (T4): Target Groupmate
-   X52 Button 13 (T5): Target Previous
-   X52 Button 14 (T6): Target Next
-   X52 Button 20 (Hat 2 Up): Show Scores
-   X52 Button 21 (Hat 2 Right): Target Next Enemy
-   X52 Button 22 (Hat 2 Down): Target Next Subsystem
-   X52 Button 23 (Hat 2 Left): Target Previous Enemy
-   X52 Button 24 (Hat 3 Up): Cockpit Seat
-   X52 Button 25 (Hat 3 Right): Gunner Seat 1
-   X52 Button 26 (Hat 3 Down): Gunner Seat 2
-   X52 Button 27 (Hat 3 Left): Toggle Co-Pilot (Chewie)
+   X52 Button 10 (T2): Target Data-Link
+   X52 Button 11 (T3): Cockpit Seat
+   X52 Button 12 (T4): Toggle Co-Pilot (Chewie)
+   X52 Button 13 (T5): Gunner Seat 1
+   X52 Button 14 (T6): Gunner Seat 2
+   X52 Button 20 (Hat 2 Up): Recall Stored Target 1
+   X52 Button 21 (Hat 2 Right): Recall Stored Target 2
+   X52 Button 22 (Hat 2 Down): Recall Stored Target 3
+   X52 Button 23 (Hat 2 Left): Recall Stored Target 4
+   X52 Button 24 (Hat 3 Up): Hold to Store Target
+   X52 Button 25 (Hat 3 Right): Target Next
+   X52 Button 26 (Hat 3 Down): Show Scores
+   X52 Button 27 (Hat 3 Left): Target Previous
    X52 Button 31 (Clutch): Target Incoming Warhead
 
    SideWinder Button 1 (Trigger): Fire
@@ -323,9 +335,7 @@ Linux asks what application to open files of type "executable" with.
    Right Bracket: 67% Throttle / Spectate Next
    Backspace: 100% Throttle
    Plus: Throttle Increase
-   A: Throttle Increase
    Minus: Throttle Decrease
-   Z: Throttle Decrease
    Numeric Keypad: Look Around
    Numeric Keypad 5: Look Center / VR Head Center
    Space: Fire
@@ -340,6 +350,8 @@ Linux asks what application to open files of type "executable" with.
    Y: Target Previous
    I: Target Incoming
    O: Target Objective
+   A: Target Current Target's Attacker
+   H: Target Dockable
    G: Target Groupmate
    K: Eject
    V/CapsLock: Target Data-Link
@@ -347,6 +359,21 @@ Linux asks what application to open files of type "executable" with.
    F2: Gunner Seat 1
    F3: Gunner Seat 2
    F4: Toggle Co-Pilot (Chewie)
+   F5: Recall Stored Target 1
+   F6: Recall Stored Target 2
+   F7: Recall Stored Target 3
+   F8: Recall Stored Target 4
+   Shift: Hold to Store Target
+   1: View Cockpit
+   2: View Crosshair
+   3: View Chase
+   4: View Drop Camera
+   5: View Cinema
+   6: View Fixed
+   7: View Selfie
+   8: View Gunner
+   9: View Cycle
+   10: View Instruments
    Tab: Show Scores
    Return/Enter: Toggle/Send Chat
    Esc/F10: Menu
@@ -376,6 +403,7 @@ Here are some of the commands currently implemented:
   export <file>: Save a config file.
   g_restart: Apply video settings and restart video.
   joy_refresh: Look for new joysticks that have been connected.
+  joy_clone <from> <to>: Define a new joystick category and copy binds to it.
   who: Show list of players connected.
   say <message>: Send chat message.
   echo <text>: Display text in the local console.
@@ -389,6 +417,7 @@ When hosting, you can also use the "sv" command to control the server:
 
   sv show: List game variables.
   sv set <name> <value>: Change a game variable's value.
+  sv defaults: Restore all game properties to default settings.
   sv state ++: When a game is in progress, you can use this to end the round early.
   sv netrate <num>: Adjust the network update rate for all clients.  Default: 30
   sv maxfps <num>: Adjust the simulation update rate.  Default: 60
@@ -430,7 +459,8 @@ on the HTC Vive, but it should work on other headsets with SteamVR support, such
 Oculus Rift, Valve Index, etc.  See the Preferences for VR view tweaks.
 
 When playing in VR, there's no radar yet, so pick up your visual scanning!  Messages
-won't display by default, but you can show them by pressing return to toggle chat.
+won't display by default, but you can show them by pressing return to toggle chat or
+holding tab to show scores.
 
 
 == ABOUT THE SCREENSAVER ==
@@ -448,6 +478,20 @@ console commands to execute, such as "sv gametype yavin" or "sv rebel_fighter A/
 
 
 == VERSION HISTORY ==
+
+Alpha 0.4 (2024-05-04):
+ * First proof-of-concept demo of singleplayer campaign.
+ * Overhauled sound effects for improved dynamic range and variety.
+ * Improved Linux Xbox controller support, and hopefully fixed missing libs.
+ * Docking bays now rearm torpedoes and missiles.  (This also drops shields!)
+ * Radar provides a bit more detail.
+ * Flight groups jump in staggered instead of all at once.
+ * Higher skill AI can angle deflectors towards incoming shots.
+ * Weapon firing modes are now retained when respawning.
+ * Added target store/recall, target target's attacker, and view mode controls.
+ * Target nearest attacker no longer changes target if no fighter is attacking.
+ * Reworked ship and weapon stats.  Every YT-1300 has Han Solo's upgrades.
+ * Player shots can now be predicted client-side to reduce perceived lag.
 
 Alpha 0.3.5 (2024-02-24):
  * Fixed VR bug that prevented objects from moving.

@@ -31,6 +31,7 @@ cockpit tie-bomber_cockpit_vr.obj 1.474 0 1.845
 cockpit_vr tie-bomber_cockpit_vr.obj 1.474 0.1 1.7152
 model_scale 0.022
 glance 30 0
+selfie 16
 flyby 20 tie_slow.wav
 flyby 200 tie_med.wav
 flyby 250 tie_fast.wav

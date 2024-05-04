@@ -36,10 +36,12 @@ MainMenu::MainMenu( void )
 	button_rect.h = ButtonFont->GetHeight() + 2;
 	button_rect.x = 0;
 	button_rect.y = 0;
-	AddElement( PlayButton = new MainMenuPlayButton( &button_rect, ButtonFont ));
-	AddElement( PrefsButton = new MainMenuPrefsButton( &button_rect, ButtonFont ));
-	AddElement( HelpButton = new MainMenuHelpButton( &button_rect, ButtonFont ));
-	AddElement( QuitButton = new MainMenuQuitButton( &button_rect, ButtonFont ));
+	AddElement( StartButton = new MainMenuCampaignButton( &button_rect, ButtonFont ));
+	AddElement( XButton = new MainMenuOnlineButton( &button_rect, ButtonFont ));
+	AddElement( AButton = new MainMenuCustomButton( &button_rect, ButtonFont ));
+	AddElement( new MainMenuPrefsButton( &button_rect, ButtonFont ));
+	AddElement( new MainMenuQuitButton( &button_rect, ButtonFont ));
+	YButton = NULL;
 	
 	UpdateRects();
 }
@@ -77,10 +79,16 @@ void MainMenu::UpdateRects( void )
 	int bottom = Rect.h - (VersionFont->GetHeight() + 10);
 	int mid = ((bottom - top) / 2) + top;
 	
-	PlayButton->Rect.y = mid - PlayButton->Rect.h - PrefsButton->Rect.h - 33;
-	PrefsButton->Rect.y = mid - PrefsButton->Rect.h - 11;
-	HelpButton->Rect.y = mid + 11;
-	QuitButton->Rect.y = mid + HelpButton->Rect.h + 33;
+	int height = 22 * (Elements.size() - 1);
+	for( std::list<Layer*>::const_iterator element = Elements.begin(); element != Elements.end(); element ++ )
+		height += (*element)->Rect.h;
+	
+	int y = mid - height / 2;
+	for( std::list<Layer*>::iterator element = Elements.begin(); element != Elements.end(); element ++ )
+	{
+		(*element)->Rect.y = y;
+		y += (*element)->Rect.h + 22;
+	}
 	
 	UpdateCalcRects();
 }
@@ -116,7 +124,7 @@ void MainMenu::Draw( void )
 		DrawSetup();
 		
 		// Move title and version positions for VR.
-		title_y = PlayButton->Rect.y - VersionFont->GetHeight() - 10;
+		title_y = Elements.front()->Rect.y - VersionFont->GetHeight() - 10;
 		version_x = title_x;
 		version_y = title_y;
 		title_align   = Font::ALIGN_BOTTOM_CENTER;
@@ -256,9 +264,39 @@ bool MainMenu::HandleEvent( SDL_Event *event )
 		&&  Raptor::Game->Cfg.SettingAsBool("joy_enable")
 		&&  (Str::FindInsensitive( Raptor::Game->Joy.Joysticks[ event->jbutton.which ].Name, "Xbox" ) >= 0)
 		&&  (event->jbutton.button == 7) // Start
-		&&  PlayButton && PlayButton->Enabled && PlayButton->Visible )
+		&&  StartButton && StartButton->Enabled && StartButton->Visible )
 		{
-			PlayButton->Clicked();
+			StartButton->Clicked();
+			return true;
+		}
+		
+		if( (event->type == SDL_JOYBUTTONDOWN)
+		&&  Raptor::Game->Cfg.SettingAsBool("joy_enable")
+		&&  (Str::FindInsensitive( Raptor::Game->Joy.Joysticks[ event->jbutton.which ].Name, "Xbox" ) >= 0)
+		&&  (event->jbutton.button == 0) // A
+		&&  AButton && AButton->Enabled && AButton->Visible )
+		{
+			AButton->Clicked();
+			return true;
+		}
+		
+		if( (event->type == SDL_JOYBUTTONDOWN)
+		&&  Raptor::Game->Cfg.SettingAsBool("joy_enable")
+		&&  (Str::FindInsensitive( Raptor::Game->Joy.Joysticks[ event->jbutton.which ].Name, "Xbox" ) >= 0)
+		&&  (event->jbutton.button == 2) // X
+		&&  XButton && XButton->Enabled && XButton->Visible )
+		{
+			XButton->Clicked();
+			return true;
+		}
+		
+		if( (event->type == SDL_JOYBUTTONDOWN)
+		&&  Raptor::Game->Cfg.SettingAsBool("joy_enable")
+		&&  (Str::FindInsensitive( Raptor::Game->Joy.Joysticks[ event->jbutton.which ].Name, "Xbox" ) >= 0)
+		&&  (event->jbutton.button == 3) // Y
+		&&  YButton && YButton->Enabled && YButton->Visible )
+		{
+			YButton->Clicked();
 			return true;
 		}
 		
@@ -272,8 +310,8 @@ bool MainMenu::HandleEvent( SDL_Event *event )
 // ---------------------------------------------------------------------------
 
 
-MainMenuPlayButton::MainMenuPlayButton( SDL_Rect *rect, Font *button_font, uint8_t align )
-: LabelledButton( rect, button_font, "    Play", align, Raptor::Game->Res.GetAnimation("fade.ani") )
+MainMenuCampaignButton::MainMenuCampaignButton( SDL_Rect *rect, Font *button_font, uint8_t align )
+: LabelledButton( rect, button_font, "    Campaign", align, Raptor::Game->Res.GetAnimation("fade.ani") )
 {
 	Red = 0.f;
 	Green = 0.f;
@@ -282,12 +320,63 @@ MainMenuPlayButton::MainMenuPlayButton( SDL_Rect *rect, Font *button_font, uint8
 }
 
 
-MainMenuPlayButton::~MainMenuPlayButton()
+MainMenuCampaignButton::~MainMenuCampaignButton()
 {
 }
 
 
-void MainMenuPlayButton::Clicked( Uint8 button )
+void MainMenuCampaignButton::Clicked( Uint8 button )
+{
+	XWingGame *game = (XWingGame*) Raptor::Game;
+	game->CampaignTeam = XWing::Team::REBEL;
+	game->Host();
+}
+
+
+// ---------------------------------------------------------------------------
+
+
+MainMenuOnlineButton::MainMenuOnlineButton( SDL_Rect *rect, Font *button_font, uint8_t align )
+: LabelledButton( rect, button_font, "    Fly Online", align, Raptor::Game->Res.GetAnimation("fade.ani") )
+{
+	Red = 0.f;
+	Green = 0.f;
+	Blue = 0.f;
+	Alpha = 0.75f;
+}
+
+
+MainMenuOnlineButton::~MainMenuOnlineButton()
+{
+}
+
+
+void MainMenuOnlineButton::Clicked( Uint8 button )
+{
+	if( button == SDL_BUTTON_LEFT )
+		Raptor::Game->Cfg.Command( std::string("connect ") + Raptor::Game->Cfg.SettingAsString( "online_server", "www.raptor007.com:7000", "www.raptor007.com:7000" ) );
+}
+
+
+// ---------------------------------------------------------------------------
+
+
+MainMenuCustomButton::MainMenuCustomButton( SDL_Rect *rect, Font *button_font, uint8_t align )
+: LabelledButton( rect, button_font, "    Custom / LAN", align, Raptor::Game->Res.GetAnimation("fade.ani") )
+{
+	Red = 0.f;
+	Green = 0.f;
+	Blue = 0.f;
+	Alpha = 0.75f;
+}
+
+
+MainMenuCustomButton::~MainMenuCustomButton()
+{
+}
+
+
+void MainMenuCustomButton::Clicked( Uint8 button )
 {
 	if( button == SDL_BUTTON_LEFT )
 		Raptor::Game->Layers.Add( new JoinMenu() );

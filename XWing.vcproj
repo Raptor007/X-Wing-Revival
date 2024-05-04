@@ -43,6 +43,7 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
+				AdditionalOptions="/MP"
 				Optimization="0"
 				InlineFunctionExpansion="0"
 				EnableIntrinsicFunctions="false"
@@ -50,7 +51,7 @@
 				WholeProgramOptimization="false"
 				AdditionalIncludeDirectories="Sources;Sources\UI;Sources\Game;..\RaptorEngine\Core;..\RaptorEngine\Graphics;..\RaptorEngine\Input;..\RaptorEngine\Libs;..\RaptorEngine\Net;..\RaptorEngine\Sound;..\RaptorEngine\UI;..\RaptorEngine\Game;..\RaptorEngine\Saitek;..\RaptorEngine\VR"
 				PreprocessorDefinitions="WIN32;_DEBUG;_WINDOWS;SDL2"
-				MinimalRebuild="true"
+				MinimalRebuild="false"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="3"
 				EnableFunctionLevelLinking="true"
@@ -136,6 +137,7 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
+				AdditionalOptions="/MP"
 				Optimization="0"
 				InlineFunctionExpansion="0"
 				EnableIntrinsicFunctions="false"
@@ -143,7 +145,7 @@
 				WholeProgramOptimization="false"
 				AdditionalIncludeDirectories="Sources;Sources\UI;Sources\Game;..\RaptorEngine\Core;..\RaptorEngine\Graphics;..\RaptorEngine\Input;..\RaptorEngine\Libs;..\RaptorEngine\Net;..\RaptorEngine\Sound;..\RaptorEngine\UI;..\RaptorEngine\Game;..\RaptorEngine\Saitek;..\RaptorEngine\VR"
 				PreprocessorDefinitions="WIN32;_DEBUG;_WINDOWS;SDL2"
-				MinimalRebuild="true"
+				MinimalRebuild="false"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="3"
 				EnableFunctionLevelLinking="true"
@@ -228,6 +230,7 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
+				AdditionalOptions="/MP"
 				Optimization="2"
 				InlineFunctionExpansion="2"
 				EnableIntrinsicFunctions="true"
@@ -236,7 +239,7 @@
 				WholeProgramOptimization="true"
 				AdditionalIncludeDirectories="Sources;Sources\UI;Sources\Game;..\RaptorEngine\Core;..\RaptorEngine\Graphics;..\RaptorEngine\Input;..\RaptorEngine\Libs;..\RaptorEngine\Net;..\RaptorEngine\Sound;..\RaptorEngine\UI;..\RaptorEngine\Game;..\RaptorEngine\Saitek;..\RaptorEngine\VR"
 				PreprocessorDefinitions="NDEBUG;WIN32;_WINDOWS;SDL1;_BIND_TO_CURRENT_VCLIBS_VERSION=1;_BIND_TO_CURRENT_CRT_VERSION=1"
-				MinimalRebuild="true"
+				MinimalRebuild="false"
 				RuntimeLibrary="2"
 				EnableFunctionLevelLinking="true"
 				EnableEnhancedInstructionSet="0"
@@ -323,6 +326,7 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
+				AdditionalOptions="/MP"
 				Optimization="2"
 				InlineFunctionExpansion="2"
 				EnableIntrinsicFunctions="true"
@@ -331,7 +335,7 @@
 				WholeProgramOptimization="true"
 				AdditionalIncludeDirectories="Sources;Sources\UI;Sources\Game;..\RaptorEngine\Core;..\RaptorEngine\Graphics;..\RaptorEngine\Input;..\RaptorEngine\Libs;..\RaptorEngine\Net;..\RaptorEngine\Sound;..\RaptorEngine\UI;..\RaptorEngine\Game;..\RaptorEngine\Saitek;..\RaptorEngine\VR"
 				PreprocessorDefinitions="NDEBUG;WIN32;_WINDOWS;SDL2;_BIND_TO_CURRENT_VCLIBS_VERSION=1;_BIND_TO_CURRENT_CRT_VERSION=1"
-				MinimalRebuild="true"
+				MinimalRebuild="false"
 				RuntimeLibrary="2"
 				EnableFunctionLevelLinking="true"
 				FloatingPointModel="0"
@@ -1109,6 +1113,14 @@
 				</File>
 				<File
 					RelativePath=".\Sources\Game\DockingBay.h"
+					>
+				</File>
+				<File
+					RelativePath=".\Sources\Game\Mission.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\Sources\Game\Mission.h"
 					>
 				</File>
 				<File

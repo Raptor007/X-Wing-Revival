@@ -57,6 +57,7 @@ public:
 	double TurretGunWidth;
 	double TurretGunUp, TurretGunFwd, TurretHeadUp, TurretHeadFwd;
 	std::vector<ShipClassDockingBay> DockingBays;
+	bool Dockable;
 	std::vector<ShipClassEngine> Engines;
 	std::string CollisionModel;
 	std::string ExternalModel;
@@ -93,6 +94,7 @@ public:
 		CATEGORY_FIGHTER,
 		CATEGORY_BOMBER,
 		CATEGORY_GUNBOAT,
+		CATEGORY_TRANSPORT,
 		CATEGORY_CAPITAL,
 		CATEGORY_TARGET
 	};

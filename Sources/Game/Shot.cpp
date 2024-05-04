@@ -22,6 +22,7 @@ Shot::Shot( uint32_t id ) : GameObject( id, XWing::Object::SHOT )
 	Seeking = 0;
 	SeekingSubsystem = 0;
 	Drawn = false;
+	Predicted = false;
 }
 
 
@@ -32,6 +33,25 @@ Shot::~Shot()
 
 void Shot::ClientInit( void )
 {
+	if( (PlayerID == Raptor::Game->PlayerID) && ! Predicted )
+	{
+		XWingGame *game = (XWingGame*) Raptor::Game;
+		if( game->ClientShots[ ShotType ][ WeaponIndex ].size() )
+		{
+			Shot *predicted_shot = game->ClientShots[ ShotType ][ WeaponIndex ].front();
+			game->ClientShots[ ShotType ][ WeaponIndex ].pop_front();
+			Copy( predicted_shot );
+			Data->RemoveObject( predicted_shot->ID );
+			return;
+		}
+		/*
+		for( std::map<int,std::deque<*Shot> >::iterator shot_iter = game->ClientShots[ ShotType ].begin(); shot_iter != game->ClientShots[ ShotType ].end(); shot_iter ++ )
+		{
+			// FIXME: Clean up mis-predicted shots?
+		}
+		*/
+	}
+	
 	if( ShotType == TYPE_LASER_RED )
 		Anim.BecomeInstance( Raptor::Game->Res.GetAnimation("laser_red.ani") );
 	else if( ShotType == TYPE_LASER_GREEN )
@@ -64,15 +84,30 @@ void Shot::ClientInit( void )
 		GameObject *fired_from = Data->GetObject( FiredFrom );
 		
 		if( ShotType == TYPE_LASER_RED )
+		{
 			Raptor::Game->Snd.PlayAt( Raptor::Game->Res.GetSound("laser_red.wav"), X, Y, Z );
+			Raptor::Game->Snd.PlayAt( Raptor::Game->Res.GetSound("laser_red_2.wav"), X, Y, Z, 0.5 );
+		}
 		else if( ShotType == TYPE_LASER_GREEN )
+		{
 			Raptor::Game->Snd.PlayAt( Raptor::Game->Res.GetSound("laser_green.wav"), X, Y, Z );
+			Raptor::Game->Snd.PlayAt( Raptor::Game->Res.GetSound("laser_green_2.wav"), X, Y, Z, 0.5 );
+		}
 		else if( ShotType == TYPE_ION_CANNON )
-			Raptor::Game->Snd.PlayAt( Raptor::Game->Res.GetSound("ion_cannon.wav"), X, Y, Z, 0.9 );
+		{
+			Raptor::Game->Snd.PlayAt( Raptor::Game->Res.GetSound("ion_cannon.wav"), X, Y, Z );
+			Raptor::Game->Snd.PlayAt( Raptor::Game->Res.GetSound("ion_cannon_2.wav"), X, Y, Z, 0.5 );
+		}
 		else if( ShotType == TYPE_TURBO_LASER_RED )
+		{
 			Raptor::Game->Snd.PlayAt( Raptor::Game->Res.GetSound("turbolaser_red.wav"), X, Y, Z, 1.5 );
+			Raptor::Game->Snd.PlayAt( Raptor::Game->Res.GetSound("turbolaser_red_2.wav"), X, Y, Z, 0.7 );
+		}
 		else if( ShotType == TYPE_TURBO_LASER_GREEN )
+		{
 			Raptor::Game->Snd.PlayAt( Raptor::Game->Res.GetSound("turbolaser_green.wav"), X, Y, Z, 1.5 );
+			Raptor::Game->Snd.PlayAt( Raptor::Game->Res.GetSound("turbolaser_green_2.wav"), X, Y, Z, 0.9 );
+		}
 		else if( ShotType == TYPE_QUAD_LASER_RED )
 		{
 			Turret *fired_from_turret = NULL;
@@ -100,12 +135,24 @@ void Shot::ClientInit( void )
 					Raptor::Game->Snd.Play( Raptor::Game->Res.GetSound("laser_turret_2.wav") );
 			}
 			else
-				Raptor::Game->Snd.PlayAt( Raptor::Game->Res.GetSound("laser_turret.wav"), X, Y, Z, 1.1 );
+			{
+				Raptor::Game->Snd.PlayAt( Raptor::Game->Res.GetSound("laser_turret.wav"), X, Y, Z, 1.4 );
+				if( fired_from_turret )
+					Raptor::Game->Snd.PlayFromObject( Raptor::Game->Res.GetSound("laser_turret_2.wav"), fired_from_turret, 0.5 );
+				else
+					Raptor::Game->Snd.PlayAt( Raptor::Game->Res.GetSound("laser_turret_2.wav"), X, Y, Z, 0.5 );
+			}
 		}
 		else if( ShotType == TYPE_TORPEDO )
-			Raptor::Game->Snd.PlayAt( Raptor::Game->Res.GetSound("torpedo.wav"), X, Y, Z, 0.75 );
+		{
+			Raptor::Game->Snd.PlayAt( Raptor::Game->Res.GetSound("torpedo.wav"), X, Y, Z, 0.875 );
+			Raptor::Game->Snd.PlayFromObject( Raptor::Game->Res.GetSound("torpedo_fly.wav"), this, 1. );
+		}
 		else if( ShotType == TYPE_MISSILE )
-			Raptor::Game->Snd.PlayAt( Raptor::Game->Res.GetSound("missile.wav"), X, Y, Z, 0.875 );
+		{
+			Raptor::Game->Snd.PlayAt( Raptor::Game->Res.GetSound("missile.wav"), X, Y, Z, 1.125 );
+			Raptor::Game->Snd.PlayFromObject( Raptor::Game->Res.GetSound("missile_fly.wav"), this, 1.25 );
+		}
 		else if( ShotType == TYPE_SUPERLASER )
 		{
 			Mix_Chunk *sound = Raptor::Game->Res.GetSound("superlaser.wav");
@@ -119,6 +166,12 @@ void Shot::ClientInit( void )
 			{
 				Raptor::Game->Snd.Play( sound );
 				Raptor::Game->Snd.Play( sound );
+			}
+			else if( fired_from->Type() == XWing::Object::TURRET )
+			{
+				Ship *parent_ship = ((Turret*)( fired_from ))->ParentShip();
+				if( parent_ship && (parent_ship->PlayerID == Raptor::Game->PlayerID) )
+					Raptor::Game->Snd.Play( sound );
 			}
 		}
 		
@@ -137,11 +190,41 @@ void Shot::ClientInit( void )
 				ship->SelectedWeapon = ShotType;
 				ship->WeaponIndex = 0;
 			}
+			if( ! ship->FiredThisFrame )
+				ship->WeaponIndex = WeaponIndex;
 			ship->JustFired( ShotType, 1 );
 			if( ship->SelectedWeapon && (ship->PlayerID != Raptor::Game->PlayerID) )
 				ship->FiringMode[ ship->SelectedWeapon ] = ship->FiredThisFrame;
 		}
+		else if( fired_from && (fired_from->Type() == XWing::Object::TURRET) )
+		{
+			Turret *turret = (Turret*) fired_from;
+			if( ! turret->FiredThisFrame )
+				turret->WeaponIndex = WeaponIndex;
+			turret->JustFired();
+		}
 	}
+}
+
+
+void Shot::Copy( const Pos3D *other )
+{
+	Pos3D::Copy( other );
+}
+
+
+void Shot::Copy( const Shot *other )
+{
+	Pos3D::Copy( other );
+	Anim             = other->Anim;
+	Shape            = other->Shape;
+	Drawn            = other->Drawn;
+	ShotType         = other->ShotType;
+	FiredFrom        = other->FiredFrom;
+	WeaponIndex      = other->WeaponIndex;
+	Seeking          = other->Seeking;
+	SeekingSubsystem = other->SeekingSubsystem;
+	Lifetime.Sync( &(other->Lifetime) );
 }
 
 
@@ -152,13 +235,13 @@ double Shot::Damage( void ) const
 	else if( ShotType == TYPE_TURBO_LASER_RED )
 		return 32.;
 	else if( ShotType == TYPE_QUAD_LASER_RED )
-		return 29.;
+		return 26.;
 	else if( ShotType == TYPE_ION_CANNON )
-		return 50.;
+		return 100.;
 	else if( ShotType == TYPE_TORPEDO )
-		return 200.;
+		return 250.;
 	else if( ShotType == TYPE_MISSILE )
-		return 95.;
+		return 200.;
 	else if( ShotType == TYPE_SUPERLASER )
 		return 1000000.;
 	
@@ -170,6 +253,8 @@ double Shot::HullDamage( void ) const
 {
 	if( ShotType == TYPE_ION_CANNON )
 		return 5.;
+	else if( ShotType == TYPE_MISSILE )
+		return 95.;
 	
 	return Damage();
 }
@@ -241,14 +326,18 @@ double Shot::Intercept( void ) const
 
 double Shot::MaxLifetime( void ) const
 {
-	if( ShotType == TYPE_QUAD_LASER_RED )
+	if( ShotType == TYPE_TURBO_LASER_GREEN )
+		return 4.;
+	else if( ShotType == TYPE_TURBO_LASER_RED )
+		return 3.5;
+	else if( ShotType == TYPE_QUAD_LASER_RED )
 		return 1.5;
 	else if( ShotType == TYPE_TORPEDO )
 		return 8.;
 	else if( ShotType == TYPE_MISSILE )
 		return 6.;
 	
-	return 4.;
+	return 2.;
 }
 
 
@@ -332,8 +421,6 @@ bool Shot::CanCollideWithOtherTypes( void ) const
 
 void Shot::AddToInitPacket( Packet *packet, int8_t precision )
 {
-#ifdef FUTURE_NETCODE  // v0.4
-	
 	packet->AddFloat( X );
 	packet->AddFloat( Y );
 	packet->AddFloat( Z );
@@ -343,52 +430,15 @@ void Shot::AddToInitPacket( Packet *packet, int8_t precision )
 	packet->AddFloat( MotionVector.Z );
 	
 	packet->AddUChar( ShotType );
+	packet->AddUInt( Seeking );
 	packet->AddUInt( FiredFrom );
 	if( FiredFrom )
 		packet->AddUChar( WeaponIndex );
-	
-#else  // v0.3.x
-	
-	const GameObject *fired_from = FiredFrom ? Data->GetObject( FiredFrom ) : NULL;
-	Vec3D up( &Up );
-	double dist_along_fwd = 0.;
-	if( fired_from )
-	{
-		dist_along_fwd = DistAlong( &Fwd, fired_from );
-		if( fired_from->Type() == XWing::Object::SHIP )
-		{
-			const Ship *ship = (const Ship*) fired_from;
-			if( ship->Class )
-			{
-				std::map< uint8_t, std::vector<Pos3D> >::const_iterator weapon_iter = ship->Class->Weapons.find( ShotType );
-				if( (weapon_iter != ship->Class->Weapons.end()) && (WeaponIndex < weapon_iter->second.size()) )
-					Up = (ship->Up * weapon_iter->second.at( WeaponIndex ).Z - ship->Right * weapon_iter->second.at( WeaponIndex ).Y).Unit();
-			}
-		}
-		else if( (fired_from->Type() == XWing::Object::TURRET) && WeaponIndex )
-			Up.ScaleBy( -1. );
-	}
-	
-	GameObject::AddToInitPacket( packet, -127 );
-	
-	packet->AddUChar( ShotType );
-	packet->AddUInt( FiredFrom );
-	
-	if( FiredFrom )
-	{
-		dist_along_fwd -= 1.7;  // Hack for compatibility with older clients that had sloppier weapon positions.
-		packet->AddFloat( dist_along_fwd );
-		Up.Copy( &up );
-	}
-	
-#endif  // ! FUTURE_NETCODE
 }
 
 
 void Shot::ReadFromInitPacket( Packet *packet, int8_t precision )
 {
-#ifdef FUTURE_NETCODE  // v0.4
-	
 	X = packet->NextFloat();
 	Y = packet->NextFloat();
 	Z = packet->NextFloat();
@@ -399,6 +449,7 @@ void Shot::ReadFromInitPacket( Packet *packet, int8_t precision )
 	Fwd = MotionVector.Unit();
 	
 	ShotType = packet->NextUChar();
+	Seeking = packet->NextUInt();
 	FiredFrom = packet->NextUInt();
 	
 	if( FiredFrom )
@@ -408,111 +459,52 @@ void Shot::ReadFromInitPacket( Packet *packet, int8_t precision )
 		const GameObject *fired_from = Data->GetObject( FiredFrom );
 		if( fired_from )
 		{
-			Up.Copy( &(fired_from->Up) );
-			
-			if( fired_from->Type() == XWing::Object::TURRET )
-			{
-				// Make sure turret shots always appear to come from the turret, even if its position may be slightly mis-predicted.
-				const Turret *turret = (const Turret*) fired_from;
-				Pos3D gun = turret->GunPos();
-				Copy( &gun );
-				MoveAlong( &(gun.Fwd), 2.2 );
-				MoveAlong( &(gun.Right), (WeaponIndex % 2) ? (turret->GunWidth * -1.) : turret->GunWidth );
-			}
-			else
-			{
-				if( fired_from->Type() == XWing::Object::SHIP )
-				{
-					const Ship *ship = (const Ship*) fired_from;
-					if( ship->Class )
-					{
-						// Make sure ship shots appear to come from the ship's weapons.
-						std::map< uint8_t, std::vector<Pos3D> >::const_iterator weapon_iter = ship->Class->Weapons.find( ShotType );
-						if( (weapon_iter != ship->Class->Weapons.end()) && (WeaponIndex < weapon_iter->second.size()) )
-						{
-							SetPos( ship->X, ship->Y, ship->Z );
-							MoveAlong( &(ship->Fwd),   weapon_iter->second.at( WeaponIndex ).X );
-							MoveAlong( &(ship->Up),    weapon_iter->second.at( WeaponIndex ).Y );
-							MoveAlong( &(ship->Right), weapon_iter->second.at( WeaponIndex ).Z );
-						}
-					}
-				}
-			}
+			PlayerID = fired_from->PlayerID;
+			StartAtWeapon( fired_from );
 		}
 	}
 	
 	FixVectors();
-	
-#else  // v0.3.x
-	
-	GameObject::ReadFromInitPacket( packet, -127 );
-	
-	ShotType = packet->NextUChar();
-	FiredFrom = packet->NextUInt();
-	
-	WeaponIndex = 255;
-	
-	if( FiredFrom )
+}
+
+
+void Shot::StartAtWeapon( const GameObject *fired_from )
+{
+	if( ! fired_from )
+		fired_from = Data->GetObject( FiredFrom );
+	if( fired_from )
 	{
-		double dist_along_fwd = packet->NextFloat();
+		Up.Copy( &(fired_from->Up) );
 		
-		const GameObject *fired_from = Data->GetObject( FiredFrom );
-		if( fired_from )
+		if( fired_from->Type() == XWing::Object::TURRET )
 		{
-			if( fired_from->Type() == XWing::Object::TURRET )
+			// Make sure turret shots always appear to come from the turret, even if its position may be slightly mis-predicted.
+			const Turret *turret = (const Turret*) fired_from;
+			Pos3D gun = turret->GunPos();
+			Copy( &gun );
+			MoveAlong( &(gun.Fwd), 2.2 );
+			MoveAlong( &(gun.Right), (WeaponIndex % 2) ? (turret->GunWidth * -1.) : turret->GunWidth );
+		}
+		else
+		{
+			if( fired_from->Type() == XWing::Object::SHIP )
 			{
-				// Make sure turret shots always appear to come from the turret, even if its position may be slightly mis-predicted.
-				const Turret *turret = (const Turret*) fired_from;
-				Pos3D gun = turret->GunPos();
-				WeaponIndex = (gun.Right.Dot(&Right) >= 0.) ? 0 : 1;
-				Copy( &gun );
-				MoveAlong( &(gun.Fwd), 2.2 );
-				MoveAlong( &(gun.Right), WeaponIndex ? (turret->GunWidth * -1.) : turret->GunWidth );
-			}
-			else
-			{
-				if( fired_from->Type() == XWing::Object::SHIP )
+				const Ship *ship = (const Ship*) fired_from;
+				if( ship->Class )
 				{
-					const Ship *ship = (const Ship*) fired_from;
-					if( ship->Class )
+					// Make sure ship shots appear to come from the ship's weapons.
+					std::map< uint8_t, std::vector<Pos3D> >::const_iterator weapon_iter = ship->Class->Weapons.find( ShotType );
+					if( (weapon_iter != ship->Class->Weapons.end()) && (WeaponIndex < weapon_iter->second.size()) )
 					{
-						// Make sure ship shots appear to come from the ship's weapons by matching Up/Right offset to shot Right vector.
-						std::map< uint8_t, std::vector<Pos3D> >::const_iterator weapon_iter = ship->Class->Weapons.find( ShotType );
-						if( weapon_iter != ship->Class->Weapons.end() )
-						{
-							double best_dot = 0.5;  // Make sure ship's predicted rotation isn't too far off to guess the weapon index.
-							for( uint8_t i = 0; i < (uint8_t) weapon_iter->second.size(); i ++ )
-							{
-								Vec3D to_weapon = ship->Up * weapon_iter->second.at( i ).Y + ship->Right * weapon_iter->second.at( i ).Z;
-								double dot = Right.Dot( &to_weapon );
-								if( dot > best_dot )
-								{
-									WeaponIndex = i;
-									best_dot = dot;
-								}
-							}
-							if( WeaponIndex != 255 )
-							{
-								SetPos( ship->X, ship->Y, ship->Z );
-								MoveAlong( &(ship->Fwd),   weapon_iter->second.at( WeaponIndex ).X );
-								MoveAlong( &(ship->Up),    weapon_iter->second.at( WeaponIndex ).Y );
-								MoveAlong( &(ship->Right), weapon_iter->second.at( WeaponIndex ).Z );
-							}
-						}
+						SetPos( ship->X, ship->Y, ship->Z );
+						MoveAlong( &(ship->Fwd),   weapon_iter->second.at( WeaponIndex ).X );
+						MoveAlong( &(ship->Up),    weapon_iter->second.at( WeaponIndex ).Y );
+						MoveAlong( &(ship->Right), weapon_iter->second.at( WeaponIndex ).Z );
 					}
 				}
 			}
-			
-			if( WeaponIndex == 255 )
-			{
-				double current_dist_fwd = DistAlong( &Fwd, fired_from );
-				dist_along_fwd += 1.7;  // Hack for compatibility with older clients that had sloppier weapon positions.
-				MoveAlong( &Fwd, dist_along_fwd - current_dist_fwd );
-			}
 		}
 	}
-	
-#endif  // ! FUTURE_NETCODE
 }
 
 
@@ -640,6 +632,9 @@ void Shot::Update( double dt )
 
 void Shot::Draw( void )
 {
+	if( ! Drawn )
+		StartAtWeapon();
+	
 	// Size parameters.
 	double ahead  = DrawAhead();
 	double behind = DrawBehind();

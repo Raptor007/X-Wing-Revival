@@ -18,7 +18,7 @@ public:
 	uint8_t ShotType;
 	Model Shape;
 	Animation Anim;
-	bool Drawn;
+	bool Drawn, Predicted;
 	
 	uint32_t FiredFrom;
 	uint8_t WeaponIndex;
@@ -29,6 +29,9 @@ public:
 	virtual ~Shot();
 	
 	void ClientInit( void );
+	
+	void Copy( const Pos3D *other );
+	void Copy( const Shot *other );
 	
 	double Damage( void ) const;
 	double HullDamage( void ) const;
@@ -49,6 +52,7 @@ public:
 	
 	void AddToInitPacket( Packet *packet, int8_t precision = 0 );
 	void ReadFromInitPacket( Packet *packet, int8_t precision = 0 );
+	void StartAtWeapon( const GameObject *fired_from = NULL );
 	void AddToUpdatePacket( Packet *packet, int8_t precision = 0 );
 	void ReadFromUpdatePacket( Packet *packet, int8_t precision = 0 );
 	

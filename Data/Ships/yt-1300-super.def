@@ -7,27 +7,29 @@ secret
 radius 11.5
 speed 160
 accel 85
-roll 80 65
-pitch 55 45
-yaw 45 35
-roll_change 110 90
-pitch_change 80 60
-yaw_change 80 60
+roll 80 100
+pitch 35 50
+yaw 40 30
+roll_change 80 170
+pitch_change 80 55
+yaw_change 80 40
 health 300
-shield 250
+shield 400
 recover 5
 recharge 3
 ramming 900
-explode 0.5
+explode 0.9
 turret superlaser 0 2.13 -2.09 up 0 0.99 -0.06 pitch -1.5 90 dir 0 0 1 arc 360 invincible manual independent firetime 5
 turret superlaser 0 -2.13 -2.09 up 0 -0.99 -0.03 pitch -3 90 dir 0 0 1 arc 360 invincible manual linked firetime 5
-engine 0 0 -14.5 engine_yellow.ani 7 0.1 1 0.3 0.2
-engine 2.4 0 -14.3 engine_yellow.ani 7 0.1 1 0.3 0.2
-engine -2.4 0 -14.3 engine_yellow.ani 7 0.1 1 0.3 0.2
-engine 4.7 0 -13.6 engine_yellow.ani 7 0.1 1 0.3 0.2
-engine -4.7 0 -13.6 engine_yellow.ani 7 0.1 1 0.3 0.2
-engine 6.9 0 -12.5 engine_yellow.ani 7 0.1 1 0.3 0.2
-engine -6.9 0 -12.5 engine_yellow.ani 7 0.1 1 0.3 0.2
+engine 0 0 -14.5 engine_blue.ani 7 1 1 1 0.2
+engine 2.4 0 -14.3 engine_blue.ani 7 1 1 1 0.2
+engine -2.4 0 -14.3 engine_blue.ani 7 1 1 1 0.2
+engine 4.7 0 -13.6 engine_blue.ani 7 1 1 1 0.2
+engine -4.7 0 -13.6 engine_blue.ani 7 1 1 1 0.2
+engine 6.9 0 -12.5 engine_blue.ani 7 1 1 1 0.2
+engine -6.9 0 -12.5 engine_blue.ani 7 1 1 1 0.2
+engine 0 2.1 -2.09 engine_yellow.ani 2.2 0.1 1 0.3 0.6
+engine 0 -2.1 -2.09 engine_yellow.ani 2.2 0.1 1 0.3 0.6
 model yt-1300.obj
 cockpit yt-1300_cockpit.obj 10 1.25 7.64
 turret_model yt-1300_turret_body.obj yt-1300_turret_gun.obj
@@ -37,6 +39,7 @@ turret_headpos 0.61 -0.29
 turret_speed 90
 model_scale 0.022
 glance 70 30
+selfie 1 0.3
 flyby 20 yt1300_slow.wav
 flyby 160 yt1300_med.wav
 flyby 210 yt1300_fast.wav

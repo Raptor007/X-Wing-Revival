@@ -29,17 +29,23 @@ namespace XWing
 			LOBBY = 'Loby',
 			FLY = 'Fly ',
 			ROUND_ENDED = 'Fin ',
+			RESET_DEFAULTS = 'Anew',
+			GAMETYPE = 'Mode',
 			TIME_REMAINING = 'Time',
 			EXPLOSION = 'Boom',
 			SHOT_HIT_SHIP = 'HitS',
 			SHOT_HIT_TURRET = 'HitT',
 			SHOT_HIT_HAZARD = 'HitH',
 			MISC_HIT_SHIP = '?Hit',
+			REPAIR = 'Fix ',
+			REARM = 'Ammo',
+			JUMP_OUT = 'Jump',
 			CHANGE_SEAT = 'Seat',
 			TOGGLE_COPILOT = 'CoPi',
 			ENGINE_SOUND = 'Engi',
 			CHECKPOINT = 'GoGo',
-			ACHIEVEMENT = 'Wow!'
+			ACHIEVEMENT = 'Wow!',
+			MISSION_COMPLETE = 'Win!'
 		};
 	}
 	
@@ -112,12 +118,15 @@ namespace XWing
 			THROTTLE_66,  // SPECTATE_NEXT (keyboard)
 			THROTTLE_100,
 			FIRE,
+			TARGET_STORE,
 			TARGET_NOTHING,
 			TARGET_CROSSHAIR,
 			TARGET_NEAREST_ENEMY,
 			TARGET_NEAREST_ATTACKER,
 			TARGET_NEWEST_INCOMING,
+			TARGET_TARGET_ATTACKER,
 			TARGET_OBJECTIVE,
+			TARGET_DOCKABLE,
 			TARGET_NEWEST,
 			TARGET_GROUPMATE,
 			TARGET_SYNC,
@@ -145,6 +154,10 @@ namespace XWing
 			WEAPON,
 			MODE,
 			SHIELD_DIR,
+			TARGET1,
+			TARGET2,
+			TARGET3,
+			TARGET4,
 			TARGET_PREV,
 			TARGET_NEXT,
 			TARGET_PREV_ENEMY,  // SPECTATE_PREV (Xbox)
@@ -157,12 +170,40 @@ namespace XWing
 			SEAT_GUNNER1,
 			SEAT_GUNNER2,
 			CHEWIE_TAKE_THE_WHEEL,
+			VIEW_COCKPIT,
+			VIEW_CROSSHAIR,
+			VIEW_CHASE,
+			VIEW_PADLOCK,
+			VIEW_STATIONARY,
+			VIEW_CINEMA,
+			VIEW_FIXED,
+			VIEW_SELFIE,
+			VIEW_GUNNER,
+			VIEW_CYCLE,
+			VIEW_INSTRUMENTS,
 			CHAT,
 			MENU,
 			PREFS,
 			PAUSE,
 			
 			COUNT
+		};
+	}
+
+	namespace View
+	{
+		enum
+		{
+			AUTO = 0,
+			COCKPIT,
+			GUNNER,
+			SELFIE,
+			CHASE,
+			CINEMA,
+			FIXED,
+			STATIONARY,
+			INSTRUMENTS,
+			CYCLE
 		};
 	}
 }

@@ -13,7 +13,7 @@ shield 3000
 recover 20
 recharge 2
 ramming 6000
-explode 0.05
+explode 0.1
 turret turbolaser 0 10.28 37.5 up 0 1 0 pitch -5 90 dir 0 0 1 arc 300 invincible independent firetime 0.4
 turret turbolaser 0 -10.28 37.5 up 0 -1 0 pitch -5 90 dir 0 0 1 arc 300 invincible independent firetime 0.4
 firetime turbolaser 0.4

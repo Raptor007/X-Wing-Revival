@@ -1,0 +1,28 @@
+mission_name SuperLaser InstaGib
+mission_desc Fun for the whole family!
+mission_opts dm_kill_limit ai_waves asteroids bg
+gametype ffa_dm
+player_ship T/F-S YT1300-S
+allow_ship_change true
+empire_fighter T/F-S
+rebel_fighter T/F-S
+ai_waves 1
+asteroids 32
+dm_kill_limit 10
+
+at 0:01
+alert Silly/checkpoint.wav Now this is pod racing!
+wait 2
+alert chat.wav [R2 chirps in agreement.]
+
+on victory
+wait 4
+alert Silly/powerful.wav Wow!
+wait 1
+alert Silly/great_shot.wav Wow!!
+wait 1
+alert Silly/impressive.wav Wow!!!
+
+on defeat
+wait 1
+alert Silly/darkside.wav Now you see that evil will always triumph... because good is dumb.

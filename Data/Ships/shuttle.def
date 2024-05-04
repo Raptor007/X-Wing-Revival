@@ -1,0 +1,33 @@
+id SHU
+name Lambda Shuttle
+squadron Lambda
+category transport
+team empire
+radius 13
+speed 110
+accel 35
+roll 85 80
+pitch 50 40
+yaw 40 30
+roll_change 160 150
+pitch_change 90 80
+yaw_change 90 80
+health 250
+shield 500
+recover 10
+recharge 5
+ramming 900
+explode 0.9
+weapon laser 4.88 -0.895 4.3
+weapon laser -4.88 -0.895 4.3
+engine 2.5 -1.032 -7.7 engine_blue.png 3 1 1 1 0.2
+engine -2.5 -1.032 -7.7 engine_blue.png 3 1 1 1 0.2
+engine 4 -1.032 -7.7 engine_blue.png 3 1 1 1 0.2
+engine -4 -1.032 -7.7 engine_blue.png 3 1 1 1 0.2
+engine 1 -1.032 -7.7 engine_blue.png 3 1 1 1 0.2
+engine -1 -1.032 -7.7 engine_blue.png 3 1 1 1 0.2
+model shuttle.obj
+cockpit shuttle.obj 0 1 9
+model_scale 0.022
+flyby 20 shuttle_slow.wav
+flyby 100 shuttle_fast.wav

@@ -10,23 +10,30 @@ class XWingGame;
 #include "RaptorGame.h"
 #include "XWingDefs.h"
 #include "ShipClass.h"
+#include "Shot.h"
 
 
 class XWingGame : public RaptorGame
 {
 public:
+	std::map<std::string,std::string> MissionList;
+	
 	uint32_t GameType;
-	//std::vector< std::pair<std::string,std::string> > GameTypes;  // FIXME: Use something like this in v0.4.
 	Clock RoundTimer;
+	uint8_t CampaignTeam;
 	
 	uint32_t ObservedShipID;
+	uint8_t View;
 	double LookYaw, LookPitch;
 	bool ThumbstickLook;
+	uint32_t StoredTargets[ 4 ];
+	uint8_t StoredSubsystems[ 4 ];
+	std::map< uint8_t, std::map< int, std::deque<Shot*> > > ClientShots;
+	
 	double AsteroidLOD;
 	double OverlayScroll;
 	Clock EjectHeld;
 	size_t BlastPoints;
-	double SpawnDelay;  // FIXME: Should the server handle staggered group respawns instead of faking it client-side?
 	
 	uint16_t Victor;
 	std::queue<std::string> Achievements;
@@ -34,9 +41,11 @@ public:
 	
 	uint8_t Controls[ XWing::Control::COUNT ];
 	
+	
 	XWingGame( std::string version );
 	virtual ~XWingGame();
 	
+	void SetDefaultJoyTypes( void );
 	void SetDefaultControls( void );
 	void SetDefaults( void );
 	void Setup( int argc, char **argv );

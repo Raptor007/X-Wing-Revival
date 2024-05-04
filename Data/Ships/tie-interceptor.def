@@ -12,28 +12,23 @@ yaw 65 50
 roll_change 385 360
 pitch_change 350 280
 yaw_change 335 270
-health 85
+health 91
 shield 0
 ramming 500
 explode 1
-//weapon laser_green 2.7775 1.056 6.1
-//weapon laser_green -2.7775 -1.056 6.1
-//weapon laser_green -2.7775 1.056 6.1
-//weapon laser_green 2.7775 -1.056 6.1
-weapon laser_green 2.7775 1.056 4
-weapon laser_green -2.7775 -1.056 4
-weapon laser_green -2.7775 1.056 4
-weapon laser_green 2.7775 -1.056 4
-firetime laser_green 0.25
+weapon laser_green 2.7775 1.056 6.1
+weapon laser_green -2.7775 -1.056 6.1
+weapon laser_green -2.7775 1.056 6.1
+weapon laser_green 2.7775 -1.056 6.1
+firetime laser_green 0.2
 engine 0.88 0.03 -0.94 engine_yellow.ani 0.4 1 0.1 0.1 0.4
 engine -0.88 0.03 -0.94 engine_yellow.ani 0.4 1 0.1 0.1 0.4
 model tie-interceptor.obj
-//cockpit tie-interceptor_cockpit_vr.obj 0 0 0.07
-//cockpit_vr tie-interceptor_cockpit_vr.obj 0 0.1 -0.1
-cockpit tie-fighter_cockpit_vr.obj 0 0 0.07
-cockpit_vr tie-fighter_cockpit_vr.obj 0 0.1 -0.1
+cockpit tie-interceptor_cockpit_vr.obj 0 0 0.07
+cockpit_vr tie-interceptor_cockpit_vr.obj 0 0.1 -0.1
 model_scale 0.022
 glance 85 0
+selfie 16
 flyby 20 tie_slow.wav
 flyby 200 tie_med.wav
 flyby 250 tie_fast.wav

@@ -235,8 +235,9 @@ default: $(TARGET)
 	-if [ -L "$@/Contents/CodeResources" ]; then rm "$@/Contents/CodeResources"; rsync -ax "$@/Contents/_CodeSignature/CodeResources" "$@/Contents/"; fi
 
 %.elf: exe
-	-chmod +x "$(EXE)"
 	rsync -ax "$(EXE)" "$@"
+	-chmod +x "$@"
+	-patchelf --add-rpath '$$ORIGIN/Bin64' "$@"
 	-patchelf --replace-needed /usr/lib64/libopenvr_api.so Bin64/libopenvr_api.so "$@"
 	-patchelf --replace-needed libSDL2-2.0.so.0 Bin64/libSDL2.so "$@"
 	-patchelf --replace-needed libSDL2_image-2.0.so.0 Bin64/libSDL2_image.so "$@"

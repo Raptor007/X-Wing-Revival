@@ -4,16 +4,16 @@ squadron Beta
 category fighter
 team empire
 radius 4.7
-speed 190
-accel 80
+speed 205
+accel 90
 roll 115 105
-pitch 75 55
+pitch 75 60
 yaw 55 45
 roll_change 270 230
 pitch_change 210 120
 yaw_change 175 80
 health 100
-shield 85
+shield 170
 recover 5
 recharge 3
 ramming 500
@@ -34,6 +34,7 @@ cockpit tie-fighter_cockpit_vr.obj 0 0 0.07
 cockpit_vr tie-fighter_cockpit_vr.obj 0 0.1 -0.1
 model_scale 0.022
 glance 85 0
+selfie 12
 flyby 20 tie_slow.wav
 flyby 200 tie_med.wav
 flyby 250 tie_fast.wav

@@ -52,6 +52,7 @@ Turret::Turret( uint32_t id ) : BlastableObject( id, XWing::Object::TURRET )
 	
 	Firing = false;
 	WeaponIndex = 0;
+	FiredThisFrame = 0;
 	Target = 0;
 }
 
@@ -257,7 +258,7 @@ std::map<int,Shot*> Turret::NextShots( GameObject *target, uint8_t firing_mode )
 			player_id = parent->PlayerID;
 	}
 	
-	for( int num = 0; num < firing_mode; num ++ )
+	for( int num = 0; num < (int) firing_mode; num ++ )
 	{
 		int weapon_index = (WeaponIndex + num) % 2;
 		
@@ -299,9 +300,14 @@ void Turret::JustFired( void )
 {
 	FiringClock.Reset();
 	
-	WeaponIndex ++;
-	if( WeaponIndex >= 2 )
-		WeaponIndex = 0;
+	if( ! FiredThisFrame )
+	{
+		WeaponIndex ++;
+		if( WeaponIndex >= 2 )
+			WeaponIndex = 0;
+	}
+	
+	FiredThisFrame ++;
 }
 
 
@@ -313,7 +319,7 @@ double Turret::ShotDelay( void ) const
 
 bool Turret::PlayerShouldUpdateServer( void ) const
 {
-	return (Health > 0.);
+	return (Health > 0.);  // FIXME: Not when parent ship has jumped out?
 }
 
 bool Turret::ServerShouldUpdatePlayer( void ) const
@@ -323,7 +329,7 @@ bool Turret::ServerShouldUpdatePlayer( void ) const
 
 bool Turret::ServerShouldUpdateOthers( void ) const
 {
-	return true;
+	return true;  // FIXME: Not when parent ship has jumped out?
 }
 
 bool Turret::CanCollideWithOwnType( void ) const
@@ -334,7 +340,7 @@ bool Turret::CanCollideWithOwnType( void ) const
 bool Turret::CanCollideWithOtherTypes( void ) const
 {
 	const Ship *parent = ParentShip();
-	if( parent && (parent->JumpProgress < 1.) )
+	if( parent && (parent->JumpedOut || (parent->JumpProgress < 1.)) )
 		return false;
 	
 	return CanBeHit;
@@ -352,6 +358,8 @@ bool Turret::IsMoving( void ) const
 void Turret::AddToInitPacket( Packet *packet, int8_t precision )
 {
 	packet->AddUChar( Team );
+	packet->AddUChar( Weapon );
+	packet->AddFloat( SingleShotDelay );
 	packet->AddUInt( ParentID );
 	if( ParentID )
 	{
@@ -415,6 +423,8 @@ void Turret::AddToInitPacket( Packet *packet, int8_t precision )
 void Turret::ReadFromInitPacket( Packet *packet, int8_t precision )
 {
 	Team = packet->NextUChar();
+	Weapon = packet->NextUChar();
+	SingleShotDelay = packet->NextFloat();
 	ParentID = packet->NextUInt();
 	if( ParentID )
 	{
@@ -649,6 +659,8 @@ void Turret::Update( double dt )
 {
 	FiringClock.SetTimeScale( Data->TimeScale );
 	
+	FiredThisFrame = 0;
+	
 	const Ship *parent = ParentShip();
 	if( parent )
 	{
@@ -691,26 +703,28 @@ void Turret::Draw( bool allow_shader_change )
 	
 	if( (Health > 0.) && Visible )
 	{
-		bool change_shader = allow_shader_change && (! ParentID) && (Raptor::Game->Cfg.SettingAsInt("g_shader_light_quality") >= 2) && Raptor::Game->ShaderMgr.Active();
-		Shader *prev_shader = Raptor::Game->ShaderMgr.Selected;
-		if( change_shader )
-			Raptor::Game->ShaderMgr.SelectAndCopyVars( Raptor::Game->Res.GetShader("deathstar") );
-		
+		XWingGame *game = (XWingGame*) Raptor::Game;
 		Pos3D pos = *this;
-		
-		bool gunner_view = (PlayerID == Raptor::Game->PlayerID); // FIXME: Ideally this should also apply to spectating the gunner view.
 		
 		// If attached to a ship jumping in from hyperspace, the turrets jump in with it.
 		const Ship *parent = ParentShip();
-		if( parent && (parent->JumpProgress < 1.) )
+		if( parent && ((parent->JumpProgress < 1.) || parent->JumpedOut) )
 		{
-			if( (parent->PlayerID == Raptor::Game->PlayerID) && ! gunner_view )
+			if( parent->JumpedOut && (parent->JumpProgress > 1.) )
+				return;
+			
+			if( (parent->PlayerID == Raptor::Game->PlayerID) && (game->View != XWing::View::GUNNER) )
 				pos.MoveAlong( &(parent->Fwd), parent->CockpitDrawOffset() );
 			else
 				pos.MoveAlong( &(parent->Fwd), parent->DrawOffset() );
 		}
 		
-		if( gunner_view )
+		bool change_shader = allow_shader_change && (! ParentID) && (Raptor::Game->Cfg.SettingAsInt("g_shader_light_quality") >= 2) && Raptor::Game->ShaderMgr.Active();
+		Shader *prev_shader = Raptor::Game->ShaderMgr.Selected;
+		if( change_shader )
+			Raptor::Game->ShaderMgr.SelectAndCopyVars( Raptor::Game->Res.GetShader("deathstar") );
+		
+		if( game->View == XWing::View::GUNNER )
 			pos.Yaw( YawRate * -0.004 );
 		
 		if( BodyShape )
@@ -720,7 +734,7 @@ void Turret::Draw( bool allow_shader_change )
 		{
 			Pos3D gun = GunPos( &pos );
 			
-			if( gunner_view )
+			if( game->View == XWing::View::GUNNER )
 				gun.Pitch( GunPitchRate * -0.004 );
 			
 			GunShape->DrawAt( &gun, 0.022 );

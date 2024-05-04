@@ -250,7 +250,13 @@ void main( void )
 	#endif
 	
 	// Apply material alpha.
-	gl_FragColor.a *= Alpha;
+	#if (BLASTPOINTS > 0) && (BLASTPOINT_QUALITY >= 2)
+		gl_FragColor.a *= pow( Alpha, darken );
+	#else
+		gl_FragColor.a *= Alpha;
+	#endif
+	
+	// ---------------------------------------------------------------------------
 	
 	// Apply Death Star distance fog.
 	gl_FragColor.rgb *= clamp( 65536.0 - gl_FragCoord.z * 65536.0, 0.0, 1.0 );

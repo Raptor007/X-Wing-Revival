@@ -1,0 +1,63 @@
+mission_name Rebel 0: Alliance Training
+mission_desc Asteroid field obstacle course.
+gametype team_race
+player_team rebel
+player_ship A/W X/W Y/W B/W YT1300
+rebel_fighter A/W
+rebel_bomber X/W
+team_race_checkpoints 20
+ai_waves 0
+asteroids 32
+bg nebula
+
+at 0:03
+alert r0_begin.wav Alright, here's an easy one for you.
+wait 1.8
+message Just fly through the checkpoints.
+
+on player checkpoint #3
+wait 1
+alert r0_perfect.wav Perfect.
+
+on player checkpoint #10
+wait 1.5
+alert r0_lap.wav Go ahead and give it one more lap.
+wait 1
+message See how fast you can do it.
+
+on player checkpoint #13
+wait 3
+chat Sensors detect 1 new TIE Fighter arriving.
+wait 1
+spawn T/F "Unknown" at -7000 0 0
+wait 1
+alert r0_company.wav Looks like we've got company.
+wait 2
+alert r0_attack.wav This is not a drill!  Take 'em out.
+gametype team_elim
+wait 2.5
+alert r0_shields.wav Set deflectors to double-front for the head-on pass.
+
+on empire destroyed while player alive
+end_delay 5
+wait 1
+alert r0_kill.wav Good kill!
+wait 2.5
+alert r0_passed.wav Well, I'd say you passed.
+
+on victory
+next_mission rebel1
+wait 3
+alert r0_win.wav Sorry to cut the training short, but we'd better get back to the fleet.
+
+on defeat
+wait 1.5
+alert Silly/failed.wav You blew it, and you took me down with you!
+wait 1.5
+message I thought you had great reflexes!
+wait 1.7
+message What happened to you??
+wait 0.8
+message I used to have, like, a good pilot!
+wait 1.5
+message Man, you're slipping.

@@ -11,14 +11,18 @@ class XWingServerAlert;
 #include "RaptorServer.h"
 #include "Ship.h"
 #include "ShipClass.h"
+#include "Mission.h"
 
 
 class XWingServer : public RaptorServer
 {
 public:
 	std::set<ShipClass> ShipClasses;
+	std::map<std::string,Mission> Missions;
 	
 	uint32_t GameType;
+	uint8_t PlayerTeam;
+	std::map<std::string,std::string> Properties;
 	int KillLimit;
 	int TimeLimit;
 	int Checkpoints;
@@ -29,12 +33,15 @@ public:
 	bool AllowShipChange, AllowTeamChange;
 	uint32_t DefendingTeam;
 	std::map<double,XWingServerAlert> Alerts;
+	std::map< uint8_t, std::vector<MissionEvent> > EventTriggers;
 	std::map< uint8_t, std::vector<Pos3D> > Waypoints;
 	std::map< std::string, std::set<uint32_t> > Squadrons;
 	
 	Clock RoundTimer;
 	Clock RoundEndedTimer;
 	double RoundEndedDelay;
+	std::map<uint8_t,Clock> GroupStagger;
+	std::set<uint32_t> GroupJumpingIn;
 	std::map<uint8_t,int> TeamScores;
 	std::map<uint32_t,int> ShipScores;
 	std::set<uint16_t> Cheaters;
@@ -46,17 +53,24 @@ public:
 	XWingServer( std::string version );
 	virtual ~XWingServer();
 	
+	std::map<std::string,std::string> DefaultProperties( void ) const;
+	void ResetToDefaultProperties( void );
+	
 	void Started( void );
 	void Stopped( void );
+	bool HandleCommand( std::string cmd, std::vector<std::string> *params = NULL );
 	bool ProcessPacket( Packet *packet, ConnectedClient *from_client );
 	bool CompatibleVersion( std::string version ) const;
 	void AcceptedClient( ConnectedClient *client );
 	void DroppedClient( ConnectedClient *client );
 	
 	void Update( double dt );
+	void SetProperty( std::string name, std::string value );
 	
 	void ResetToStartingObjects( void );
-	void ToggleCountdown( void );
+	bool SelectMission( std::string mission_id = "", bool load = true );
+	void ToggleCountdown( const Player *player = NULL );
+	uint32_t ParseGameType( std::string gametype ) const;
 	void BeginFlying( uint16_t player_id = 0, bool respawn = false );
 	
 	void ShipKilled( Ship *ship, GameObject *killer_obj = NULL, Player *killer = NULL );
@@ -68,6 +82,17 @@ public:
 	Ship *SpawnShip( const ShipClass *ship_class, uint8_t team, std::set<uint32_t> *add_object_ids = NULL );
 	void SpawnShipTurrets( const Ship *ship, std::set<uint32_t> *add_object_ids = NULL );
 	void SpawnShipDockingBays( const Ship *ship );
+	
+	void SendAddedObjects( const std::set<uint32_t> *add_object_ids );
+	
+	void TriggerEvent( uint8_t trigger, const GameObject *object, const Player *player = NULL );
+	void TriggerEvent( uint8_t trigger, uint8_t team = XWing::Team::NONE, uint8_t group = 0, bool objective = false, uint16_t player_id = 0, std::string name = "" );
+	
+	bool CheckCondition( const std::vector<std::string> &terms );
+	std::set<Ship*> MatchingShips( const std::vector<std::string> &terms );
+	
+	std::string ChosenShip( const Player *player, bool allow_spectator = true );
+	std::string ChosenTeam( const Player *player, bool allow_spectator = true );
 };
 
 

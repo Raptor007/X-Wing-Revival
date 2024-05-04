@@ -27,6 +27,7 @@ cockpit tie-fighter_cockpit_vr.obj 0 0 0.07
 cockpit_vr tie-fighter_cockpit_vr.obj 0 0.1 -0.1
 model_scale 0.022
 glance 85 0
+selfie 16
 flyby 20 tie_slow.wav
 flyby 200 tie_med.wav
 flyby 250 tie_fast.wav

@@ -1,0 +1,62 @@
+mission_name Rebel 4: Colavas System
+mission_desc Provide escort for a reconnaisance mission.
+gametype hunt
+player_team rebel
+player_ship X/W
+defending_team rebel
+rebel_flagship CRV
+rebel_flagship_name "Tantive IV"
+rebel_fighter X/W
+empire_fighter T/F
+empire_bomber GUN
+rebel_waves 1
+empire_waves 4
+empire_wave_dist 3000
+ai_fighter_ratio 10
+player_spawn 8000 0 0
+rebel_spawn 7700 0 0
+empire_spawn -1000 0 0
+ai_ceasefire true
+
+at 0:03
+spawn rebel SHU "Maria" at 3000 0 -200 facing 0.9 0.1 0
+wait 2.5
+sound r4_signal.wav
+wait 4
+jump "Maria"
+wait 2
+alert r4_stop.wav Stop that ship!
+wait 1.3
+message Blast em!
+ai_ceasefire false
+
+on rebel objective hit
+wait 1
+alert r4_distress.wav Anybody out there, please!
+wait 1.5
+message We're under Imperial attack!
+wait 2.5
+alert r4_hear.wav We hear you, Tantive IV.  Coming to assist.
+
+on victory
+next_mission rebel5
+wait 1
+alert r4_win1.wav Fighters, we have no time.
+wait 1.5
+alert r4_win2.wav Proceed directly to the rendezvous point.
+wait 2
+message Good luck!
+wait 1
+jump "Tantive IV"
+
+on defeat
+wait 1.5
+alert Silly/failed.wav You blew it, and you took me down with you!
+wait 1.5
+message I thought you had great reflexes!
+wait 1.7
+message What happened to you??
+wait 0.8
+message I used to have, like, a good pilot!
+wait 1.5
+message Man, you're slipping.

@@ -36,6 +36,7 @@ public:
 	Vec3D CockpitOffset;
 	Clock DeathClock;
 	double JumpProgress;
+	bool JumpedOut;
 	std::map<std::string,double> Subsystems;
 	std::vector<Vec3D> SubsystemCenters;     // FIXME: Move these to ShipClass?
 	std::vector<std::string> SubsystemNames; //
@@ -75,7 +76,8 @@ public:
 	void DelaySpawn( double secs );
 	void SetHealth( double health );
 	void AddDamage( double front, double rear, const char *subsystem = NULL, uint32_t hit_by_id = 0, double max_hull_damage = FLT_MAX );
-	void Repair( double heal );
+	bool Repair( double heal );
+	bool Rearm( int count );
 	void KnockCockpit( const Vec3D *dir, double force );
 	void SetBlastPoint( double x, double y, double z, double radius, double time = 0., const ModelObject *object = NULL );
 	
@@ -105,6 +107,7 @@ public:
 	double PiecesDangerousTime( void ) const;
 	int WeaponCount( int weapon_type ) const;
 	uint8_t Category( void ) const;
+	bool HasDockingBays( void ) const;
 	bool PlayersCanFly( void ) const;
 	
 	Pos3D HeadPos( void ) const;
@@ -120,8 +123,10 @@ public:
 	bool NextWeapon( void );
 	bool NextFiringMode( void );
 	uint8_t CurrentFiringMode( void ) const;
-	double ShotDelay( void ) const;
+	double ShotDelay( uint8_t weapon = 0 ) const;
+	double LastFired( uint8_t weapon = 0 ) const;
 	int8_t AmmoForWeapon( uint8_t weapon = 0 ) const;
+	int8_t MaxAmmo( uint8_t weapon = 0 ) const;
 	float LockingOn( const GameObject *target ) const;
 	void UpdateTarget( const GameObject *target, uint8_t subsystem = 0, double dt = 0. );
 	Pos3D TargetCenter( uint8_t subsystem = 0 ) const;
@@ -174,7 +179,8 @@ public:
 		HIT_REAR_OLD = 0x01, // FIXME: For compatibility with v0.3.2/v0.3.3.
 		HIT_FRONT    = 0x02,
 		HIT_REAR     = 0x04,
-		HIT_HULL     = 0x08
+		HIT_HULL     = 0x08,
+		HIT_REPAIR   = 0x10
 	};
 };
 
