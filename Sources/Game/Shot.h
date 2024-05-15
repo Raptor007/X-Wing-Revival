@@ -28,10 +28,10 @@ public:
 	Shot( uint32_t id = 0 );
 	virtual ~Shot();
 	
-	void ClientInit( void );
-	
 	void Copy( const Pos3D *other );
-	void Copy( const Shot *other );
+	void Copy( const Shot *other, bool keep_pos = false );
+	
+	void ClientInit( void );
 	
 	double Damage( void ) const;
 	double HullDamage( void ) const;
@@ -56,7 +56,7 @@ public:
 	void AddToUpdatePacket( Packet *packet, int8_t precision = 0 );
 	void ReadFromUpdatePacket( Packet *packet, int8_t precision = 0 );
 	
-	bool WillCollide( const GameObject *other, double dt, std::string *this_object = NULL, std::string *other_object = NULL ) const;
+	bool WillCollide( const GameObject *other, double dt, std::string *this_object = NULL, std::string *other_object = NULL, Pos3D *loc = NULL, double *when = NULL ) const;
 	void Update( double dt );
 	
 	void Draw( void );

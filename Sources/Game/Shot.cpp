@@ -31,6 +31,31 @@ Shot::~Shot()
 }
 
 
+void Shot::Copy( const Pos3D *other )
+{
+	Pos3D::Copy( other );
+}
+
+
+void Shot::Copy( const Shot *other, bool keep_pos )
+{
+	if( ! keep_pos )
+	{
+		Pos3D::Copy( other );
+		MotionVector.Copy( &(other->MotionVector) );
+	}
+	Anim             = other->Anim;
+	Shape            = other->Shape;
+	Drawn            = other->Drawn;
+	ShotType         = other->ShotType;
+	FiredFrom        = other->FiredFrom;
+	WeaponIndex      = other->WeaponIndex;
+	Seeking          = other->Seeking;
+	SeekingSubsystem = other->SeekingSubsystem;
+	Lifetime.Sync( &(other->Lifetime) );
+}
+
+
 void Shot::ClientInit( void )
 {
 	if( (PlayerID == Raptor::Game->PlayerID) && ! Predicted )
@@ -40,16 +65,10 @@ void Shot::ClientInit( void )
 		{
 			Shot *predicted_shot = game->ClientShots[ ShotType ][ WeaponIndex ].front();
 			game->ClientShots[ ShotType ][ WeaponIndex ].pop_front();
-			Copy( predicted_shot );
+			Copy( predicted_shot, Seeking );
 			Data->RemoveObject( predicted_shot->ID );
 			return;
 		}
-		/*
-		for( std::map<int,std::deque<*Shot> >::iterator shot_iter = game->ClientShots[ ShotType ].begin(); shot_iter != game->ClientShots[ ShotType ].end(); shot_iter ++ )
-		{
-			// FIXME: Clean up mis-predicted shots?
-		}
-		*/
 	}
 	
 	if( ShotType == TYPE_LASER_RED )
@@ -204,27 +223,6 @@ void Shot::ClientInit( void )
 			turret->JustFired();
 		}
 	}
-}
-
-
-void Shot::Copy( const Pos3D *other )
-{
-	Pos3D::Copy( other );
-}
-
-
-void Shot::Copy( const Shot *other )
-{
-	Pos3D::Copy( other );
-	Anim             = other->Anim;
-	Shape            = other->Shape;
-	Drawn            = other->Drawn;
-	ShotType         = other->ShotType;
-	FiredFrom        = other->FiredFrom;
-	WeaponIndex      = other->WeaponIndex;
-	Seeking          = other->Seeking;
-	SeekingSubsystem = other->SeekingSubsystem;
-	Lifetime.Sync( &(other->Lifetime) );
 }
 
 
@@ -528,7 +526,7 @@ void Shot::ReadFromUpdatePacket( Packet *packet, int8_t precision )
 }
 
 
-bool Shot::WillCollide( const GameObject *other, double dt, std::string *this_object, std::string *other_object ) const
+bool Shot::WillCollide( const GameObject *other, double dt, std::string *this_object, std::string *other_object, Pos3D *loc, double *when ) const
 {
 	if( other->Type() == XWing::Object::SHOT )
 	{
@@ -547,7 +545,7 @@ bool Shot::WillCollide( const GameObject *other, double dt, std::string *this_ob
 	}
 	
 	// Let other objects determine whether collisions with shots occur.
-	return other->WillCollide( this, dt, other_object, this_object );
+	return other->WillCollide( this, dt, other_object, this_object, loc, when );
 }
 
 

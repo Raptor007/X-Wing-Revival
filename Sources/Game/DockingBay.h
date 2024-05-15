@@ -32,6 +32,6 @@ public:
 	bool CanCollideWithOtherTypes( void ) const;
 	bool IsMoving( void ) const;
 	
-	bool WillCollide( const GameObject *other, double dt, std::string *this_object = NULL, std::string *other_object = NULL ) const;
+	bool WillCollide( const GameObject *other, double dt, std::string *this_object = NULL, std::string *other_object = NULL, Pos3D *loc = NULL, double *when = NULL ) const;
 	void Update( double dt );
 };

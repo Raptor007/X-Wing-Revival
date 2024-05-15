@@ -165,7 +165,7 @@ void Asteroid::ReadFromUpdatePacketFromServer( Packet *packet, int8_t precision 
 }
 
 
-bool Asteroid::WillCollide( const GameObject *other, double dt, std::string *this_object, std::string *other_object ) const
+bool Asteroid::WillCollide( const GameObject *other, double dt, std::string *this_object, std::string *other_object, Pos3D *loc, double *when ) const
 {
 	if( other->Type() == XWing::Object::SHOT )
 	{
@@ -176,7 +176,7 @@ bool Asteroid::WillCollide( const GameObject *other, double dt, std::string *thi
 	
 	// Let ships determine whether collisions with asteroids occur.
 	else if( other->Type() == XWing::Object::SHIP )
-		return other->WillCollide( this, dt, other_object, this_object );
+		return other->WillCollide( this, dt, other_object, this_object, loc, when );
 	
 	return false;
 }

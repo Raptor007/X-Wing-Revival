@@ -5,7 +5,7 @@ USERNAME='xwingrev'
 GAMEPATH='/srv/xwingrev'
 SERVICE='xwingrev'
 PARAMS='-dedicated'
-FIRST_CMD='netrate 20; maxfps 60'
+FIRST_CMD='netrate 20; maxfps 60; threads 8'
 
 ME=`whoami`
 as_user()

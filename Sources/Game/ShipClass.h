@@ -54,7 +54,7 @@ public:
 	double TurretHealth;
 	double TurretYawSpeed, TurretPitchSpeed;
 	std::string TurretBody, TurretGun;
-	double TurretGunWidth;
+	double TurretRadius, TurretGunWidth;
 	double TurretGunUp, TurretGunFwd, TurretHeadUp, TurretHeadFwd;
 	std::vector<ShipClassDockingBay> DockingBays;
 	bool Dockable;

@@ -1,6 +1,6 @@
 ----------------------------------------
 |            X-Wing Revival            |
-|        0.4 Alpha (2024-05-04)        |
+|       0.4.1 Alpha (2024-05-15)       |
 |     by Raptor007 (Blair Sherman)     |
 | http://raptor007.com/x-wing-revival/ |
 ----------------------------------------
@@ -32,11 +32,9 @@ Alliance for helping me bring balance to the forces.
 
   Fleet Battle: Each team tries to destroy the enemy capital ships while defending
     their own.  The last team with any surviving capital ship wins.  Respawn is only
-    possible while your main capital ship survives, so prioritize its protection.
-    Cruisers will respawn if their entire group is destroyed before the main ship,
-    but the more cruisers on a team, the longer it takes for their group to respawn.
-    Default cruisers are 2 Corvettes vs 3 Interdictors.  (If you set both to 0, this
-    is essentially the old "Defend/Destroy" mode.)
+    possible while your team's flagship is alive, so prioritize its protection.
+    Cruisers and frigates will respawn if their entire group is destroyed before the
+    flagship, but it takes time to replace a large group of capital ships.
 
   Battle of Yavin: Rebels must fly down the trench and try to hit the exhaust port
     with a pair of proton torpedoes.  Imperials must try to prevent the Rebels from
@@ -204,8 +202,7 @@ Linux asks what application to open files of type "executable" with.
 
   Rate: Send updates to the server at this rate.  Default: 30
 
-  Predict: Provide immediate shot feedback instead of waiting for server.
-    Default is My Lasers to avoid ammo sync issues and rubber-banding seekers.
+  Predict: Shots fire immediately instead of waiting for server.  Default: All My Shots
 
 
 == CONTROLS ==
@@ -421,6 +418,7 @@ When hosting, you can also use the "sv" command to control the server:
   sv state ++: When a game is in progress, you can use this to end the round early.
   sv netrate <num>: Adjust the network update rate for all clients.  Default: 30
   sv maxfps <num>: Adjust the simulation update rate.  Default: 60
+  sv threads <num>: Use extra threads for capital ship collisions.  Default: 0
   sv port <num>: Change the TCP port number (after restart).  Default: 7000
   sv restart: Restart the server.
 
@@ -478,6 +476,17 @@ console commands to execute, such as "sv gametype yavin" or "sv rebel_fighter A/
 
 
 == VERSION HISTORY ==
+
+Alpha 0.4.1 (2024-05-15):
+ * Fixed "Change Ship" showing all ships when team change is not allowed.
+ * Fixed crash when attempting to play as turret gunner on Battle of Yavin.
+ * Client-predicted shots are now synchronized with the server.
+ * Corvette turrets can be destroyed.  Other minor balance tweaks.
+ * Added Target Next/Previous Player controls.
+ * Added another ship category "Frigates" to Fleet Battle mode.
+ * Added "Reset to Defaults" button in lobby.
+ * Bumping into a capital ship now damages from the correct direction.
+ * Criusers now respawn spread out.
 
 Alpha 0.4 (2024-05-04):
  * First proof-of-concept demo of singleplayer campaign.

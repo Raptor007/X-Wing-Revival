@@ -337,7 +337,7 @@ IngameMenuShipDropDown::IngameMenuShipDropDown( SDL_Rect *rect, Font *font, uint
 			if( obj_iter->second->Type() == XWing::Object::SHIP_CLASS )
 			{
 				const ShipClass *sc = (const ShipClass*) obj_iter->second;
-				bool allowed = darkside || sc->PlayersCanFly();
+				bool allowed = (darkside || sc->PlayersCanFly()) && (allow_team_change || (! sc->Team) || (sc->Team == player_team));
 				
 				if( allowed_ships.size() && ! darkside )
 				{

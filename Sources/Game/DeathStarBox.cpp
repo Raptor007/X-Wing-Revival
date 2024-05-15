@@ -116,7 +116,7 @@ void DeathStarBox::ReadFromInitPacket( Packet *packet, int8_t precision )
 }
 
 
-bool DeathStarBox::WillCollide( const GameObject *other, double dt, std::string *this_object, std::string *other_object ) const
+bool DeathStarBox::WillCollide( const GameObject *other, double dt, std::string *this_object, std::string *other_object, Pos3D *loc, double *when ) const
 {
 	if( other->Type() == XWing::Object::SHOT )
 	{

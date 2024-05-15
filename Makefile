@@ -285,8 +285,9 @@ server-install:
 	-"$(SERVERDIR)/xwingctl" stop
 	cp "$(EXE)" "$(SERVERDIR)/$(notdir $(EXE))-$(VERSION)"
 	cd "$(SERVERDIR)" && ln -sf "$(notdir $(EXE))-$(VERSION)" "$(notdir $(EXE))"
-	-rsync -ax --exclude=".*" Data/Ships "$(SERVERDIR)/"
-	-rsync -ax --exclude=".*" Data/Models "$(SERVERDIR)/"
+	-rsync -ax --exclude='.*' Data/Ships "$(SERVERDIR)/"
+	-rsync -ax --exclude='.*' Data/Models "$(SERVERDIR)/"
+	-rsync -ax --exclude='.*' --exclude=Sounds Data/Missions "$(SERVERDIR)/"
 	-chown -R $(SERVERUSER):wheel "$(SERVERDIR)"
 	-chmod 775 "$(SERVERDIR)/$(notdir $(EXE))-$(VERSION)"
 	-ln -sf "$(SERVERDIR)/xwingctl" /usr/local/bin/xwingctl

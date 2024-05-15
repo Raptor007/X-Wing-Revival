@@ -70,7 +70,7 @@ void FleetMenu::UpdateContents( void )
 	// Fleet Battle Ships
 	
 	group_rect.x = 10;
-	group_rect.y = 50;
+	group_rect.y = 40;
 	group_rect.w = Rect.w - 20;
 	group_rect.h = 299;
 	group = new GroupBox( &group_rect, "Fleet Battle Ships", ItemFont );
@@ -113,7 +113,19 @@ void FleetMenu::UpdateContents( void )
 	group->AddElement( new FleetMenuDropDown( &rect, ItemFont, "empire_cruiser" ) );
 	DropDowns.insert( (FleetMenuDropDown*) *(group->Elements.rbegin()) );
 	
-	// FIXME: Move rebel_cruisers and empire_cruisers here from LobbyMenu?
+	rect.y += rect.h + 10;
+	rect.x = 10;
+	rect.w = 80;
+	group->AddElement( new Label( &rect, "Frigate:", LabelFont, Font::ALIGN_MIDDLE_LEFT ) );
+	rect.x += rect.w + 5;
+	rect.w = 190;
+	group->AddElement( new FleetMenuDropDown( &rect, ItemFont, "rebel_frigate" ) );
+	DropDowns.insert( (FleetMenuDropDown*) *(group->Elements.rbegin()) );
+	rect.x += rect.w + 5;
+	group->AddElement( new FleetMenuDropDown( &rect, ItemFont, "empire_frigate" ) );
+	DropDowns.insert( (FleetMenuDropDown*) *(group->Elements.rbegin()) );
+	
+	// FIXME: Move rebel_cruisers/empire_cruisers/etc here from LobbyMenu?
 	
 	rect.y += rect.h + 10;
 	rect.x = 10;
@@ -133,7 +145,7 @@ void FleetMenu::UpdateContents( void )
 	// --------------------------------------------------------------------------------------------------------------------
 	// Battle of Yavin Ships
 	
-	group_rect.y += group_rect.h + 10;
+	group_rect.y += group_rect.h + 7;
 	group = new GroupBox( &group_rect, "Battle of Yavin Ships", ItemFont );
 	AddElement( group );
 	
@@ -265,7 +277,7 @@ FleetMenuDropDown::FleetMenuDropDown( SDL_Rect *rect, Font *font, std::string va
 		categories.insert( ShipClass::CATEGORY_BOMBER );
 		categories.insert( ShipClass::CATEGORY_GUNBOAT );
 	}
-	if( (Str::FindInsensitive( Name, "_flagship" ) >= 0) || (Str::FindInsensitive( Name, "_cruiser" ) >= 0) )
+	if( (Str::FindInsensitive( Name, "_flagship" ) >= 0) || (Str::FindInsensitive( Name, "_cruiser" ) >= 0) || (Str::FindInsensitive( Name, "_frigate" ) >= 0) )
 		categories.insert( ShipClass::CATEGORY_CAPITAL );
 	
 	std::set<std::string> special_allowed;
@@ -371,6 +383,9 @@ void FleetMenuDefaultsButton::Clicked( Uint8 button )
 	FleetMenuDropDown *rebel_cruiser = (FleetMenuDropDown*) Container->FindElement( "rebel_cruiser" );
 	if( rebel_cruiser )
 		rebel_cruiser->Select( "CRV" );
+	FleetMenuDropDown *rebel_frigate = (FleetMenuDropDown*) Container->FindElement( "rebel_frigate" );
+	if( rebel_frigate )
+		rebel_frigate->Select( "FRG" );
 	FleetMenuDropDown *rebel_flagship = (FleetMenuDropDown*) Container->FindElement( "rebel_flagship" );
 	if( rebel_flagship )
 		rebel_flagship->Select( "FRG" );
@@ -384,6 +399,9 @@ void FleetMenuDefaultsButton::Clicked( Uint8 button )
 	FleetMenuDropDown *empire_cruiser = (FleetMenuDropDown*) Container->FindElement( "empire_cruiser" );
 	if( empire_cruiser )
 		empire_cruiser->Select( "INT" );
+	FleetMenuDropDown *empire_frigate = (FleetMenuDropDown*) Container->FindElement( "empire_frigate" );
+	if( empire_frigate )
+		empire_frigate->Select( "FRG" );
 	FleetMenuDropDown *empire_flagship = (FleetMenuDropDown*) Container->FindElement( "empire_flagship" );
 	if( empire_flagship )
 		empire_flagship->Select( "ISD" );

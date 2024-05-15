@@ -26,7 +26,7 @@ public:
 	double YawSpeed, PitchSpeed;
 	uint8_t Team;
 	bool Visible, CanBeHit;
-	double GunWidth;
+	double Radius, GunWidth;
 	double GunUp, GunFwd, HeadUp, HeadFwd;
 	std::string BodyModel, GunModel;
 	Model *BodyShape, *GunShape;
@@ -40,6 +40,7 @@ public:
 	uint8_t Weapon;
 	uint8_t WeaponIndex;
 	uint8_t FiredThisFrame;
+	uint8_t PredictedShots;
 	uint8_t FiringMode;
 	double SingleShotDelay;
 	double MaxFiringDist;
@@ -88,7 +89,7 @@ public:
 	void AddToUpdatePacketFromClient( Packet *packet, int8_t precision = 0 );
 	void ReadFromUpdatePacketFromClient( Packet *packet, int8_t precision = 0 );
 	
-	bool WillCollide( const GameObject *other, double dt, std::string *this_object = NULL, std::string *other_object = NULL ) const;
+	bool WillCollide( const GameObject *other, double dt, std::string *this_object = NULL, std::string *other_object = NULL, Pos3D *loc = NULL, double *when = NULL ) const;
 	void Update( double dt );
 	
 	void Draw( void );

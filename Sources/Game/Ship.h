@@ -51,6 +51,7 @@ public:
 	std::map<uint8_t,uint8_t> FiringMode;
 	uint8_t WeaponIndex;
 	uint8_t FiredThisFrame;
+	uint8_t PredictedShots;
 	
 	uint32_t Target;
 	uint8_t TargetSubsystem;
@@ -153,8 +154,8 @@ public:
 	void AddToUpdatePacketFromClient( Packet *packet, int8_t precision = 0 );
 	void ReadFromUpdatePacketFromClient( Packet *packet, int8_t precision = 0 );
 	
-	bool WillCollide( const GameObject *other, double dt, std::string *this_object = NULL, std::string *other_object = NULL ) const;
-	bool WillCollideWithSphere( const GameObject *other, double other_radius, double dt, std::string *this_object ) const;
+	bool WillCollide( const GameObject *other, double dt, std::string *this_object = NULL, std::string *other_object = NULL, Pos3D *loc = NULL, double *when = NULL ) const;
+	bool WillCollideWithSphere( const GameObject *other, double other_radius, double dt, std::string *this_object, Pos3D *loc = NULL, double *when = NULL ) const;
 	void Update( double dt );
 	
 	double DrawOffset( void ) const;

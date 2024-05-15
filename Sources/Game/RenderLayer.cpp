@@ -552,10 +552,10 @@ void RenderLayer::Draw( void )
 	else if( view_str == "cycle" )
 		game->View = XWing::View::CYCLE;
 	
+	
 	if( ! (observed_ship || observed_turret) )
 	{
 		// This player has no ship or turret alive; let's watch somebody else.
-		// FIXME: Refactor the huge mess below into a single loop to find the best ship to observe.
 		
 		Player *player = game->Data.GetPlayer( game->PlayerID );
 		uint8_t player_team = XWing::Team::NONE;
@@ -574,207 +574,71 @@ void RenderLayer::Draw( void )
 		if( player_team && player )
 			player_group = player->PropertyAsInt("group",player_group);
 		
-		// First try to observe a specific ship ID (who we were watching before).
-		if( game->ObservedShipID )
-		{
-			for( std::list<Ship*>::iterator ship_iter = ships.begin(); ship_iter != ships.end(); ship_iter ++ )
-			{
-				// Don't spectate the Death Star exhaust port or any long-dead or jumped-out ships.
-				if( (*ship_iter)->Category() == ShipClass::CATEGORY_TARGET )
-					continue;
-				if( ( (((*ship_iter)->Health <= 0.) && ((*ship_iter)->DeathClock.ElapsedSeconds() >= 6.)) || ((*ship_iter)->JumpedOut && ((*ship_iter)->JumpProgress >= 1.)) ) && (game->View != XWing::View::INSTRUMENTS) )
-					continue;
-				
-				// If we'd selected a specific ship to watch, keep going until we find it.
-				if( (*ship_iter)->ID == game->ObservedShipID )
-				{
-					observed_ship = *ship_iter;
-					break;
-				}
-			}
-		}
+		const GameObject *prev_observed = game->Data.GetObject( game->ObservedShipID );
+		uint32_t prev_hit_by = (prev_observed && (prev_observed->Type() == XWing::Object::SHIP)) ? ((const Ship*)( prev_observed ))->HitByID : 0;
 		
-		// Try to observe a player-controlled ship in the player's flight group.
-		if( (! observed_ship) && player_team && player_group )
-		{
-			for( std::list<Ship*>::iterator ship_iter = ships.begin(); ship_iter != ships.end(); ship_iter ++ )
-			{
-				// Don't spectate the Death Star exhaust port or any long-dead or jumped-out ships.
-				if( (*ship_iter)->Category() == ShipClass::CATEGORY_TARGET )
-					continue;
-				if( ( (((*ship_iter)->Health <= 0.) && ((*ship_iter)->DeathClock.ElapsedSeconds() >= 6.)) || ((*ship_iter)->JumpedOut && ((*ship_iter)->JumpProgress >= 1.)) ) && (game->View != XWing::View::INSTRUMENTS) )
-					continue;
-				
-				// If our flight group has other player-controlled ships, watch them.
-				if( ((*ship_iter)->Team == player_team) && ((*ship_iter)->Group == player_group) && (*ship_iter)->Owner() )
-				{
-					observed_ship = *ship_iter;
-					break;
-				}
-			}
-		}
+		uint8_t best_score = 0x00;
+		double best_dist = FLT_MAX;
 		
-		// Try to observe anyone in the player's flight group.
-		if( (! observed_ship) && player_team && player_group )
+		for( std::list<Ship*>::iterator ship_iter = ships.begin(); ship_iter != ships.end(); ship_iter ++ )
 		{
-			for( std::list<Ship*>::iterator ship_iter = ships.begin(); ship_iter != ships.end(); ship_iter ++ )
+			// Don't spectate the Death Star exhaust port or any long-dead or jumped-out ships.
+			if( (*ship_iter)->Category() == ShipClass::CATEGORY_TARGET )
+				continue;
+			if( ( (((*ship_iter)->Health <= 0.) && ((*ship_iter)->DeathClock.ElapsedSeconds() >= 6.)) || ((*ship_iter)->JumpedOut && ((*ship_iter)->JumpProgress >= 1.)) ) && (game->View != XWing::View::INSTRUMENTS) )
+				continue;
+			
+			uint8_t ship_score = 0x00;
+			double ship_dist = game->Cam.Dist( *ship_iter );
+			
+			// If we'd selected a specific ship to watch, choose that immediately.
+			if( (*ship_iter)->ID == game->ObservedShipID )
 			{
-				// Don't spectate the Death Star exhaust port or any long-dead or jumped-out ships.
-				if( (*ship_iter)->Category() == ShipClass::CATEGORY_TARGET )
-					continue;
-				if( ( (((*ship_iter)->Health <= 0.) && ((*ship_iter)->DeathClock.ElapsedSeconds() >= 6.)) || ((*ship_iter)->JumpedOut && ((*ship_iter)->JumpProgress >= 1.)) ) && (game->View != XWing::View::INSTRUMENTS) )
-					continue;
-				
-				// If our flight group has other ships, watch them.
-				if( ((*ship_iter)->Team == player_team) && ((*ship_iter)->Group == player_group) )
-				{
-					observed_ship = *ship_iter;
-					break;
-				}
-			}
-		}
-		
-		// Try to observe the next ship alive on the player's team after the ID we were observing.
-		if( (! observed_ship) && player_team )
-		{
-			for( std::list<Ship*>::iterator ship_iter = ships.begin(); ship_iter != ships.end(); ship_iter ++ )
-			{
-				// Don't spectate the Death Star exhaust port.
-				if( (*ship_iter)->Category() == ShipClass::CATEGORY_TARGET )
-					continue;
-				
-				// Don't start observing dead or jumped-out ships.
-				if( ((*ship_iter)->Health <= 0.) || (*ship_iter)->JumpedOut )
-					continue;
-				
-				// If we'd selected a specific ship to watch, keep going until we find it.
-				if( ((*ship_iter)->Team == player_team) && ((*ship_iter)->ID >= game->ObservedShipID) )
-				{
-					observed_ship = *ship_iter;
-					break;
-				}
-			}
-		}
-		
-		// Try to observe anyone alive on the player's team.
-		if( (! observed_ship) && player_team )
-		{
-			for( std::list<Ship*>::iterator ship_iter = ships.begin(); ship_iter != ships.end(); ship_iter ++ )
-			{
-				// Don't spectate the Death Star exhaust port.
-				if( (*ship_iter)->Category() == ShipClass::CATEGORY_TARGET )
-					continue;
-				
-				// Don't start observing dead or jumped-out ships.
-				if( ((*ship_iter)->Health <= 0.) || (*ship_iter)->JumpedOut )
-					continue;
-				
-				// If our team has other ships, watch them.
-				if( (*ship_iter)->Team == player_team )
-				{
-					observed_ship = *ship_iter;
-					break;
-				}
-			}
-		}
-		
-		// Try to observe anyone alive or recently dead on the player's team.
-		if( (! observed_ship) && player_team )
-		{
-			for( std::list<Ship*>::iterator ship_iter = ships.begin(); ship_iter != ships.end(); ship_iter ++ )
-			{
-				// Don't spectate the Death Star exhaust port or any long-dead or jumped-out ships.
-				if( (*ship_iter)->Category() == ShipClass::CATEGORY_TARGET )
-					continue;
-				if( ( (((*ship_iter)->Health <= 0.) && ((*ship_iter)->DeathClock.ElapsedSeconds() >= 6.)) || ((*ship_iter)->JumpedOut && ((*ship_iter)->JumpProgress >= 1.)) ) && (game->View != XWing::View::INSTRUMENTS) )
-					continue;
-				
-				// If our team has other ships, watch them.
-				if( (*ship_iter)->Team == player_team )
-				{
-					observed_ship = *ship_iter;
-					break;
-				}
-			}
-		}
-		
-		// No teammates to watch; try to observe the next non-capital ship alive after a specific ship ID.
-		if( ! observed_ship )
-		{
-			for( std::list<Ship*>::iterator ship_iter = ships.begin(); ship_iter != ships.end(); ship_iter ++ )
-			{
-				// Don't spectate the Death Star exhaust port.
-				if( (*ship_iter)->Category() == ShipClass::CATEGORY_TARGET )
-					continue;
-				
-				// Don't observe dead or jumped-out ships.
-				if( ((*ship_iter)->Health <= 0.) || (*ship_iter)->JumpedOut )
-					continue;
-				
-				// If we'd selected a specific ship to watch, keep going until we find it.
-				if( ((*ship_iter)->ID >= game->ObservedShipID) && (*ship_iter)->PlayersCanFly() )
-				{
-					observed_ship = *ship_iter;
-					break;
-				}
-			}
-		}
-		
-		// Observe anybody alive that isn't a capital ship.
-		if( ! observed_ship )
-		{
-			for( std::list<Ship*>::iterator ship_iter = ships.begin(); ship_iter != ships.end(); ship_iter ++ )
-			{
-				// Don't spectate the Death Star exhaust port.
-				if( (*ship_iter)->Category() == ShipClass::CATEGORY_TARGET )
-					continue;
-				
-				// Don't observe dead or jumped-out ships.
-				if( ((*ship_iter)->Health <= 0.) || (*ship_iter)->JumpedOut )
-					continue;
-				
-				// If this is not a capital ship, observe it.
-				if( (*ship_iter)->PlayersCanFly() )
-				{
-					observed_ship = *ship_iter;
-					break;
-				}
-			}
-		}
-		
-		// Not too picky now, observe anybody alive.
-		if( ! observed_ship )
-		{
-			for( std::list<Ship*>::iterator ship_iter = ships.begin(); ship_iter != ships.end(); ship_iter ++ )
-			{
-				// Don't spectate the Death Star exhaust port.
-				if( (*ship_iter)->Category() == ShipClass::CATEGORY_TARGET )
-					continue;
-				
-				// Don't observe dead or jumped-out ships.
-				if( ((*ship_iter)->Health <= 0.) || (*ship_iter)->JumpedOut )
-					continue;
-				
 				observed_ship = *ship_iter;
 				break;
 			}
-		}
-		
-		// Last ditch effort, observe anybody recently dead.
-		if( ! observed_ship )
-		{
-			for( std::list<Ship*>::iterator ship_iter = ships.begin(); ship_iter != ships.end(); ship_iter ++ )
+			
+			// Prefer whomever just killed us, if they are still alive.
+			if( ((*ship_iter)->ID == prev_hit_by) && ((*ship_iter)->Health > 0.) )
+				ship_score |= 0x80;
+			
+			// Prefer player-owned live ships.
+			if( (*ship_iter)->Owner() && ((*ship_iter)->Health > 0.) )
+				ship_score |= 0x40;
+			
+			// Prefer non-capital ship.
+			if( ((*ship_iter)->Category() != ShipClass::CATEGORY_CAPITAL) && ((*ship_iter)->Category() != ShipClass::CATEGORY_TRANSPORT) )
+				ship_score |= 0x20;
+			
+			// Prefer live ships.
+			if( (*ship_iter)->Health > 0. )
+				ship_score |= 0x10;
+			
+			// Prefer ships in our flight group.
+			if( (*ship_iter)->Team == player_team )
 			{
-				// Don't spectate the Death Star exhaust port.
-				if( (*ship_iter)->Category() == ShipClass::CATEGORY_TARGET )
-					continue;
-				
-				// Don't observe long-dead or jumped-out ships.
-				if( ( (((*ship_iter)->Health <= 0.) && ((*ship_iter)->DeathClock.ElapsedSeconds() >= 6.)) || ((*ship_iter)->JumpedOut && ((*ship_iter)->JumpProgress >= 1.)) ) && (game->View != XWing::View::INSTRUMENTS) )
-					continue;
-				
+				if( player_group && ((*ship_iter)->Group == player_group) )
+					ship_score |= 0x04;
+				/*
+				else
+					// If not in our flight group, prefer our team.
+					// NOTE: Commented-out because it doesn't make sense to do this but also prefer our last attacker.
+					ship_score |= 0x02;
+				*/
+			}
+			
+			/*
+			// Prefer higher ID than previously observed ship.
+			// NOTE: Commented-out because it doesn't make sense to do this when also sorting by distance.
+			if( (*ship_iter)->ID >= game->ObservedShipID )
+				ship_score |= 0x01;
+			*/
+			
+			if( (ship_score > best_score) || ((ship_score == best_score) && (ship_dist < best_dist)) || ! observed_ship )
+			{
 				observed_ship = *ship_iter;
-				break;
+				best_score = ship_score;
+				best_dist = ship_dist;
 			}
 		}
 	}
@@ -1278,7 +1142,7 @@ void RenderLayer::Draw( void )
 	if( game->Gfx.Framebuffers && game->FrameTime )
 	{
 		bool changed_framebuffer = false;
-		double display_noise = (observed_ship && (observed_ship->Health < (observed_ship->MaxHealth() * 0.5))) ? game->Cfg.SettingAsDouble("g_display_noise",1.) : 0.;
+		double display_noise = (observed_ship && (observed_ship->Health < (observed_ship->MaxHealth() * 0.25))) ? game->Cfg.SettingAsDouble("g_display_noise",1.) : 0.;
 		
 		if( observed_ship && (observed_ship->Health > 0.) && ((game->View == XWing::View::COCKPIT) || (game->View == XWing::View::INSTRUMENTS) || game->Cfg.SettingAsBool("saitek_enable")) )
 		{
@@ -1417,7 +1281,7 @@ void RenderLayer::Draw( void )
 				float red = 0.f, green = 1.f, blue = 0.f;
 				if( observed_ship->Health < observed_ship->MaxHealth() )
 					red = 1.f;
-				if( observed_ship->Health < (observed_ship->MaxHealth() * 0.7) )
+				if( observed_ship->Health < (observed_ship->MaxHealth() * 0.5) )
 					green = 0.f;
 				
 				if( recent_hit && (observed_ship->HitFlags & Ship::HIT_HULL) )
@@ -3318,7 +3182,7 @@ void RenderLayer::Draw( void )
 							}
 							if( ship->Category() == ShipClass::CATEGORY_CAPITAL )
 								radius = 0.005;
-							else if( (ship->Target == observed_ship->ID) && ((int) observed_ship->Lifetime.ElapsedMilliseconds() % ((ship->TargetLock >= 1.f) ? 200 : 600) <= 50) )
+							else if( (ship->Target == observed_object->ID) && ((int) observed_object->Lifetime.ElapsedMilliseconds() % ((ship->TargetLock >= 1.f) ? 200 : 600) <= 50) )
 								radius = 0.0055;
 						}
 						else if( shot )
@@ -3326,7 +3190,7 @@ void RenderLayer::Draw( void )
 							red = 1.f;
 							green = 1.f;
 							blue = 0.f;
-							radius = ((shot->Seeking == observed_ship->ID) && ((int) observed_ship->Lifetime.ElapsedMilliseconds() % 200 <= 50)) ? 0.0035 : 0.002;
+							radius = ((shot->Seeking == observed_object->ID) && ((int) observed_object->Lifetime.ElapsedMilliseconds() % 200 <= 50)) ? 0.0035 : 0.002;
 						}
 						else if( type == XWing::Object::ASTEROID )
 						{
@@ -3393,7 +3257,7 @@ void RenderLayer::Draw( void )
 						}
 						if( target->Category() == ShipClass::CATEGORY_CAPITAL )
 							radius = 0.006;
-						else if( (target->Target == observed_ship->ID) && ((int) observed_ship->Lifetime.ElapsedMilliseconds() % ((target->TargetLock >= 1.f) ? 200 : 600) <= 50) )
+						else if( (target->Target == observed_object->ID) && ((int) observed_object->Lifetime.ElapsedMilliseconds() % ((target->TargetLock >= 1.f) ? 200 : 600) <= 50) )
 							radius = 0.0055;
 					}
 					else if( target_obj->Type() == XWing::Object::SHOT )
@@ -3401,7 +3265,7 @@ void RenderLayer::Draw( void )
 						red = 1.f;
 						green = 1.f;
 						blue = 0.f;
-						radius = ((((Shot*)target_obj)->Seeking == observed_ship->ID) && ((int) observed_ship->Lifetime.ElapsedMilliseconds() % 200 <= 50)) ? 0.0035 : 0.002;
+						radius = ((((Shot*)target_obj)->Seeking == observed_object->ID) && ((int) observed_object->Lifetime.ElapsedMilliseconds() % 200 <= 50)) ? 0.0035 : 0.002;
 					}
 					else if( target_obj->Type() == XWing::Object::CHECKPOINT )
 					{

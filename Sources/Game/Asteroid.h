@@ -42,7 +42,7 @@ public:
 	void AddToUpdatePacketFromServer( Packet *packet, int8_t precision = 0 );
 	void ReadFromUpdatePacketFromServer( Packet *packet, int8_t precision = 0 );
 	
-	bool WillCollide( const GameObject *other, double dt, std::string *this_object = NULL, std::string *other_object = NULL ) const;
+	bool WillCollide( const GameObject *other, double dt, std::string *this_object = NULL, std::string *other_object = NULL, Pos3D *loc = NULL, double *when = NULL ) const;
 	
 	void Draw( void );
 	Shader *WantShader( void ) const;

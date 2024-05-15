@@ -37,6 +37,7 @@ Turret::Turret( uint32_t id ) : BlastableObject( id, XWing::Object::TURRET )
 	
 	Visible = true;
 	CanBeHit = true;
+	Radius = 7.7;
 	GunWidth = 2.2;
 	GunUp = 0.022 * 175.;
 	GunFwd = 0.022 * 50.;
@@ -53,6 +54,7 @@ Turret::Turret( uint32_t id ) : BlastableObject( id, XWing::Object::TURRET )
 	Firing = false;
 	WeaponIndex = 0;
 	FiredThisFrame = 0;
+	PredictedShots = 0;
 	Target = 0;
 }
 
@@ -167,9 +169,10 @@ void Turret::SetBlastPoint( double x, double y, double z, double radius, double 
 	double up    = shot.DistAlong( &Up,    this );
 	double right = shot.DistAlong( &Right, this );
 	
-	fwd   *= std::min<double>( 1., BodyShape->GetLength() * 0.00244 / GunWidth );
-	up    *= std::min<double>( 1., BodyShape->GetHeight() * 0.00244 / GunWidth );
-	right *= std::min<double>( 1., BodyShape->GetWidth()  * 0.00244 / GunWidth );
+	// FIXME: Why does this have to be scaled here?  (Is it related to cockpit-view blastpoints not always showing up?)
+	fwd   *= std::min<double>( 1., BodyShape->GetLength() * 0.001 );
+	up    *= std::min<double>( 1., BodyShape->GetHeight() * 0.001 );
+	right *= std::min<double>( 1., BodyShape->GetWidth()  * 0.001 );
 	
 	if( BlastPoints.size() < blastpoints )
 		BlastPoints.push_back( BlastPoint( fwd, up, right, radius, time, object ) );
@@ -567,10 +570,20 @@ void Turret::AddToUpdatePacketFromClient( Packet *packet, int8_t precision )
 		packet->AddFloat( GunPitchRate );
 	}
 	
-	uint8_t firing_and_mode = FiringMode;
+	uint8_t firing_mode = FiringMode;
 	if( Firing )
-		firing_and_mode |= 0x80;
-	packet->AddUChar( firing_and_mode );
+		firing_mode |= 0x80;
+	if( ((XWingGame*)( Raptor::Game ))->ZeroLagServer )  // v0.4 server would be confused by ZeroLag data.
+	{
+		if( PredictedShots )
+		{
+			firing_mode |= 0x40;  // ZeroLag Shot(s) Fired
+			PredictedShots --;
+		}
+		else if( Firing && Raptor::Game->Cfg.SettingAsInt("net_zerolag",2) )
+			firing_mode &= ~0x80;  // If we are using ZeroLag mode for this weapon, only send Firing with each shot.
+	}
+	packet->AddUChar( firing_mode );
 	
 	packet->AddUInt( Target );
 }
@@ -591,15 +604,19 @@ void Turret::ReadFromUpdatePacketFromClient( Packet *packet, int8_t precision )
 		GunPitchRate = packet->NextFloat();
 	}
 	
-	uint8_t firing_and_mode = packet->NextUChar();
-	FiringMode = firing_and_mode & 0x7F;
-	Firing     = firing_and_mode & 0x80;
+	uint8_t firing_mode = packet->NextUChar();
+	Firing            = firing_mode & 0x80;
+	bool zerolag_shot = firing_mode & 0x40;
+	if( ! PredictedShots )
+		FiringMode    = firing_mode & 0x0F;
+	if( zerolag_shot )
+		PredictedShots ++;
 	
 	Target = packet->NextUInt();
 }
 
 
-bool Turret::WillCollide( const GameObject *other, double dt, std::string *this_object, std::string *other_object ) const
+bool Turret::WillCollide( const GameObject *other, double dt, std::string *this_object, std::string *other_object, Pos3D *loc, double *when ) const
 {
 	// Can't collide with the ship we're attached to.
 	if( other->ID == ParentID )
@@ -623,7 +640,7 @@ bool Turret::WillCollide( const GameObject *other, double dt, std::string *this_
 		
 		double dist = Math3D::MinimumDistance( this, &(this->MotionVector), other, &(other->MotionVector), dt );
 		
-		if( dist <= (GunWidth * 4.5) )
+		if( dist <= Radius )
 			return true;
 	}
 	
@@ -640,7 +657,7 @@ bool Turret::WillCollide( const GameObject *other, double dt, std::string *this_
 		
 		double dist = Math3D::MinimumDistance( this, &(this->MotionVector), other, &(other->MotionVector), dt );
 		
-		if( dist <= (ship->Radius() + GunWidth * 2.3) )
+		if( dist <= (ship->Radius() + Radius) )
 			return true;
 	}
 	
@@ -648,7 +665,7 @@ bool Turret::WillCollide( const GameObject *other, double dt, std::string *this_
 	// Let the Death Star determine whether collisions with turrets occur.
 	// This could be used to scrape off attached turrets when ships fly too close.
 	else if( other->Type() == XWing::Object::DEATH_STAR )
-		return other->WillCollide( this, dt, other_object, this_object );
+		return other->WillCollide( this, dt, other_object, this_object, loc, when );
 	*/
 	
 	return false;
@@ -674,13 +691,15 @@ void Turret::Update( double dt )
 		ParentID = 0;    // Forget dead parent.
 	}
 	
-	if( (Health <= 0.) || (parent && (parent->JumpProgress < 1.)) )
+	if( (Health <= 0.) || (parent && ((parent->JumpProgress < 1.) || parent->JumpedOut)) )
 	{
 		// Dead turrets don't turn.
 		RollRate = 0.;
 		PitchRate = 0.;
 		YawRate = 0.;
 		GunPitchRate = 0.;
+		
+		PredictedShots = 0;
 	}
 	
 	if( GunPitchRate )

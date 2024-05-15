@@ -14,8 +14,10 @@ recover 20
 recharge 2
 ramming 6000
 explode 0.1
-turret turbolaser 0 10.28 37.5 up 0 1 0 pitch -5 90 dir 0 0 1 arc 300 invincible independent firetime 0.4
-turret turbolaser 0 -10.28 37.5 up 0 -1 0 pitch -5 90 dir 0 0 1 arc 300 invincible independent firetime 0.4
+turret turbolaser 0 10.28 37.5 up 0 1 0 pitch -5 90 dir 0 0 1 arc 300 independent firetime 0.4
+turret turbolaser 0 -10.28 37.5 up 0 -1 0 pitch -5 90 dir 0 0 1 arc 300 independent firetime 0.4
+turret_health 179
+turret_radius 4.4
 firetime turbolaser 0.4
 engine 0 0 -76 engine_yellow.ani 12 1 0.99 0.99 0.2
 engine 15 0 -76.1 engine_yellow.ani 12 1 0.99 0.99 0.2

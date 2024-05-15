@@ -13,7 +13,7 @@ roll_change 270 230
 pitch_change 210 120
 yaw_change 175 80
 health 100
-shield 170
+shield 150
 recover 5
 recharge 3
 ramming 500

@@ -100,7 +100,7 @@ bool DockingBay::IsMoving( void ) const
 }
 
 
-bool DockingBay::WillCollide( const GameObject *other, double dt, std::string *this_object, std::string *other_object ) const
+bool DockingBay::WillCollide( const GameObject *other, double dt, std::string *this_object, std::string *other_object, Pos3D *loc, double *when ) const
 {
 	// Can't repair the ship we're attached to.
 	if( other->ID == ParentID )

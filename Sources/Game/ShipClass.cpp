@@ -38,6 +38,7 @@ ShipClass::ShipClass( uint32_t id ) : GameObject( id, XWing::Object::SHIP_CLASS 
 	TurretYawSpeed = TurretPitchSpeed = 45.;
 	TurretBody = "turret_body.obj";
 	TurretGun  = "turret_gun.obj";
+	TurretRadius = 7.7;
 	TurretGunWidth = 2.2;
 	TurretGunUp = 0.022 * 175.;
 	TurretGunFwd = 0.022 * 50.;
@@ -95,6 +96,7 @@ ShipClass::ShipClass( const ShipClass &other ) : GameObject( 0, XWing::Object::S
 	TurretYawSpeed = other.TurretYawSpeed;
 	TurretBody = other.TurretBody;
 	TurretGun = other.TurretGun;
+	TurretRadius = other.TurretRadius;
 	TurretGunWidth = other.TurretGunWidth;
 	TurretGunUp = other.TurretGunUp;
 	TurretGunFwd = other.TurretGunFwd;
@@ -465,6 +467,10 @@ bool ShipClass::Load( const std::string &filename )
 		{
 			TurretGunUp = atof( args.at(0).c_str() );
 			TurretGunFwd = (args.size() >= 2) ? atof( args.at(1).c_str() ) : 0.;
+		}
+		else if( (var == "turret_radius") && args.size() )
+		{
+			TurretRadius = atof( args.at(0).c_str() );
 		}
 		else if( (var == "turret_separation") && args.size() )
 		{

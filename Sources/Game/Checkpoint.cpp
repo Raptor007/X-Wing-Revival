@@ -115,10 +115,10 @@ void Checkpoint::ReadFromInitPacket( Packet *packet, int8_t precision )
 }
 
 
-bool Checkpoint::WillCollide( const GameObject *other, double dt, std::string *this_object, std::string *other_object ) const
+bool Checkpoint::WillCollide( const GameObject *other, double dt, std::string *this_object, std::string *other_object, Pos3D *loc, double *when ) const
 {
 	if( other->Type() == XWing::Object::SHIP )
-		return ((const Ship*)other)->WillCollideWithSphere( this, Radius, dt, other_object );
+		return ((const Ship*)other)->WillCollideWithSphere( this, Radius, dt, other_object, loc, when );
 	
 	return false;
 }

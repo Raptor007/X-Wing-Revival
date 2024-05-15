@@ -40,10 +40,10 @@ LobbyMenu::LobbyMenu( void )
 	
 	GroupDropDown = new LobbyMenuPlayerDropDown( NULL, Raptor::Game->Res.GetFont( "Verdana.ttf", tiny ? 13 : 19 ), Font::ALIGN_TOP_LEFT, 0, "group" );
 	GroupDropDown->AddItem( "0", "Solo" );
-	GroupDropDown->AddItem( "1", "Group 1" );
-	GroupDropDown->AddItem( "2", "Group 2" );
-	GroupDropDown->AddItem( "3", "Group 3" );
-	GroupDropDown->AddItem( "4", "Group 4" );
+	GroupDropDown->AddItem( "1", "Red" );
+	GroupDropDown->AddItem( "2", "Gold" );
+	GroupDropDown->AddItem( "3", "Green" );
+	GroupDropDown->AddItem( "4", "Blue" );
 	GroupDropDown->Value = "0";
 	const Player *player = Raptor::Game->Data.GetPlayer( Raptor::Game->PlayerID );
 	if( player )
@@ -107,6 +107,8 @@ LobbyMenu::LobbyMenu( void )
 	ConfigOrder.push_back( new LobbyMenuConfiguration( "defending_team", "Defending Team", label_size, value_size ) );
 	ConfigOrder.push_back( new LobbyMenuConfiguration( "rebel_cruisers", "Rebel Cruisers", label_size, value_size ) );
 	ConfigOrder.push_back( new LobbyMenuConfiguration( "empire_cruisers", "Imperial Cruisers", label_size, value_size ) );
+	ConfigOrder.push_back( new LobbyMenuConfiguration( "rebel_frigates", "Rebel Frigates", label_size, value_size ) );
+	ConfigOrder.push_back( new LobbyMenuConfiguration( "empire_frigates", "Imperial Frigates", label_size, value_size ) );
 	ConfigOrder.push_back( NULL );
 	ConfigOrder.push_back( new LobbyMenuConfiguration( "team_race_checkpoints", "Race Length", label_size, value_size ) );
 	ConfigOrder.push_back( new LobbyMenuConfiguration( "ffa_race_checkpoints", "Race Length", label_size, value_size ) );
@@ -124,6 +126,8 @@ LobbyMenu::LobbyMenu( void )
 	ConfigOrder.push_back( new LobbyMenuConfiguration( "asteroids", "Asteroids", label_size, value_size ) );
 	ConfigOrder.push_back( new LobbyMenuConfiguration( "bg", "Environment", label_size, value_size ) );
 	ConfigOrder.push_back( new LobbyMenuConfiguration( "respawn", "Respawn", label_size, value_size ) );
+	ConfigOrder.push_back( NULL );
+	ConfigOrder.push_back( new LobbyMenuConfiguration( "defaults", "", label_size, value_size ) );
 	
 	for( std::vector<LobbyMenuConfiguration*>::iterator config_iter = ConfigOrder.begin(); config_iter != ConfigOrder.end(); config_iter ++ )
 	{
@@ -328,7 +332,15 @@ void LobbyMenu::UpdatePlayerList( void )
 			if( team.length() )
 			{
 				int group = player_iter->second->PropertyAsInt("group");
-				if( group )
+				if( group == 1 )
+					display_name += " [" + team + " - Red]";
+				else if( group == 2 )
+					display_name += " [" + team + " - Gold]";
+				else if( group == 3 )
+					display_name += " [" + team + " - Green]";
+				else if( group == 4 )
+					display_name += " [" + team + " - Blue]";
+				else if( group )
 					display_name += " [" + team + " group " + Num::ToString(group) + "]";
 				else
 					display_name += " [" + team + "]";
@@ -441,10 +453,12 @@ void LobbyMenu::UpdateInfoBoxes( void )
 		if( (Raptor::Game->Data.PropertyAsString("rebel_fighter")   == "X/W")
 		&& ((Raptor::Game->Data.PropertyAsString("rebel_bomber")    == "Y/W") || ((gametype != "fleet") && (gametype != "hunt")))
 		&& ((Raptor::Game->Data.PropertyAsString("rebel_cruiser")   == "CRV") ||  (gametype != "fleet"))
+		&& ((Raptor::Game->Data.PropertyAsString("rebel_frigate")   == "FRG") ||  (gametype != "fleet"))
 		&& ((Raptor::Game->Data.PropertyAsString("rebel_flagship")  == "FRG") || ((gametype != "fleet") && (gametype != "hunt")))
 		&&  (Raptor::Game->Data.PropertyAsString("empire_fighter")  == "T/F")
 		&& ((Raptor::Game->Data.PropertyAsString("empire_bomber")   == "T/B") || ((gametype != "fleet") && (gametype != "hunt")))
 		&& ((Raptor::Game->Data.PropertyAsString("empire_cruiser")  == "INT") ||  (gametype != "fleet"))
+		&& ((Raptor::Game->Data.PropertyAsString("empire_frigate")  == "FRG") ||  (gametype != "fleet"))
 		&& ((Raptor::Game->Data.PropertyAsString("empire_flagship") == "ISD") || ((gametype != "fleet") && (gametype != "hunt"))) )
 		{
 			// NOTE: Could show different text based on gametype.
@@ -474,8 +488,12 @@ void LobbyMenu::UpdateInfoBoxes( void )
 				{
 					const ShipClass *rebel_cruiser  = game->GetShipClass( Raptor::Game->Data.PropertyAsString("rebel_cruiser") );
 					const ShipClass *empire_cruiser = game->GetShipClass( Raptor::Game->Data.PropertyAsString("empire_cruiser") );
+					const ShipClass *rebel_frigate  = game->GetShipClass( Raptor::Game->Data.PropertyAsString("rebel_frigate") );
+					const ShipClass *empire_frigate = game->GetShipClass( Raptor::Game->Data.PropertyAsString("empire_frigate") );
 					if(!( rebel_cruiser  && (rebel_cruiser->Team  != XWing::Team::EMPIRE) && (rebel_cruiser->Category  != ShipClass::CATEGORY_TARGET) && (! rebel_cruiser->Secret)
-					&&    empire_cruiser && (empire_cruiser->Team != XWing::Team::REBEL)  && (empire_cruiser->Category != ShipClass::CATEGORY_TARGET) && (! empire_cruiser->Secret) ))
+					&&    empire_cruiser && (empire_cruiser->Team != XWing::Team::REBEL)  && (empire_cruiser->Category != ShipClass::CATEGORY_TARGET) && (! empire_cruiser->Secret)
+					&&    rebel_frigate  && (rebel_frigate->Team  != XWing::Team::EMPIRE) && (rebel_frigate->Category  != ShipClass::CATEGORY_TARGET) && (! rebel_frigate->Secret)
+					&&    empire_frigate && (empire_frigate->Team != XWing::Team::REBEL)  && (empire_frigate->Category != ShipClass::CATEGORY_TARGET) && (! empire_frigate->Secret) ))
 						Configs["customize_fleet"]->Value->LabelText = "Disturbing";
 				}
 				if( (Configs["customize_fleet"]->Value->LabelText != "Disturbing") 
@@ -571,8 +589,10 @@ void LobbyMenu::UpdateInfoBoxes( void )
 		Configs["ai_skill"]->Value->Green = Configs["ai_skill"]->Value->Blue = 0.125f;
 	}
 	
-	Configs["rebel_cruisers"]->Value->LabelText  = Raptor::Game->Data.PropertyAsString("rebel_cruisers","0");
+	Configs["rebel_cruisers"]->Value->LabelText  = Raptor::Game->Data.PropertyAsString("rebel_cruisers", "0");
 	Configs["empire_cruisers"]->Value->LabelText = Raptor::Game->Data.PropertyAsString("empire_cruisers","0");
+	Configs["rebel_frigates"]->Value->LabelText  = Raptor::Game->Data.PropertyAsString("rebel_frigates", "0");
+	Configs["empire_frigates"]->Value->LabelText = Raptor::Game->Data.PropertyAsString("empire_frigates","0");
 	
 	std::string respawn = Raptor::Game->Data.PropertyAsString("respawn");
 	Configs["respawn"]->Value->Blue = 1.f;
@@ -690,6 +710,22 @@ void LobbyMenu::UpdateInfoBoxes( void )
 		config_iter->second->ShowButton = (admin || permissions_all) && ! flying;
 	Configs["permissions"]->ShowButton = admin;
 	Configs["customize_fleet"]->ShowButton = true;
+
+	// Show "Reset to Defaults" button for admin.
+	if( (admin || permissions_all) && ((gametype != "mission") /* || ! Raptor::Game->Data.PropertyAsString("mission_opts").empty() */) )  // FIXME: Disabled for mission_ops because it gets wrong defaults!
+	{
+		Configs["defaults"]->Value->LabelText = "Reset to Defaults";
+		Configs["defaults"]->ShowButton = true;
+		Configs["defaults"]->Visible = true;
+		Configs["defaults"]->Enabled = true;
+	}
+	else
+	{
+		Configs["defaults"]->Value->LabelText = "";
+		Configs["defaults"]->ShowButton = false;
+		Configs["defaults"]->Visible = false;
+		Configs["defaults"]->Enabled = false;
+	}
 	
 	// Show "Respawn" unless it's Deathmatch or FFA Elimination.
 	if( (gametype == "team_dm") || (gametype == "ffa_dm") || (gametype == "ffa_elim") )
@@ -783,6 +819,12 @@ void LobbyMenu::UpdateInfoBoxes( void )
 		
 		Configs["empire_cruisers"]->Visible = true;
 		Configs["empire_cruisers"]->Enabled = true;
+		
+		Configs["rebel_frigates"]->Visible = true;
+		Configs["rebel_frigates"]->Enabled = true;
+		
+		Configs["empire_frigates"]->Visible = true;
+		Configs["empire_frigates"]->Enabled = true;
 	}
 	else
 	{
@@ -793,6 +835,14 @@ void LobbyMenu::UpdateInfoBoxes( void )
 		Configs["empire_cruisers"]->ShowButton = false;
 		Configs["empire_cruisers"]->Visible = false;
 		Configs["empire_cruisers"]->Enabled = false;
+		
+		Configs["rebel_frigates"]->ShowButton = false;
+		Configs["rebel_frigates"]->Visible = false;
+		Configs["rebel_frigates"]->Enabled = false;
+		
+		Configs["empire_frigates"]->ShowButton = false;
+		Configs["empire_frigates"]->Visible = false;
+		Configs["empire_frigates"]->Enabled = false;
 	}
 	
 	// Only show Race settings for Kessel Run.
@@ -894,6 +944,12 @@ void LobbyMenu::UpdateInfoBoxes( void )
 		Configs["empire_cruisers"]->ShowButton = false;
 		Configs["empire_cruisers"]->Visible = false;
 		Configs["empire_cruisers"]->Enabled = false;
+		Configs["rebel_frigates"]->ShowButton = false;
+		Configs["rebel_frigates"]->Visible = false;
+		Configs["rebel_frigates"]->Enabled = false;
+		Configs["empire_frigates"]->ShowButton = false;
+		Configs["empire_frigates"]->Visible = false;
+		Configs["empire_frigates"]->Enabled = false;
 		
 		Configs["team_race_checkpoints"]->ShowButton = false;
 		Configs["team_race_checkpoints"]->Visible = false;
@@ -1410,6 +1466,13 @@ void LobbyMenuConfigChangeButton::Clicked( Uint8 button )
 	
 	bool darkside = (Raptor::Game->Cfg.SettingAsBool("darkside",false) || Raptor::Game->Data.PropertyAsBool("darkside",false)) && ! Raptor::Game->Data.PropertyAsBool("lightside",false);
 	
+	if( config->Property == "defaults" )
+	{
+		Packet reset_defaults( XWing::Packet::RESET_DEFAULTS );
+		Raptor::Game->Net.Send( &reset_defaults );
+		return;
+	}
+	
 	if( config->Property == "gametype" )
 	{
 		if( value == "fleet" )
@@ -1534,6 +1597,18 @@ void LobbyMenuConfigChangeButton::Clicked( Uint8 button )
 			new_ai_cruisers = 7;
 		
 		value = Num::ToString( new_ai_cruisers );
+	}
+	
+	else if( (config->Property == "rebel_frigates") || (config->Property == "empire_frigates") )
+	{
+		int new_ai_frigates = atoi( value.c_str() ) + (go_prev ? -1 : 1);
+		
+		if( new_ai_frigates > 5 )
+			new_ai_frigates = 0;
+		if( new_ai_frigates < 0 )
+			new_ai_frigates = 5;
+		
+		value = Num::ToString( new_ai_frigates );
 	}
 	
 	else if( config->Property == "ai_skill" )

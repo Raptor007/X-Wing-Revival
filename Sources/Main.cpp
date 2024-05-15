@@ -2,7 +2,7 @@
  *  Main.cpp
  */
 
-#define VERSION "0.4 Alpha"
+#define VERSION "0.4.1 Alpha"
 
 #include "XWingGame.h"
 #include "XWingServer.h"
@@ -43,17 +43,15 @@ int main( int argc, char **argv )
 	Raptor::Server = new XWingServer( VERSION );
 	Raptor::Game->Console.OutFile = stdout;
 	Raptor::Game->SetServer( Raptor::Server );
+	Raptor::Game->Initialize( argc, argv );
 	
 	if( ! dedicated )
-	{
-		Raptor::Game->Initialize( argc, argv );
 		Raptor::Game->Run();
-	}
 	else
 	{
 		Raptor::Server->Console = new ServerConsole();
 		Raptor::Server->Console->OutFile = stdout;
-		Raptor::Server->Start( "Dedicated Server" );
+		Raptor::Server->Start( Raptor::Game->Cfg.SettingAsString( "sv_name", "Dedicated Server", "Dedicated Server" ) );
 		((ServerConsole*)( Raptor::Server->Console ))->Run();
 	}
 	

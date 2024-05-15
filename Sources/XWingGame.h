@@ -17,6 +17,7 @@ class XWingGame : public RaptorGame
 {
 public:
 	std::map<std::string,std::string> MissionList;
+	bool ZeroLagServer;
 	
 	uint32_t GameType;
 	Clock RoundTimer;

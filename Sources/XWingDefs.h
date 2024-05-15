@@ -92,6 +92,14 @@ namespace XWing
 		};
 	}
 	
+	namespace ServerFeature
+	{
+		enum
+		{
+			ZERO_LAG = '0Lag'
+		};
+	}
+	
 	namespace Control
 	{
 		enum
@@ -164,6 +172,8 @@ namespace XWing
 			TARGET_NEXT_ENEMY,  // SPECTATE_NEXT (Xbox)
 			TARGET_PREV_FRIENDLY,
 			TARGET_NEXT_FRIENDLY,
+			TARGET_NEXT_PLAYER,
+			TARGET_PREV_PLAYER,
 			TARGET_NEXT_SUBSYSTEM,
 			TARGET_PREV_SUBSYSTEM,
 			SEAT_COCKPIT,
