@@ -12,7 +12,7 @@ yaw 40 25
 roll_change 130 100
 pitch_change 115 95
 yaw_change 115 95
-health 130
+health 250
 shield 0
 ramming 500
 explode 1

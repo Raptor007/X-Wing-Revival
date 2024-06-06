@@ -18,8 +18,10 @@ rebel_spawn 7700 0 0
 empire_spawn -1000 0 0
 ai_ceasefire true
 
-at 0:03
+at 0:01
 spawn rebel SHU "Maria" at 3000 0 -200 facing 0.9 0.1 0
+wait 2
+spawn empire ISD "Immortal" at -3000 0 -200 facing 0.9 0.1 0
 wait 2.5
 sound r4_signal.wav
 wait 4
@@ -29,6 +31,8 @@ alert r4_stop.wav Stop that ship!
 wait 1.3
 message Blast em!
 ai_ceasefire false
+wait 16
+jump "Immortal"
 
 on rebel objective hit
 wait 1
@@ -37,6 +41,10 @@ wait 1.5
 message We're under Imperial attack!
 wait 2.5
 alert r4_hear.wav We hear you, Tantive IV.  Coming to assist.
+
+when ( no empire here ) and ( players alive )
+wait 5
+victory
 
 on victory
 next_mission rebel5

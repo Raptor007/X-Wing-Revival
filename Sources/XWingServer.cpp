@@ -62,14 +62,14 @@ std::map<std::string,std::string> XWingServer::DefaultProperties( void ) const
 	defaults["rebel_cruiser"]  = "CRV";
 	defaults["rebel_cruisers"] = "2";
 	defaults["rebel_frigate"]  = "FRG";
-	defaults["rebel_frigates"] = "0";
+	defaults["rebel_frigates"] = "1";
 	defaults["rebel_flagship"] = "FRG";
 	defaults["empire_fighter"]  = "T/F";
 	defaults["empire_bomber"]   = "T/B";
 	defaults["empire_cruiser"]  = "INT";
-	defaults["empire_cruisers"] = "3";
-	defaults["empire_frigate"]  = "FRG";
-	defaults["empire_frigates"] = "0";
+	defaults["empire_cruisers"] = "2";
+	defaults["empire_frigate"]  = "VSD";
+	defaults["empire_frigates"] = "1";
 	defaults["empire_flagship"] = "ISD";
 	defaults["yavin_rebel_fighter"]  = "X/W";
 	defaults["yavin_rebel_bomber"]   = "Y/W";
@@ -3282,14 +3282,20 @@ void XWingServer::Update( double dt )
 							empire_objectives ++;
 					}
 					
-					if( (ship->Firing || ship->PredictedShots) && (ship->FiringClocks[ ship->SelectedWeapon ].ElapsedSeconds() >= ship->ShotDelay()) )
+					if( (ship->Firing || ship->PredictedShots.size()) && (ship->FiringClocks[ ship->PredictedShots.size() ? ((ship->PredictedShots.front() & 0xF0) >> 4) : ship->SelectedWeapon ].ElapsedSeconds() >= ship->ShotDelay()) )
 					{
+						if( ship->PredictedShots.size() )
+						{
+							uint8_t predicted = ship->PredictedShots.front();
+							ship->PredictedShots.pop_front();
+							ship->SelectedWeapon                     = (predicted & 0xF0) >> 4;
+							ship->FiringMode[ ship->SelectedWeapon ] =  predicted & 0x0F;
+						}
+						
 						GameObject *target = Data.GetObject( ship->Target );
 						bool locked = ship->LockingOn( target );
 						std::map<int,Shot*> shots = ship->NextShots( target );
 						ship->JustFired();
-						if( ship->PredictedShots )
-							ship->PredictedShots --;
 						
 						for( std::map<int,Shot*>::iterator shot_iter = shots.begin(); shot_iter != shots.end(); shot_iter ++ )
 						{
@@ -5138,8 +5144,9 @@ void XWingServer::BeginFlying( uint16_t player_id, bool respawn )
 		{
 			Respawn = Data.PropertyAsBool("respawn");
 			RespawnDelay = Data.PropertyAsDouble("fleet_respawn",15.);
-			RebelCruiserRespawn  = 30. + 10. * Data.PropertyAsInt("rebel_cruisers");
-			EmpireCruiserRespawn = 30. + 10. * Data.PropertyAsInt("empire_cruisers");
+			// FIXME: Should respawn delay for cruisers and frigates be based on something like health/radius?
+			RebelCruiserRespawn  = 30. + 10. * Data.PropertyAsInt("rebel_cruisers")  + 20. * Data.PropertyAsInt("rebel_frigates");
+			EmpireCruiserRespawn = 30. + 10. * Data.PropertyAsInt("empire_cruisers") + 20. * Data.PropertyAsInt("empire_frigates");
 			RebelCruiserRespawn  = Data.PropertyAsDouble( "cruiser_respawn",        RebelCruiserRespawn,  RebelCruiserRespawn );
 			EmpireCruiserRespawn = Data.PropertyAsDouble( "cruiser_respawn",        EmpireCruiserRespawn, EmpireCruiserRespawn );
 			RebelCruiserRespawn  = Data.PropertyAsDouble( "rebel_cruiser_respawn",  RebelCruiserRespawn,  RebelCruiserRespawn );
@@ -5754,18 +5761,18 @@ void XWingServer::BeginFlying( uint16_t player_id, bool respawn )
 		std::string rebel_frigate_squadron  = (rebel_frigate_class  && rebel_frigate_class->Squadron.length())  ? rebel_frigate_class->Squadron  : "Rebel";
 		std::string empire_frigate_squadron = (empire_frigate_class && empire_frigate_class->Squadron.length()) ? empire_frigate_class->Squadron : "Imperial";
 		
-		int ai_cruisers = std::max<int>( rebel_cruisers, empire_cruisers );
-		for( int cruiser = 0; cruiser < ai_cruisers; cruiser ++ )
+		int ai_frigates = std::max<int>( rebel_frigates, empire_frigates );
+		for( int frigate = 0; frigate < ai_frigates; frigate ++ )
 		{
 			for( int i = 0; i < 2; i ++ )
 			{
 				bool rebel = i;
-				if( rebel && (rebel_cruisers <= cruiser) )
+				if( rebel && (rebel_frigates <= frigate) )
 					continue;
-				if( (! rebel) && (empire_cruisers <= cruiser) )
+				if( (! rebel) && (empire_frigates <= frigate) )
 					continue;
-				const ShipClass *ship_class = rebel ? rebel_cruiser_class : empire_cruiser_class;
-				std::string squadron = rebel ? rebel_cruiser_squadron : empire_cruiser_squadron;
+				const ShipClass *ship_class = rebel ? rebel_frigate_class : empire_frigate_class;
+				std::string squadron = rebel ? rebel_frigate_squadron : empire_frigate_squadron;
 				uint8_t team = (rebel ? XWing::Team::REBEL : XWing::Team::EMPIRE);
 				Ship *ship = SpawnShip( ship_class, team );
 				ship->Group = 255;
@@ -5776,9 +5783,9 @@ void XWingServer::BeginFlying( uint16_t player_id, bool respawn )
 				ship->SetUpVec( 0., 0., 1. );
 				for( int retry = 0; retry < 10; retry ++ )
 				{
-					ship->X = Rand::Double( -150.,  150. ) + (rebel ? 2000. : -2000.) + cruiser * (rebel ? -200. : 200.);
-					ship->Y = Rand::Double( -400.,  400. ) * (cruiser + 1.) + retry * ship->Radius() * (((retry + cruiser) % 2) ? -0.333 : 0.333);
-					ship->Z = Rand::Double( -400., -300. ) * (cruiser + 1.5) - ship->Radius();
+					ship->X = Rand::Double( -150.,  150. ) + (rebel ? 2000. : -2000.) + frigate * (rebel ? -200. : 200.);
+					ship->Y = Rand::Double( -400.,  400. ) * (frigate + 1.) + retry * ship->Radius() * (((retry + frigate) % 2) ? -0.333 : 0.333);
+					ship->Z = Rand::Double(  400.,  300. ) * (frigate + 1.5) + ship->Radius();
 					if( ! ship->FindCollision( 5. ) )  // If we are not colliding with another ship at spawn, this position is probably good.
 					{
 						bool safe_space = true;
@@ -5816,18 +5823,18 @@ void XWingServer::BeginFlying( uint16_t player_id, bool respawn )
 			}
 		}
 		
-		int ai_frigates = std::max<int>( rebel_frigates, empire_frigates );
-		for( int frigate = 0; frigate < ai_frigates; frigate ++ )
+		int ai_cruisers = std::max<int>( rebel_cruisers, empire_cruisers );
+		for( int cruiser = 0; cruiser < ai_cruisers; cruiser ++ )
 		{
 			for( int i = 0; i < 2; i ++ )
 			{
 				bool rebel = i;
-				if( rebel && (rebel_frigates <= frigate) )
+				if( rebel && (rebel_cruisers <= cruiser) )
 					continue;
-				if( (! rebel) && (empire_frigates <= frigate) )
+				if( (! rebel) && (empire_cruisers <= cruiser) )
 					continue;
-				const ShipClass *ship_class = rebel ? rebel_frigate_class : empire_frigate_class;
-				std::string squadron = rebel ? rebel_frigate_squadron : empire_frigate_squadron;
+				const ShipClass *ship_class = rebel ? rebel_cruiser_class : empire_cruiser_class;
+				std::string squadron = rebel ? rebel_cruiser_squadron : empire_cruiser_squadron;
 				uint8_t team = (rebel ? XWing::Team::REBEL : XWing::Team::EMPIRE);
 				Ship *ship = SpawnShip( ship_class, team );
 				ship->Group = 255;
@@ -5838,9 +5845,9 @@ void XWingServer::BeginFlying( uint16_t player_id, bool respawn )
 				ship->SetUpVec( 0., 0., 1. );
 				for( int retry = 0; retry < 10; retry ++ )
 				{
-					ship->X = Rand::Double( -150.,  150. ) + (rebel ? 2000. : -2000.) + frigate * (rebel ? -200. : 200.);
-					ship->Y = Rand::Double( -400.,  400. ) * (frigate + 1.) + retry * ship->Radius() * (((retry + frigate) % 2) ? -0.333 : 0.333);
-					ship->Z = Rand::Double(  400.,  300. ) * (frigate + 1.5) + ship->Radius();
+					ship->X = Rand::Double( -150.,  150. ) + (rebel ? 2000. : -2000.) + cruiser * (rebel ? -200. : 200.);
+					ship->Y = Rand::Double( -400.,  400. ) * (cruiser + 1.) + retry * ship->Radius() * (((retry + cruiser) % 2) ? -0.333 : 0.333);
+					ship->Z = Rand::Double( -400., -300. ) * (cruiser + 1.5) - ship->Radius();
 					if( ! ship->FindCollision( 5. ) )  // If we are not colliding with another ship at spawn, this position is probably good.
 					{
 						bool safe_space = true;

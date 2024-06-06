@@ -570,20 +570,20 @@ void Turret::AddToUpdatePacketFromClient( Packet *packet, int8_t precision )
 		packet->AddFloat( GunPitchRate );
 	}
 	
-	uint8_t firing_mode = FiringMode;
+	uint8_t firing_and_mode = FiringMode;
 	if( Firing )
-		firing_mode |= 0x80;
+		firing_and_mode |= 0x80;
 	if( ((XWingGame*)( Raptor::Game ))->ZeroLagServer )  // v0.4 server would be confused by ZeroLag data.
 	{
 		if( PredictedShots )
 		{
-			firing_mode |= 0x40;  // ZeroLag Shot(s) Fired
+			firing_and_mode |= 0x40;  // ZeroLag Shot(s) Fired
 			PredictedShots --;
 		}
 		else if( Firing && Raptor::Game->Cfg.SettingAsInt("net_zerolag",2) )
-			firing_mode &= ~0x80;  // If we are using ZeroLag mode for this weapon, only send Firing with each shot.
+			firing_and_mode &= ~0x80;  // If we are using ZeroLag mode for this weapon, only send Firing with each shot.
 	}
-	packet->AddUChar( firing_mode );
+	packet->AddUChar( firing_and_mode );
 	
 	packet->AddUInt( Target );
 }
@@ -604,11 +604,13 @@ void Turret::ReadFromUpdatePacketFromClient( Packet *packet, int8_t precision )
 		GunPitchRate = packet->NextFloat();
 	}
 	
-	uint8_t firing_mode = packet->NextUChar();
-	Firing            = firing_mode & 0x80;
-	bool zerolag_shot = firing_mode & 0x40;
+	uint8_t firing_and_mode = packet->NextUChar();
+	bool zerolag_shot = firing_and_mode & 0x40;
 	if( ! PredictedShots )
-		FiringMode    = firing_mode & 0x0F;
+	{
+		Firing     = firing_and_mode & 0x80;
+		FiringMode = firing_and_mode & 0x0F;
+	}
 	if( zerolag_shot )
 		PredictedShots ++;
 	

@@ -51,7 +51,7 @@ public:
 	std::map<uint8_t,uint8_t> FiringMode;
 	uint8_t WeaponIndex;
 	uint8_t FiredThisFrame;
-	uint8_t PredictedShots;
+	std::deque<uint8_t> PredictedShots;
 	
 	uint32_t Target;
 	uint8_t TargetSubsystem;

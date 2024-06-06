@@ -1,6 +1,6 @@
 ----------------------------------------
 |            X-Wing Revival            |
-|       0.4.1 Alpha (2024-05-15)       |
+|       0.4.2 Alpha (2024-06-06)       |
 |     by Raptor007 (Blair Sherman)     |
 | http://raptor007.com/x-wing-revival/ |
 ----------------------------------------
@@ -33,8 +33,8 @@ Alliance for helping me bring balance to the forces.
   Fleet Battle: Each team tries to destroy the enemy capital ships while defending
     their own.  The last team with any surviving capital ship wins.  Respawn is only
     possible while your team's flagship is alive, so prioritize its protection.
-    Cruisers and frigates will respawn if their entire group is destroyed before the
-    flagship, but it takes time to replace a large group of capital ships.
+    Cruisers and Battleships will respawn if their entire group is destroyed before
+    the flagship, but it takes time to replace a large group of capital ships.
 
   Battle of Yavin: Rebels must fly down the trench and try to hit the exhaust port
     with a pair of proton torpedoes.  Imperials must try to prevent the Rebels from
@@ -476,6 +476,13 @@ console commands to execute, such as "sv gametype yavin" or "sv rebel_fighter A/
 
 
 == VERSION HISTORY ==
+
+Alpha 0.4.2 (2024-06-06):
+ * Fixed buggy missile and torpedo behavior when shot prediction is enabled.
+ * Added "Allow Team Change" option in pre-game lobby.
+ * Replaced "Frigates" category with "Battleships" in Fleet Battle.
+ * Added Victory-class Star Destroyer as the default Imperial Battleship.
+ * Increased TIE Bomber health.
 
 Alpha 0.4.1 (2024-05-15):
  * Fixed "Change Ship" showing all ships when team change is not allowed.

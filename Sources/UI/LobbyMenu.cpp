@@ -105,10 +105,10 @@ LobbyMenu::LobbyMenu( void )
 	ConfigOrder.push_back( new LobbyMenuConfiguration( "customize_fleet", "", label_size, value_size ) );
 	ConfigOrder.push_back( NULL );
 	ConfigOrder.push_back( new LobbyMenuConfiguration( "defending_team", "Defending Team", label_size, value_size ) );
+	ConfigOrder.push_back( new LobbyMenuConfiguration( "rebel_frigates", "Rebel Battleships", label_size, value_size ) );
 	ConfigOrder.push_back( new LobbyMenuConfiguration( "rebel_cruisers", "Rebel Cruisers", label_size, value_size ) );
+	ConfigOrder.push_back( new LobbyMenuConfiguration( "empire_frigates", "Imperial Battleships", label_size, value_size ) );
 	ConfigOrder.push_back( new LobbyMenuConfiguration( "empire_cruisers", "Imperial Cruisers", label_size, value_size ) );
-	ConfigOrder.push_back( new LobbyMenuConfiguration( "rebel_frigates", "Rebel Frigates", label_size, value_size ) );
-	ConfigOrder.push_back( new LobbyMenuConfiguration( "empire_frigates", "Imperial Frigates", label_size, value_size ) );
 	ConfigOrder.push_back( NULL );
 	ConfigOrder.push_back( new LobbyMenuConfiguration( "team_race_checkpoints", "Race Length", label_size, value_size ) );
 	ConfigOrder.push_back( new LobbyMenuConfiguration( "ffa_race_checkpoints", "Race Length", label_size, value_size ) );
@@ -126,6 +126,7 @@ LobbyMenu::LobbyMenu( void )
 	ConfigOrder.push_back( new LobbyMenuConfiguration( "asteroids", "Asteroids", label_size, value_size ) );
 	ConfigOrder.push_back( new LobbyMenuConfiguration( "bg", "Environment", label_size, value_size ) );
 	ConfigOrder.push_back( new LobbyMenuConfiguration( "respawn", "Respawn", label_size, value_size ) );
+	ConfigOrder.push_back( new LobbyMenuConfiguration( "allow_team_change", "Allow Team Change", label_size, value_size ) );
 	ConfigOrder.push_back( NULL );
 	ConfigOrder.push_back( new LobbyMenuConfiguration( "defaults", "", label_size, value_size ) );
 	
@@ -458,7 +459,7 @@ void LobbyMenu::UpdateInfoBoxes( void )
 		&&  (Raptor::Game->Data.PropertyAsString("empire_fighter")  == "T/F")
 		&& ((Raptor::Game->Data.PropertyAsString("empire_bomber")   == "T/B") || ((gametype != "fleet") && (gametype != "hunt")))
 		&& ((Raptor::Game->Data.PropertyAsString("empire_cruiser")  == "INT") ||  (gametype != "fleet"))
-		&& ((Raptor::Game->Data.PropertyAsString("empire_frigate")  == "FRG") ||  (gametype != "fleet"))
+		&& ((Raptor::Game->Data.PropertyAsString("empire_frigate")  == "VSD") ||  (gametype != "fleet"))
 		&& ((Raptor::Game->Data.PropertyAsString("empire_flagship") == "ISD") || ((gametype != "fleet") && (gametype != "hunt"))) )
 		{
 			// NOTE: Could show different text based on gametype.
@@ -627,6 +628,8 @@ void LobbyMenu::UpdateInfoBoxes( void )
 			Configs["respawn"]->Value->LabelText = respawn;
 	}
 	
+	Configs["allow_team_change"]->Value->LabelText = Raptor::Game->Data.PropertyAsBool("allow_team_change") ? "Yes" : "No";
+	
 	int asteroids = Raptor::Game->Data.PropertyAsInt("asteroids");
 	if( asteroids <= 0 )
 		Configs["asteroids"]->Value->LabelText = "None";
@@ -738,6 +741,19 @@ void LobbyMenu::UpdateInfoBoxes( void )
 	{
 		Configs["respawn"]->Visible = true;
 		Configs["respawn"]->Enabled = true;
+	}
+	
+	// Show "Allow Team Change" unless it's FFA.
+	if( Str::BeginsWith( gametype, "ffa_" ) )
+	{
+		Configs["allow_team_change"]->ShowButton = false;
+		Configs["allow_team_change"]->Visible = false;
+		Configs["allow_team_change"]->Enabled = false;
+	}
+	else
+	{
+		Configs["allow_team_change"]->Visible = true;
+		Configs["allow_team_change"]->Enabled = true;
 	}
 	
 	// Hide "Team Kill Limit" unless it's Team Deathmatch.
@@ -904,6 +920,9 @@ void LobbyMenu::UpdateInfoBoxes( void )
 		Configs["respawn"]->ShowButton = false;
 		Configs["respawn"]->Visible = false;
 		Configs["respawn"]->Enabled = false;
+		Configs["allow_team_change"]->ShowButton = false;
+		Configs["allow_team_change"]->Visible = false;
+		Configs["allow_team_change"]->Enabled = false;
 		Configs["customize_fleet"]->ShowButton = false;
 		Configs["customize_fleet"]->Visible = false;
 		Configs["customize_fleet"]->Enabled = false;
@@ -1624,7 +1643,7 @@ void LobbyMenuConfigChangeButton::Clicked( Uint8 button )
 		value = Num::ToString( new_ai_skill );
 	}
 	
-	else if( config->Property == "respawn" )
+	else if( (config->Property == "respawn") || (config->Property == "allow_team_change") )
 	{
 		if( value == "false" )
 			value = "true";

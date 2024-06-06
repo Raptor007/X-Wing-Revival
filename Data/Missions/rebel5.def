@@ -86,8 +86,8 @@ message Now let's blow this thing and go home!
 wait 2
 stfu false
 
-on hit "Red 2" while ( alive "Red 2" ) and ( enemy_fighters true ) and ( stfu false )
-alert r5_wedge1.wav He's on me tight!  I can't shake him.
+on hit "Red 3" while ( alive "Red 3" ) and ( enemy_fighters true ) and ( stfu false )
+alert r5_wedge1.wav He's on me tight!  I can't shake him. // FIXME: Biggs
 
 on hit "Red 5" while ( alive "Red 5" ) and ( stfu false )
 wait 1

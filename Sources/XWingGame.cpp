@@ -1191,11 +1191,11 @@ void XWingGame::Update( double dt )
 #endif
 			{
 				my_ship->Firing = firing;
-				if( zerolag && firing && my_ship->SelectedWeapon && ((zerolag >= 2) || (my_ship->MaxAmmo() < 0)) && (my_ship->LastFired() >= my_ship->ShotDelay()) )
+				if( zerolag && firing && my_ship->SelectedWeapon && my_ship->AmmoForWeapon() && ((zerolag >= 2) || (my_ship->MaxAmmo() < 0)) && (my_ship->LastFired() >= my_ship->ShotDelay()) )
 				{
 					fire_shots = my_ship->NextShots();
 					if( ZeroLagServer )
-						my_ship->PredictedShots ++;
+						my_ship->PredictedShots.push_back( my_ship->CurrentFiringMode() | (my_ship->SelectedWeapon << 4) );
 				}
 				
 				std::string engine_sound = my_ship->SetThrottleGetSound( throttle, dt );

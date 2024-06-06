@@ -426,14 +426,17 @@ IngameMenuGroupDropDown::IngameMenuGroupDropDown( SDL_Rect *rect, Font *font, ui
 		player_group = Num::ToString( player->PropertyAsInt("group") );
 	
 	if( player_group == "0" )
-		AddItem( "0", "    Select Flight Group" );
+		AddItem( "0", "    Select Squadron" );
 	else
-		AddItem( "0", "    Flight Group: None" );
+		AddItem( "0", "    Squadron: None" );
 	
-	AddItem( "1", "    Flight Group: 1" );
-	AddItem( "2", "    Flight Group: 2" );
-	AddItem( "3", "    Flight Group: 3" );
-	AddItem( "4", "    Flight Group: 4" );
+	AddItem( "1", "    Squadron: Red" );
+	AddItem( "2", "    Squadron: Gold" );
+	AddItem( "3", "    Squadron: Green" );
+	AddItem( "4", "    Squadron: Blue" );
+	
+	if( atoi( player_group.c_str() ) > 4 )
+		AddItem( player_group, std::string("    Squadron: ") + player_group );
 	
 	Value = player_group;
 	Update();
@@ -449,10 +452,19 @@ void IngameMenuGroupDropDown::Changed( void )
 {
 	if( Raptor::Game->SetPlayerProperty( "group", Value ) )
 	{
-		if( atoi( Value.c_str() ) )
-			Raptor::Game->Msg.Print( std::string("You are now in flight group ") + Value + std::string(".") );
+		int group_num = atoi( Value.c_str() );
+		if( group_num == 1 )
+			Raptor::Game->Msg.Print( std::string("You are now in Red Squadron.") );
+		else if( group_num == 2 )
+			Raptor::Game->Msg.Print( std::string("You are now in Gold Squadron.") );
+		else if( group_num == 2 )
+			Raptor::Game->Msg.Print( std::string("You are now in Green Squadron.") );
+		else if( group_num == 2 )
+			Raptor::Game->Msg.Print( std::string("You are now in Blue Squadron.") );
+		else if( group_num )
+			Raptor::Game->Msg.Print( std::string("You are now in squadron ") + Value + std::string(".") );
 		else
-			Raptor::Game->Msg.Print( "You left the flight group." );
+			Raptor::Game->Msg.Print( "You left the squadron." );
 		
 		// Remove the menu after changing group.
 		Container->Remove();

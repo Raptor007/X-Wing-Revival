@@ -57,7 +57,7 @@ void Ship::Clear( void )
 	Firing = false;
 	SelectedWeapon = 0;
 	FiredThisFrame = 0;
-	PredictedShots = 0;
+	PredictedShots.clear();
 	FiringMode.clear();
 	WeaponIndex = 0;
 	
@@ -174,6 +174,7 @@ void Ship::Reset( void )
 	WeaponIndex = 0;
 	Ammo.clear();
 	SelectedWeapon = 0;
+	PredictedShots.clear();
 	
 	std::map<uint8_t,uint8_t> prev_firing_modes = FiringMode;
 	FiringMode.clear();
@@ -802,7 +803,7 @@ double Ship::PiecesDangerousTime( void ) const
 	if( ComplexCollisionDetection() )
 		return 3.;
 	
-	return 0.333;
+	return 0.25;
 }
 
 
@@ -1586,23 +1587,26 @@ void Ship::AddToUpdatePacketFromClient( Packet *packet, int8_t precision )
 {
 	GameObject::AddToUpdatePacketFromClient( packet, precision );
 	
-	packet->AddUChar( SelectedWeapon | (ShieldPos << 6) );
+	uint8_t selected_weapon = SelectedWeapon;
+	uint8_t firing_and_mode = CurrentFiringMode();
 	
-	uint8_t firing_mode = CurrentFiringMode();
-	if( Firing )
-		firing_mode |= 0x80;
-	if( ((XWingGame*)( Raptor::Game ))->ZeroLagServer )  // v0.4 server would be confused by ZeroLag data.
+	if( PredictedShots.size() )
 	{
-		if( PredictedShots )
-		{
-			firing_mode |= 0x40;  // ZeroLag Shot(s) Fired
-			PredictedShots --;
-		}
-		else if( Firing && SelectedWeapon && Raptor::Game->Cfg.SettingAsInt("net_zerolag",2) >= ((MaxAmmo() > 0) ? 2 : 1) )
-			firing_mode &= ~0x80;  // If we are using ZeroLag mode for this weapon, only send Firing with each shot.
+		uint8_t predicted = PredictedShots.front();
+		PredictedShots.pop_front();
+		firing_and_mode = (predicted & 0x0F) | 0x80;
+		selected_weapon = (predicted & 0xF0) >> 4;
+		if( ((XWingGame*)( Raptor::Game ))->ZeroLagServer )  // v0.4 server would be confused by ZeroLag data.
+			firing_and_mode |= 0x60;  // ZeroLag shot from v0.4.2 client.
 	}
-	packet->AddUChar( firing_mode );
+	else if( Firing )
+	{
+		if( (! SelectedWeapon) || Raptor::Game->Cfg.SettingAsInt("net_zerolag",2) < ((MaxAmmo() > 0) ? 2 : 1) )
+			firing_and_mode |= 0x80;
+	}
 	
+	packet->AddUChar( selected_weapon | (ShieldPos << 6) );
+	packet->AddUChar( firing_and_mode );
 	packet->AddUInt( Target );
 	packet->AddUChar( TargetSubsystem );
 	packet->AddChar( Num::UnitFloatTo8( TargetLock / 2.f ) );
@@ -1630,32 +1634,35 @@ void Ship::ReadFromUpdatePacketFromClient( Packet *packet, int8_t precision )
 	SetShieldPos(            (weapon_shield & 0xC0) >> 6 );
 	uint8_t selected_weapon = weapon_shield & 0x3F;
 	
-	uint8_t firing_mode = packet->NextUChar();
-	Firing            = firing_mode & 0x80;
-	bool zerolag_shot = firing_mode & 0x40;
-	if( ! PredictedShots )
+	uint8_t firing_and_mode = packet->NextUChar();
+	uint8_t firing_mode = firing_and_mode & 0x0F;
+	bool zerolag_shot   = firing_and_mode & 0x40;
+	
+	if( ! PredictedShots.size() )
 	{
-		FiringMode[ selected_weapon ] = firing_mode & 0x0F;
+		Firing = firing_and_mode & 0x80;
+		if( ((firing_and_mode & 0x60) != 0x40) || (MaxAmmo(selected_weapon) <= 0) )  // Bug fix for v0.4.1 clients.
+			FiringMode[ selected_weapon ] = firing_mode;
 		SelectedWeapon = selected_weapon;
 	}
-	else if( zerolag_shot && (selected_weapon != SelectedWeapon) )
-	{
-		FiringMode[ selected_weapon ] = firing_mode & 0x0F;
-		if( (MaxAmmo() <= 0) || (MaxAmmo( selected_weapon ) > 0) )  // Prediction conflict: prefer the weapon that uses ammo.
-			SelectedWeapon = selected_weapon;
-	}
-	if( zerolag_shot )
-		PredictedShots ++;
 	
+	// FIXME: Should these also be stored with predicted shots?
 	Target = packet->NextUInt();
 	TargetSubsystem = packet->NextUChar();
 	TargetLock = Num::UnitFloatFrom8( packet->NextChar() ) * 2.f;
 	
+	if( zerolag_shot )
+	{
+		if( ((firing_and_mode & 0x60) == 0x40) && (MaxAmmo(selected_weapon) > 0) )  // Bug fix for v0.4.1 clients.
+			firing_mode = FiringMode[ selected_weapon ];
+		PredictedShots.push_back( firing_mode | (selected_weapon << 4) );
+	}
+	
 	if( SelectedWeapon != prev_selected_weapon )
 	{
 		WeaponIndex = 0;
-		PredictedShots = zerolag_shot ? 1 : 0;
-		FiringClocks[ SelectedWeapon ].Reset();
+		if( ! zerolag_shot )
+			FiringClocks[ SelectedWeapon ].Reset();
 	}
 }
 
@@ -2252,7 +2259,7 @@ void Ship::Update( double dt )
 		PitchRate = 0.;
 		YawRate = 0.;
 		
-		PredictedShots = 0;
+		PredictedShots.clear();
 		
 		// Long-dead capital ship pieces fade away.
 		if( ClientSide() && (Category() == ShipClass::CATEGORY_CAPITAL) && (DeathClock.ElapsedSeconds() >= PiecesDangerousTime()) )

@@ -79,10 +79,10 @@ void FleetMenu::UpdateContents( void )
 	rect.h = ItemFont ? ItemFont->GetHeight() : 18;
 	rect.y = 10 + group->TitleFont->GetAscent();
 	rect.x = 10;
-	rect.w = 80;
+	rect.w = 90;
 	group->AddElement( new Label( &rect, "Fighter:", LabelFont, Font::ALIGN_MIDDLE_LEFT ) );
 	rect.x += rect.w + 5;
-	rect.w = 190;
+	rect.w = 185;
 	group->AddElement( new FleetMenuDropDown( &rect, ItemFont, "rebel_fighter" ) );
 	DropDowns.insert( (FleetMenuDropDown*) *(group->Elements.rbegin()) );
 	rect.x += rect.w + 5;
@@ -91,10 +91,10 @@ void FleetMenu::UpdateContents( void )
 	
 	rect.y += rect.h + 10;
 	rect.x = 10;
-	rect.w = 80;
+	rect.w = 90;
 	group->AddElement( new Label( &rect, "Bomber:", LabelFont, Font::ALIGN_MIDDLE_LEFT ) );
 	rect.x += rect.w + 5;
-	rect.w = 190;
+	rect.w = 185;
 	group->AddElement( new FleetMenuDropDown( &rect, ItemFont, "rebel_bomber" ) );
 	DropDowns.insert( (FleetMenuDropDown*) *(group->Elements.rbegin()) );
 	rect.x += rect.w + 5;
@@ -103,7 +103,7 @@ void FleetMenu::UpdateContents( void )
 	
 	rect.y += rect.h + 10;
 	rect.x = 10;
-	rect.w = 80;
+	rect.w = 90;
 	group->AddElement( new Label( &rect, "Cruiser:", LabelFont, Font::ALIGN_MIDDLE_LEFT ) );
 	rect.x += rect.w + 5;
 	rect.w = 190;
@@ -115,10 +115,10 @@ void FleetMenu::UpdateContents( void )
 	
 	rect.y += rect.h + 10;
 	rect.x = 10;
-	rect.w = 80;
-	group->AddElement( new Label( &rect, "Frigate:", LabelFont, Font::ALIGN_MIDDLE_LEFT ) );
+	rect.w = 90;
+	group->AddElement( new Label( &rect, "Battleship:", LabelFont, Font::ALIGN_MIDDLE_LEFT ) );
 	rect.x += rect.w + 5;
-	rect.w = 190;
+	rect.w = 185;
 	group->AddElement( new FleetMenuDropDown( &rect, ItemFont, "rebel_frigate" ) );
 	DropDowns.insert( (FleetMenuDropDown*) *(group->Elements.rbegin()) );
 	rect.x += rect.w + 5;
@@ -129,10 +129,10 @@ void FleetMenu::UpdateContents( void )
 	
 	rect.y += rect.h + 10;
 	rect.x = 10;
-	rect.w = 80;
+	rect.w = 90;
 	group->AddElement( new Label( &rect, "Flagship:", LabelFont, Font::ALIGN_MIDDLE_LEFT ) );
 	rect.x += rect.w + 5;
-	rect.w = 190;
+	rect.w = 185;
 	group->AddElement( new FleetMenuDropDown( &rect, ItemFont, "rebel_flagship" ) );
 	DropDowns.insert( (FleetMenuDropDown*) *(group->Elements.rbegin()) );
 	rect.x += rect.w + 5;
@@ -152,10 +152,10 @@ void FleetMenu::UpdateContents( void )
 	rect.h = ItemFont ? ItemFont->GetHeight() : 18;
 	rect.y = 10 + group->TitleFont->GetAscent();
 	rect.x = 10;
-	rect.w = 80;
+	rect.w = 90;
 	group->AddElement( new Label( &rect, "Fighter:", LabelFont, Font::ALIGN_MIDDLE_LEFT ) );
 	rect.x += rect.w + 5;
-	rect.w = 190;
+	rect.w = 185;
 	group->AddElement( new FleetMenuDropDown( &rect, ItemFont, "yavin_rebel_fighter" ) );
 	DropDowns.insert( (FleetMenuDropDown*) *(group->Elements.rbegin()) );
 	rect.x += rect.w + 5;
@@ -164,10 +164,10 @@ void FleetMenu::UpdateContents( void )
 	
 	rect.y += rect.h + 10;
 	rect.x = 10;
-	rect.w = 80;
+	rect.w = 90;
 	group->AddElement( new Label( &rect, "Bomber:", LabelFont, Font::ALIGN_MIDDLE_LEFT ) );
 	rect.x += rect.w + 5;
-	rect.w = 190;
+	rect.w = 185;
 	group->AddElement( new FleetMenuDropDown( &rect, ItemFont, "yavin_rebel_bomber" ) );
 	DropDowns.insert( (FleetMenuDropDown*) *(group->Elements.rbegin()) );
 	

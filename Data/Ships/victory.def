@@ -1,23 +1,26 @@
 id VSD
-name Victory S.D.
+name Victory SD
 category capital
 team empire
-secret
 radius 450
 speed 30
 accel 10
 roll 1.3 0.9
 pitch 1 0.7
-yaw 2 1.5
-health 6000
+yaw 2.5 2
+health 8000
 shield 10000
-recover 30
+recover 50
 recharge 0
-ramming 10000
+ramming 20000
 explode 0.015
-subsystem ShieldGenerator1 749
-subsystem ShieldGenerator2 749
-firetime turbolaser 0.5
+subsystem ShieldGenerator1 1199
+subsystem ShieldGenerator2 1199
+subsystem CriticalBridge 179
+firetime turbolaser 0.58
+docking_bay 0 -44.5 73.9 35
+docking_bay 0 -52.3 28.7 30
+docking_bay 0 -46.9 -41.6 35
 engine 0 -35 -400 engine_blue.ani 35 1 1 1 0.5
 engine 83.6 -35 -400 engine_blue.ani 35 1 1 1 0.5
 engine -83.6 -35 -400 engine_blue.ani 35 1 1 1 0.5

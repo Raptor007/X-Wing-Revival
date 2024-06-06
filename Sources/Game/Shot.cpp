@@ -212,8 +212,8 @@ void Shot::ClientInit( void )
 			if( ! ship->FiredThisFrame )
 				ship->WeaponIndex = WeaponIndex;
 			ship->JustFired( ShotType, 1 );
-			if( ship->SelectedWeapon && (ship->PlayerID != Raptor::Game->PlayerID) )
-				ship->FiringMode[ ship->SelectedWeapon ] = ship->FiredThisFrame;
+			if( (ship->PlayerID != Raptor::Game->PlayerID) || Predicted )
+				ship->FiringMode[ ShotType ] = ship->FiredThisFrame;
 		}
 		else if( fired_from && (fired_from->Type() == XWing::Object::TURRET) )
 		{
