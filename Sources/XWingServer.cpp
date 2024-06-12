@@ -60,16 +60,16 @@ std::map<std::string,std::string> XWingServer::DefaultProperties( void ) const
 	defaults["rebel_fighter"]  = "X/W";
 	defaults["rebel_bomber"]   = "Y/W";
 	defaults["rebel_cruiser"]  = "CRV";
-	defaults["rebel_cruisers"] = "2";
+	defaults["rebel_cruisers"] = "3";
 	defaults["rebel_frigate"]  = "FRG";
-	defaults["rebel_frigates"] = "1";
+	defaults["rebel_frigates"] = "2";
 	defaults["rebel_flagship"] = "FRG";
 	defaults["empire_fighter"]  = "T/F";
 	defaults["empire_bomber"]   = "T/B";
 	defaults["empire_cruiser"]  = "INT";
-	defaults["empire_cruisers"] = "2";
+	defaults["empire_cruisers"] = "3";
 	defaults["empire_frigate"]  = "VSD";
-	defaults["empire_frigates"] = "1";
+	defaults["empire_frigates"] = "2";
 	defaults["empire_flagship"] = "ISD";
 	defaults["yavin_rebel_fighter"]  = "X/W";
 	defaults["yavin_rebel_bomber"]   = "Y/W";
@@ -80,7 +80,7 @@ std::map<std::string,std::string> XWingServer::DefaultProperties( void ) const
 	defaults["dm_kill_limit"] = "10";
 	defaults["tdm_kill_limit"] = "30";
 	defaults["team_race_checkpoints"] = "100";
-	defaults["ffa_race_checkpoints"] = "30";
+	defaults["ffa_race_checkpoints"] = "20";
 	defaults["race_time_limit"] = "0";
 	defaults["race_lap"] = "5";
 	defaults["yavin_time_limit"] = "15";
@@ -379,17 +379,20 @@ bool XWingServer::ProcessPacket( Packet *packet, ConnectedClient *from_client )
 				
 				if( player_ship )
 				{
+					uint32_t target_id = player_ship->Target;
 					Turret *turret = player_ship->AttachedTurret( seat - 1 );
 					if( turret && ! (turret->PlayerID && Data.GetPlayer(turret->PlayerID)) )
 					{
 						if( player_turret && (player_turret != turret) )
 						{
 							// Moving from a different turret.
+							target_id = player_turret->Target;
 							player_turret->PlayerID = 0;
 							update_objects.insert( player_turret );
 						}
 						
 						turret->PlayerID = from_client->PlayerID;
+						turret->Target = target_id;
 						update_objects.insert( turret );
 					}
 				}

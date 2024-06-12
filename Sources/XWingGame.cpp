@@ -170,8 +170,6 @@ void XWingGame::SetDefaultControls( void )
 	Cfg.KeyBinds[ SDLK_DOWN         ] = Controls[ XWing::Control::PITCH_UP                ];
 	Cfg.KeyBinds[ SDLK_LEFT         ] = Controls[ XWing::Control::YAW_LEFT                ];
 	Cfg.KeyBinds[ SDLK_RIGHT        ] = Controls[ XWing::Control::YAW_RIGHT               ];
-	Cfg.KeyBinds[ SDLK_d            ] = Controls[ XWing::Control::ROLL_LEFT               ];
-	Cfg.KeyBinds[ SDLK_f            ] = Controls[ XWing::Control::ROLL_RIGHT              ];
 	Cfg.KeyBinds[ SDLK_BACKSLASH    ] = Controls[ XWing::Control::THROTTLE_0              ];
 	Cfg.KeyBinds[ SDLK_LEFTBRACKET  ] = Controls[ XWing::Control::THROTTLE_33             ];
 	Cfg.KeyBinds[ SDLK_RIGHTBRACKET ] = Controls[ XWing::Control::THROTTLE_66             ];
@@ -182,19 +180,29 @@ void XWingGame::SetDefaultControls( void )
 	Cfg.KeyBinds[ SDLK_LSHIFT       ] = Controls[ XWing::Control::TARGET_STORE            ];
 	Cfg.KeyBinds[ SDLK_RSHIFT       ] = Controls[ XWing::Control::TARGET_STORE            ];
 	Cfg.KeyBinds[ SDLK_LCTRL        ] = Controls[ XWing::Control::TARGET_CROSSHAIR        ];
+	Cfg.KeyBinds[ SDLK_q            ] = Controls[ XWing::Control::TARGET_NOTHING          ];
+	Cfg.KeyBinds[ SDLK_w            ] = Controls[ XWing::Control::WEAPON                  ];
 	Cfg.KeyBinds[ SDLK_e            ] = Controls[ XWing::Control::TARGET_NEAREST_ATTACKER ];
 	Cfg.KeyBinds[ SDLK_r            ] = Controls[ XWing::Control::TARGET_NEAREST_ENEMY    ];
+	Cfg.KeyBinds[ SDLK_t            ] = Controls[ XWing::Control::TARGET_NEXT             ];
+	Cfg.KeyBinds[ SDLK_y            ] = Controls[ XWing::Control::TARGET_PREV             ];
 	Cfg.KeyBinds[ SDLK_u            ] = Controls[ XWing::Control::TARGET_NEWEST           ];
-	Cfg.KeyBinds[ SDLK_p            ] = Controls[ XWing::Control::TARGET_NEXT_PLAYER      ];
-	Cfg.KeyBinds[ SDLK_o            ] = Controls[ XWing::Control::TARGET_OBJECTIVE        ];
-	Cfg.KeyBinds[ SDLK_h            ] = Controls[ XWing::Control::TARGET_DOCKABLE         ];
 	Cfg.KeyBinds[ SDLK_i            ] = Controls[ XWing::Control::TARGET_NEWEST_INCOMING  ];
+	Cfg.KeyBinds[ SDLK_o            ] = Controls[ XWing::Control::TARGET_OBJECTIVE        ];
+	Cfg.KeyBinds[ SDLK_p            ] = Controls[ XWing::Control::TARGET_NEXT_PLAYER      ];
 	Cfg.KeyBinds[ SDLK_a            ] = Controls[ XWing::Control::TARGET_TARGET_ATTACKER  ];
-	Cfg.KeyBinds[ SDLK_q            ] = Controls[ XWing::Control::TARGET_NOTHING          ];
+	Cfg.KeyBinds[ SDLK_s            ] = Controls[ XWing::Control::SHIELD_DIR              ];
+	Cfg.KeyBinds[ SDLK_d            ] = Controls[ XWing::Control::ROLL_LEFT               ];
+	Cfg.KeyBinds[ SDLK_f            ] = Controls[ XWing::Control::ROLL_RIGHT              ];
 	Cfg.KeyBinds[ SDLK_g            ] = Controls[ XWing::Control::TARGET_GROUPMATE        ];
+	Cfg.KeyBinds[ SDLK_h            ] = Controls[ XWing::Control::TARGET_DOCKABLE         ];
+	Cfg.KeyBinds[ SDLK_k            ] = Controls[ XWing::Control::EJECT                   ];
+	Cfg.KeyBinds[ SDLK_x            ] = Controls[ XWing::Control::MODE                    ];
 	Cfg.KeyBinds[ SDLK_v            ] = Controls[ XWing::Control::TARGET_SYNC             ];
 	Cfg.KeyBinds[ SDLK_CAPSLOCK     ] = Controls[ XWing::Control::TARGET_SYNC             ];
-	Cfg.KeyBinds[ SDLK_k            ] = Controls[ XWing::Control::EJECT                   ];
+	Cfg.KeyBinds[ SDLK_COMMA        ] = Controls[ XWing::Control::TARGET_PREV_SUBSYSTEM   ];
+	Cfg.KeyBinds[ SDLK_PERIOD       ] = Controls[ XWing::Control::TARGET_NEXT_SUBSYSTEM   ];
+	Cfg.KeyBinds[ SDLK_SLASH        ] = Controls[ XWing::Control::VIEW_SELFIE             ];
 	Cfg.KeyBinds[ SDLK_KP7          ] = Controls[ XWing::Control::LOOK_UP_LEFT            ];
 	Cfg.KeyBinds[ SDLK_KP8          ] = Controls[ XWing::Control::LOOK_UP                 ];
 	Cfg.KeyBinds[ SDLK_KP9          ] = Controls[ XWing::Control::LOOK_UP_RIGHT           ];
@@ -211,23 +219,14 @@ void XWingGame::SetDefaultControls( void )
 	Cfg.KeyBinds[ SDLK_END          ] = Controls[ XWing::Control::GLANCE_BACK             ];
 	Cfg.KeyBinds[ SDLK_PAGEDOWN     ] = Controls[ XWing::Control::GLANCE_RIGHT            ];
 	Cfg.KeyBinds[ SDLK_TAB          ] = Controls[ XWing::Control::SCORES                  ];
-	
-	Cfg.KeyBinds[ SDLK_w            ] = Controls[ XWing::Control::WEAPON                  ];
-	Cfg.KeyBinds[ SDLK_x            ] = Controls[ XWing::Control::MODE                    ];
-	Cfg.KeyBinds[ SDLK_s            ] = Controls[ XWing::Control::SHIELD_DIR              ];
-	Cfg.KeyBinds[ SDLK_F5           ] = Controls[ XWing::Control::TARGET1                 ];
-	Cfg.KeyBinds[ SDLK_F6           ] = Controls[ XWing::Control::TARGET2                 ];
-	Cfg.KeyBinds[ SDLK_F7           ] = Controls[ XWing::Control::TARGET3                 ];
-	Cfg.KeyBinds[ SDLK_F8           ] = Controls[ XWing::Control::TARGET4                 ];
-	Cfg.KeyBinds[ SDLK_t            ] = Controls[ XWing::Control::TARGET_NEXT             ];
-	Cfg.KeyBinds[ SDLK_y            ] = Controls[ XWing::Control::TARGET_PREV             ];
-	Cfg.KeyBinds[ SDLK_COMMA        ] = Controls[ XWing::Control::TARGET_PREV_SUBSYSTEM   ];
-	Cfg.KeyBinds[ SDLK_PERIOD       ] = Controls[ XWing::Control::TARGET_NEXT_SUBSYSTEM   ];
-	Cfg.KeyBinds[ SDLK_s            ] = Controls[ XWing::Control::SHIELD_DIR              ];
 	Cfg.KeyBinds[ SDLK_F1           ] = Controls[ XWing::Control::SEAT_COCKPIT            ];
 	Cfg.KeyBinds[ SDLK_F2           ] = Controls[ XWing::Control::SEAT_GUNNER1            ];
 	Cfg.KeyBinds[ SDLK_F3           ] = Controls[ XWing::Control::SEAT_GUNNER2            ];
 	Cfg.KeyBinds[ SDLK_F4           ] = Controls[ XWing::Control::CHEWIE_TAKE_THE_WHEEL   ];
+	Cfg.KeyBinds[ SDLK_F5           ] = Controls[ XWing::Control::TARGET1                 ];
+	Cfg.KeyBinds[ SDLK_F6           ] = Controls[ XWing::Control::TARGET2                 ];
+	Cfg.KeyBinds[ SDLK_F7           ] = Controls[ XWing::Control::TARGET3                 ];
+	Cfg.KeyBinds[ SDLK_F8           ] = Controls[ XWing::Control::TARGET4                 ];
 	Cfg.KeyBinds[ SDLK_1            ] = Controls[ XWing::Control::VIEW_COCKPIT            ];
 	Cfg.KeyBinds[ SDLK_2            ] = Controls[ XWing::Control::VIEW_CROSSHAIR          ];
 	Cfg.KeyBinds[ SDLK_3            ] = Controls[ XWing::Control::VIEW_CHASE              ];
@@ -238,7 +237,6 @@ void XWingGame::SetDefaultControls( void )
 	Cfg.KeyBinds[ SDLK_8            ] = Controls[ XWing::Control::VIEW_GUNNER             ];
 	Cfg.KeyBinds[ SDLK_9            ] = Controls[ XWing::Control::VIEW_CYCLE              ];
 	Cfg.KeyBinds[ SDLK_0            ] = Controls[ XWing::Control::VIEW_INSTRUMENTS        ];
-	Cfg.KeyBinds[ SDLK_SLASH        ] = Controls[ XWing::Control::VIEW_SELFIE             ];
 	Cfg.KeyBinds[ SDLK_RETURN       ] = Controls[ XWing::Control::CHAT                    ];
 	Cfg.KeyBinds[ SDLK_KP_ENTER     ] = Controls[ XWing::Control::CHAT                    ];
 	Cfg.KeyBinds[ SDLK_ESCAPE       ] = Controls[ XWing::Control::MENU                    ];
@@ -455,8 +453,10 @@ void XWingGame::SetDefaultControls( void )
 
 void XWingGame::SetDefaults( void )
 {
-	std::string rebel_mission  = Cfg.SettingAsString( "rebel_mission",  "rebel0"  );
-	std::string empire_mission = Cfg.SettingAsString( "empire_mission", "empire0" );
+	std::string rebel_mission     = Cfg.SettingAsString( "rebel_mission",  "rebel0"  );
+	std::string empire_mission    = Cfg.SettingAsString( "empire_mission", "empire0" );
+	std::string rebel_difficulty  = Cfg.SettingAsString( "rebel_difficulty",  "1" );
+	std::string empire_difficulty = Cfg.SettingAsString( "empire_difficulty", "1" );
 	
 	RaptorGame::SetDefaults();
 	
@@ -505,6 +505,8 @@ void XWingGame::SetDefaults( void )
 	
 	Cfg.Settings[ "rebel_mission"  ] = rebel_mission;
 	Cfg.Settings[ "empire_mission" ] = empire_mission;
+	Cfg.Settings[ "rebel_difficulty"  ] = rebel_difficulty;
+	Cfg.Settings[ "empire_difficulty" ] = empire_difficulty;
 	
 	#ifdef APPLE_POWERPC
 		Cfg.Settings[ "g_dynamic_lights" ] = "1";
@@ -3253,10 +3255,20 @@ bool XWingGame::ProcessPacket( Packet *packet )
 		std::string current_mission = packet->NextString();
 		std::string next_mission    = packet->NextString();
 		
-		if( next_mission.length() && Str::BeginsWith( current_mission, "rebel" ) && Str::EqualsInsensitive( Cfg.SettingAsString("rebel_mission"), current_mission ) )
+		if( next_mission.length() && Str::BeginsWith( current_mission, "rebel" )
+		&& ( Str::EqualsInsensitive( current_mission, Cfg.SettingAsString("rebel_mission") )
+		 || (Str::EqualsInsensitive( current_mission, "rebel1" ) && Str::EqualsInsensitive( Cfg.SettingAsString("rebel_mission"), "rebel0" )) ) )
+		{
 			Cfg.Settings["rebel_mission"] = next_mission;
-		else if( next_mission.length() && Str::BeginsWith( current_mission, "empire" ) && Str::EqualsInsensitive( Cfg.SettingAsString("empire_mission"), current_mission ) )
+			Cfg.Settings["rebel_difficulty"] = Data.PropertyAsString("ai_skill","1");
+		}
+		else if( next_mission.length() && Str::BeginsWith( current_mission, "empire" )
+		&& ( Str::EqualsInsensitive( current_mission, Cfg.SettingAsString("empire_mission") )
+		 || (Str::EqualsInsensitive( current_mission, "empire1" ) && Str::EqualsInsensitive( Cfg.SettingAsString("empire_mission"), "empire0" )) ) )
+		{
 			Cfg.Settings["empire_mission"] = next_mission;
+			Cfg.Settings["empire_difficulty"] = Data.PropertyAsString("ai_skill","1");
+		}
 	}
 	
 	else if( type == XWing::Packet::TOGGLE_COPILOT )
@@ -3408,14 +3420,16 @@ void XWingGame::ShowLobby( void )
 			Layers.Add( new LobbyMenu() );
 		}
 		
-		if( CampaignTeam && (State <= XWing::State::LOBBY) )
+		if( CampaignTeam && (State <= XWing::State::LOBBY) && Raptor::Server->IsRunning() )
 		{
 			Packet info( Raptor::Packet::INFO );
-			info.AddUShort( 2 );
+			info.AddUShort( 3 );
 			info.AddString( "gametype" );
 			info.AddString( "mission" );
 			info.AddString( "mission" );
 			info.AddString( (CampaignTeam == XWing::Team::EMPIRE) ? Cfg.SettingAsString("empire_mission","empire0") : Cfg.SettingAsString("rebel_mission","rebel0") );
+			info.AddString( "ai_skill" );
+			info.AddString( (CampaignTeam == XWing::Team::EMPIRE) ? Cfg.SettingAsString("empire_difficulty","1") : Cfg.SettingAsString("rebel_difficulty","1") );
 			Net.Send( &info );
 		}
 	}

@@ -1641,6 +1641,12 @@ void LobbyMenuConfigChangeButton::Clicked( Uint8 button )
 			new_ai_skill = max_ai_skill;
 		
 		value = Num::ToString( new_ai_skill );
+		
+		uint8_t campaign = ((XWingGame*)( Raptor::Game ))->CampaignTeam;
+		if( campaign == XWing::Team::REBEL )
+			Raptor::Game->Cfg.Settings[ "rebel_difficulty" ] = value;
+		else if( campaign == XWing::Team::EMPIRE )
+			Raptor::Game->Cfg.Settings[ "empire_difficulty" ] = value;
 	}
 	
 	else if( (config->Property == "respawn") || (config->Property == "allow_team_change") )

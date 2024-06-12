@@ -1,6 +1,6 @@
 ----------------------------------------
 |            X-Wing Revival            |
-|       0.4.2 Alpha (2024-06-06)       |
+|       0.4.3 Alpha (2024-06-12)       |
 |     by Raptor007 (Blair Sherman)     |
 | http://raptor007.com/x-wing-revival/ |
 ----------------------------------------
@@ -325,8 +325,6 @@ Linux asks what application to open files of type "executable" with.
    Mouse Thumb-Button Little (Forward): Throttle Increase
 
    Arrows: Yaw/Pitch
-   D: Roll Left
-   F: Roll Right
    Backslash: 0% Throttle
    Left Bracket: 33% Throttle / Spectate Previous
    Right Bracket: 67% Throttle / Spectate Next
@@ -336,21 +334,25 @@ Linux asks what application to open files of type "executable" with.
    Numeric Keypad: Look Around
    Numeric Keypad 5: Look Center / VR Head Center
    Space: Fire
-   W: Change Weapon
-   X: Change Firing Mode
-   S: Shield Direction
    Ctrl: Target Center
    Q: Target None
+   W: Change Weapon
    E: Target Attacker
    R: Target Nearest Enemy
    T: Target Next
    Y: Target Previous
+   U: Target Newest
    I: Target Incoming
    O: Target Objective
+   P: Target Next Player
    A: Target Current Target's Attacker
-   H: Target Dockable
+   S: Shield Direction
+   D: Roll Left
+   F: Roll Right
    G: Target Groupmate
+   H: Target Dockable
    K: Eject
+   X: Change Firing Mode
    V/CapsLock: Target Data-Link
    F1: Cockpit Seat
    F2: Gunner Seat 1
@@ -370,7 +372,7 @@ Linux asks what application to open files of type "executable" with.
    7: View Selfie
    8: View Gunner
    9: View Cycle
-   10: View Instruments
+   0: View Instruments
    Tab: Show Scores
    Return/Enter: Toggle/Send Chat
    Esc/F10: Menu
@@ -476,6 +478,11 @@ console commands to execute, such as "sv gametype yavin" or "sv rebel_fighter A/
 
 
 == VERSION HISTORY ==
+
+Alpha 0.4.3 (2024-06-12):
+ * Textboxes read unicode text input events instead of raw key down/up.
+ * Moving from turret to another seat retains current target.
+ * Campaign now remembers selected difficulty.
 
 Alpha 0.4.2 (2024-06-06):
  * Fixed buggy missile and torpedo behavior when shot prediction is enabled.

@@ -106,7 +106,7 @@ void FleetMenu::UpdateContents( void )
 	rect.w = 90;
 	group->AddElement( new Label( &rect, "Cruiser:", LabelFont, Font::ALIGN_MIDDLE_LEFT ) );
 	rect.x += rect.w + 5;
-	rect.w = 190;
+	rect.w = 185;
 	group->AddElement( new FleetMenuDropDown( &rect, ItemFont, "rebel_cruiser" ) );
 	DropDowns.insert( (FleetMenuDropDown*) *(group->Elements.rbegin()) );
 	rect.x += rect.w + 5;

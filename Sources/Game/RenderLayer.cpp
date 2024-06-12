@@ -634,7 +634,7 @@ void RenderLayer::Draw( void )
 				ship_score |= 0x01;
 			*/
 			
-			if( (ship_score > best_score) || ((ship_score == best_score) && (ship_dist < best_dist)) || ! observed_ship )
+			if( (ship_score > best_score) || ((ship_score == best_score) && (ship_dist < best_dist) && game->ObservedShipID) || ! observed_ship )
 			{
 				observed_ship = *ship_iter;
 				best_score = ship_score;
