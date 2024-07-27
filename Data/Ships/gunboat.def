@@ -31,6 +31,7 @@ ammo missile 12
 engine 1.42 -0.41 -4.8 engine_blue.png 1.1 1 1 1 0.33
 engine -1.42 -0.41 -4.8 engine_blue.png 1.1 1 1 1 0.33
 model gunboat.obj
+model_collision gunboat_col.obj
 cockpit gunboat_cockpit.obj 0 0.36 0.98
 group_skin 2 gunboat_gold.obj gunboat_cockpit_gold.obj
 group_skin 3 gunboat_green.obj gunboat_cockpit_green.obj

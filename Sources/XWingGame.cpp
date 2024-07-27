@@ -39,6 +39,7 @@ XWingGame::XWingGame( std::string version ) : RaptorGame( "X-Wing Revival", vers
 	LookYaw = 0.;
 	LookPitch = 0.;
 	ThumbstickLook = true;
+	TurretFiringMode = 1;
 	AsteroidLOD = 1.;
 	OverlayScroll = 0.;
 	BlastPoints = 0;
@@ -484,6 +485,7 @@ void XWingGame::SetDefaults( void )
 	Cfg.Settings[ "s_effect_volume" ] = "0.5";
 	Cfg.Settings[ "s_engine_volume" ] = "0.9";
 	Cfg.Settings[ "s_music_volume" ] = "0.8";
+	Cfg.Settings[ "s_shield_alarm_radius" ] = "1";
 	Cfg.Settings[ "s_menu_music" ] = "true";
 	Cfg.Settings[ "s_game_music" ] = "true";
 	Cfg.Settings[ "s_imuse" ] = "false";
@@ -502,6 +504,7 @@ void XWingGame::SetDefaults( void )
 	Cfg.Settings[ "turret_invert" ] = "false";
 	
 	Cfg.Settings[ "net_zerolag" ] = "2";
+	Cfg.Settings[ "sv_threads" ] = "0";
 	
 	Cfg.Settings[ "rebel_mission"  ] = rebel_mission;
 	Cfg.Settings[ "empire_mission" ] = empire_mission;
@@ -653,6 +656,8 @@ void XWingGame::Precache( void )
 	Res.GetSound("damage_shield.wav");
 	Res.GetSound("hit_hull.wav");
 	Res.GetSound("hit_shield.wav");
+	Res.GetSound("shield_alarm.wav");
+	Res.GetSound("beep_aim.wav");
 	Res.GetSound("jump_in.wav");
 	
 	bool screensaver = Cfg.SettingAsBool("screensaver");
@@ -689,7 +694,6 @@ void XWingGame::Precache( void )
 		Res.GetSound("beep.wav");
 		Res.GetSound("beep_error.wav");
 		Res.GetSound("beep_store.wav");
-		Res.GetSound("beep_aim.wav");
 		Res.GetSound("beep_sc.wav");
 		Res.GetSound("beep_sf.wav");
 		Res.GetSound("beep_sr.wav");
@@ -1347,7 +1351,7 @@ void XWingGame::Update( double dt )
 					if( (ship->JumpProgress < 1.) || ship->JumpedOut )
 						continue;
 					
-					if( ship->ComplexCollisionDetection() )
+					if( (ship->Category() == ShipClass::CATEGORY_CAPITAL) && ship->ComplexCollisionDetection() )
 					{
 						std::string hit;
 						double dist = ship->Shape.DistanceFromLine( ship, NULL, NULL, &hit, ship->Exploded(), ship->ExplosionSeed(), my_pos, &ahead );
@@ -2116,6 +2120,8 @@ bool XWingGame::HandleEvent( SDL_Event *event )
 	{
 		Packet packet = Packet( XWing::Packet::CHANGE_SEAT );
 		packet.AddUChar( change_seat - 1 );
+		if( change_seat >= 2 )
+			packet.AddUChar( TurretFiringMode );
 		Net.Send( &packet );
 		
 		// The server determines if we can change seats, so no need to find our ship below.
@@ -2232,6 +2238,7 @@ bool XWingGame::HandleEvent( SDL_Event *event )
 		{
 			my_turret->FiringMode = (my_turret->FiringMode == 1) ? 2 : 1;
 			Snd.Play( (my_turret->FiringMode == 1) ? Res.GetSound("beep_laser1.wav") : Res.GetSound("beep_laser2.wav") );
+			TurretFiringMode = my_turret->FiringMode;
 		}
 	}
 	else if( my_ship && (my_ship->Health > 0.) )
@@ -2718,7 +2725,7 @@ bool XWingGame::ProcessPacket( Packet *packet )
 		
 		Ship *ship = NULL;
 		double old_health = 0.;
-		double old_shields = 0.;
+		double old_shield_f = 0., old_shield_r = 0.;
 		double old_subsystem_health = 0.;
 		double ship_dx = 0., ship_dy = 0., ship_dz = 0.;
 		
@@ -2727,7 +2734,8 @@ bool XWingGame::ProcessPacket( Packet *packet )
 		{
 			ship = (Ship*) ship_obj;
 			old_health = ship->Health;
-			old_shields = ship->ShieldF + ship->ShieldR;
+			old_shield_f = ship->ShieldF;
+			old_shield_r = ship->ShieldR;
 			ship_dx = ship->MotionVector.X;
 			ship_dy = ship->MotionVector.Y;
 			ship_dz = ship->MotionVector.Z;
@@ -2748,7 +2756,7 @@ bool XWingGame::ProcessPacket( Packet *packet )
 		{
 			Pos3D pos( x, y, z );
 			Vec3D motion_vec( ship_dx, ship_dy, ship_dz );
-			bool shielded = false;
+			bool shielded = false, lost_shield = false;
 			double bp_radius = 4.;
 			double bp_time = 0.;
 			
@@ -2772,21 +2780,32 @@ bool XWingGame::ProcessPacket( Packet *packet )
 						if( (ship->Health > 0.) && (ship->PlayerID == Raptor::Game->PlayerID) )
 							Snd.Play( Res.GetSound("damage_hull_2.wav") );
 					}
-					else if( ship->ShieldF + ship->ShieldR < old_shields )
+					else if( (ship->ShieldF < old_shield_f) || (ship->ShieldR < old_shield_r) )
 						sound = Res.GetSound("damage_shield.wav");
 					loudness = 2.;
+					
+					if( (ship->Health > 0.) && (old_shield_f > 0.) && (old_shield_r > 0.) && ((shield_f <= 0.) || (shield_r <= 0.)) )
+					{
+						double min_radius = Cfg.SettingAsDouble( "s_shield_alarm_radius", 10. );
+						if( min_radius && (ship->Radius() >= min_radius) )
+						{
+							Mix_Chunk *alarm = Res.GetSound("shield_alarm.wav");
+							Snd.Play( alarm );
+							Snd.Play( alarm );
+						}
+					}
 				}
 				else
 				{
 					if( (ship->Health < old_health) || (subsystem_health < old_subsystem_health) )
 						sound = Res.GetSound("hit_hull.wav");
-					else if( ship->ShieldF + ship->ShieldR < old_shields )
+					else if( (ship->ShieldF < old_shield_f) || (ship->ShieldR < old_shield_r) )
 						sound = Res.GetSound("hit_shield.wav");
 				}
 				if( sound )
 					Snd.PlayAt( sound, x, y, z, loudness );
 				
-				double shield_damage = old_shields - (ship->ShieldF + ship->ShieldR);
+				double shield_damage = (old_shield_f + old_shield_r) - (ship->ShieldF + ship->ShieldR);
 				double hull_damage = old_health - ship->Health;
 				double shield_scale = ((shot_type == Shot::TYPE_MISSILE) || (shot_type == Shot::TYPE_TORPEDO)) ? 1. : 0.3;
 				double knock_scale = (shield_damage * shield_scale + hull_damage) / 20.;
@@ -2796,6 +2815,7 @@ bool XWingGame::ProcessPacket( Packet *packet )
 				ship->KnockCockpit( &knock, knock_scale );
 				
 				shielded = (subsystem_health >= old_subsystem_health) && ! hull_damage;
+				lost_shield = ((old_shield_f > 0.) && (ship->ShieldF <= 0.)) || ((old_shield_r > 0.) && (ship->ShieldR <= 0.));
 			}
 			
 			if( ship && (ship->Category() == ShipClass::CATEGORY_TARGET) && (shot_type == Shot::TYPE_TORPEDO) )
@@ -2824,14 +2844,14 @@ bool XWingGame::ProcessPacket( Packet *packet )
 				if( Cfg.SettingAsDouble("g_effects",1.) > 0. )
 				{
 					motion_vec.ScaleBy( 0.75 );
-					Data.Effects.push_back( Effect( Res.GetAnimation("explosion.ani"), shielded ? 3.5 : 4., NULL, 0., &pos, &motion_vec, 0., 7. ) );
+					Data.Effects.push_back( Effect( Res.GetAnimation("explosion.ani"), lost_shield ? 9. : (shielded ? 3.5 : 4.), NULL, 0., &pos, &motion_vec, 0., 7. ) );
 				}
 				bp_radius = shielded ? 2. : 4.;
 			}
 			
 			if( BlastPoints && bp_radius )
 			{
-				if( !( shielded || ship->ComplexCollisionDetection() ) )
+				if( (! shielded) && (ship->Category() != ShipClass::CATEGORY_CAPITAL) )
 					ship->SetBlastPoint( x, y, z, bp_radius, bp_time );
 				ship->SetBlastPoint( x + shot_dx * 0.007, y + shot_dy * 0.007, z + shot_dz * 0.007, bp_radius, bp_time );
 			}

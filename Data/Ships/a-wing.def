@@ -28,6 +28,7 @@ ammo missile 8
 engine 0.96 -0.06 -2.2 engine_yellow.ani 0.95 1 1 1 0.5
 engine -0.96 -0.06 -2.2 engine_yellow.ani 0.95 1 1 1 0.5
 model a-wing.obj
+model_collision a-wing_col.obj
 cockpit a-wing_cockpit.obj 0 0.56 -0.4
 group_skin 1 a-wing_red.obj a-wing_cockpit_red.obj
 group_skin 2 a-wing_gold.obj a-wing_cockpit_gold.obj

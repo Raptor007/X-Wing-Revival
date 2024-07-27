@@ -24,6 +24,7 @@ firetime laser_green 0.2
 engine 0.88 0.03 -0.94 engine_yellow.ani 0.4 1 0.1 0.1 0.4
 engine -0.88 0.03 -0.94 engine_yellow.ani 0.4 1 0.1 0.1 0.4
 model tie-interceptor.obj
+model_collision tie-interceptor_col.obj
 cockpit tie-interceptor_cockpit_vr.obj 0 0 0.07
 cockpit_vr tie-interceptor_cockpit_vr.obj 0 0.1 -0.1
 model_scale 0.022

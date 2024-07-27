@@ -36,6 +36,7 @@ engine 0.5 -0.5 -2.2 engine_red.ani 0.55 1 1 1 0.75
 engine -0.5 -0.5 -2.2 engine_red.ani 0.55 1 1 1 0.75
 engine 0 0 -2.8 engine_red.ani 3.4 1 1 1 0.33
 model b-wing.obj
+model_collision b-wing_col.obj
 cockpit b-wing_cockpit.obj 0 4.55 1.15
 group_skin 1 b-wing_red.obj b-wing_cockpit_red.obj
 group_skin 2 b-wing_gold.obj b-wing_cockpit_gold.obj

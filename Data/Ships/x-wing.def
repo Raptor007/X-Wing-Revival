@@ -32,6 +32,7 @@ engine -1.04 0.976 -5.66 engine_red.ani 1.3 1 1 1 0.5
 engine 0.944 -1.064 -5.66 engine_red.ani 1.3 1 1 1 0.5
 engine -0.944 -1.064 -5.66 engine_red.ani 1.3 1 1 1 0.5
 model x-wing_hq.obj
+model_collision x-wing_hq_col.obj
 cockpit x-wing_cockpit_hq.obj 0 0.814 -0.704
 group_skin 2 x-wing_hq_gold.obj x-wing_cockpit_hq_gold.obj
 group_skin 3 x-wing_hq_green.obj x-wing_cockpit_hq_green.obj

@@ -4,7 +4,7 @@ category capital
 team rebel
 radius 650
 speed 24
-accel 10
+accel 7
 roll 0.8 0.6
 pitch 0.8 0.5
 yaw 1.2 1

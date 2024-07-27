@@ -229,6 +229,10 @@ void MainMenu::Draw( void )
 		IdleTime += frame_time;
 	else
 		IdleTime = 0.;
+	
+	// Prevent absurd "showfps" output while precaching.
+	if( NeedPrecache )
+		Raptor::Game->FrameTime = 0.;
 }
 
 

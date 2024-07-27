@@ -16,7 +16,7 @@
 DeathStar::DeathStar( uint32_t id ) : GameObject( id, XWing::Object::DEATH_STAR )
 {
 	TrenchWidth = 40.;
-	TrenchDepth = 80.;
+	TrenchDepth = 60.;
 	TextureSize = 500.;
 	DetailHeight = 2.;
 	SurfaceDetailHeight = 7.;
@@ -188,7 +188,7 @@ bool DeathStar::WillCollide( const GameObject *other, double dt, std::string *th
 		if( ship->Category() == ShipClass::CATEGORY_TARGET )
 			return false;
 		
-		// Use per-vertex checking for capital ship near Death Star.
+		// Use per-vertex checking near Death Star.
 		if( ship->ComplexCollisionDetection() )
 		{
 			if( ship->DistAlong(&Up,this) > ship->Shape.MaxRadius )

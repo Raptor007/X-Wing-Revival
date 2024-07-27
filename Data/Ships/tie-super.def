@@ -23,6 +23,7 @@ engine 0.88 0.03 -0.94 engine_yellow.ani 0.4 1 0.1 0.1 0.4
 engine -0.88 0.03 -0.94 engine_yellow.ani 0.4 1 0.1 0.1 0.4
 engine 0 -0.9 1.2 engine_yellow.ani 0.9 0.1 1 0.3 0.7
 model tie-fighter_hq.obj
+model_collision tie-fighter_hq_col.obj
 cockpit tie-fighter_cockpit_vr.obj 0 0 0.07
 cockpit_vr tie-fighter_cockpit_vr.obj 0 0.1 -0.1
 model_scale 0.022

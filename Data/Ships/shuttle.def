@@ -27,6 +27,7 @@ engine -4 -1.032 -7.7 engine_blue.png 3 1 1 1 0.2
 engine 1 -1.032 -7.7 engine_blue.png 3 1 1 1 0.2
 engine -1 -1.032 -7.7 engine_blue.png 3 1 1 1 0.2
 model shuttle.obj
+model_collision shuttle_col.obj
 cockpit shuttle.obj 0 1 9
 model_scale 0.022
 flyby 20 shuttle_slow.wav

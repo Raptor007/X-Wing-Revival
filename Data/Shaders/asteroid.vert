@@ -1,5 +1,6 @@
 #if BLASTPOINTS > 0
 #undef BLASTPOINTS
+#define BLASTPOINTS 0
 #endif
 
 // ---------------------------------------------------------------------------

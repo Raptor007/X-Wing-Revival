@@ -258,6 +258,8 @@ void Ship::SetHealth( double health )
 		DeathClock.Reset();
 		ShieldF = 0.;
 		ShieldR = 0.;
+		if( PlayerID == Raptor::Game->PlayerID )
+			Raptor::Game->Snd.AttenuateFor = -1;  // When our own ship explodes, it should be loud.
 	}
 	else if( (health > 0.) && (Health <= 0.) )
 		Reset();
@@ -436,10 +438,11 @@ void Ship::SetBlastPoint( double x, double y, double z, double radius, double ti
 	double up    = shot.DistAlong( &Up,    this );
 	double right = shot.DistAlong( &Right, this );
 	
-	radius *= (Category() == ShipClass::CATEGORY_CAPITAL) ? 3. : (Radius() / 10.);
-	
-	if( ! ComplexCollisionDetection() )
+	if( Category() == ShipClass::CATEGORY_CAPITAL )
+		radius *= 3.;
+	else
 	{
+		radius *= Radius() / 10.;
 		double front = Shape.GetLength() * 0.5;
 		double top   = Shape.GetHeight() * 0.5;
 		double side  = Shape.GetWidth()  * 0.5;
@@ -800,7 +803,7 @@ double Ship::ShieldRechargeRate( void ) const
 
 double Ship::PiecesDangerousTime( void ) const
 {
-	if( ComplexCollisionDetection() )
+	if( ComplexCollisionDetection() && (Category() == ShipClass::CATEGORY_CAPITAL) )
 		return 3.;
 	
 	return 0.25;
@@ -1305,7 +1308,7 @@ void Ship::ResetTurrets( void ) const
 Turret *Ship::AttachedTurret( uint8_t index ) const
 {
 	// Attached turrets are defined in the ship class defs and collision models.
-	if( (Class && Class->Turrets.size()) || ComplexCollisionDetection() || ClientSide() )
+	if( (Class && Class->Turrets.size()) || (ComplexCollisionDetection() && (Category() == ShipClass::CATEGORY_CAPITAL)) || ClientSide() )
 	{
 		for( std::map<uint32_t,GameObject*>::iterator obj_iter = Data->GameObjects.begin(); obj_iter != Data->GameObjects.end(); obj_iter ++ )
 		{
@@ -1332,7 +1335,7 @@ std::list<Turret*> Ship::AttachedTurrets( void ) const
 	std::list<Turret*> turrets;
 	
 	// Attached turrets are defined in the ship class defs and collision models.
-	if( (Class && Class->Turrets.size()) || ComplexCollisionDetection() || ClientSide() )
+	if( (Class && Class->Turrets.size()) || (ComplexCollisionDetection() && (Category() == ShipClass::CATEGORY_CAPITAL)) || ClientSide() )
 	{
 		for( std::map<uint32_t,GameObject*>::iterator obj_iter = Data->GameObjects.begin(); obj_iter != Data->GameObjects.end(); obj_iter ++ )
 		{
@@ -1354,7 +1357,7 @@ std::set<Player*> Ship::PlayersInTurrets( void ) const
 	std::set<Player*> players;
 	
 	// Attached turrets are defined in the ship class defs and collision models.
-	if( (Class && Class->Turrets.size()) || ComplexCollisionDetection() || ClientSide() )
+	if( (Class && Class->Turrets.size()) || (ComplexCollisionDetection() && (Category() == ShipClass::CATEGORY_CAPITAL)) || ClientSide() )
 	{
 		for( std::map<uint32_t,GameObject*>::iterator obj_iter = Data->GameObjects.begin(); obj_iter != Data->GameObjects.end(); obj_iter ++ )
 		{
@@ -1420,10 +1423,7 @@ bool Ship::CanCollideWithOtherTypes( void ) const
 
 bool Ship::ComplexCollisionDetection( void ) const
 {
-	if( Class )
-		return Class->CollisionModel.length();
-	
-	return false;
+	return Class && Class->CollisionModel.length() && (! JumpedOut) && ((Category() == ShipClass::CATEGORY_CAPITAL) || (Health > 0.));
 }
 
 
@@ -1573,7 +1573,7 @@ void Ship::ReadFromUpdatePacketFromServer( Packet *packet, int8_t precision )
 			SubsystemCenters.push_back( Vec3D( fwd, up, right ) );
 		}
 	}
-	else if( (Health < 0.) && (prev_health < 0.) && ! ComplexCollisionDetection() )
+	else if( (Health < 0.) && (prev_health < 0.) && (Category() != ShipClass::CATEGORY_CAPITAL) )
 	{
 		// Attempting to fix explosion jitter on fighters by preventing Fwd vector from being modified after death (effecting ExplosionSeed).
 		Fwd.Copy(   &(PrevPos.Fwd) );
@@ -1668,27 +1668,58 @@ void Ship::ReadFromUpdatePacketFromClient( Packet *packet, int8_t precision )
 
 
 bool Ship::WillCollide( const GameObject *other, double dt, std::string *this_object, std::string *other_object, Pos3D *loc, double *when ) const
-{
+{	
 	// Dead ships don't collide after a bit (except capital ship chunks).
 	if( (Health <= 0.) && (DeathClock.ElapsedSeconds() > PiecesDangerousTime()) )
 		return false;
 	
-	double exploded = Exploded();
-	int explosion_seed = ExplosionSeed();
+	// No sequel nonsense.
+	if( JumpedOut )
+		return false;
+	
+#define BLOCKMAP_USAGE 3
+#ifdef BLOCKMAP_USAGE
+	double block_size = 0.;  // Default to automatic (use longest triangle edge as block size).
+#endif
+	
+	bool this_complex = ComplexCollisionDetection();
+	uint8_t this_category = Category();
+	bool other_complex = other->ComplexCollisionDetection();
+	uint32_t other_type = other->Type();
+	
+#ifdef SV_LAZY
+	// Allow "sv lazy" to reduce CPU load by disabling complex collision models on fighters (revert to old sphere behavior).
+	if( (this_complex || other_complex) && Data->PropertyAsBool("lazy") )  // FIXME: Read this property ONCE and store it somewhere!
+	{
+		if( this_category != ShipClass::CATEGORY_CAPITAL )
+			this_complex = false;
+		if( (other_type == XWing::Object::SHIP) && (((const Ship*) other)->Category() != ShipClass::CATEGORY_CAPITAL) )
+			other_complex = false;
+	}
+#endif
+	
+	// Let the more complex ship handle collisions.
+	if( other_complex && (! this_complex) && (other_type == XWing::Object::SHIP) )
+		return other->WillCollide( this, dt, other_object, this_object, loc, when );
+	if( this_complex && other_complex && (other_type == XWing::Object::SHIP) && (Shape.Objects.size() < ((const Ship*) other)->Shape.Objects.size()) )
+		return other->WillCollide( this, dt, other_object, this_object, loc, when );
 	
 	std::set<std::string> objects;
-	if( ComplexCollisionDetection() )
+	if( this_complex )
 	{
 		// Don't detect collisions with destroyed subsystems.
 		for( std::map<std::string,ModelObject>::const_iterator obj_iter = Shape.Objects.begin(); obj_iter != Shape.Objects.end(); obj_iter ++ )
 		{
 			std::map<std::string,double>::const_iterator subsystem_iter = Subsystems.find( obj_iter->first );
-			if( (subsystem_iter == Subsystems.end()) || (subsystem_iter->second >= 0.) )
+			if( (subsystem_iter == Subsystems.end()) || (subsystem_iter->second > 0.) )
 				objects.insert( obj_iter->first );
 		}
 	}
 	
-	if( other->Type() == XWing::Object::SHOT )
+	double exploded = Exploded();
+	int explosion_seed = ExplosionSeed();
+	
+	if( other_type == XWing::Object::SHOT )
 	{
 		Shot *shot = (Shot*) other;
 		
@@ -1702,21 +1733,32 @@ bool Ship::WillCollide( const GameObject *other, double dt, std::string *this_ob
 		if( fired_from && (fired_from->Type() == XWing::Object::TURRET) && (((Turret*)( fired_from ))->ParentID == ID) )
 			return false;
 		
-		// Use face hit detection for capital ships.
-		if( ComplexCollisionDetection() )
+		// Use face hit detection for shots vs capital ships (and fighters when BLOCKMAP_USAGE >= 5).
+#if BLOCKMAP_USAGE >= 6
+		if( this_complex )
+#elif BLOCKMAP_USAGE >= 5
+		if( this_complex && ((this_category == ShipClass::CATEGORY_CAPITAL) || ! ClientSide()) )
+#else
+		if( this_complex && (this_category == ShipClass::CATEGORY_CAPITAL) )
+#endif
 		{
 			if( Math3D::MinimumDistance( this, &MotionVector, other, &(other->MotionVector), dt ) > (Shape.MaxRadius * (1. + exploded * 0.25)) )
 				return false;
 			
-			Randomizer rando;
+			Vec3D relative_motion = (other->MotionVector - MotionVector) * dt;
 			Pos3D end( other );
-			end += (other->MotionVector * dt) - (MotionVector * dt);
+			end += relative_motion;
 			
-#define BLOCKMAP_USAGE 1
-#if BLOCKMAP_USAGE >= 3
-			return (Shape.DistanceFromLine( this, loc, &objects, this_object, exploded, explosion_seed, other, &end ) < 0.01);
+#if BLOCKMAP_USAGE >= 4
+			// NOTE: This is currently unused because it is noticeably slower!
+			if( this_category == ShipClass::CATEGORY_CAPITAL )
+				return (Shape.DistanceFromLine( this, loc, &objects, this_object, exploded, explosion_seed, other, &end, 64. ) < 0.01);
+			else  // if (BLOCKMAP_USAGE >= 5) && (this_category != ShipClass::CATEGORY_CAPITAL)
+				return Shape.CollidesWithSphere( this, loc, &objects, this_object, exploded, explosion_seed, other, &relative_motion, 3., block_size );
 #endif
+			// ===== Beginning of section ignored when BLOCKMAP_USAGE >= 4 =====
 			
+			Randomizer rando(explosion_seed);
 			ModelArrays array_inst;
 			Pos3D this_loc;
 			for( std::map<std::string,ModelObject>::const_iterator obj_iter = Shape.Objects.begin(); obj_iter != Shape.Objects.end(); obj_iter ++ )
@@ -1782,6 +1824,8 @@ bool Ship::WillCollide( const GameObject *other, double dt, std::string *this_ob
 			return false;
 		}
 		
+		// ===== End of section ignored when BLOCKMAP_USAGE >= 4 =====
+		
 		double dist = Math3D::MinimumDistance( this, &MotionVector, other, &(other->MotionVector), dt );
 		
 		if( dist <= (Radius() * 2.) )
@@ -1796,16 +1840,16 @@ bool Ship::WillCollide( const GameObject *other, double dt, std::string *this_ob
 		}
 	}
 	
-	else if( other->Type() == XWing::Object::SHIP )
+	else if( other_type == XWing::Object::SHIP )
 	{
 		Ship *ship = (Ship*) other;
 		
-		// Let capitol ships handle collisions.
-		if( ship->ComplexCollisionDetection() && ! ComplexCollisionDetection() )
-			return other->WillCollide( this, dt, other_object, this_object, loc, when );
+		// No sequel nonsense.
+		if( ship->JumpedOut )
+			return false;
 		
 		// Don't let ships hit the Death Star exhaust port.
-		if( (Category() == ShipClass::CATEGORY_TARGET) || (ship->Category() == ShipClass::CATEGORY_TARGET) )
+		if( (this_category == ShipClass::CATEGORY_TARGET) || (ship->Category() == ShipClass::CATEGORY_TARGET) )
 			return false;
 		
 		// Dead ships don't collide after a bit, and they never hit other dead ships.
@@ -1813,11 +1857,11 @@ bool Ship::WillCollide( const GameObject *other, double dt, std::string *this_ob
 			return false;
 		
 		// Use face hit detection for capital ships.
-		if( ComplexCollisionDetection() )
+		if( this_complex )
 		{
-			Randomizer rando;
+			Randomizer rando(explosion_seed);
 			
-			if( ship->ComplexCollisionDetection() )
+			if( other_complex )
 			{
 				// The other ship also has complex collision model!
 				
@@ -1828,27 +1872,34 @@ bool Ship::WillCollide( const GameObject *other, double dt, std::string *this_ob
 				if( Math3D::MinimumDistance( this, &MotionVector, other, &(other->MotionVector), dt ) > (Shape.MaxRadius * (1. + exploded * 0.25) + ship->Shape.MaxRadius * (1. + other_exploded * 0.25)) )
 					return false;
 				
-				// Let the bigger ship handle the collision.
-				if( ship->Shape.MaxRadius > Shape.MaxRadius )
-					return ship->WillCollide( this, dt, other_object, this_object, loc, when );
-				
 				// Don't detect collisions with destroyed subsystems.
 				std::set<std::string> objects2;
 				for( std::map<std::string,ModelObject>::const_iterator other_obj_iter = ship->Shape.Objects.begin(); other_obj_iter != ship->Shape.Objects.end(); other_obj_iter ++ )
 				{
 					std::map<std::string,double>::const_iterator subsystem_iter = Subsystems.find( other_obj_iter->first );
-					if( (subsystem_iter == Subsystems.end()) || (subsystem_iter->second >= 0.) )
+					if( (subsystem_iter == Subsystems.end()) || (subsystem_iter->second > 0.) )
 						objects2.insert( other_obj_iter->first );
 				}
 				
 #if BLOCKMAP_USAGE
-				return Shape.CollidesWithModel( this, loc, &objects, this_object, exploded, explosion_seed, &(ship->Shape), other, &objects2, other_object, other_exploded, other_explosion_seed );
+				Vec3D relative_motion = (other->MotionVector - MotionVector) * dt;
+				Vec3D *motion2 = &relative_motion;
+				if( (this_category == ShipClass::CATEGORY_CAPITAL) && (ship->Category() == ShipClass::CATEGORY_CAPITAL) )
+				{
+					// Performance tweaks for Fleet Battle.
+					motion2 = NULL;
+					block_size = 64.;
+				}
 #endif
-				
+#if BLOCKMAP_USAGE >= 2
+				return Shape.CollidesWithModel( this, loc, &objects, this_object, exploded, explosion_seed, &(ship->Shape), other, motion2, &objects2, other_object, other_exploded, other_explosion_seed, block_size );
+#endif
+				// ===== Beginning of section ignored when BLOCKMAP_USAGE >= 2 =====
+#if BLOCKMAP_USAGE
 				// Do a quick vertex blockmap overlap check.
-				if( ! Shape.CollidesWithModel( this, loc, &objects, NULL, exploded, explosion_seed, &(ship->Shape), other, &objects2, NULL, other_exploded, other_explosion_seed, 0., false ) )
+				if( ! Shape.CollidesWithModel( this, loc, &objects, NULL, exploded, explosion_seed, &(ship->Shape), other, motion2, &objects2, NULL, other_exploded, other_explosion_seed, block_size, false ) )
 					return false;
-				
+#endif
 				ModelArrays array_inst;
 				std::map<const ModelArrays*,ModelArrays> other_arrays;
 				Vec3D motion = (MotionVector * dt) - (other->MotionVector * dt);
@@ -2088,7 +2139,7 @@ bool Ship::WillCollide( const GameObject *other, double dt, std::string *this_ob
 				return false;
 			}
 			
-			// ===== End of section ignored when using BLOCKMAP_USAGE. =====
+			// ===== End of section ignored when BLOCKMAP_USAGE >= 2 =====
 			
 			// The other ship uses a simple spherical collision model.
 			return WillCollideWithSphere( other, ((Ship*)other)->Radius(), dt, this_object, loc, when );
@@ -2109,13 +2160,13 @@ bool Ship::WillCollide( const GameObject *other, double dt, std::string *this_ob
 		}
 	}
 	
-	else if( other->Type() == XWing::Object::ASTEROID )
+	else if( other_type == XWing::Object::ASTEROID )
 		return WillCollideWithSphere( other, ((Asteroid*)other)->Radius, dt, this_object, loc, when );
 	
 	// Let the Death Star and other misc objects determine whether collisions with ships occur.
-	else if( (other->Type() == XWing::Object::DEATH_STAR_BOX) || (other->Type() == XWing::Object::DEATH_STAR)
-	||       (other->Type() == XWing::Object::TURRET)         || (other->Type() == XWing::Object::CHECKPOINT)
-	||       (other->Type() == XWing::Object::DOCKING_BAY) )
+	else if( (other_type == XWing::Object::DEATH_STAR_BOX) || (other_type == XWing::Object::DEATH_STAR)
+	||       (other_type == XWing::Object::TURRET)         || (other_type == XWing::Object::CHECKPOINT)
+	||       (other_type == XWing::Object::DOCKING_BAY) )
 		return other->WillCollide( this, dt, other_object, this_object, loc, when );
 	
 	return false;
@@ -2128,6 +2179,8 @@ bool Ship::WillCollideWithSphere( const GameObject *other, double other_radius, 
 	if( (Health <= 0.) && (DeathClock.ElapsedSeconds() > PiecesDangerousTime()) )
 		return false;
 	
+	// FIXME: Set *when = ?
+	
 	double exploded = Exploded();
 	int explosion_seed = ExplosionSeed();
 	
@@ -2138,23 +2191,24 @@ bool Ship::WillCollideWithSphere( const GameObject *other, double other_radius, 
 		for( std::map<std::string,ModelObject>::const_iterator obj_iter = Shape.Objects.begin(); obj_iter != Shape.Objects.end(); obj_iter ++ )
 		{
 			std::map<std::string,double>::const_iterator subsystem_iter = Subsystems.find( obj_iter->first );
-			if( (subsystem_iter == Subsystems.end()) || (subsystem_iter->second >= 0.) )
+			if( (subsystem_iter == Subsystems.end()) || (subsystem_iter->second > 0.) )
 				objects.insert( obj_iter->first );
 		}
 		
 		if( Math3D::MinimumDistance( this, &MotionVector, other, &(other->MotionVector), dt ) > (Shape.MaxRadius * (1. + exploded * 0.25) + other_radius) )
 			return false;
 		
-		Randomizer rando;
+		Vec3D relative_motion = (other->MotionVector - MotionVector) * dt;
 		
-#if BLOCKMAP_USAGE >= 2
-		Vec3D other_motion = other->MotionVector * dt;
-		return Shape.CollidesWithSphere( this, loc, &objects, this_object, exploded, explosion_seed, other, &other_motion, other_radius );
+#if BLOCKMAP_USAGE >= 3
+		return Shape.CollidesWithSphere( this, loc, &objects, this_object, exploded, explosion_seed, other, &relative_motion, other_radius );
 #endif
+		// ===== Beginning of section ignored when BLOCKMAP_USAGE >= 3 =====
 		
 		Pos3D end( other );
-		end += (other->MotionVector * dt) - (MotionVector * dt);
+		end += relative_motion;
 		
+		Randomizer rando(explosion_seed);
 		ModelArrays array_inst;
 		Pos3D intersection;
 		for( std::map<std::string,ModelObject>::const_iterator obj_iter = Shape.Objects.begin(); obj_iter != Shape.Objects.end(); obj_iter ++ )
@@ -2226,6 +2280,8 @@ bool Ship::WillCollideWithSphere( const GameObject *other, double other_radius, 
 		// Complex collision detection found no hits.
 		return false;
 	}
+	
+	// ===== End of section ignored when BLOCKMAP_USAGE >= 3 =====
 	
 	// Simple check if two spheres collide.
 	if( Math3D::MinimumDistance( this, &MotionVector, other, &(other->MotionVector), dt ) <= (Radius() + other_radius) )
@@ -2373,7 +2429,7 @@ void Ship::Draw( void )
 		return;
 	if( JumpedOut && (JumpProgress > 1.) )
 		return;
-	if( (Health <= 0.) && ComplexCollisionDetection() && (DeathClock.ElapsedSeconds() > (PiecesDangerousTime() + 2.)) )
+	if( (Health <= 0.) && (Category() == ShipClass::CATEGORY_CAPITAL) && (DeathClock.ElapsedSeconds() > (PiecesDangerousTime() + 2.)) )
 		return;
 	
 	if( (JumpProgress < 1.) && (Category() != ShipClass::CATEGORY_TARGET) )

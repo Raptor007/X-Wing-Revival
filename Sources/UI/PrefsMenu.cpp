@@ -11,6 +11,7 @@
 #include "XWingDefs.h"
 #include "XWingGame.h"
 #include "Num.h"
+#include <algorithm>
 
 
 PrefsMenu::PrefsMenu( void )
@@ -126,17 +127,19 @@ void PrefsMenu::UpdateContents( void )
 	rect.x -= (rect.w + 10);
 	AddElement( new PrefsMenuDefaultsButton( &rect, ButtonFont, "Defaults" ) );
 	
-	rect.x = Rect.w / 2 - 225;
+	rect.x = Rect.w/2 - 310;
 	rect.y = 10;
-	rect.w = 250;
+	rect.w = 225;
 	rect.h = 40;
 	AddElement( new PrefsMenuPageButton( &rect, TitleFont, "Preferences", PAGE_PREFERENCES, (Page == PAGE_PREFERENCES) ) );
 	
-	rect.x += rect.w;
-	rect.y = 10;
-	rect.w = 200;
-	rect.h = 40;
+	rect.x += rect.w + 10;
+	rect.w = 165;
 	AddElement( new PrefsMenuPageButton( &rect, TitleFont, "Controls", PAGE_CONTROLS, (Page == PAGE_CONTROLS) ) );
+	
+	rect.x += rect.w + 10;
+	rect.w = 210;
+	AddElement( new PrefsMenuPageButton( &rect, TitleFont, "Calibration", PAGE_CALIBRATION, (Page == PAGE_CALIBRATION) ) );
 	
 	if( Page == PrefsMenu::PAGE_PREFERENCES )
 	{
@@ -372,6 +375,11 @@ void PrefsMenu::UpdateContents( void )
 		group->Rect.h = rect.y + rect.h + 13;
 		group_rect.h = group->Rect.h;
 		
+		rect.x = blastpoint_quality_dropdown->Rect.x + 15;
+		rect.w = blastpoint_quality_dropdown->Rect.w - 15;
+		rect.y = (effects_dropdown->Rect.y + asteroid_lod_dropdown->Rect.y) / 2;
+		group->AddElement( new PrefsMenuCheckBox( &rect, LabelFont, "FPS", "showfps" ) );
+		
 		// --------------------------------------------------------------------------------------------------------------------
 		// Virtual Reality
 		
@@ -571,9 +579,23 @@ void PrefsMenu::UpdateContents( void )
 		group->AddElement( new PrefsMenuCheckBox( &rect, LabelFont, "Flight Music", "s_game_music" ) );
 		
 		rect.y += rect.h + 8;
+		rect.x = 10;
+		rect.w = 75;
+		group->AddElement( new Label( &rect, "S.Alarm:", LabelFont, Font::ALIGN_MIDDLE_LEFT ) );
+		rect.x += rect.w + 5;
+		rect.w = 85;
+		PrefsMenuDropDown *s_shield_alarm_dropdown = new PrefsMenuDropDown( &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, 0, "s_shield_alarm_radius" );
+		s_shield_alarm_dropdown->AddItem( "0",  "Off" );
+		s_shield_alarm_dropdown->AddItem( "10", "YT-1300" );
+		s_shield_alarm_dropdown->AddItem( "1",  "All Ships" );
+		s_shield_alarm_dropdown->Update();
+		group->AddElement( s_shield_alarm_dropdown );
+		
+		rect.y += rect.h + 8;
+		rect.x = 10;
 		rect.w = group_rect.w - 20;
 		rect.h = group_rect.h - rect.y - rect.x;
-		group->AddElement( new PrefsMenuSillyButton( &rect, TitleFont ) );
+		group->AddElement( new PrefsMenuSillyButton( &rect, LabelFont ) );
 	}
 	else if( Page == PrefsMenu::PAGE_CONTROLS )
 	{
@@ -588,6 +610,15 @@ void PrefsMenu::UpdateContents( void )
 		AddElement( group );
 		rect.x = 10;
 		rect.y = 10 + group->TitleFont->GetAscent();
+		
+		bool joy_calibrated = false, xbox_calibrated = false;
+		for( std::map<std::string,std::string>::const_iterator setting_iter = Raptor::Game->Cfg.Settings.begin(); setting_iter != Raptor::Game->Cfg.Settings.end(); setting_iter ++ )
+		{
+			if( Str::BeginsWith( setting_iter->first, "joy_cal_xbox_" ) )
+				xbox_calibrated = true;
+			else if( Str::BeginsWith( setting_iter->first, "joy_cal_" ) )
+				joy_calibrated = true;
+		}
 		
 		rect.h = ItemFont ? ItemFont->GetHeight() : 18;
 		rect.w = 90;
@@ -618,6 +649,12 @@ void PrefsMenu::UpdateContents( void )
 		joy_deadzone_dropdown->AddItem( "0.2", "20%" );
 		joy_deadzone_dropdown->Update();
 		group->AddElement( joy_deadzone_dropdown );
+		if( joy_calibrated )
+		{
+			rect.x += rect.w + 1;
+			rect.w = 20;
+			group->AddElement( new Label( &rect, "*", LabelFont, Font::ALIGN_MIDDLE_LEFT ) );
+		}
 		
 		rect.y += rect.h + 8;
 		rect.x = 20;
@@ -723,6 +760,12 @@ void PrefsMenu::UpdateContents( void )
 		joy_deadzone_thumbsticks_dropdown->AddItem( "0.2", "20%" );
 		joy_deadzone_thumbsticks_dropdown->Update();
 		group->AddElement( joy_deadzone_thumbsticks_dropdown );
+		if( xbox_calibrated )
+		{
+			rect.x += rect.w + 1;
+			rect.w = 20;
+			group->AddElement( new Label( &rect, "*", LabelFont, Font::ALIGN_MIDDLE_LEFT ) );
+		}
 		
 		rect.x = 10;
 		rect.y += rect.h + 8;
@@ -1040,6 +1083,43 @@ void PrefsMenu::UpdateContents( void )
 		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::MENU ], ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
 		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::PREFS ], ControlFont, BindFont ) );
+	}
+	else if( Page == PrefsMenu::PAGE_CALIBRATION )
+	{
+		group_rect.x = 10;
+		group_rect.y = 50;
+		group_rect.w = Rect.w - group_rect.x - 10;
+		group_rect.h = Rect.h - group_rect.y - 70;
+		group = new GroupBox( &group_rect, "Device:                 ", ItemFont );
+		AddElement( group );
+		
+		rect.x = 10;
+		rect.y = 10 + group->TitleFont->GetAscent();
+		rect.w = group->Rect.w - rect.x - 10;
+		rect.h = group->Rect.h - rect.y - 10;
+		PrefsMenuCalibrator *calibrator = new PrefsMenuCalibrator( &rect );
+		group->AddElement( calibrator );
+		
+		rect.x = 75;
+		rect.y = 1;
+		rect.w = 98;
+		rect.h = 21;
+		group->AddElement( new PrefsMenuCalDevDropDown( &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, calibrator ) );
+		
+		rect.x = 10;
+		rect.w = 100;
+		rect.h = 29;
+		rect.y = Rect.h - rect.h - 10;
+		AddElement( new PrefsMenuCalClearButton( &rect, ItemFont, "Clear", calibrator ) );
+		
+		rect.x += rect.w + 10;
+		AddElement( new PrefsMenuCalApplyButton( &rect, ItemFont, "Apply", calibrator ) );
+		
+		rect.x = 10;
+		rect.y -= 25;
+		rect.w = 240;
+		rect.h = ItemFont ? ItemFont->GetHeight() : 18;
+		AddElement( new PrefsMenuCalDZCheckBox( &rect, ItemFont, "Deadzone (Gently Wiggle)", calibrator ) );
 	}
 }
 
@@ -1450,8 +1530,10 @@ void PrefsMenuDoneButton::Clicked( Uint8 button )
 		}
 	}
 	
+#ifndef _DEBUG
 	// Make sure all resources that need to be loaded for these settings have been loaded.
 	((XWingGame*)( Raptor::Game ))->Precache();
+#endif
 	
 	Container->Remove();
 }
@@ -1491,11 +1573,11 @@ void PrefsMenuDefaultsButton::Clicked( Uint8 button )
 		{
 			if( (setting->first == "name")
 			||  (setting->first == "host_address")
-			||  (setting->first == "rebel_mission")
-			||  (setting->first == "empire_mission")
 			||  (setting->first == "vr_enable")
 			||  (setting->first == "swap_yaw_roll")
 			||  (setting->first == "turret_invert")
+			||  Str::BeginsWith( setting->first, "rebel_" )
+			||  Str::BeginsWith( setting->first, "empire_" )
 			||  Str::BeginsWith( setting->first, "joy_" )
 			||  Str::BeginsWith( setting->first, "mouse_" )
 			||  Str::BeginsWith( setting->first, "g_res_" ) )
@@ -1546,9 +1628,22 @@ void PrefsMenuDefaultsButton::Clicked( Uint8 button )
 		{
 			if( (setting->first == "swap_yaw_roll")
 			||  (setting->first == "turret_invert")
-			||  Str::BeginsWith( setting->first, "joy_" )
+			||  (Str::BeginsWith( setting->first, "joy_" ) && ! Str::BeginsWith( setting->first, "joy_cal_" ))
 			||  Str::BeginsWith( setting->first, "mouse_" ) )
 				Raptor::Game->Cfg.Settings[ setting->first ] = setting->second;
+		}
+	}
+	else if( menu->Page == PrefsMenu::PAGE_CALIBRATION )
+	{
+		for( std::map<std::string,std::string>::iterator setting_iter = Raptor::Game->Cfg.Settings.begin(); setting_iter != Raptor::Game->Cfg.Settings.end(); )
+		{
+			std::map<std::string,std::string>::iterator next_setting = setting_iter;
+			next_setting ++;
+			
+			if( Str::BeginsWith( setting_iter->first, "joy_cal_" ) )
+				Raptor::Game->Cfg.Settings.erase( setting_iter );
+			
+			setting_iter = next_setting;
 		}
 	}
 	
@@ -1837,4 +1932,406 @@ void PrefsMenuBind::Clicked( Uint8 button )
 	Container->Selected = this;
 	Image.BecomeInstance( ImageMouseDown );
 	Alpha = 1.f;
+}
+
+
+// ---------------------------------------------------------------------------
+
+
+PrefsMenuCalibrator::PrefsMenuCalibrator( SDL_Rect *rect ) : Layer( rect )
+{
+	Name = "Calibrator";
+	ReadingDeadzone = false;
+	// FIXME: Populate RecentJoyID with connected devices!
+}
+
+
+PrefsMenuCalibrator::~PrefsMenuCalibrator()
+{
+}
+
+
+void PrefsMenuCalibrator::Reset( void )
+{
+	AxisMin.clear();
+	AxisMax.clear();
+	AxisDeadMin.clear();
+	AxisDeadMax.clear();
+}
+
+
+void PrefsMenuCalibrator::Clear( void )
+{
+	Reset();
+	
+	if( ! DeviceType.length() )
+		return;
+	
+	std::string setting_prefix = "joy_cal_";
+	if( DeviceType == "Joy" )
+		setting_prefix += std::string("axis");
+	else
+	{
+		setting_prefix += DeviceType + std::string("_axis");
+		std::transform( setting_prefix.begin(), setting_prefix.end(), setting_prefix.begin(), tolower );
+		std::replace( setting_prefix.begin(), setting_prefix.end(), ' ', '_' );
+	}
+	
+	for( std::map<std::string,std::string>::iterator setting_iter = Raptor::Game->Cfg.Settings.begin(); setting_iter != Raptor::Game->Cfg.Settings.end(); )
+	{
+		std::map<std::string,std::string>::iterator next_setting = setting_iter;
+		next_setting ++;
+		
+		if( Str::BeginsWith( setting_iter->first, setting_prefix ) )
+			Raptor::Game->Cfg.Settings.erase( setting_iter );
+		
+		setting_iter = next_setting;
+	}
+}
+
+
+void PrefsMenuCalibrator::Apply( void )
+{
+	if( ! DeviceType.length() )
+		return;
+	
+	std::string setting_prefix = "joy_cal_";
+	if( DeviceType == "Joy" )
+		setting_prefix += std::string("axis");
+	else
+	{
+		setting_prefix += DeviceType + std::string("_axis");
+		std::transform( setting_prefix.begin(), setting_prefix.end(), setting_prefix.begin(), tolower );
+		std::replace( setting_prefix.begin(), setting_prefix.end(), ' ', '_' );
+	}
+	
+	for( std::map<Uint8,double>::const_iterator axis_iter = AxisMin.begin(); axis_iter != AxisMin.end(); axis_iter ++ )
+	{
+		Uint8 axis = axis_iter->first;
+		double axis_min = axis_iter->second;
+		double axis_max = AxisMax[ axis ];
+		double deadzone_min = AxisDeadMin[ axis ];
+		double deadzone_max = AxisDeadMax[ axis ];
+		Raptor::Game->Cfg.Settings[ setting_prefix + Num::ToString( axis + 1 ) ] = Num::ToString(axis_min) + std::string(",") + Num::ToString(deadzone_min) + std::string(",") + Num::ToString(deadzone_max) + std::string(",") + Num::ToString(axis_max);
+	}
+	
+	if( AxisMin.empty() )
+		Clear();
+}
+
+
+void PrefsMenuCalibrator::TrackEvent( SDL_Event *event )
+{
+	if( event->type == SDL_JOYAXISMOTION )
+	{
+		Sint32 joy_id = event->jaxis.which;
+		std::string device_type = Raptor::Game->Joy.Joysticks[ joy_id ].DeviceType();
+		RecentJoyID[ device_type ] = joy_id;
+		
+		if( device_type != DeviceType )
+			return;
+		
+		Uint8 axis = event->jaxis.axis;
+		double value = Raptor::Game->Joy.Axis( joy_id, axis );
+		
+		if( ReadingDeadzone )
+		{
+			if( value > 0.9 )
+			{
+				if( (AxisMax.find(axis) == AxisMax.end()) || (value < AxisMax[ axis ]) )
+					AxisMax[ axis ] = value;
+				return;
+			}
+			else if( value < -0.9 )
+			{
+				if( (AxisMin.find(axis) == AxisMin.end()) || (value > AxisMin[ axis ]) )
+					AxisMin[ axis ] = value;
+				return;
+			}
+			
+			if( (AxisDeadMin.find(axis) == AxisDeadMin.end()) || (value < AxisDeadMin[ axis ]) )
+				AxisDeadMin[ axis ] = value;
+			if( (AxisDeadMax.find(axis) == AxisDeadMax.end()) || (value > AxisDeadMax[ axis ]) )
+				AxisDeadMax[ axis ] = value;
+		}
+		
+		if( (AxisMin.find(axis) == AxisMin.end()) || (value < AxisMin[ axis ]) )
+			AxisMin[ axis ] = value;
+		if( (AxisMax.find(axis) == AxisMax.end()) || (value > AxisMax[ axis ]) )
+			AxisMax[ axis ] = value;
+	}
+}
+
+
+void PrefsMenuCalibrator::Draw( void )
+{
+	Sint32 joy_id = (RecentJoyID.find(DeviceType) == RecentJoyID.end()) ? -1 : RecentJoyID[ DeviceType ];
+	double w = std::min<double>( Rect.h, (Rect.w - 10.) / 2. );
+	
+	bool range_x = AxisMin.find( 0 ) != AxisMin.end();
+	bool range_y = AxisMin.find( 1 ) != AxisMin.end();
+	if( range_x || range_y )
+	{
+		// Draw the full XY motion range.
+		double min_x = -1., max_x = 1., min_y = -1., max_y = 1.;
+		if( range_x )
+		{
+			min_x = AxisMin[ 0 ];
+			max_x = AxisMax[ 0 ];
+		}
+		if( range_y )
+		{
+			min_y = AxisMin[ 1 ];
+			max_y = AxisMax[ 1 ];
+		}
+		double x1 = w * (min_x + 1.) / 2.;
+		double y1 = w * (min_y + 1.) / 2.;
+		double x2 = w * (max_x + 1.) / 2.;
+		double y2 = w * (max_y + 1.) / 2.;
+		Raptor::Game->Gfx.DrawRect2D( x1, y1, x2, y2, 0, 0.5f,0.5f,0.5f,0.75f );
+		
+		bool deadzone_x = AxisDeadMin.find( 0 ) != AxisDeadMin.end();
+		bool deadzone_y = AxisDeadMin.find( 1 ) != AxisDeadMin.end();
+		if( deadzone_x || deadzone_y )
+		{
+			// Draw the XY deadzone.
+			min_x = max_x = min_y = max_y = 0.;
+			if( deadzone_x )
+			{
+				min_x = AxisDeadMin[ 0 ];
+				max_x = AxisDeadMax[ 0 ];
+			}
+			if( deadzone_y )
+			{
+				min_y = AxisDeadMin[ 1 ];
+				max_y = AxisDeadMax[ 1 ];
+			}
+			x1 = w * (min_x + 1.) / 2.;
+			y1 = w * (min_y + 1.) / 2.;
+			x2 = w * (max_x + 1.) / 2.;
+			y2 = w * (max_y + 1.) / 2.;
+			Raptor::Game->Gfx.DrawRect2D( x1, y1, x2, y2, 0, 1.f,0.f,0.f,0.75f );
+		}
+	}
+	
+	// Draw center point.
+	Raptor::Game->Gfx.DrawLine2D( w * 0.5 - 3., w * 0.5, w * 0.5 + 3., w * 0.5, 1.f, 0.f,0.f,0.f,0.75f );
+	Raptor::Game->Gfx.DrawLine2D( w * 0.5, w * 0.5 - 3., w * 0.5, w * 0.5 + 3., 1.f, 0.f,0.f,0.f,0.75f );
+	
+	// Draw outline of XY range.
+	Raptor::Game->Gfx.DrawLine2D( 0.,0., 0.,w,  1.f, 1.f,1.f,1.f,1.f );
+	Raptor::Game->Gfx.DrawLine2D( 0.,w,  w, w,  1.f, 1.f,1.f,1.f,1.f );
+	Raptor::Game->Gfx.DrawLine2D( w, w,  w, 0., 1.f, 1.f,1.f,1.f,1.f );
+	Raptor::Game->Gfx.DrawLine2D( w, 0., 0.,0., 1.f, 1.f,1.f,1.f,1.f );
+	
+	if( (joy_id >= 0) && (range_x || range_y) )
+	{
+		// Draw the current position.
+		double curr_x = w * (Raptor::Game->Joy.Axis( joy_id, 0 ) + 1.) / 2.;
+		double curr_y = w * (Raptor::Game->Joy.Axis( joy_id, 1 ) + 1.) / 2.;
+		Raptor::Game->Gfx.DrawLine2D( curr_x - 5., curr_y, curr_x + 5., curr_y, 1.f, 1.f,1.f,0.f,1.f );
+		Raptor::Game->Gfx.DrawLine2D( curr_x, curr_y - 5., curr_x, curr_y + 5., 1.f, 1.f,1.f,0.f,1.f );
+	}
+	
+	// Find all non-XY axes.
+	// FIXME: Also search for uncalibrated axes detected.
+	std::vector<Uint8> axes;
+	for( std::map<Uint8,double>::const_iterator axis_iter = AxisMin.begin(); axis_iter != AxisMin.end(); axis_iter ++ )
+	{
+		Uint8 axis = axis_iter->first;
+		if( axis >= 2 )
+			axes.push_back( axis );
+	}
+	
+	double x = Rect.w - w;
+	double y = 0.;
+	double h = std::max<double>( 10., std::min<double>( (w - 30.) / 7., (Rect.h - (axes.size() - 1) * 5.) / axes.size() ) );
+	
+	for( std::vector<Uint8>::const_iterator axis_iter = axes.begin(); axis_iter != axes.end(); axis_iter ++ )
+	{
+		Uint8 axis = *axis_iter;
+		
+		// Draw the full axis motion range.
+		double lx = x + w * (AxisMin[ axis ] + 1.) / 2.;
+		double rx = x + w * (AxisMax[ axis ] + 1.) / 2.;
+		Raptor::Game->Gfx.DrawRect2D( lx, y, rx, y + h, 0, 0.5f,0.5f,0.5f,0.75f );
+		
+		if( AxisDeadMin.find( axis ) != AxisDeadMin.end() )
+		{
+			// Draw the axis deadzone.
+			lx = x + w * (AxisDeadMin[ axis ] + 1.) / 2.;
+			rx = x + w * (AxisDeadMax[ axis ] + 1.) / 2.;
+			Raptor::Game->Gfx.DrawRect2D( lx, y, rx, y + h, 0, 1.f,0.f,0.f,0.75f );
+		}
+		
+		// Draw center point.
+		Raptor::Game->Gfx.DrawLine2D( x + w * 0.5, y + h * 0.25, x + w * 0.5, y + h * 0.75, 1.f, 0.f,0.f,0.f,0.75f );
+		
+		// Draw outline of range.
+		Raptor::Game->Gfx.DrawLine2D( x,  y,   x,  y+h,  1.f, 1.f,1.f,1.f,1.f );
+		Raptor::Game->Gfx.DrawLine2D( x,  y+h, x+w,y+h,  1.f, 1.f,1.f,1.f,1.f );
+		Raptor::Game->Gfx.DrawLine2D( x+w,y+h, x+w,y,    1.f, 1.f,1.f,1.f,1.f );
+		Raptor::Game->Gfx.DrawLine2D( x+w,y,   x,  y,    1.f, 1.f,1.f,1.f,1.f );
+		
+		if( joy_id >= 0 )
+		{
+			// Draw the current position.
+			double curr_x = x + w * (Raptor::Game->Joy.Axis( joy_id, axis ) + 1.) / 2.;
+			Raptor::Game->Gfx.DrawLine2D( curr_x, y + 1, curr_x, y + h - 1, 1.f, 1.f,1.f,0.f,1.f );
+		}
+		
+		y += h + 5;
+	}
+}
+
+
+// ---------------------------------------------------------------------------
+
+
+PrefsMenuCalDevDropDown::PrefsMenuCalDevDropDown( SDL_Rect *rect, Font *font, uint8_t align, PrefsMenuCalibrator *calibrator ) : DropDown( rect, font, align, 0, NULL, NULL )
+{
+	Red = 0.f;
+	Green = 0.f;
+	Blue = 0.f;
+	Alpha = 1.f;
+	
+	Calibrator = calibrator;
+	
+	std::set<std::string> device_types;
+	for( std::map<Sint32,JoystickState>::const_iterator joy_iter = Raptor::Game->Joy.Joysticks.begin(); joy_iter != Raptor::Game->Joy.Joysticks.end(); joy_iter ++ )
+		device_types.insert( joy_iter->second.DeviceType() );
+	for( std::set<std::string>::const_iterator dev_iter = device_types.begin(); dev_iter != device_types.end(); dev_iter ++ )
+	{
+		AddItem( *dev_iter, *dev_iter );
+		if( Value.empty() || (*dev_iter == "Joy") )
+			Select( *dev_iter );
+	}
+}
+
+
+PrefsMenuCalDevDropDown::~PrefsMenuCalDevDropDown()
+{
+}
+
+
+void PrefsMenuCalDevDropDown::Changed( void )
+{
+	Calibrator->DeviceType = Value;
+	Calibrator->Reset();
+	
+	if( Value.empty() )
+		return;
+	
+	std::string setting_prefix = "joy_cal_";
+	if( Value == "Joy" )
+		setting_prefix += std::string("axis");
+	else
+	{
+		setting_prefix += Value + std::string("_axis");
+		std::transform( setting_prefix.begin(), setting_prefix.end(), setting_prefix.begin(), tolower );
+		std::replace( setting_prefix.begin(), setting_prefix.end(), ' ', '_' );
+	}
+	
+	for( std::map<std::string,std::string>::const_iterator setting_iter = Raptor::Game->Cfg.Settings.begin(); setting_iter != Raptor::Game->Cfg.Settings.end(); setting_iter ++ )
+	{
+		if( Str::BeginsWith( setting_iter->first, setting_prefix ) )
+		{
+			const char *axis_ptr = strstr( setting_iter->first.c_str(), "_axis" );
+			Uint8 axis = atoi( axis_ptr + strlen("_axis") );
+			if( axis )
+			{
+				axis --;
+				std::vector<double> calibration = Raptor::Game->Cfg.SettingAsDoubles( setting_iter->first );
+				if( calibration.size() >= 4 )
+				{
+					Calibrator->AxisMin[ axis ]     = calibration[ 0 ];
+					Calibrator->AxisDeadMin[ axis ] = calibration[ 1 ];
+					Calibrator->AxisDeadMax[ axis ] = calibration[ 2 ];
+					Calibrator->AxisMax[ axis ]     = calibration[ 3 ];
+				}
+			}
+		}
+	}
+}
+
+
+// ---------------------------------------------------------------------------
+
+
+PrefsMenuCalClearButton::PrefsMenuCalClearButton( SDL_Rect *rect, Font *button_font, const char *label, PrefsMenuCalibrator *calibrator ) : LabelledButton( rect, button_font, label, Font::ALIGN_MIDDLE_CENTER, Raptor::Game->Res.GetAnimation("button.ani"), Raptor::Game->Res.GetAnimation("button_mdown.ani") )
+{
+	Red = 1.f;
+	Green = 1.f;
+	Blue = 1.f;
+	Alpha = 0.75f;
+	
+	Calibrator = calibrator;
+}
+
+
+PrefsMenuCalClearButton::~PrefsMenuCalClearButton()
+{
+}
+
+
+void PrefsMenuCalClearButton::Clicked( Uint8 button )
+{
+	if( (button == SDL_BUTTON_LEFT) && Calibrator )
+		Calibrator->Clear();
+}
+
+
+// ---------------------------------------------------------------------------
+
+
+PrefsMenuCalApplyButton::PrefsMenuCalApplyButton( SDL_Rect *rect, Font *button_font, const char *label, PrefsMenuCalibrator *calibrator ) : LabelledButton( rect, button_font, label, Font::ALIGN_MIDDLE_CENTER, Raptor::Game->Res.GetAnimation("button.ani"), Raptor::Game->Res.GetAnimation("button_mdown.ani") )
+{
+	Red = 1.f;
+	Green = 1.f;
+	Blue = 1.f;
+	Alpha = 0.75f;
+	
+	Calibrator = calibrator;
+}
+
+
+PrefsMenuCalApplyButton::~PrefsMenuCalApplyButton()
+{
+}
+
+
+void PrefsMenuCalApplyButton::Clicked( Uint8 button )
+{
+	if( (button == SDL_BUTTON_LEFT) && Calibrator )
+	{
+		Calibrator->Apply();
+		PrefsMenuCalDZCheckBox *dz_checkbox = (PrefsMenuCalDZCheckBox*) Raptor::Game->Layers.Find( "DZCheckBox", true );
+		if( dz_checkbox )
+		{
+			Calibrator->ReadingDeadzone = false;
+			dz_checkbox->Checked = false;
+		}
+	}
+}
+
+
+// ---------------------------------------------------------------------------
+
+
+PrefsMenuCalDZCheckBox::PrefsMenuCalDZCheckBox( SDL_Rect *rect, Font *font, std::string label, PrefsMenuCalibrator *calibrator ) : CheckBox( rect, font, label, false, Raptor::Game->Res.GetAnimation("box_unchecked.ani"), Raptor::Game->Res.GetAnimation("box_unchecked_mdown.ani"), NULL, Raptor::Game->Res.GetAnimation("box_checked.ani"), Raptor::Game->Res.GetAnimation("box_checked_mdown.ani"), NULL )
+{
+	Name = "DZCheckBox";
+	Calibrator = calibrator;
+}
+
+
+PrefsMenuCalDZCheckBox::~PrefsMenuCalDZCheckBox()
+{
+}
+
+
+void PrefsMenuCalDZCheckBox::Changed( void )
+{
+	if( Calibrator )
+		Calibrator->ReadingDeadzone = Checked;
 }

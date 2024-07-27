@@ -39,6 +39,7 @@ XWingServer::XWingServer( std::string version ) : RaptorServer( "X-Wing Revival"
 	TimeLimit = 0;
 	Checkpoints = 20;
 	DefendingTeam = XWing::Team::NONE;
+	CollisionGroup = 0;
 	CountdownFrom = 5;
 	CountdownSent = 0;
 }
@@ -79,7 +80,7 @@ std::map<std::string,std::string> XWingServer::DefaultProperties( void ) const
 	defaults["ai_finish"] = "false";
 	defaults["dm_kill_limit"] = "10";
 	defaults["tdm_kill_limit"] = "30";
-	defaults["team_race_checkpoints"] = "100";
+	defaults["team_race_checkpoints"] = "70";
 	defaults["ffa_race_checkpoints"] = "20";
 	defaults["race_time_limit"] = "0";
 	defaults["race_lap"] = "5";
@@ -293,6 +294,7 @@ bool XWingServer::ProcessPacket( Packet *packet, ConnectedClient *from_client )
 	else if( type == XWing::Packet::CHANGE_SEAT )
 	{
 		uint8_t seat = packet->NextUChar();
+		uint8_t turret_mode = packet->Remaining() ? packet->NextUChar() : 0;
 		
 		Player *player = (from_client && from_client->PlayerID) ? Data.GetPlayer( from_client->PlayerID ) : NULL;
 		if( player )
@@ -388,11 +390,14 @@ bool XWingServer::ProcessPacket( Packet *packet, ConnectedClient *from_client )
 							// Moving from a different turret.
 							target_id = player_turret->Target;
 							player_turret->PlayerID = 0;
+							// FIXME: Reset turret firing mode?
 							update_objects.insert( player_turret );
 						}
 						
 						turret->PlayerID = from_client->PlayerID;
 						turret->Target = target_id;
+						if( turret_mode && turret->GunWidth )
+							turret->FiringMode = turret_mode;
 						update_objects.insert( turret );
 					}
 				}
@@ -564,7 +569,7 @@ bool XWingServer::ProcessPacket( Packet *packet, ConnectedClient *from_client )
 				explosion.AddFloat( ship->MotionVector.Z );
 				explosion.AddFloat( ship->Radius() * 3. );
 				explosion.AddFloat( log( ship->Radius() ) );
-				if( ship->ComplexCollisionDetection() )
+				if( ship->Category() == ShipClass::CATEGORY_CAPITAL )
 				{
 					explosion.AddUChar( 30 );    // Sub-Explosions
 					explosion.AddFloat( 1.75f ); // Speed Scale
@@ -834,7 +839,7 @@ void XWingServer::Update( double dt )
 						explosion.AddFloat( ship1->MotionVector.Z );
 						explosion.AddFloat( ship1->Radius() * 3. );
 						explosion.AddFloat( log( ship1->Radius() ) );
-						if( ship1->ComplexCollisionDetection() )
+						if( ship1->Category() == ShipClass::CATEGORY_CAPITAL )
 						{
 							explosion.AddUChar( 30 );    // Sub-Explosions
 							explosion.AddFloat( 1.75f ); // Speed Scale
@@ -987,7 +992,7 @@ void XWingServer::Update( double dt )
 						explosion.AddFloat( ship2->MotionVector.Z );
 						explosion.AddFloat( ship2->Radius() * 3. );
 						explosion.AddFloat( log( ship2->Radius() ) );
-						if( ship2->ComplexCollisionDetection() )
+						if( ship2->Category() == ShipClass::CATEGORY_CAPITAL )
 						{
 							explosion.AddUChar( 30 );    // Sub-Explosions
 							explosion.AddFloat( 1.75f ); // Speed Scale
@@ -1149,7 +1154,7 @@ void XWingServer::Update( double dt )
 						shot_hit.AddString( "" );
 					shot_hit.AddUChar( shot->ShotType );
 					Pos3D shot_pos( shot->PrevPos );
-					if( (shot->ShotType != Shot::TYPE_TORPEDO) && (shot->ShotType != Shot::TYPE_MISSILE) && ! ship->ComplexCollisionDetection() )
+					if( (shot->ShotType != Shot::TYPE_TORPEDO) && (shot->ShotType != Shot::TYPE_MISSILE) && (ship->Category() != ShipClass::CATEGORY_CAPITAL) )
 					{
 						double excess_dist = ship->DistAlong( &(shot->Fwd), &shot_pos ) - ship->Radius();
 						if( excess_dist > 0. )
@@ -1201,7 +1206,7 @@ void XWingServer::Update( double dt )
 						explosion.AddFloat( ship->MotionVector.Z );
 						explosion.AddFloat( radius * 3. );
 						explosion.AddFloat( log(radius) );
-						if( ship->ComplexCollisionDetection() )
+						if( ship->Category() == ShipClass::CATEGORY_CAPITAL )
 						{
 							explosion.AddUChar( 30 );    // Sub-Explosions
 							explosion.AddFloat( 1.75f ); // Speed Scale
@@ -1243,7 +1248,7 @@ void XWingServer::Update( double dt )
 						explosion.AddFloat( ship->MotionVector.Z );
 						explosion.AddFloat( ship->Radius() * 3. );
 						explosion.AddFloat( log( ship->Radius() ) );
-						if( ship->ComplexCollisionDetection() )
+						if( ship->Category() == ShipClass::CATEGORY_CAPITAL )
 						{
 							explosion.AddUChar( 30 );    // Sub-Explosions
 							explosion.AddFloat( 1.75f ); // Speed Scale
@@ -1588,7 +1593,7 @@ void XWingServer::Update( double dt )
 					explosion.AddFloat( ship->MotionVector.Z );
 					explosion.AddFloat( ship->Radius() * 3. );
 					explosion.AddFloat( log( ship->Radius() ) );
-					if( ship->ComplexCollisionDetection() )
+					if( ship->Category() == ShipClass::CATEGORY_CAPITAL )
 					{
 						explosion.AddUChar( 30 );    // Sub-Explosions
 						explosion.AddFloat( 1.75f ); // Speed Scale
@@ -1745,7 +1750,9 @@ void XWingServer::Update( double dt )
 			const Player *player = ship_iter->second->Owner();
 			if( player )
 			{
-				player_ships[ player->ID ] = ship_iter->second;
+				// Keep track of player-owned ships unless they changed to gunner after dying.
+				if( (ship_iter->second->Health > 0.) || ! Str::EndsWith( ChosenShip(player), " Gunner" ) )
+					player_ships[ player->ID ] = ship_iter->second;
 				
 				// No achivements for cheaters.
 				if( /* (ai_skill <= 0) || */ ! ship_iter->second->PlayersCanFly() )
@@ -1939,6 +1946,20 @@ void XWingServer::Update( double dt )
 		}
 		
 		Data.Lock.Unlock();
+		
+		
+		uint32_t collision_groups = std::max<int>( 1, Data.PropertyAsInt("ai_optimize",6,1) );
+		#define COLLISION_GROUPS collision_groups
+		/*
+		if( CollisionClock.ElapsedSeconds() > 0.1 )
+		{
+			CollisionClock.Reset();
+			CollisionGroup = ((CollisionGroup % COLLISION_GROUPS) + 1) % COLLISION_GROUPS;
+		}
+		else if( CollisionGroup < COLLISION_GROUPS )
+			CollisionGroup += COLLISION_GROUPS;
+		*/
+		CollisionGroup = (CollisionGroup + 1) % COLLISION_GROUPS;
 		
 		
 		// Determine pilot reassignments and control AI ships.
@@ -2378,7 +2399,7 @@ void XWingServer::Update( double dt )
 					}
 					
 					// If a ship's origin is in empty space (ex: Star Destroyer) the model object Hull defines the point to aim at.
-					if( target_ship && (! target_subsystem) && target_ship->ComplexCollisionDetection() )
+					if( target_ship && (! target_subsystem) && (target_ship->Category() == ShipClass::CATEGORY_CAPITAL) && target_ship->ComplexCollisionDetection() )
 					{
 						std::map<std::string,ModelObject>::const_iterator object_iter = target_ship->Shape.Objects.find("Hull");
 						if( (object_iter != target_ship->Shape.Objects.end()) && (object_iter->second.Points.size()) )
@@ -2536,7 +2557,7 @@ void XWingServer::Update( double dt )
 									if( dodging_for_shot )
 									{
 										// See if we should also slow down to avoid crashing into the friendly.
-										if( ship_iter2->second->ComplexCollisionDetection() && ship->WillCollide( ship_iter2->second, 2. ) )
+										if( (ship_iter2->second->Category() == ShipClass::CATEGORY_CAPITAL) && ship->WillCollide( ship_iter2->second, 2. ) )
 											dodging_for_shot = false;
 										else
 										{
@@ -2591,7 +2612,7 @@ void XWingServer::Update( double dt )
 						yaw = Num::SignedPow( i_dot_right, go_easy ? 0.9 : 0.75 ) * 3.;
 						roll = Num::SignedPow( i_dot_right, go_easy ? 0.8 : 0.66 ) * 7.;
 						throttle = 1.;
-						if( ship->ComplexCollisionDetection() )
+						if( ship->Category() == ShipClass::CATEGORY_CAPITAL )
 							;
 						else if( (dist_to_target < 250.) && (i_dot_fwd > 0.5) && (! go_easy) && (ship->HitClock.ElapsedSeconds() > 5.) )
 							throttle = dist_to_target / 250.;
@@ -2611,7 +2632,7 @@ void XWingServer::Update( double dt )
 					{
 						// Enemy behind us and far away: Turn towards them.
 						pitch = (i_dot_up >= 0.) ? 1. : -1.;
-						if( go_easy && ! ship->ComplexCollisionDetection() )
+						if( go_easy && (ship->Category() != ShipClass::CATEGORY_CAPITAL) )
 							pitch *= 0.75;
 						yaw = i_dot_right;
 						roll = i_dot_right;
@@ -2627,13 +2648,18 @@ void XWingServer::Update( double dt )
 				// Try to avoid crashing into things.
 				if( ! ai_blind )
 				{
-					bool small_ship = ship->Class ? (ship->Class->Category != ShipClass::CATEGORY_CAPITAL) : ! ship->ComplexCollisionDetection();
+					bool small_ship = (ship->Category() != ShipClass::CATEGORY_CAPITAL);
 					double pitch_rate = ship->Class ? std::min<double>( ship->Class->PitchSlow, ship->Class->PitchFast ) : ship->MaxPitch();
 					double pitch_time = pitch_rate ? (90. / pitch_rate) : 2.;
 					
 					// See if we're about to run into something.
-					Pos3D hit_loc;
-					const GameObject *would_hit = small_ship ? ship->FindCollision( pitch_time, &hit_loc ) : NULL;
+					//Pos3D hit_loc = CollisionAt[ ship->ID ];
+					const GameObject *would_hit = Data.GetObject( CollisionWith[ ship->ID ] );
+					if( (ship->ID % COLLISION_GROUPS) == CollisionGroup )
+					{
+						would_hit = small_ship ? ship->FindCollision( pitch_time /* , &hit_loc */ ) : NULL;
+						CollisionWith[ ship->ID ] = would_hit ? would_hit->ID : 0;
+					}
 					if( would_hit && (would_hit != target) )
 					{
 						if( would_hit->Type() == XWing::Object::SHOT )
@@ -2686,8 +2712,8 @@ void XWingServer::Update( double dt )
 								continue;
 							if( target == other_ship )
 								continue;
-							if( small_ship == other_ship->ComplexCollisionDetection() )  // Small ships dodge other small, and large other large, but not each other.
-								continue;                                                // FIXME: Should small ships dodge large?  Is the problem that they turn the wrong way?
+							if( small_ship == (other_ship->Category() == ShipClass::CATEGORY_CAPITAL) )  // Small ships dodge other small, and large other large, but not each other.
+								continue;                                                                // FIXME: Should small ships dodge large?  Is the problem that they turn the wrong way?
 							if( small_ship && (! ai_hard) && target_owner && ! other_ship->PlayerID )  // Non-Ace ships chasing a player only avoid hitting players.
 								continue;
 							if( ! other_ship->CanCollideWithOwnType() )
@@ -2751,20 +2777,23 @@ void XWingServer::Update( double dt )
 					else if( dodging->ComplexCollisionDetection() && (dodging->Type() == XWing::Object::SHIP) )
 					{
 						const Ship *dodging_ship = (const Ship*) dodging;
-						Pos3D dodging_pos = *dodging;
-						// If a ship's origin is in empty space (ex: Star Destroyer) the model object Hull defines the point to aim at.
-						std::map<std::string,ModelObject>::const_iterator object_iter = dodging_ship->Shape.Objects.find("Hull");
-						if( (object_iter != dodging_ship->Shape.Objects.end()) && (object_iter->second.Points.size()) )
+						if( dodging_ship->Category() == ShipClass::CATEGORY_CAPITAL )
 						{
-							Vec3D point = object_iter->second.Points.front();
-							dodging_pos += dodging->Up * point.Y;  // Just adjust the vertical position.
+							Pos3D dodging_pos = *dodging;
+							// If a ship's origin is in empty space (ex: Star Destroyer) the model object Hull defines the point to aim at.
+							std::map<std::string,ModelObject>::const_iterator object_iter = dodging_ship->Shape.Objects.find("Hull");
+							if( (object_iter != dodging_ship->Shape.Objects.end()) && (object_iter->second.Points.size()) )
+							{
+								Vec3D point = object_iter->second.Points.front();
+								dodging_pos += dodging->Up * point.Y;  // Just adjust the vertical position.
+							}
+							Pos3D bow       = dodging_pos + dodging->Fwd * dodging_ship->Shape.Length * 0.4;
+							Pos3D stern     = dodging_pos + dodging->Fwd * dodging_ship->Shape.Length * -0.5;
+							Pos3D fuselage  = Math3D::NearestPointOnLine( ship, &bow, &stern );
+							Pos3D starboard = fuselage + dodging->Right * dodging_ship->Shape.Width * 0.4;
+							Pos3D port      = fuselage + dodging->Right * dodging_ship->Shape.Width * -0.4;
+							vec_to_obstacle = Math3D::NearestPointOnLine( ship, &starboard, &port ) - *ship;
 						}
-						Pos3D bow       = dodging_pos + dodging->Fwd * dodging_ship->Shape.Length * 0.4;
-						Pos3D stern     = dodging_pos + dodging->Fwd * dodging_ship->Shape.Length * -0.5;
-						Pos3D fuselage  = Math3D::NearestPointOnLine( ship, &bow, &stern );
-						Pos3D starboard = fuselage + dodging->Right * dodging_ship->Shape.Width * 0.4;
-						Pos3D port      = fuselage + dodging->Right * dodging_ship->Shape.Width * -0.4;
-						vec_to_obstacle = Math3D::NearestPointOnLine( ship, &starboard, &port ) - *ship;
 					}
 					double dist_to_obstacle = vec_to_obstacle.Length();
 					Vec3D relative_motion = ship->MotionVector - dodging->MotionVector;
@@ -3686,7 +3715,7 @@ void XWingServer::Update( double dt )
 						Ship *target_ship = (Ship*)( (target->Type() == XWing::Object::SHIP) ? target : NULL );
 						if( target_ship && target_subsystem )
 							vec_to_target = target_ship->TargetCenter( target_subsystem ) - gun;
-						else if( target_ship && target_ship->ComplexCollisionDetection() )
+						else if( target_ship && (target_ship->Category() == ShipClass::CATEGORY_CAPITAL) && target_ship->ComplexCollisionDetection() )
 						{
 							// If a ship's origin is in empty space (ex: Star Destroyer) the model object Hull defines the point to aim at.
 							std::map<std::string,ModelObject>::const_iterator object_iter = target_ship->Shape.Objects.find("Hull");
@@ -3731,7 +3760,7 @@ void XWingServer::Update( double dt )
 							else if( ! ai_ceasefire )
 								turret->Firing = (dist_to_target < turret->MaxFiringDist) && ((i_dot_up > -0.01) || (t_dot_up > -0.01));
 							
-							if( turret->Firing && parent_ship && parent_ship->ComplexCollisionDetection() )
+							if( turret->Firing && parent_ship && (parent_ship->Category() == ShipClass::CATEGORY_CAPITAL) )
 							{
 								// Turrets should avoid shooting their parent ship.
 								Pos3D gunpos = turret->GunPos();

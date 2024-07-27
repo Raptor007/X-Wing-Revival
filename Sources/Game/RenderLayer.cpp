@@ -940,6 +940,8 @@ void RenderLayer::Draw( void )
 						continue;
 					if( (*ship_iter)->Health <= 0. )
 						continue;
+					if( (*ship_iter)->JumpedOut )
+						continue;
 					if( (*ship_iter)->Category() != ShipClass::CATEGORY_CAPITAL )
 						continue;
 					double dist = Cam.Dist(*ship_iter);
@@ -984,6 +986,8 @@ void RenderLayer::Draw( void )
 						continue;
 					if( (*ship_iter)->Health <= 0. )
 						continue;
+					if( (*ship_iter)->JumpedOut )
+						continue;
 					if( (*ship_iter)->Category() != ShipClass::CATEGORY_CAPITAL )
 						continue;
 					double dist = Cam.Dist(*ship_iter);
@@ -1019,7 +1023,7 @@ void RenderLayer::Draw( void )
 			}
 			
 			if( observed_ship->Health <= 0. )
-				camera_dist += observed_ship->DeathClock.ElapsedSeconds() * 50.;
+				camera_dist += observed_ship->DeathClock.ElapsedSeconds() * 66.;
 			
 			Cam.MoveAlong( &(observed_ship->Up), camera_up );
 			Cam.MoveAlong( &(Cam.Fwd), camera_dist * -1. );
@@ -1134,6 +1138,9 @@ void RenderLayer::Draw( void )
 			lock_warn.Reset( 2. );
 		}
 	}
+	
+	
+	bool shot_on_target = false;
 	
 	
 	// Render to textures before drawing anything else.
@@ -1879,7 +1886,6 @@ void RenderLayer::Draw( void )
 					
 					// See if the crosshair is lined up so the next shot would hit.
 					
-					bool will_hit = false;
 					Vec3D shot_vec;
 					
 					if( target || (target_obj && (target_obj->Type() == XWing::Object::SHOT)) )
@@ -1888,8 +1894,8 @@ void RenderLayer::Draw( void )
 						for( std::map<int,Shot*>::iterator shot_iter = test_shots.begin(); shot_iter != test_shots.end(); shot_iter ++ )
 						{
 							shot_vec.Copy( &(shot_iter->second->MotionVector) );
-							if( target_obj->WillCollide( shot_iter->second, shot_iter->second->MaxLifetime() ) )
-								will_hit = true;
+							if( (! shot_on_target) && target_obj->WillCollide( shot_iter->second, shot_iter->second->MaxLifetime() ) )
+								shot_on_target = true;
 							
 							delete shot_iter->second;
 						}
@@ -1905,7 +1911,7 @@ void RenderLayer::Draw( void )
 					
 					float r = 0.f, g = 1.f, b = 0.f;
 					
-					if( will_hit )
+					if( shot_on_target )
 					{
 						r = 1.f;
 						b = 1.f;
@@ -2215,17 +2221,9 @@ void RenderLayer::Draw( void )
 				std::map<int,Shot*> test_shots = observed_turret->NextShots();
 				for( std::map<int,Shot*>::iterator shot_iter = test_shots.begin(); shot_iter != test_shots.end(); shot_iter ++ )
 				{
-					if( target->WillCollide( shot_iter->second, shot_iter->second->MaxLifetime() ) )
-					{
-						crosshair_red = 0.25f;
-						crosshair_green = 1.f;
-						crosshair_blue = 0.25f;
-						
-						static Clock beep_aim;
-						if( beep_aim.Progress() >= 1. )
-							game->Snd.Play( game->Res.GetSound("beep_aim.wav") );
-						beep_aim.Reset( 0.2 );
-					}
+					if( (! shot_on_target) && target->WillCollide( shot_iter->second, shot_iter->second->MaxLifetime() ) )
+						shot_on_target = true;
+					
 					delete shot_iter->second;
 				}
 			}
@@ -2245,17 +2243,9 @@ void RenderLayer::Draw( void )
 			std::map<int,Shot*> test_shots = observed_ship->NextShots();
 			for( std::map<int,Shot*>::iterator shot_iter = test_shots.begin(); shot_iter != test_shots.end(); shot_iter ++ )
 			{
-				if( target->WillCollide( shot_iter->second, shot_iter->second->MaxLifetime() ) )
-				{
-					crosshair_red = 0.25f;
-					crosshair_green = 1.f;
-					crosshair_blue = 0.25f;
-					
-					static Clock beep_aim;
-					if( beep_aim.Progress() >= 1. )
-						game->Snd.Play( game->Res.GetSound("beep_aim.wav") );
-					beep_aim.Reset( 0.2 );
-				}
+				if( (! shot_on_target) && target->WillCollide( shot_iter->second, shot_iter->second->MaxLifetime() ) )
+					shot_on_target = true;
+				
 				delete shot_iter->second;
 			}
 		}
@@ -2265,6 +2255,17 @@ void RenderLayer::Draw( void )
 			crosshair_red = 0.75f;
 			crosshair_green = 0.75f;
 			crosshair_blue = 0.75f;
+		}
+		else if( shot_on_target )
+		{
+			crosshair_red = 0.25f;
+			crosshair_green = 1.f;
+			crosshair_blue = 0.25f;
+			
+			static Clock beep_aim;
+			if( beep_aim.Progress() >= 1. )
+				game->Snd.Play( game->Res.GetSound("beep_aim.wav") );
+			beep_aim.Reset( 0.2 );
 		}
 		
 		
@@ -3114,7 +3115,7 @@ void RenderLayer::Draw( void )
 			}
 			
 			
-			if( (jump_progress >= 1.25) && ! vr )
+			if( (jump_progress >= 1.25) && ! (vr || jumped_out) )
 			{
 				// Draw the radar.
 				

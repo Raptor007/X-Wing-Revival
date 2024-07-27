@@ -37,6 +37,11 @@ public:
 	std::map< uint8_t, std::vector<Pos3D> > Waypoints;
 	std::map< std::string, std::set<uint32_t> > Squadrons;
 	
+	uint32_t CollisionGroup;
+	//Clock CollisionClock;
+	std::map<uint32_t,uint32_t> CollisionWith;
+	//std::map<uint32_t,Pos3D> CollisionAt;
+	
 	Clock RoundTimer;
 	Clock RoundEndedTimer;
 	double RoundEndedDelay;

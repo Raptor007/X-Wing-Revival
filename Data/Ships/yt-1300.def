@@ -30,6 +30,7 @@ engine -4.7 0 -13.6 engine_blue.ani 7 1 1 1 0.2
 engine 6.9 0 -12.5 engine_blue.ani 7 1 1 1 0.2
 engine -6.9 0 -12.5 engine_blue.ani 7 1 1 1 0.2
 model yt-1300.obj
+model_collision yt-1300_col.obj
 cockpit yt-1300_cockpit.obj 10 1.25 7.64
 turret_model yt-1300_turret_body.obj yt-1300_turret_gun.obj
 turret_gunpos 0.717

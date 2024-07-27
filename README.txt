@@ -1,6 +1,6 @@
 ----------------------------------------
 |            X-Wing Revival            |
-|       0.4.3 Alpha (2024-06-12)       |
+|       0.4.4 Alpha (2024-07-27)       |
 |     by Raptor007 (Blair Sherman)     |
 | http://raptor007.com/x-wing-revival/ |
 ----------------------------------------
@@ -170,6 +170,8 @@ Linux asks what application to open files of type "executable" with.
     Can be somewhat GPU-heavy and CPU-heavy, especially in VR.
     NOTE: This is even more CPU-heavy when shaders are disabled!
 
+  FPS: Show framerate (and physics rate if hosting) in bottom right.
+
 --Virtual Reality--
 
   Enable VR Mode: Enable VR HMD output and seated head tracking, using OpenVR/SteamVR.
@@ -198,6 +200,8 @@ Linux asks what application to open files of type "executable" with.
 
   Game Music: Play background music while flying.
 
+  S.Alarm: Play alarm sound when losing a deflector shield.
+
 --Networking--
 
   Rate: Send updates to the server at this rate.  Default: 30
@@ -216,12 +220,14 @@ Linux asks what application to open files of type "executable" with.
 --Joystick--
 
   Deadzone: Ignore some stick/twist motion near the center to prevent drift.
+    NOTE: This setting is not used for calibrated devices!
 
   X / Y / Twist: Sharpest is most responsive while Smoothest is least twitchy.
 
 --Controller--
 
   Deadzone: Ignore some thumbstick motion near the center to prevent drift.
+    NOTE: This setting is not used for calibrated devices!
 
   Sticks: Sharpest is most responsive while Smoothest is least twitchy.
 
@@ -387,6 +393,14 @@ Linux asks what application to open files of type "executable" with.
   To unbind a control entirely, right-click its box; all of its binds will be cleared.
 
 
+== CALIBRATION ==
+
+  1. Select the device type to calibrate.
+  2. Sweep every axis to its full extents, then release to center.
+  3. Check "Deadzone", then gently wiggle stick and twist within the deadzone.
+  4. Click "Apply" when satisfied or "Clear" to start over.
+
+
 == CONSOLE COMMANDS ==
 
 X-Wing Revival features a Quake-style console which allows power users to tweak the
@@ -478,6 +492,14 @@ console commands to execute, such as "sv gametype yavin" or "sv rebel_fighter A/
 
 
 == VERSION HISTORY ==
+
+Alpha 0.4.4 (2024-07-27):
+ * Joystick and controller deadzones can be precisely calibrated.
+ * Reworked collision detection for improved accuracy and performance.
+ * Alarm sound plays when deflector shields are lost.
+ * Turret firing mode is retained when changing seats.
+ * Fixed getting stuck spectating after trying to switch to gunner role.
+ * Fixed shader compile errors on Mac OS X.
 
 Alpha 0.4.3 (2024-06-12):
  * Textboxes read unicode text input events instead of raw key down/up.

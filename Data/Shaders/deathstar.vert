@@ -1,6 +1,7 @@
 // Death Star does not currently track blast points, so keep rendering simple.
 #if BLASTPOINTS > 0
 #undef BLASTPOINTS
+#define BLASTPOINTS 0
 #endif
 
 // ---------------------------------------------------------------------------

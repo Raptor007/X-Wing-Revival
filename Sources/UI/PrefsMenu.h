@@ -18,6 +18,10 @@ class PrefsMenuPageButton;
 class PrefsMenuSillyButton;
 class PrefsMenuRefreshButton;
 class PrefsMenuBind;
+class PrefsMenuCalibrator;
+class PrefsMenuCalClearButton;
+class PrefsMenuCalApplyButton;
+class PrefsMenuCalDZCheckBox;
 
 #include "PlatformSpecific.h"
 
@@ -59,6 +63,7 @@ public:
 	{
 		PAGE_PREFERENCES = 0,
 		PAGE_CONTROLS,
+		PAGE_CALIBRATION,
 		NUM_PAGES
 	};
 };
@@ -216,4 +221,67 @@ public:
 	void Draw( void );
 	bool HandleEvent( SDL_Event *event );
 	void Clicked( Uint8 button = SDL_BUTTON_LEFT );
+};
+
+
+class PrefsMenuCalibrator : public Layer
+{
+public:
+	std::string DeviceType;
+	std::map<std::string,Sint32> RecentJoyID;
+	std::map<Uint8,double> AxisMin, AxisMax, AxisDeadMin, AxisDeadMax;
+	bool ReadingDeadzone;
+	
+	PrefsMenuCalibrator( SDL_Rect *rect );
+	virtual ~PrefsMenuCalibrator();
+	
+	void Reset( void );
+	void Clear( void );
+	void Apply( void );
+	void TrackEvent( SDL_Event *event );
+	void Draw( void );
+};
+
+
+class PrefsMenuCalDevDropDown : public DropDown
+{
+public:
+	PrefsMenuCalibrator *Calibrator;
+	
+	PrefsMenuCalDevDropDown( SDL_Rect *rect, Font *font, uint8_t align, PrefsMenuCalibrator *calibrator );
+	virtual ~PrefsMenuCalDevDropDown();
+	void Changed( void );
+};
+
+
+class PrefsMenuCalClearButton : public LabelledButton
+{
+public:
+	PrefsMenuCalibrator *Calibrator;
+	
+	PrefsMenuCalClearButton( SDL_Rect *rect, Font *button_font, const char *label, PrefsMenuCalibrator *calibrator );
+	virtual ~PrefsMenuCalClearButton();
+	void Clicked( Uint8 button = SDL_BUTTON_LEFT );
+};
+
+
+class PrefsMenuCalApplyButton : public LabelledButton
+{
+public:
+	PrefsMenuCalibrator *Calibrator;
+	
+	PrefsMenuCalApplyButton( SDL_Rect *rect, Font *button_font, const char *label, PrefsMenuCalibrator *calibrator );
+	virtual ~PrefsMenuCalApplyButton();
+	void Clicked( Uint8 button = SDL_BUTTON_LEFT );
+};
+
+
+class PrefsMenuCalDZCheckBox : public CheckBox
+{
+public:
+	PrefsMenuCalibrator *Calibrator;
+	
+	PrefsMenuCalDZCheckBox( SDL_Rect *rect, Font *font, std::string label, PrefsMenuCalibrator *calibrator );
+	virtual ~PrefsMenuCalDZCheckBox();
+	virtual void Changed( void );
 };

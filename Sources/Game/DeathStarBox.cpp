@@ -136,11 +136,55 @@ bool DeathStarBox::WillCollide( const GameObject *other, double dt, std::string 
 			return false;
 		
 		// Don't worry about capital ship hitting these.
-		if( ship->ComplexCollisionDetection() )
+		if( ship->Category() == ShipClass::CATEGORY_CAPITAL )
 			return false;
 		
 		if( (fabs(other->DistAlong(&Fwd,this)) <= L/2. + ship->Radius()) && (fabs(other->DistAlong(&Up,this)) <= H/2. + ship->Radius()) && (fabs(other->DistAlong(&Right,this)) <= W/2. + ship->Radius()) )
+		{
+			if( ship->ComplexCollisionDetection() )
+			{
+				Vec3D ship_motion = ship->MotionVector * dt;
+				ModelArrays array_inst;
+				for( std::map<std::string,ModelObject>::const_iterator obj_iter = ship->Shape.Objects.begin(); obj_iter != ship->Shape.Objects.end(); obj_iter ++ )
+				{
+					/*
+					// Don't detect collisions with destroyed subsystems.
+					std::map<std::string,double>::const_iterator subsystem_iter = ship->Subsystems.find( obj_iter->first );
+					if( (subsystem_iter != ship->Subsystems.end()) && (subsystem_iter->second <= 0.) )
+						continue;
+					*/
+					for( std::map<std::string,ModelArrays>::const_iterator array_iter = obj_iter->second.Arrays.begin(); array_iter != obj_iter->second.Arrays.end(); array_iter ++ )
+					{
+						array_inst.BecomeInstance( &(array_iter->second) );
+						array_inst.MakeWorldSpace( ship );
+						for( size_t i = 0; i < array_inst.VertexCount; i ++ )
+						{
+							// FIXME: Is there a better way to check if this ship model hits the box?  Moving vertex lines vs box faces?
+							
+							// Check if any vertex is currently inside the box.
+							Pos3D vertex( array_inst.WorldSpaceVertexArray[ i*3 ], array_inst.WorldSpaceVertexArray[ i*3 + 1 ], array_inst.WorldSpaceVertexArray[ i*3 + 2 ] );
+							if( (fabs(vertex.DistAlong(&Fwd,this)) <= L/2.) && (fabs(vertex.DistAlong(&Up,this)) <= H/2.) && (fabs(vertex.DistAlong(&Right,this)) <= W/2.) )
+							{
+								if( other_object )
+									*other_object = obj_iter->first;
+								return true;
+							}
+							
+							// Check if any vertex will end up inside the box.
+							vertex += ship_motion;
+							if( (fabs(vertex.DistAlong(&Fwd,this)) <= L/2.) && (fabs(vertex.DistAlong(&Up,this)) <= H/2.) && (fabs(vertex.DistAlong(&Right,this)) <= W/2.) )
+							{
+								if( other_object )
+									*other_object = obj_iter->first;
+								return true;
+							}
+						}
+					}
+				}
+				return false;
+			}
 			return true;
+		}
 	}
 	
 	return false;

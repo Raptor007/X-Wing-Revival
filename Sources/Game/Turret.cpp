@@ -551,6 +551,9 @@ void Turret::ReadFromUpdatePacketFromServer( Packet *packet, int8_t precision )
 			const Ship *parent = ParentShip();
 			if( parent && (parent->JumpProgress < 1.) && (parent->PlayerID != PlayerID) )
 				Raptor::Game->Snd.Play( Raptor::Game->Res.GetSound("jump_in_cockpit.wav") );
+			
+			if( GunWidth )
+				FiringMode = ((XWingGame*)( Raptor::Game ))->TurretFiringMode;
 		}
 	}
 }
@@ -648,19 +651,27 @@ bool Turret::WillCollide( const GameObject *other, double dt, std::string *this_
 	
 	else if( other->Type() == XWing::Object::SHIP )
 	{
-		// Dead ships don't collide after a bit, and they never hit other dead ships.
 		Ship *ship = (Ship*) other;
-		if( (ship->Health <= 0.) && ((Health <= 0.) || (ship->DeathClock.ElapsedSeconds() > 0.5)) )
-			return false;
 		
 		// Don't let turrets hit capitol ships.
-		if( ship->ComplexCollisionDetection() )
+		if( ship->Category() == ShipClass::CATEGORY_CAPITAL )
+			return false;
+		
+		// Dead ships don't collide after a bit, and they never hit dead turrets.
+		if( (ship->Health <= 0.) && ((Health <= 0.) || (ship->DeathClock.ElapsedSeconds() > ship->PiecesDangerousTime())) )
 			return false;
 		
 		double dist = Math3D::MinimumDistance( this, &(this->MotionVector), other, &(other->MotionVector), dt );
-		
 		if( dist <= (ship->Radius() + Radius) )
+		{
+			if( ship->ComplexCollisionDetection() && (ship->Health > 0.) )
+			{
+				Vec3D turret_motion = (MotionVector - ship->MotionVector) * dt;
+				return ship->Shape.CollidesWithSphere( ship, loc, NULL, other_object, 0., 0, this, &turret_motion, Radius );
+			}
+			
 			return true;
+		}
 	}
 	
 	/*

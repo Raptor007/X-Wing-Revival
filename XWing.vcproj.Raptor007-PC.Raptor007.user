@@ -11,7 +11,7 @@
 			<DebugSettings
 				Command="$(TargetPath)"
 				WorkingDirectory="Data"
-				CommandArguments="-windowed -set precache 0"
+				CommandArguments="-windowed -set precache 0 -set sv_threads 0"
 				Attach="false"
 				DebuggerType="3"
 				Remote="1"
@@ -39,7 +39,7 @@
 			<DebugSettings
 				Command="$(TargetPath)"
 				WorkingDirectory="Data"
-				CommandArguments="-windowed -set precache 0"
+				CommandArguments="-windowed -set precache 0 -set sv_threads 0"
 				Attach="false"
 				DebuggerType="3"
 				Remote="1"

@@ -115,7 +115,7 @@ bool DockingBay::WillCollide( const GameObject *other, double dt, std::string *t
 			return false;
 		
 		// Cannot repair capital ships.
-		if( ship->ComplexCollisionDetection() )
+		if( ship->Category() == ShipClass::CATEGORY_CAPITAL )
 			return false;
 		
 		// Cannot repair a ship still jumping in.

@@ -27,6 +27,7 @@ public:
 	uint8_t View;
 	double LookYaw, LookPitch;
 	bool ThumbstickLook;
+	uint8_t TurretFiringMode;
 	uint32_t StoredTargets[ 4 ];
 	uint8_t StoredSubsystems[ 4 ];
 	std::map< uint8_t, std::map< int, std::deque<Shot*> > > ClientShots;
