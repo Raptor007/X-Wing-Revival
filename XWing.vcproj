@@ -1168,6 +1168,14 @@
 				Name="UI"
 				>
 				<File
+					RelativePath=".\Sources\UI\CampaignMenu.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\Sources\UI\CampaignMenu.h"
+					>
+				</File>
+				<File
 					RelativePath=".\Sources\UI\FleetMenu.cpp"
 					>
 				</File>

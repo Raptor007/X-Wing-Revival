@@ -1,0 +1,31 @@
+id TRN
+name Stormtrooper Transport
+squadron Epsilon
+category transport
+team empire
+radius 9
+speed 110
+accel 35
+roll 85 80
+pitch 50 40
+yaw 40 30
+roll_change 160 150
+pitch_change 90 80
+yaw_change 90 80
+health 200
+shield 200
+recover 10
+recharge 5
+ramming 600
+explode 0.9
+weapon laser 0.7 -2 8.5
+weapon laser -0.7 -2 8.5
+engine 2.75 2 -7 engine_blue.png 1.1 1 1 1 0.33
+engine -2.75 2 -7 engine_blue.png 1.1 1 1 1 0.33
+model transport.obj
+model_collision transport_col.obj
+cockpit transport.obj 0 0.3 10
+model_scale 0.022
+flyby 20 xwing_slow.wav
+flyby 170 xwing_med.wav
+flyby 210 xwing_fast.wav

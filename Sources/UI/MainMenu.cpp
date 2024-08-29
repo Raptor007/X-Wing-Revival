@@ -7,6 +7,7 @@
 #include "XWingGame.h"
 #include "JoinMenu.h"
 #include "PrefsMenu.h"
+#include "CampaignMenu.h"
 #include "TextFileViewer.h"
 #include <algorithm>
 
@@ -37,6 +38,7 @@ MainMenu::MainMenu( void )
 	button_rect.x = 0;
 	button_rect.y = 0;
 	AddElement( StartButton = new MainMenuCampaignButton( &button_rect, ButtonFont ));
+	StartButton->Enabled = Raptor::Game->Res.Find("Missions/rebel1.def").length() || Raptor::Game->Res.Find("Missions/empirel1.def").length();
 	AddElement( XButton = new MainMenuOnlineButton( &button_rect, ButtonFont ));
 	AddElement( AButton = new MainMenuCustomButton( &button_rect, ButtonFont ));
 	AddElement( new MainMenuPrefsButton( &button_rect, ButtonFont ));
@@ -332,8 +334,15 @@ MainMenuCampaignButton::~MainMenuCampaignButton()
 void MainMenuCampaignButton::Clicked( Uint8 button )
 {
 	XWingGame *game = (XWingGame*) Raptor::Game;
-	game->CampaignTeam = XWing::Team::REBEL;
-	game->Host();
+	bool rebel_campaign_installed  = (game->Res.Find("Missions/rebel1.def")[0] == '.');
+	bool empire_campaign_installed = (game->Res.Find("Missions/empire1.def")[0] == '.');
+	if( (rebel_campaign_installed == empire_campaign_installed) || game->Cfg.SettingAsBool("campaign_menu",true) )
+		game->Layers.Add( new CampaignMenu() );
+	else
+	{
+		game->CampaignTeam = empire_campaign_installed ? XWing::Team::EMPIRE : XWing::Team::REBEL;
+		game->Host();
+	}
 }
 
 

@@ -769,6 +769,13 @@ void Turret::Draw( bool allow_shader_change )
 			if( game->View == XWing::View::GUNNER )
 				gun.Pitch( GunPitchRate * -0.004 );
 			
+			// FIXME: Set recoil properties in ShipClass?
+			double recoil = FiringClock.ElapsedSeconds() / std::min<double>( 1., SingleShotDelay * 0.75 );
+			if( recoil < 0.125 )
+				gun.MoveAlong( &(gun.Fwd), sin( (recoil / 0.125) * (M_PI / 2.) ) * -0.5 * GunWidth );
+			else if( recoil < 1.125 )
+				gun.MoveAlong( &(gun.Fwd), sin( (1.125 - recoil) * (M_PI / 2.) ) * -0.5 * GunWidth );
+			
 			GunShape->DrawAt( &gun, 0.022 );
 		}
 		

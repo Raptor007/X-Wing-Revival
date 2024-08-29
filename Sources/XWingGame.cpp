@@ -531,6 +531,9 @@ void XWingGame::Setup( int argc, char **argv )
 			safemode = true;
 	}
 	
+	// Campaign progress is stored separately so settings.cfg can be safely wiped.
+	Cfg.Load( "campaign.cfg" );
+	
 	if( screensaver )
 	{
 		Cfg.Settings[ "g_vsync" ] = Cfg.SettingAsBool( "screensaver_vsync", true );
@@ -539,8 +542,7 @@ void XWingGame::Setup( int argc, char **argv )
 		Cfg.Settings[ "saitek_enable" ] = "false";
 		Cfg.Settings[ "view" ] = Cfg.SettingAsString( "screensaver_view", "cycle" );
 		Cfg.Settings[ "spectator_view" ] = "auto";
-		int maxfps = Cfg.SettingAsInt( "maxfps", 60 );
-		Cfg.Settings[ "sv_netrate" ] = Cfg.Settings[ "sv_maxfps" ] = (maxfps > 60) ? Num::ToString(maxfps) : "60";
+		Cfg.Settings[ "sv_netrate" ] = Cfg.Settings[ "sv_maxfps" ] = "60";
 	}
 	else
 		Cfg.Settings[ "view" ] = "auto";
@@ -656,7 +658,6 @@ void XWingGame::Precache( void )
 	Res.GetSound("damage_shield.wav");
 	Res.GetSound("hit_hull.wav");
 	Res.GetSound("hit_shield.wav");
-	Res.GetSound("shield_alarm.wav");
 	Res.GetSound("beep_aim.wav");
 	Res.GetSound("jump_in.wav");
 	
@@ -709,6 +710,7 @@ void XWingGame::Precache( void )
 		Res.GetSound("locked.wav");
 		Res.GetSound("lock_warn.wav");
 		Res.GetSound("incoming.wav");
+		Res.GetSound("shield_alarm.wav");
 		Res.GetSound("checkpoint.wav");
 		Res.GetSound("chat.wav");
 		Res.GetSound("eject.wav");
@@ -1353,6 +1355,12 @@ void XWingGame::Update( double dt )
 					
 					if( (ship->Category() == ShipClass::CATEGORY_CAPITAL) && ship->ComplexCollisionDetection() )
 					{
+						// Don't bother checking ships that aren't ahead of us.
+						Pos3D ship_far_end = *ship + my_fwd * (ship->Shape.GetTriagonal() / 2.);
+						Vec3D vec_to_end = ship_far_end - my_pos;
+						if( my_fwd.Dot(&vec_to_end) < 0.9 )
+							continue;
+						
 						std::string hit;
 						double dist = ship->Shape.DistanceFromLine( ship, NULL, NULL, &hit, ship->Exploded(), ship->ExplosionSeed(), my_pos, &ahead );
 						if( (dist < (ship->Shape.GetTriagonal() * 0.01)) && ! hit.empty() )
@@ -1390,8 +1398,10 @@ void XWingGame::Update( double dt )
 				target_id = id;
 				target_subsystem = subsystem;
 				beep = "beep.wav";
-				target_wait = my_pos->Lifetime.ElapsedSeconds() + 0.05;
 			}
+			
+			// Checking capital ships takes a while, so don't tank the framerate.
+			target_wait = my_pos->Lifetime.ElapsedSeconds() + 0.125;
 		}
 		else if( target_nearest_enemy || target_nearest_attacker || target_target_attacker )
 		{
@@ -2786,12 +2796,28 @@ bool XWingGame::ProcessPacket( Packet *packet )
 					
 					if( (ship->Health > 0.) && (old_shield_f > 0.) && (old_shield_r > 0.) && ((shield_f <= 0.) || (shield_r <= 0.)) )
 					{
-						double min_radius = Cfg.SettingAsDouble( "s_shield_alarm_radius", 10. );
-						if( min_radius && (ship->Radius() >= min_radius) )
+						bool player_in_ship = (ship->PlayerID == Raptor::Game->PlayerID);
+						if( ! player_in_ship )
 						{
-							Mix_Chunk *alarm = Res.GetSound("shield_alarm.wav");
-							Snd.Play( alarm );
-							Snd.Play( alarm );
+							std::list<Turret*> turrets = ship->AttachedTurrets();
+							for( std::list<Turret*>::const_iterator turret_iter = turrets.begin(); turret_iter != turrets.end(); turret_iter ++ )
+							{
+								if( (*turret_iter)->PlayerID == Raptor::Game->PlayerID )
+								{
+									player_in_ship = true;
+									break;
+								}
+							}
+						}
+						if( player_in_ship )
+						{
+							double min_radius = Cfg.SettingAsDouble( "s_shield_alarm_radius", 10. );
+							if( min_radius && (ship->Radius() >= min_radius) )
+							{
+								Mix_Chunk *alarm = Res.GetSound("shield_alarm.wav");
+								Snd.Play( alarm );
+								Snd.Play( alarm );
+							}
 						}
 					}
 				}
@@ -3279,16 +3305,23 @@ bool XWingGame::ProcessPacket( Packet *packet )
 		&& ( Str::EqualsInsensitive( current_mission, Cfg.SettingAsString("rebel_mission") )
 		 || (Str::EqualsInsensitive( current_mission, "rebel1" ) && Str::EqualsInsensitive( Cfg.SettingAsString("rebel_mission"), "rebel0" )) ) )
 		{
-			Cfg.Settings["rebel_mission"] = next_mission;
-			Cfg.Settings["rebel_difficulty"] = Data.PropertyAsString("ai_skill","1");
+			Cfg.Settings[ "rebel_mission"    ] = next_mission;
+			Cfg.Settings[ "rebel_difficulty" ] = Data.PropertyAsString( "ai_skill", "1" );
 		}
 		else if( next_mission.length() && Str::BeginsWith( current_mission, "empire" )
 		&& ( Str::EqualsInsensitive( current_mission, Cfg.SettingAsString("empire_mission") )
 		 || (Str::EqualsInsensitive( current_mission, "empire1" ) && Str::EqualsInsensitive( Cfg.SettingAsString("empire_mission"), "empire0" )) ) )
 		{
-			Cfg.Settings["empire_mission"] = next_mission;
-			Cfg.Settings["empire_difficulty"] = Data.PropertyAsString("ai_skill","1");
+			Cfg.Settings[ "empire_mission"    ] = next_mission;
+			Cfg.Settings[ "empire_difficulty" ] = Data.PropertyAsString( "ai_skill", "1" );
 		}
+		
+		ClientConfig campaign;
+		campaign.Settings[ "rebel_mission"     ] = Cfg.SettingAsString( "rebel_mission",  "rebel0"  );
+		campaign.Settings[ "empire_mission"    ] = Cfg.SettingAsString( "empire_mission", "empire0" );
+		campaign.Settings[ "rebel_difficulty"  ] = Cfg.SettingAsString( "rebel_difficulty",  "1"    );
+		campaign.Settings[ "empire_difficulty" ] = Cfg.SettingAsString( "empire_difficulty", "1"    );
+		campaign.Save( "campaign.cfg", false );
 	}
 	
 	else if( type == XWing::Packet::TOGGLE_COPILOT )

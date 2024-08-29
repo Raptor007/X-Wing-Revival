@@ -417,7 +417,13 @@ void LobbyMenu::UpdateInfoBoxes( void )
 		if( player_ships.empty() )
 			player_ships = Raptor::Game->Data.PropertyAsString("player_ship");
 		if( ! player_ships.empty() )
+		{
 			allowed_ships = Str::SplitToVector( player_ships, " " );
+			if( std::find( allowed_ships.begin(), allowed_ships.end(), "rebel_gunner" ) != allowed_ships.end() )
+				allowed_ships.push_back( "Rebel Gunner" );
+			if( std::find( allowed_ships.begin(), allowed_ships.end(), "empire_gunner" ) != allowed_ships.end() )
+				allowed_ships.push_back( "Imperial Gunner" );
+		}
 		
 		// Switch to Auto-Assign if the selected ship isn't allowed on the current mission.
 		if( allowed_ships.size() && (std::find( allowed_ships.begin(), allowed_ships.end(), ShipDropDown->Value ) == allowed_ships.end())

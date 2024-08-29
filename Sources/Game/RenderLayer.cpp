@@ -644,7 +644,7 @@ void RenderLayer::Draw( void )
 	}
 	
 	
-	if( game->View == XWing::View::CYCLE )
+	if( (game->View == XWing::View::CYCLE) || ((game->View == XWing::View::AUTO) && !(player_ship || player_turret || vr)) )
 	{
 		double cycle_time = game->Cfg.SettingAsDouble("view_cycle_time",7.);
 		if( cycle_time <= 0. )
@@ -1140,7 +1140,7 @@ void RenderLayer::Draw( void )
 	}
 	
 	
-	bool shot_on_target = false;
+	bool shots_checked = false, shot_on_target = false;
 	
 	
 	// Render to textures before drawing anything else.
@@ -1901,6 +1901,8 @@ void RenderLayer::Draw( void )
 						}
 					}
 					
+					shots_checked = true;
+					
 					
 					glLineWidth( 2.f );
 					
@@ -2215,7 +2217,7 @@ void RenderLayer::Draw( void )
 		{
 			ammo = -1;
 			
-			if( target )
+			if( target && ! shots_checked )
 			{
 				// See if the crosshair is lined up so the next shot would hit.
 				std::map<int,Shot*> test_shots = observed_turret->NextShots();
@@ -2226,6 +2228,8 @@ void RenderLayer::Draw( void )
 					
 					delete shot_iter->second;
 				}
+				
+				shots_checked = true;
 			}
 		}
 		else if( (observed_ship->SelectedWeapon == Shot::TYPE_TORPEDO) || (observed_ship->SelectedWeapon == Shot::TYPE_MISSILE) )
@@ -2237,7 +2241,7 @@ void RenderLayer::Draw( void )
 				crosshair_blue = 0.f;
 			}
 		}
-		else if( target )
+		else if( target && ! shots_checked )
 		{
 			// See if the crosshair is lined up so the next shot would hit.
 			std::map<int,Shot*> test_shots = observed_ship->NextShots();
@@ -2248,6 +2252,8 @@ void RenderLayer::Draw( void )
 				
 				delete shot_iter->second;
 			}
+			
+			shots_checked = true;
 		}
 		
 		if( ammo == 0 )
@@ -2777,7 +2783,7 @@ void RenderLayer::Draw( void )
 				positions.push_back( target->TargetCenter( observed_ship->TargetSubsystem ) );
 			
 			// Turret gunners get another target box for the intercept point.
-			if( observed_turret && (target_obj->MotionVector.Length() > 40.) )
+			if( observed_turret && (!( target && (target->Category() == ShipClass::CATEGORY_CAPITAL) )) && (target_obj->MotionVector.Length() > 40.) )
 			{
 				Pos3D gun = observed_turret->GunPos();
 				Vec3D vec_to_target( target_obj->X - gun.X, target_obj->Y - gun.Y, target_obj->Z - gun.Z );

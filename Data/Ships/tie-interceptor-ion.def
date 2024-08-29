@@ -1,0 +1,36 @@
+id T/I-I
+name TIE Interceptor (Ion)
+squadron Sigma
+category fighter
+team empire
+secret
+radius 4.4
+speed 220
+accel 125
+roll 135 125
+pitch 85 70
+yaw 65 50
+roll_change 385 360
+pitch_change 350 280
+yaw_change 335 270
+health 91
+shield 0
+ramming 500
+explode 1
+weapon ion_cannon 2.7775 1.056 6.1
+weapon ion_cannon -2.7775 -1.056 6.1
+weapon ion_cannon -2.7775 1.056 6.1
+weapon ion_cannon 2.7775 -1.056 6.1
+firetime ion_cannon 0.25
+engine 0.88 0.03 -0.94 engine_yellow.ani 0.4 1 0.1 0.1 0.4
+engine -0.88 0.03 -0.94 engine_yellow.ani 0.4 1 0.1 0.1 0.4
+model tie-interceptor.obj
+model_collision tie-interceptor_col.obj
+cockpit tie-interceptor_cockpit_vr.obj 0 0 0.07
+cockpit_vr tie-interceptor_cockpit_vr.obj 0 0.1 -0.1
+model_scale 0.022
+glance 85 0
+selfie 16
+flyby 20 tie_slow.wav
+flyby 200 tie_med.wav
+flyby 250 tie_fast.wav

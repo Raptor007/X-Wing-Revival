@@ -26,8 +26,10 @@ bool Mission::Load( const std::string &filename )
 	double event_time = 0.;
 	size_t event_number = 0;
 	std::string event_target;
+	std::string event_by_name;
 	std::vector<std::string> event_if;
 	uint8_t event_target_group = 0;
+	uint8_t event_by_group = 0;
 	double event_delay = 0.;
 	double event_chance = 1.;
 	
@@ -69,11 +71,14 @@ bool Mission::Load( const std::string &filename )
 			event_time = 0.;
 			event_number = 0;
 			event_target.clear();
+			event_by_name.clear();
 			event_target_group = 0;
+			event_by_group = 0;
 			event_if.clear();
 			event_delay = 0.;
 			event_chance = 1.;
 			bool conditional = false;
+			bool trigger_by = false;
 			bool line_first_word = true;
 			
 			while( var.length() )
@@ -111,6 +116,29 @@ bool Mission::Load( const std::string &filename )
 							event_trigger_flags |= MissionEvent::TRIGGERFLAG_REPEAT;
 					}
 				}
+				else if( trigger_by )
+				{
+					if( var == "rebel" )
+						event_trigger_flags |= MissionEvent::TRIGGERFLAG_BY_REBEL;
+					else if( var == "empire" )
+						event_trigger_flags |= MissionEvent::TRIGGERFLAG_BY_EMPIRE;
+					else if( var == "player" )
+						event_trigger_flags |= MissionEvent::TRIGGERFLAG_BY_PLAYER;
+					else if( var == "ai" )
+						event_trigger_flags |= MissionEvent::TRIGGERFLAG_BY_AI;
+					else if( var == "objective" )
+						event_trigger_flags |= MissionEvent::TRIGGERFLAG_BY_OBJECTIVE;
+					else if( var == "turret" )
+						event_trigger_flags |= MissionEvent::TRIGGERFLAG_BY_TURRET;
+					else if( (var == "group") && args.size() )
+					{
+						event_trigger_flags |= MissionEvent::TRIGGERFLAG_BY_GROUP;
+						event_by_group = atoi( args.at(0).c_str() );
+						args.erase( args.begin() );
+					}
+					else if( event_trigger && event_by_name.empty() )
+						event_by_name = unmodified_var;
+				}
 				else if( conditional )
 				{
 					if( var == "begin" )
@@ -118,16 +146,18 @@ bool Mission::Load( const std::string &filename )
 						conditional = false;
 						event_trigger = MissionEvent::TRIGGER_ALWAYS;
 					}
+					else if( var == "by" )
+						trigger_by = true;
 					else if( var == "rebel" )
-						event_trigger_flags |= MissionEvent::TRIGGERFLAG_ONLY_REBEL;
+						event_trigger_flags |= MissionEvent::TRIGGERFLAG_REBEL;
 					else if( var == "empire" )
-						event_trigger_flags |= MissionEvent::TRIGGERFLAG_ONLY_EMPIRE;
+						event_trigger_flags |= MissionEvent::TRIGGERFLAG_EMPIRE;
 					else if( var == "player" )
-						event_trigger_flags |= MissionEvent::TRIGGERFLAG_ONLY_PLAYER;
+						event_trigger_flags |= MissionEvent::TRIGGERFLAG_PLAYER;
 					else if( var == "ai" )
-						event_trigger_flags |= MissionEvent::TRIGGERFLAG_ONLY_AI;
+						event_trigger_flags |= MissionEvent::TRIGGERFLAG_AI;
 					else if( var == "objective" )
-						event_trigger_flags |= MissionEvent::TRIGGERFLAG_ONLY_OBJECTIVE;
+						event_trigger_flags |= MissionEvent::TRIGGERFLAG_OBJECTIVE;
 					else if( var == "victory" )
 						event_trigger = MissionEvent::TRIGGER_ON_VICTORY;
 					else if( var == "defeat" )
@@ -151,7 +181,7 @@ bool Mission::Load( const std::string &filename )
 					}
 					else if( (var == "group") && args.size() )
 					{
-						event_trigger_flags |= MissionEvent::TRIGGERFLAG_ONLY_GROUP;
+						event_trigger_flags |= MissionEvent::TRIGGERFLAG_GROUP;
 						event_target_group = atoi( args.at(0).c_str() );
 						args.erase( args.begin() );
 					}
@@ -180,7 +210,7 @@ bool Mission::Load( const std::string &filename )
 		{
 			// Handle events listed after a trigger.
 			
-			Events.push_back( MissionEvent( event_trigger, event_trigger_flags, event_time, event_delay, event_number, event_target, event_target_group, event_if, event_chance ) );
+			Events.push_back( MissionEvent( event_trigger, event_trigger_flags, event_time, event_delay, event_number, event_target, event_target_group, event_if, event_chance, event_by_name, event_by_group ) );
 			
 			if( (var == "alert") && (args.size() >= 2) )
 			{
@@ -347,7 +377,7 @@ bool Mission::Load( const std::string &filename )
 
 
 
-MissionEvent::MissionEvent( uint8_t trigger, uint16_t trigger_flags, double time, double delay, size_t number, std::string target, uint8_t target_group, std::vector<std::string> trigger_if, double chance )
+MissionEvent::MissionEvent( uint8_t trigger, uint16_t trigger_flags, double time, double delay, size_t number, std::string target, uint8_t target_group, std::vector<std::string> trigger_if, double chance, std::string by_name, uint8_t by_group )
 {
 	Trigger = trigger;
 	TriggerFlags = trigger_flags;
@@ -358,6 +388,8 @@ MissionEvent::MissionEvent( uint8_t trigger, uint16_t trigger_flags, double time
 	TargetGroup = target_group;
 	TriggerIf = trigger_if;
 	Chance = chance;
+	ByName = by_name;
+	ByGroup = by_group;
 	
 	MessageType = TextConsole::MSG_NORMAL;
 	X = Y = Z = FwdX = FwdY = FwdZ = 0.;
@@ -380,6 +412,8 @@ MissionEvent::MissionEvent( const MissionEvent &other )
 	TargetGroup = other.TargetGroup;
 	TriggerIf = other.TriggerIf;
 	Chance = other.Chance;
+	ByName = other.ByName;
+	ByGroup = other.ByGroup;
 	
 	Message = other.Message;
 	MessageType = other.MessageType;
@@ -412,7 +446,7 @@ MissionEvent::~MissionEvent()
 }
 
 
-bool MissionEvent::MatchesConditions( uint8_t team, uint8_t group, bool objective, uint16_t player_id, std::string name ) const
+bool MissionEvent::MatchesConditions( uint16_t flags, std::string target_name, uint8_t target_group, std::string by_name, uint8_t by_group ) const
 {
 	XWingServer *server = (XWingServer*)( Raptor::Server );
 	
@@ -434,31 +468,49 @@ bool MissionEvent::MatchesConditions( uint8_t team, uint8_t group, bool objectiv
 			return false;
 	}
 	
-	if( (TriggerFlags & TRIGGERFLAG_ONLY_PLAYER) && ! player_id )
+	if( (TriggerFlags & TRIGGERFLAG_PLAYER      ) && ! (flags & TRIGGERFLAG_PLAYER) )
 		return false;
-	if( (TriggerFlags & TRIGGERFLAG_ONLY_AI) && player_id )
+	if( (TriggerFlags & TRIGGERFLAG_AI          ) && ! (flags & TRIGGERFLAG_AI) )
 		return false;
-	if( (TriggerFlags & TRIGGERFLAG_ONLY_REBEL) && (team != XWing::Team::REBEL) )
+	if( (TriggerFlags & TRIGGERFLAG_REBEL       ) && ! (flags & TRIGGERFLAG_REBEL) )
 		return false;
-	if( (TriggerFlags & TRIGGERFLAG_ONLY_EMPIRE) && (team != XWing::Team::EMPIRE) )
+	if( (TriggerFlags & TRIGGERFLAG_EMPIRE      ) && ! (flags & TRIGGERFLAG_EMPIRE) )
 		return false;
-	if( (TriggerFlags & TRIGGERFLAG_ONLY_OBJECTIVE) && ! objective )
-		return false;
-	if( (TriggerFlags & TRIGGERFLAG_ONLY_GROUP) && (group != TargetGroup) )
+	if( (TriggerFlags & TRIGGERFLAG_OBJECTIVE   ) && ! (flags & TRIGGERFLAG_OBJECTIVE) )
 		return false;
 	
-	if( ! (Target.empty() || Str::EqualsInsensitive( Target, name )) )
+	if( (TriggerFlags & TRIGGERFLAG_BY_PLAYER   ) && ! (flags & TRIGGERFLAG_BY_PLAYER) )
+		return false;
+	if( (TriggerFlags & TRIGGERFLAG_BY_AI       ) && ! (flags & TRIGGERFLAG_BY_AI) )
+		return false;
+	if( (TriggerFlags & TRIGGERFLAG_BY_REBEL    ) && ! (flags & TRIGGERFLAG_BY_REBEL) )
+		return false;
+	if( (TriggerFlags & TRIGGERFLAG_BY_EMPIRE   ) && ! (flags & TRIGGERFLAG_BY_EMPIRE) )
+		return false;
+	if( (TriggerFlags & TRIGGERFLAG_BY_OBJECTIVE) && ! (flags & TRIGGERFLAG_BY_OBJECTIVE) )
+		return false;
+	if( (TriggerFlags & TRIGGERFLAG_BY_TURRET   ) && ! (flags & TRIGGERFLAG_BY_TURRET) )
+		return false;
+	
+	if( (TriggerFlags & TRIGGERFLAG_GROUP       ) && (target_group != TargetGroup) )
+		return false;
+	if( (TriggerFlags & TRIGGERFLAG_BY_GROUP    ) && (by_group != ByGroup) )
+		return false;
+	
+	if( ! (Target.empty() || Str::EqualsInsensitive( target_name, Target )) )
+		return false;
+	if( ! (ByName.empty() || Str::EqualsInsensitive( by_name, ByName )) )
 		return false;
 	
 	return true;
 }
 
 
-void MissionEvent::Activated( uint8_t team, uint8_t group, bool objective, uint16_t player_id, std::string name )
+void MissionEvent::Activated( uint16_t flags, std::string target_name, uint8_t target_group, std::string by_name, uint8_t by_group )
 {
 	XWingServer *server = (XWingServer*)( Raptor::Server );
 	
-	if( ! MatchesConditions( team, group, objective, player_id, name ) )
+	if( ! MatchesConditions( flags, target_name, target_group, by_name, by_group ) )
 		return;
 	if( ! Ready() )
 		return;

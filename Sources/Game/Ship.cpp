@@ -188,10 +188,10 @@ void Ship::Reset( void )
 			
 			if( ! ClientSide() )
 			{
-				std::map<std::string,ModelObject>::iterator object_iter = Shape.Objects.find( subsystem_iter->first );
+				std::map<std::string,ModelObject*>::iterator object_iter = Shape.Objects.find( subsystem_iter->first );
 				if( object_iter != Shape.Objects.end() )
 				{
-					Pos3D offset = object_iter->second.GetCenterPoint();
+					Pos3D offset = object_iter->second->GetCenterPoint();
 					SubsystemCenters.push_back( Vec3D( offset.X, offset.Y, offset.Z ) );
 				}
 				else
@@ -1183,9 +1183,9 @@ float Ship::LockingOn( const GameObject *target ) const
 			return 0.f;
 		
 		// FIXME: Should probably not use client-side model to determine subsystem radius.
-		std::map<std::string,ModelObject>::const_iterator object_iter = target_ship->Shape.Objects.find( subsystem_name );
+		std::map<std::string,ModelObject*>::const_iterator object_iter = target_ship->Shape.Objects.find( subsystem_name );
 		if( object_iter != target_ship->Shape.Objects.end() )
-			subsystem_radius = object_iter->second.MaxRadius;
+			subsystem_radius = object_iter->second->MaxRadius;
 		if( subsystem_radius < 1. )
 			subsystem_radius = 1.;
 	}
@@ -1708,7 +1708,7 @@ bool Ship::WillCollide( const GameObject *other, double dt, std::string *this_ob
 	if( this_complex )
 	{
 		// Don't detect collisions with destroyed subsystems.
-		for( std::map<std::string,ModelObject>::const_iterator obj_iter = Shape.Objects.begin(); obj_iter != Shape.Objects.end(); obj_iter ++ )
+		for( std::map<std::string,ModelObject*>::const_iterator obj_iter = Shape.Objects.begin(); obj_iter != Shape.Objects.end(); obj_iter ++ )
 		{
 			std::map<std::string,double>::const_iterator subsystem_iter = Subsystems.find( obj_iter->first );
 			if( (subsystem_iter == Subsystems.end()) || (subsystem_iter->second > 0.) )
@@ -1723,9 +1723,17 @@ bool Ship::WillCollide( const GameObject *other, double dt, std::string *this_ob
 	{
 		Shot *shot = (Shot*) other;
 		
-		// Ships can't shoot themselves immediately, but allow it later so missiles looping back can hit their own ship.
-		if( (shot->FiredFrom == ID) && (shot->Lifetime.ElapsedSeconds() < 2.) )
-			return false;
+		// Ships can't shoot themselves.
+		if( shot->FiredFrom == ID )
+		{
+			// Lasers never hit their own ship.
+			if( (shot->ShotType != Shot::TYPE_MISSILE) && (shot->ShotType != Shot::TYPE_TORPEDO) )
+				return false;
+			
+			// Allow missiles and torpedoes to hit their own ship when looping back around.
+			if( shot->Lifetime.ElapsedSeconds() < 2. )
+				return false;
+		}
 		
 		// Ship turrets can't shoot the ship they're attached to.
 		// FIXME: Maybe the shots should hit the ship and disappear, but not deal damage?
@@ -1761,7 +1769,7 @@ bool Ship::WillCollide( const GameObject *other, double dt, std::string *this_ob
 			Randomizer rando(explosion_seed);
 			ModelArrays array_inst;
 			Pos3D this_loc;
-			for( std::map<std::string,ModelObject>::const_iterator obj_iter = Shape.Objects.begin(); obj_iter != Shape.Objects.end(); obj_iter ++ )
+			for( std::map<std::string,ModelObject*>::const_iterator obj_iter = Shape.Objects.begin(); obj_iter != Shape.Objects.end(); obj_iter ++ )
 			{
 				// Don't detect collisions with destroyed subsystems.
 				std::map<std::string,double>::const_iterator subsystem_iter = Subsystems.find( obj_iter->first );
@@ -1769,35 +1777,35 @@ bool Ship::WillCollide( const GameObject *other, double dt, std::string *this_ob
 					continue;
 				
 				// Get the worldspace center of object.
-				Pos3D modelspace_center = obj_iter->second.CenterPoint;
+				Pos3D modelspace_center = obj_iter->second->CenterPoint;
 				Vec3D offset = Fwd * modelspace_center.X + Up * modelspace_center.Y + Right * modelspace_center.Z;
 				if( exploded )
-					offset += obj_iter->second.GetExplosionMotion( ExplosionSeed(), &rando ) * exploded;
+					offset += obj_iter->second->GetExplosionMotion( ExplosionSeed(), &rando ) * exploded;
 				Pos3D center = *this + offset;
 				
 				// If these two objects don't pass near each other, don't bother checking faces.
 				// FIXME: Apply worldspace_explosion_motion to MotionVector.
-				if( Math3D::MinimumDistance( &center, &MotionVector, other, &(other->MotionVector), dt ) > obj_iter->second.MaxRadius )
+				if( Math3D::MinimumDistance( &center, &MotionVector, other, &(other->MotionVector), dt ) > obj_iter->second->MaxRadius )
 					continue;
 				
-				for( std::map<std::string,ModelArrays>::const_iterator array_iter = obj_iter->second.Arrays.begin(); array_iter != obj_iter->second.Arrays.end(); array_iter ++ )
+				for( std::map<std::string,ModelArrays*>::const_iterator array_iter = obj_iter->second->Arrays.begin(); array_iter != obj_iter->second->Arrays.end(); array_iter ++ )
 				{
-					array_inst.BecomeInstance( &(array_iter->second) );
+					array_inst.BecomeInstance( array_iter->second );
 					
 					if( exploded )
 					{
 						Pos3D draw_pos( this );
 						
 						// Convert explosion vectors to worldspace.
-						Vec3D explosion_motion = obj_iter->second.GetExplosionMotion( ExplosionSeed(), &rando ) * exploded;
-						Vec3D modelspace_rotation_axis = obj_iter->second.GetExplosionRotationAxis( ExplosionSeed(), &rando );
+						Vec3D explosion_motion = obj_iter->second->GetExplosionMotion( ExplosionSeed(), &rando ) * exploded;
+						Vec3D modelspace_rotation_axis = obj_iter->second->GetExplosionRotationAxis( ExplosionSeed(), &rando );
 						Vec3D explosion_rotation_axis = (Fwd * modelspace_rotation_axis.X) + (Up * modelspace_rotation_axis.Y) + (Right * modelspace_rotation_axis.Z);
 						
 						draw_pos.MoveAlong( &Fwd, explosion_motion.X );
 						draw_pos.MoveAlong( &Up, explosion_motion.Y );
 						draw_pos.MoveAlong( &Right, explosion_motion.Z );
 						
-						double explosion_rotation_rate = obj_iter->second.GetExplosionRotationRate( ExplosionSeed(), &rando );
+						double explosion_rotation_rate = obj_iter->second->GetExplosionRotationRate( ExplosionSeed(), &rando );
 						draw_pos.Fwd.RotateAround( &explosion_rotation_axis, exploded * explosion_rotation_rate );
 						draw_pos.Up.RotateAround( &explosion_rotation_axis, exploded * explosion_rotation_rate );
 						draw_pos.Right.RotateAround( &explosion_rotation_axis, exploded * explosion_rotation_rate );
@@ -1843,13 +1851,14 @@ bool Ship::WillCollide( const GameObject *other, double dt, std::string *this_ob
 	else if( other_type == XWing::Object::SHIP )
 	{
 		Ship *ship = (Ship*) other;
+		uint8_t other_category = ship->Category();
 		
 		// No sequel nonsense.
 		if( ship->JumpedOut )
 			return false;
 		
 		// Don't let ships hit the Death Star exhaust port.
-		if( (this_category == ShipClass::CATEGORY_TARGET) || (ship->Category() == ShipClass::CATEGORY_TARGET) )
+		if( (this_category == ShipClass::CATEGORY_TARGET) || (other_category == ShipClass::CATEGORY_TARGET) )
 			return false;
 		
 		// Dead ships don't collide after a bit, and they never hit other dead ships.
@@ -1874,7 +1883,7 @@ bool Ship::WillCollide( const GameObject *other, double dt, std::string *this_ob
 				
 				// Don't detect collisions with destroyed subsystems.
 				std::set<std::string> objects2;
-				for( std::map<std::string,ModelObject>::const_iterator other_obj_iter = ship->Shape.Objects.begin(); other_obj_iter != ship->Shape.Objects.end(); other_obj_iter ++ )
+				for( std::map<std::string,ModelObject*>::const_iterator other_obj_iter = ship->Shape.Objects.begin(); other_obj_iter != ship->Shape.Objects.end(); other_obj_iter ++ )
 				{
 					std::map<std::string,double>::const_iterator subsystem_iter = Subsystems.find( other_obj_iter->first );
 					if( (subsystem_iter == Subsystems.end()) || (subsystem_iter->second > 0.) )
@@ -1884,7 +1893,7 @@ bool Ship::WillCollide( const GameObject *other, double dt, std::string *this_ob
 #if BLOCKMAP_USAGE
 				Vec3D relative_motion = (other->MotionVector - MotionVector) * dt;
 				Vec3D *motion2 = &relative_motion;
-				if( (this_category == ShipClass::CATEGORY_CAPITAL) && (ship->Category() == ShipClass::CATEGORY_CAPITAL) )
+				if( (this_category == ShipClass::CATEGORY_CAPITAL) && (other_category == ShipClass::CATEGORY_CAPITAL) )
 				{
 					// Performance tweaks for Fleet Battle.
 					motion2 = NULL;
@@ -1893,8 +1902,8 @@ bool Ship::WillCollide( const GameObject *other, double dt, std::string *this_ob
 #endif
 #if BLOCKMAP_USAGE >= 2
 				return Shape.CollidesWithModel( this, loc, &objects, this_object, exploded, explosion_seed, &(ship->Shape), other, motion2, &objects2, other_object, other_exploded, other_explosion_seed, block_size );
-#endif
-				// ===== Beginning of section ignored when BLOCKMAP_USAGE >= 2 =====
+#else  // ===== Beginning of section ignored when BLOCKMAP_USAGE >= 2 =====
+				
 #if BLOCKMAP_USAGE
 				// Do a quick vertex blockmap overlap check.
 				if( ! Shape.CollidesWithModel( this, loc, &objects, NULL, exploded, explosion_seed, &(ship->Shape), other, motion2, &objects2, NULL, other_exploded, other_explosion_seed, block_size, false ) )
@@ -1904,76 +1913,76 @@ bool Ship::WillCollide( const GameObject *other, double dt, std::string *this_ob
 				std::map<const ModelArrays*,ModelArrays> other_arrays;
 				Vec3D motion = (MotionVector * dt) - (other->MotionVector * dt);
 				
-				for( std::map<std::string,ModelObject>::const_iterator obj_iter = Shape.Objects.begin(); obj_iter != Shape.Objects.end(); obj_iter ++ )
+				for( std::map<std::string,ModelObject*>::const_iterator obj_iter = Shape.Objects.begin(); obj_iter != Shape.Objects.end(); obj_iter ++ )
 				{
 					// Don't detect collisions with destroyed subsystems.
 					std::map<std::string,double>::const_iterator subsystem_iter = Subsystems.find( obj_iter->first );
 					if( (subsystem_iter != Subsystems.end()) && (subsystem_iter->second <= 0.) )
 						continue;
 					
-					Pos3D center = obj_iter->second.CenterPoint;
+					Pos3D center = obj_iter->second->CenterPoint;
 					center.X += X;
 					center.Y += Y;
 					center.Z += Z;
 					
 					if( exploded )
 					{
-						Vec3D modelspace_explosion_motion = obj_iter->second.GetExplosionMotion( explosion_seed, &rando );
+						Vec3D modelspace_explosion_motion = obj_iter->second->GetExplosionMotion( explosion_seed, &rando );
 						Vec3D worldspace_explosion_motion = Fwd * modelspace_explosion_motion.X + Up * modelspace_explosion_motion.Y + Right * modelspace_explosion_motion.Z;
 						center += worldspace_explosion_motion * exploded;
 					}
 					
 					std::vector<const ModelObject*> other_objects;
 					
-					for( std::map<std::string,ModelObject>::const_iterator other_obj_iter = ship->Shape.Objects.begin(); other_obj_iter != ship->Shape.Objects.end(); other_obj_iter ++ )
+					for( std::map<std::string,ModelObject*>::const_iterator other_obj_iter = ship->Shape.Objects.begin(); other_obj_iter != ship->Shape.Objects.end(); other_obj_iter ++ )
 					{
 						// Don't detect collisions with destroyed subsystems.
 						std::map<std::string,double>::const_iterator subsystem_iter = ship->Subsystems.find( other_obj_iter->first );
 						if( (subsystem_iter != ship->Subsystems.end()) && (subsystem_iter->second <= 0.) )
 							continue;
 						
-						Pos3D other_center = other_obj_iter->second.CenterPoint;
+						Pos3D other_center = other_obj_iter->second->CenterPoint;
 						other_center.X += other->X;
 						other_center.Y += other->Y;
 						other_center.Z += other->Z;
 						
 						if( other_exploded )
 						{
-							Vec3D modelspace_explosion_motion = other_obj_iter->second.GetExplosionMotion( other_explosion_seed, &rando );
+							Vec3D modelspace_explosion_motion = other_obj_iter->second->GetExplosionMotion( other_explosion_seed, &rando );
 							Vec3D worldspace_explosion_motion = other->Fwd * modelspace_explosion_motion.X + other->Up * modelspace_explosion_motion.Y + other->Right * modelspace_explosion_motion.Z;
 							other_center += worldspace_explosion_motion * other_exploded;
 						}
 						
 						// If these two objects don't pass near each other, don't bother checking faces.
 						// FIXME: Apply worldspace_explosion_motion to MotionVector.
-						if( Math3D::MinimumDistance( &center, &MotionVector, &other_center, &(other->MotionVector), dt ) > (obj_iter->second.MaxRadius + other_obj_iter->second.MaxRadius) )
+						if( Math3D::MinimumDistance( &center, &MotionVector, &other_center, &(other->MotionVector), dt ) > (obj_iter->second->MaxRadius + other_obj_iter->second->MaxRadius) )
 							continue;
 						
 						// This object is worth checking.
-						other_objects.push_back( &(other_obj_iter->second) );
+						other_objects.push_back( other_obj_iter->second );
 					}
 					
 					if( other_objects.size() )
 					{
-						for( std::map<std::string,ModelArrays>::const_iterator array_iter = obj_iter->second.Arrays.begin(); array_iter != obj_iter->second.Arrays.end(); array_iter ++ )
+						for( std::map<std::string,ModelArrays*>::const_iterator array_iter = obj_iter->second->Arrays.begin(); array_iter != obj_iter->second->Arrays.end(); array_iter ++ )
 						{
 							// Make the worldspace arrays for this.
-							array_inst.BecomeInstance( &(array_iter->second) );
+							array_inst.BecomeInstance( array_iter->second );
 							
 							if( exploded )
 							{
 								Pos3D draw_pos( this );
 								
 								// Convert explosion vectors to worldspace.
-								Vec3D explosion_motion = obj_iter->second.GetExplosionMotion( explosion_seed, &rando ) * exploded;
-								Vec3D modelspace_rotation_axis = obj_iter->second.GetExplosionRotationAxis( explosion_seed, &rando );
+								Vec3D explosion_motion = obj_iter->second->GetExplosionMotion( explosion_seed, &rando ) * exploded;
+								Vec3D modelspace_rotation_axis = obj_iter->second->GetExplosionRotationAxis( explosion_seed, &rando );
 								Vec3D explosion_rotation_axis = (Fwd * modelspace_rotation_axis.X) + (Up * modelspace_rotation_axis.Y) + (Right * modelspace_rotation_axis.Z);
 								
 								draw_pos.MoveAlong( &Fwd, explosion_motion.X );
 								draw_pos.MoveAlong( &Up, explosion_motion.Y );
 								draw_pos.MoveAlong( &Right, explosion_motion.Z );
 								
-								double explosion_rotation_rate = obj_iter->second.GetExplosionRotationRate( explosion_seed, &rando );
+								double explosion_rotation_rate = obj_iter->second->GetExplosionRotationRate( explosion_seed, &rando );
 								draw_pos.Fwd.RotateAround( &explosion_rotation_axis, exploded * explosion_rotation_rate );
 								draw_pos.Up.RotateAround( &explosion_rotation_axis, exploded * explosion_rotation_rate );
 								draw_pos.Right.RotateAround( &explosion_rotation_axis, exploded * explosion_rotation_rate );
@@ -2019,11 +2028,11 @@ bool Ship::WillCollide( const GameObject *other, double dt, std::string *this_ob
 							// All filters have passed, so it's time to do the hard work.
 							for( std::vector<const ModelObject*>::const_iterator other_obj_iter = other_close_objects.begin(); other_obj_iter != other_close_objects.end(); other_obj_iter ++ )
 							{
-								for( std::map<std::string,ModelArrays>::const_iterator other_array_iter = (*other_obj_iter)->Arrays.begin(); other_array_iter != (*other_obj_iter)->Arrays.end(); other_array_iter ++ )
+								for( std::map<std::string,ModelArrays*>::const_iterator other_array_iter = (*other_obj_iter)->Arrays.begin(); other_array_iter != (*other_obj_iter)->Arrays.end(); other_array_iter ++ )
 								{
-									if( other_arrays.find( &(other_array_iter->second) ) == other_arrays.end() )
+									if( other_arrays.find( other_array_iter->second ) == other_arrays.end() )
 									{
-										other_arrays[ &(other_array_iter->second) ].BecomeInstance( &(other_array_iter->second) );
+										other_arrays[ other_array_iter->second ].BecomeInstance( other_array_iter->second );
 										
 										if( other_exploded )
 										{
@@ -2043,14 +2052,14 @@ bool Ship::WillCollide( const GameObject *other, double dt, std::string *this_ob
 											draw_pos.Up.RotateAround( &explosion_rotation_axis, other_exploded * explosion_rotation_rate );
 											draw_pos.Right.RotateAround( &explosion_rotation_axis, other_exploded * explosion_rotation_rate );
 											
-											other_arrays[ &(other_array_iter->second) ].MakeWorldSpace( &draw_pos );
+											other_arrays[ other_array_iter->second ].MakeWorldSpace( &draw_pos );
 										}
 										else
-											other_arrays[ &(other_array_iter->second) ].MakeWorldSpace( other );
+											other_arrays[ other_array_iter->second ].MakeWorldSpace( other );
 									}
 									
-									GLdouble *other_worldspace = other_arrays[ &(other_array_iter->second) ].WorldSpaceVertexArray;
-									size_t other_vertex_count = other_arrays[ &(other_array_iter->second) ].VertexCount;
+									GLdouble *other_worldspace = other_arrays[ other_array_iter->second ].WorldSpaceVertexArray;
+									size_t other_vertex_count = other_arrays[ other_array_iter->second ].VertexCount;
 									
 									//std::vector<Pos3D> vertices1;
 									std::vector<Pos3D> vertices2;
@@ -2137,9 +2146,9 @@ bool Ship::WillCollide( const GameObject *other, double dt, std::string *this_ob
 				
 				// Complex collision detection found no hits.
 				return false;
+				
+#endif  // ===== End of section ignored when BLOCKMAP_USAGE >= 2 =====
 			}
-			
-			// ===== End of section ignored when BLOCKMAP_USAGE >= 2 =====
 			
 			// The other ship uses a simple spherical collision model.
 			return WillCollideWithSphere( other, ((Ship*)other)->Radius(), dt, this_object, loc, when );
@@ -2188,7 +2197,7 @@ bool Ship::WillCollideWithSphere( const GameObject *other, double other_radius, 
 	if( ComplexCollisionDetection() )
 	{
 		// Don't detect collisions with destroyed subsystems.
-		for( std::map<std::string,ModelObject>::const_iterator obj_iter = Shape.Objects.begin(); obj_iter != Shape.Objects.end(); obj_iter ++ )
+		for( std::map<std::string,ModelObject*>::const_iterator obj_iter = Shape.Objects.begin(); obj_iter != Shape.Objects.end(); obj_iter ++ )
 		{
 			std::map<std::string,double>::const_iterator subsystem_iter = Subsystems.find( obj_iter->first );
 			if( (subsystem_iter == Subsystems.end()) || (subsystem_iter->second > 0.) )
@@ -2211,7 +2220,7 @@ bool Ship::WillCollideWithSphere( const GameObject *other, double other_radius, 
 		Randomizer rando(explosion_seed);
 		ModelArrays array_inst;
 		Pos3D intersection;
-		for( std::map<std::string,ModelObject>::const_iterator obj_iter = Shape.Objects.begin(); obj_iter != Shape.Objects.end(); obj_iter ++ )
+		for( std::map<std::string,ModelObject*>::const_iterator obj_iter = Shape.Objects.begin(); obj_iter != Shape.Objects.end(); obj_iter ++ )
 		{
 			// Don't detect collisions with destroyed subsystems.
 			std::map<std::string,double>::const_iterator subsystem_iter = Subsystems.find( obj_iter->first );
@@ -2221,38 +2230,38 @@ bool Ship::WillCollideWithSphere( const GameObject *other, double other_radius, 
 			if( ! exploded )
 			{
 				// Get the worldspace center of object.
-				Pos3D modelspace_center = obj_iter->second.CenterPoint;
+				Pos3D modelspace_center = obj_iter->second->CenterPoint;
 				Vec3D offset = Fwd * modelspace_center.X + Up * modelspace_center.Y + Right * modelspace_center.Z;
 				/*
 				if( exploded )
-					offset += obj_iter->second.GetExplosionMotion( explosion_seed, &rando ) * exploded;
+					offset += obj_iter->second->GetExplosionMotion( explosion_seed, &rando ) * exploded;
 				*/
 				Pos3D center = *this + offset;
 				
 				// If these two objects don't pass near each other, don't bother checking faces.
 				// FIXME: Apply worldspace_explosion_motion to MotionVector.
-				if( Math3D::MinimumDistance( &center, &MotionVector, other, &(other->MotionVector), dt ) > (obj_iter->second.MaxRadius + other_radius) )
+				if( Math3D::MinimumDistance( &center, &MotionVector, other, &(other->MotionVector), dt ) > (obj_iter->second->MaxRadius + other_radius) )
 					continue;
 			}
 			
-			for( std::map<std::string,ModelArrays>::const_iterator array_iter = obj_iter->second.Arrays.begin(); array_iter != obj_iter->second.Arrays.end(); array_iter ++ )
+			for( std::map<std::string,ModelArrays*>::const_iterator array_iter = obj_iter->second->Arrays.begin(); array_iter != obj_iter->second->Arrays.end(); array_iter ++ )
 			{
-				array_inst.BecomeInstance( &(array_iter->second) );
+				array_inst.BecomeInstance( array_iter->second );
 				
 				if( exploded )
 				{
 					Pos3D draw_pos( this );
 					
 					// Convert explosion vectors to worldspace.
-					Vec3D explosion_motion = obj_iter->second.GetExplosionMotion( explosion_seed, &rando ) * exploded;
-					Vec3D modelspace_rotation_axis = obj_iter->second.GetExplosionRotationAxis( explosion_seed, &rando );
+					Vec3D explosion_motion = obj_iter->second->GetExplosionMotion( explosion_seed, &rando ) * exploded;
+					Vec3D modelspace_rotation_axis = obj_iter->second->GetExplosionRotationAxis( explosion_seed, &rando );
 					Vec3D explosion_rotation_axis = (Fwd * modelspace_rotation_axis.X) + (Up * modelspace_rotation_axis.Y) + (Right * modelspace_rotation_axis.Z);
 					
 					draw_pos.MoveAlong( &Fwd, explosion_motion.X );
 					draw_pos.MoveAlong( &Up, explosion_motion.Y );
 					draw_pos.MoveAlong( &Right, explosion_motion.Z );
 					
-					double explosion_rotation_rate = obj_iter->second.GetExplosionRotationRate( explosion_seed, &rando );
+					double explosion_rotation_rate = obj_iter->second->GetExplosionRotationRate( explosion_seed, &rando );
 					draw_pos.Fwd.RotateAround( &explosion_rotation_axis, exploded * explosion_rotation_rate );
 					draw_pos.Up.RotateAround( &explosion_rotation_axis, exploded * explosion_rotation_rate );
 					draw_pos.Right.RotateAround( &explosion_rotation_axis, exploded * explosion_rotation_rate );
@@ -2320,8 +2329,8 @@ void Ship::Update( double dt )
 		// Long-dead capital ship pieces fade away.
 		if( ClientSide() && (Category() == ShipClass::CATEGORY_CAPITAL) && (DeathClock.ElapsedSeconds() >= PiecesDangerousTime()) )
 		{
-			for( std::map<std::string,ModelMaterial>::iterator mtl_iter = Shape.Materials.begin(); mtl_iter != Shape.Materials.end(); mtl_iter ++ )
-				mtl_iter->second.Ambient.Alpha = std::max<float>( 0.f, mtl_iter->second.Ambient.Alpha - dt * 0.667 );
+			for( std::map<std::string,ModelMaterial*>::iterator mtl_iter = Shape.Materials.begin(); mtl_iter != Shape.Materials.end(); mtl_iter ++ )
+				mtl_iter->second->Ambient.Alpha = std::max<float>( 0.f, mtl_iter->second->Ambient.Alpha - dt * 0.667 );
 		}
 	}
 	else
@@ -2443,13 +2452,13 @@ void Ship::Draw( void )
 	float r = std::min<float>( 1.f, powf( engine_power, 0.6f ) * 1.02f );
 	float g = std::min<float>( 1.f, powf( engine_power, 1.3f ) * 1.01f );
 	float b = std::min<float>( 1.f, powf( engine_power, 1.5f ) * 1.01f );
-	for( std::map<std::string,ModelMaterial>::iterator mtl_iter = Shape.Materials.begin(); mtl_iter != Shape.Materials.end(); mtl_iter ++ )
+	for( std::map<std::string,ModelMaterial*>::iterator mtl_iter = Shape.Materials.begin(); mtl_iter != Shape.Materials.end(); mtl_iter ++ )
 	{
 		if( Str::FindInsensitive( mtl_iter->first, "Engine" ) >= 0 )
 		{
-			mtl_iter->second.Ambient.Red   = r;
-			mtl_iter->second.Ambient.Green = g;
-			mtl_iter->second.Ambient.Blue  = b;
+			mtl_iter->second->Ambient.Red   = r;
+			mtl_iter->second->Ambient.Green = g;
+			mtl_iter->second->Ambient.Blue  = b;
 		}
 	}
 	
@@ -2461,7 +2470,7 @@ void Ship::Draw( void )
 	{
 		// Build a list of all objects that don't have destroyed subsystems.
 		std::set<std::string> objects;
-		for( std::map<std::string,ModelObject>::const_iterator obj_iter = Shape.Objects.begin(); obj_iter != Shape.Objects.end(); obj_iter ++ )
+		for( std::map<std::string,ModelObject*>::const_iterator obj_iter = Shape.Objects.begin(); obj_iter != Shape.Objects.end(); obj_iter ++ )
 		{
 			std::map<std::string,double>::const_iterator subsystem_iter = Subsystems.find(obj_iter->first);
 			if( (subsystem_iter == Subsystems.end()) || (subsystem_iter->second > 0.) )
@@ -2496,7 +2505,7 @@ void Ship::DrawWireframeAt( const Pos3D *pos, const Color *color, double scale )
 	{
 		// Build a set of all objects that don't have destroyed subsystems.
 		std::set<std::string> objects;
-		for( std::map<std::string,ModelObject>::const_iterator obj_iter = Shape.Objects.begin(); obj_iter != Shape.Objects.end(); obj_iter ++ )
+		for( std::map<std::string,ModelObject*>::const_iterator obj_iter = Shape.Objects.begin(); obj_iter != Shape.Objects.end(); obj_iter ++ )
 		{
 			std::map<std::string,double>::const_iterator subsystem_iter = Subsystems.find(obj_iter->first);
 			if( (subsystem_iter == Subsystems.end()) || (subsystem_iter->second > 0.) )

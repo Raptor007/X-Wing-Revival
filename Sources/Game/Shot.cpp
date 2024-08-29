@@ -45,7 +45,7 @@ void Shot::Copy( const Shot *other, bool keep_pos )
 		MotionVector.Copy( &(other->MotionVector) );
 	}
 	Anim             = other->Anim;
-	Shape            = other->Shape;
+	Shape.BecomeInstance( &(other->Shape) );  // NOTE: This could be a problem if Shot.Shape is responsible for any allocated arrays, but it should just be an instance.
 	Drawn            = other->Drawn;
 	ShotType         = other->ShotType;
 	FiredFrom        = other->FiredFrom;
@@ -480,7 +480,7 @@ void Shot::StartAtWeapon( const GameObject *fired_from )
 			const Turret *turret = (const Turret*) fired_from;
 			Pos3D gun = turret->GunPos();
 			Copy( &gun );
-			MoveAlong( &(gun.Fwd), 2.2 );
+			MoveAlong( &(gun.Fwd), (ShotType == Shot::TYPE_QUAD_LASER_RED) ? 2.2 : ((turret->GunWidth > 2.4) ? 5. : 11.1) ); // FIXME: turret_shot_fwd in ShipClass?
 			MoveAlong( &(gun.Right), (WeaponIndex % 2) ? (turret->GunWidth * -1.) : turret->GunWidth );
 		}
 		else
@@ -595,10 +595,10 @@ void Shot::Update( double dt )
 			else if( target_ship && target_ship->ComplexCollisionDetection() )
 			{
 				// If a ship's origin is in empty space (ex: Star Destroyer) the model object Hull defines the point to aim at.
-				std::map<std::string,ModelObject>::const_iterator object_iter = target_ship->Shape.Objects.find("Hull");
-				if( (object_iter != target_ship->Shape.Objects.end()) && (object_iter->second.Points.size()) )
+				std::map<std::string,ModelObject*>::const_iterator object_iter = target_ship->Shape.Objects.find("Hull");
+				if( (object_iter != target_ship->Shape.Objects.end()) && (object_iter->second->Points.size()) )
 				{
-					Vec3D point = object_iter->second.Points.front();
+					Vec3D point = object_iter->second->Points.front();
 					vec_to_target += target_ship->Fwd   * point.X;
 					vec_to_target += target_ship->Up    * point.Y;
 					vec_to_target += target_ship->Right * point.Z;
@@ -774,21 +774,26 @@ void Shot::Draw( void )
 		
 		glBegin( GL_QUADS );
 			
+			// Muzzle flash on first frame.
+			double scale = 1.;
+			if( (! Drawn) && (ShotType != Shot::TYPE_QUAD_LASER_RED) && (ShotType != Shot::TYPE_MISSILE) && (ShotType != Shot::TYPE_TORPEDO) )
+				scale = ((ShotType == Shot::TYPE_TURBO_LASER_GREEN) || (ShotType == Shot::TYPE_TURBO_LASER_GREEN)) ? 4. : 2.5;
+			
 			// Outside
 			glTexCoord2i( 0, 0 );
-			glVertex3d( X + out.X, Y + out.Y, Z + out.Z );
+			glVertex3d( X + out.X * scale, Y + out.Y * scale, Z + out.Z * scale );
 			
 			// Clockwise
 			glTexCoord2i( 0, 1 );
-			glVertex3d( X + cw.X, Y + cw.Y, Z + cw.Z );
+			glVertex3d( X + cw.X * scale, Y + cw.Y * scale, Z + cw.Z * scale );
 			
 			// Inside
 			glTexCoord2i( 1, 1 );
-			glVertex3d( X + in.X, Y + in.Y, Z + in.Z );
+			glVertex3d( X + in.X * scale, Y + in.Y * scale, Z + in.Z * scale );
 			
 			// Counter-clockwise
 			glTexCoord2i( 1, 0 );
-			glVertex3d( X + ccw.X, Y + ccw.Y, Z + ccw.Z );
+			glVertex3d( X + ccw.X * scale, Y + ccw.Y * scale, Z + ccw.Z * scale );
 			
 		glEnd();
 		

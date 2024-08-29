@@ -28,6 +28,7 @@
 
 XWingServer::XWingServer( std::string version ) : RaptorServer( "X-Wing Revival", version )
 {
+	MaxFPS = 30.;  // FIXME: Temporary until I fix collision detection stutter.
 	GameType = XWing::GameType::TEAM_ELIMINATION;
 	PlayersTakeEmptyShips = false;
 	Respawn = false;
@@ -688,7 +689,7 @@ void XWingServer::Update( double dt )
 			if( obj_iter->second->Type() == XWing::Object::SHIP )
 			{
 				Ship *ship = (Ship*) obj_iter->second;
-				ships[ obj_iter->second->ID ] = ship;
+				ships[ ship->ID ] = ship;
 				if( (GameType == XWing::GameType::FLEET_BATTLE) && ship->IsMissionObjective && (ship->Health > 0.) && (ship->Team == XWing::Team::REBEL) )
 					rebel_flagship = ship;
 				if( (GameType == XWing::GameType::FLEET_BATTLE) && ship->IsMissionObjective && (ship->Health > 0.) && (ship->Team == XWing::Team::EMPIRE) )
@@ -783,13 +784,13 @@ void XWingServer::Update( double dt )
 					if( (subsystem_iter != ship1->Subsystems.end()) && (subsystem_iter->second <= 0.) )
 					{
 						// Show an explosion to players for the destroyed subsystem.
-						std::map<std::string,ModelObject>::iterator obj_iter = ship1->Shape.Objects.find( subsystem_iter->first );
+						std::map<std::string,ModelObject*>::iterator obj_iter = ship1->Shape.Objects.find( subsystem_iter->first );
 						double radius = ship1->Radius();
 						Vec3D offset;
 						if( obj_iter != ship1->Shape.Objects.end() )
 						{
-							radius = obj_iter->second.GetMaxRadius();
-							Pos3D center = obj_iter->second.GetCenterPoint();
+							radius = obj_iter->second->GetMaxRadius();
+							Pos3D center = obj_iter->second->GetCenterPoint();
 							offset = (ship1->Fwd * center.X) + (ship1->Up * center.Y) + (ship1->Right * center.Z);
 						}
 						Packet explosion( XWing::Packet::EXPLOSION );
@@ -936,13 +937,13 @@ void XWingServer::Update( double dt )
 					if( (subsystem_iter != ship2->Subsystems.end()) && (subsystem_iter->second <= 0.) )
 					{
 						// Show an explosion to players for the destroyed subsystem.
-						std::map<std::string,ModelObject>::iterator obj_iter = ship2->Shape.Objects.find( subsystem_iter->first );
+						std::map<std::string,ModelObject*>::iterator obj_iter = ship2->Shape.Objects.find( subsystem_iter->first );
 						double radius = ship2->Radius();
 						Vec3D offset;
 						if( obj_iter != ship2->Shape.Objects.end() )
 						{
-							radius = obj_iter->second.GetMaxRadius();
-							Pos3D center = obj_iter->second.GetCenterPoint();
+							radius = obj_iter->second->GetMaxRadius();
+							Pos3D center = obj_iter->second->GetCenterPoint();
 							offset = (ship2->Fwd * center.X) + (ship2->Up * center.Y) + (ship2->Right * center.Z);
 						}
 						Packet explosion( XWing::Packet::EXPLOSION );
@@ -1181,20 +1182,21 @@ void XWingServer::Update( double dt )
 					shot_hit.AddUInt( shot->FiredFrom );  // FIXME: If fired from an AI turret, this should probably be replaced with the turret's ParentID.
 					Net.SendAll( &shot_hit );
 					
-					TriggerEvent( MissionEvent::TRIGGER_ON_HIT, ship );
+					GameObject *fired_from = Data.GetObject( shot->FiredFrom );
+					TriggerEvent( MissionEvent::TRIGGER_ON_HIT, ship, fired_from );
 					if( ship->Health < prev_health )
-						TriggerEvent( MissionEvent::TRIGGER_ON_DAMAGE, ship );
+						TriggerEvent( MissionEvent::TRIGGER_ON_DAMAGE, ship, fired_from );
 					
 					if( (subsystem_iter != ship->Subsystems.end()) && (subsystem_iter->second <= 0.) )
 					{
 						// Show an explosion to players for the destroyed subsystem.
-						std::map<std::string,ModelObject>::iterator obj_iter = ship->Shape.Objects.find( subsystem_iter->first );
+						std::map<std::string,ModelObject*>::iterator obj_iter = ship->Shape.Objects.find( subsystem_iter->first );
 						double radius = ship->Radius();
 						Vec3D offset;
 						if( obj_iter != ship->Shape.Objects.end() )
 						{
-							radius = obj_iter->second.GetMaxRadius();
-							Pos3D center = obj_iter->second.GetCenterPoint();
+							radius = obj_iter->second->GetMaxRadius();
+							Pos3D center = obj_iter->second->GetCenterPoint();
 							offset = (ship->Fwd * center.X) + (ship->Up * center.Y) + (ship->Right * center.Z);
 						}
 						Packet explosion( XWing::Packet::EXPLOSION );
@@ -1340,8 +1342,9 @@ void XWingServer::Update( double dt )
 					shot_hit.AddDouble( shot->PrevPos.Z );
 					Net.SendAll( &shot_hit );
 					
-					TriggerEvent( MissionEvent::TRIGGER_ON_HIT,    turret );
-					TriggerEvent( MissionEvent::TRIGGER_ON_DAMAGE, turret );
+					GameObject *fired_from = Data.GetObject( shot->FiredFrom );
+					TriggerEvent( MissionEvent::TRIGGER_ON_HIT,    turret, fired_from );
+					TriggerEvent( MissionEvent::TRIGGER_ON_DAMAGE, turret, fired_from );
 				}
 				
 				if( (shot->ShotType != Shot::TYPE_SUPERLASER) || ! Data.PropertyAsBool("superlaser_penetrate",true) )
@@ -1948,7 +1951,10 @@ void XWingServer::Update( double dt )
 		Data.Lock.Unlock();
 		
 		
-		uint32_t collision_groups = std::max<int>( 1, Data.PropertyAsInt("ai_optimize",6,1) );
+		int ai_optimize = Data.PropertyAsInt("ai_optimize",-1,1);
+		if( ai_optimize < 0 )
+			ai_optimize = MaxFPS * 0.334;
+		uint32_t collision_groups = std::max<int>( 1, ai_optimize );
 		#define COLLISION_GROUPS collision_groups
 		/*
 		if( CollisionClock.ElapsedSeconds() > 0.1 )
@@ -1973,6 +1979,7 @@ void XWingServer::Update( double dt )
 		bool ai_flock     = Data.PropertyAsBool("ai_flock");
 		bool ai_wasteful  = Data.PropertyAsBool("ai_wasteful");
 		bool ai_ceasefire = Data.PropertyAsBool("ai_ceasefire");
+		bool rebel_ceasefire = Data.PropertyAsBool("rebel_ceasefire"), empire_ceasefire = Data.PropertyAsBool("empire_ceasefire");
 		bool ai_stop      = Data.PropertyAsBool("ai_stop");
 		bool ai_blind     = Data.PropertyAsBool("ai_blind");
 		bool ai_respawn   = Data.PropertyAsBool("ai_respawn",Respawn);
@@ -2184,12 +2191,12 @@ void XWingServer::Update( double dt )
 					if( ((ship->Category() == ShipClass::CATEGORY_BOMBER) || (ship->Category() == ShipClass::CATEGORY_CAPITAL))
 					&&  ((! able_to_respawn) || ((ship->Category() == ShipClass::CATEGORY_CAPITAL) && ai_sith && ! players_on_team)) )
 					{
-						if( std::find( potential_targets.begin(), potential_targets.end(), empire_flagship ) != potential_targets.end() )
+						if( empire_flagship && (std::find( potential_targets.begin(), potential_targets.end(), empire_flagship ) != potential_targets.end()) )
 						{
 							potential_targets.clear();
 							potential_targets.push_back( empire_flagship );
 						}
-						else if( std::find( potential_targets.begin(), potential_targets.end(), rebel_flagship ) != potential_targets.end() )
+						else if( rebel_flagship && (std::find( potential_targets.begin(), potential_targets.end(), rebel_flagship ) != potential_targets.end()) )
 						{
 							potential_targets.clear();
 							potential_targets.push_back( rebel_flagship );
@@ -2221,6 +2228,23 @@ void XWingServer::Update( double dt )
 							potential_targets = primary_targets;
 					}
 					
+					// Don't chase the squirrels.
+					if( GameType != XWing::GameType::BATTLE_OF_YAVIN )
+					{
+						std::vector<GameObject*> not_squirrels;
+						double ship_center_dist = sqrt( ship->X * ship->X + ship->Y * ship->Y + ship->Z * ship->Z );
+						for( std::vector<GameObject*>::iterator target_iter = potential_targets.begin(); target_iter != potential_targets.end(); target_iter ++ )
+						{
+							double target_center_dist = sqrt( (*target_iter)->X * (*target_iter)->X + (*target_iter)->Y * (*target_iter)->Y + (*target_iter)->Z * (*target_iter)->Z );
+							if( (target_center_dist > ship_center_dist) && ((ship_center_dist > 7000.) || (target_center_dist > 8000.)) )
+								continue;
+							
+							not_squirrels.push_back( *target_iter );
+						}
+						if( not_squirrels.size() )
+							potential_targets = not_squirrels;
+					}
+					
 					// Make sure we don't go chasing distant targets when there are nearby ones.
 					std::vector<GameObject*> close_targets;
 					for( std::vector<GameObject*>::iterator target_iter = potential_targets.begin(); target_iter != potential_targets.end(); target_iter ++ )
@@ -2228,6 +2252,7 @@ void XWingServer::Update( double dt )
 						double dist = (*target_iter)->Dist( ship );
 						if( dist < 2000. )
 							close_targets.push_back( *target_iter );
+						
 						if( (*target_iter)->Type() == XWing::Object::SHIP )
 						{
 							Ship *potential_ship = (Ship*) *target_iter;
@@ -2360,10 +2385,10 @@ void XWingServer::Update( double dt )
 						{
 							if( (subsystem_iter->second > 0.) && (strncmp( subsystem_iter->first.c_str(), "ShieldGen", strlen("ShieldGen") ) == 0) )
 							{
-								std::map<std::string,ModelObject>::iterator object_iter = target_ship->Shape.Objects.find( subsystem_iter->first );
+								std::map<std::string,ModelObject*>::iterator object_iter = target_ship->Shape.Objects.find( subsystem_iter->first );
 								if( object_iter != target_ship->Shape.Objects.end() )
 								{
-									Pos3D offset = object_iter->second.GetCenterPoint();
+									Pos3D offset = object_iter->second->GetCenterPoint();
 									vec_to_target += target_ship->Fwd   * offset.X;
 									vec_to_target += target_ship->Up    * offset.Y;
 									vec_to_target += target_ship->Right * offset.Z;
@@ -2382,10 +2407,10 @@ void XWingServer::Update( double dt )
 							{
 								if( (subsystem_iter->second > 0.) && (strncmp( subsystem_iter->first.c_str(), "Critical", strlen("Critical") ) == 0) )
 								{
-									std::map<std::string,ModelObject>::iterator object_iter = target_ship->Shape.Objects.find( subsystem_iter->first );
+									std::map<std::string,ModelObject*>::iterator object_iter = target_ship->Shape.Objects.find( subsystem_iter->first );
 									if( object_iter != target_ship->Shape.Objects.end() )
 									{
-										Pos3D offset = object_iter->second.GetCenterPoint();
+										Pos3D offset = object_iter->second->GetCenterPoint();
 										vec_to_target += target_ship->Fwd   * offset.X;
 										vec_to_target += target_ship->Up    * offset.Y;
 										vec_to_target += target_ship->Right * offset.Z;
@@ -2401,10 +2426,10 @@ void XWingServer::Update( double dt )
 					// If a ship's origin is in empty space (ex: Star Destroyer) the model object Hull defines the point to aim at.
 					if( target_ship && (! target_subsystem) && (target_ship->Category() == ShipClass::CATEGORY_CAPITAL) && target_ship->ComplexCollisionDetection() )
 					{
-						std::map<std::string,ModelObject>::const_iterator object_iter = target_ship->Shape.Objects.find("Hull");
-						if( (object_iter != target_ship->Shape.Objects.end()) && (object_iter->second.Points.size()) )
+						std::map<std::string,ModelObject*>::const_iterator object_iter = target_ship->Shape.Objects.find("Hull");
+						if( (object_iter != target_ship->Shape.Objects.end()) && object_iter->second->Points.size() )
 						{
-							Vec3D point = object_iter->second.Points.front();
+							Vec3D point = object_iter->second->Points.front();
 							vec_to_target += target_ship->Fwd   * point.X;
 							vec_to_target += target_ship->Up    * point.Y;
 							vec_to_target += target_ship->Right * point.Z;
@@ -2532,8 +2557,8 @@ void XWingServer::Update( double dt )
 					else if( (target->Type() == XWing::Object::TURRET) && (((Turret*)( target ))->Health <= 0.) )
 						ship->Firing = false;
 					
-					// Dodge any friendly ships blocking our shot.
-					if( ship->Firing && ship->Team )
+					// Dodge any friendly fighters blocking our shot.
+					if( ship->Firing && ship->Team && (ship->Category() != ShipClass::CATEGORY_CAPITAL) )
 					{
 						Shot shot;
 						shot.Copy( ship );
@@ -2546,6 +2571,8 @@ void XWingServer::Update( double dt )
 						for( std::map<uint32_t,Ship*>::const_iterator ship_iter2 = ships.begin(); ship_iter2 != ships.end(); ship_iter2 ++ )
 						{
 							if( ship_iter2->second == ship )
+								continue;
+							if( ship_iter2->second->Category() == ShipClass::CATEGORY_CAPITAL )
 								continue;
 							if( ship_iter2->second->Team == ship->Team )
 							{
@@ -2650,14 +2677,36 @@ void XWingServer::Update( double dt )
 				{
 					bool small_ship = (ship->Category() != ShipClass::CATEGORY_CAPITAL);
 					double pitch_rate = ship->Class ? std::min<double>( ship->Class->PitchSlow, ship->Class->PitchFast ) : ship->MaxPitch();
-					double pitch_time = pitch_rate ? (90. / pitch_rate) : 2.;
+					double pitch_time = pitch_rate ? (180. / pitch_rate) : 3.;
 					
 					// See if we're about to run into something.
 					//Pos3D hit_loc = CollisionAt[ ship->ID ];
 					const GameObject *would_hit = Data.GetObject( CollisionWith[ ship->ID ] );
 					if( (ship->ID % COLLISION_GROUPS) == CollisionGroup )
 					{
-						would_hit = small_ship ? ship->FindCollision( pitch_time /* , &hit_loc */ ) : NULL;
+						if( small_ship )
+							would_hit = ship->FindCollision( pitch_time /* , &hit_loc */ );
+						else
+						{
+							would_hit = NULL;
+							for( std::map<uint32_t,Ship*>::const_iterator ship_iter2 = ships.begin(); ship_iter2 != ships.end(); ship_iter2 ++ )
+							{
+								const Ship *other_ship = ship_iter2->second;
+								if( ship == other_ship )
+									continue;
+								if( other_ship->Category() != ShipClass::CATEGORY_CAPITAL )
+									continue;
+								if( (other_ship->Health <= 0.) && (other_ship->DeathClock.ElapsedSeconds() >= other_ship->PiecesDangerousTime()) )
+									continue;
+								if( (other_ship->JumpProgress < 1.) || other_ship->JumpedOut )
+									continue;
+								if( ship->WillCollide( other_ship, 5. ) )
+								{
+									would_hit = other_ship;
+									break;  // FIXME: Check for nearest?
+								}
+							}
+						}
 						CollisionWith[ ship->ID ] = would_hit ? would_hit->ID : 0;
 					}
 					if( would_hit && (would_hit != target) )
@@ -2781,14 +2830,14 @@ void XWingServer::Update( double dt )
 						{
 							Pos3D dodging_pos = *dodging;
 							// If a ship's origin is in empty space (ex: Star Destroyer) the model object Hull defines the point to aim at.
-							std::map<std::string,ModelObject>::const_iterator object_iter = dodging_ship->Shape.Objects.find("Hull");
-							if( (object_iter != dodging_ship->Shape.Objects.end()) && (object_iter->second.Points.size()) )
+							std::map<std::string,ModelObject*>::const_iterator object_iter = dodging_ship->Shape.Objects.find("Hull");
+							if( (object_iter != dodging_ship->Shape.Objects.end()) && object_iter->second->Points.size() )
 							{
-								Vec3D point = object_iter->second.Points.front();
+								Vec3D point = object_iter->second->Points.front();
 								dodging_pos += dodging->Up * point.Y;  // Just adjust the vertical position.
 							}
-							Pos3D bow       = dodging_pos + dodging->Fwd * dodging_ship->Shape.Length * 0.4;
-							Pos3D stern     = dodging_pos + dodging->Fwd * dodging_ship->Shape.Length * -0.5;
+							Pos3D bow       = dodging_pos + dodging->Fwd * dodging_ship->Shape.Length * 0.5;
+							Pos3D stern     = dodging_pos + dodging->Fwd * dodging_ship->Shape.Length * -0.6;
 							Pos3D fuselage  = Math3D::NearestPointOnLine( ship, &bow, &stern );
 							Pos3D starboard = fuselage + dodging->Right * dodging_ship->Shape.Width * 0.4;
 							Pos3D port      = fuselage + dodging->Right * dodging_ship->Shape.Width * -0.4;
@@ -3105,7 +3154,7 @@ void XWingServer::Update( double dt )
 					}
 				}
 				
-				if( ai_ceasefire )
+				if( ai_ceasefire || (rebel_ceasefire && (ship->Team == XWing::Team::REBEL)) || (empire_ceasefire && (ship->Team == XWing::Team::EMPIRE)) )
 					ship->Firing = false;
 				
 				if( ai_stop )
@@ -3718,10 +3767,10 @@ void XWingServer::Update( double dt )
 						else if( target_ship && (target_ship->Category() == ShipClass::CATEGORY_CAPITAL) && target_ship->ComplexCollisionDetection() )
 						{
 							// If a ship's origin is in empty space (ex: Star Destroyer) the model object Hull defines the point to aim at.
-							std::map<std::string,ModelObject>::const_iterator object_iter = target_ship->Shape.Objects.find("Hull");
-							if( (object_iter != target_ship->Shape.Objects.end()) && (object_iter->second.Points.size()) )
+							std::map<std::string,ModelObject*>::const_iterator object_iter = target_ship->Shape.Objects.find("Hull");
+							if( (object_iter != target_ship->Shape.Objects.end()) && object_iter->second->Points.size() )
 							{
-								Vec3D point = object_iter->second.Points.front();
+								Vec3D point = object_iter->second->Points.front();
 								vec_to_target += target_ship->Fwd   * point.X;
 								vec_to_target += target_ship->Up    * point.Y;
 								vec_to_target += target_ship->Right * point.Z;
@@ -3757,7 +3806,7 @@ void XWingServer::Update( double dt )
 							
 							if( turret->ParentControl )
 								turret->Firing = parent_ship && parent_ship->Firing && ((i_dot_up > -0.02) || (t_dot_up > -0.02));
-							else if( ! ai_ceasefire )
+							else if( ! (ai_ceasefire || (rebel_ceasefire && (turret->Team == XWing::Team::REBEL)) || (empire_ceasefire && (turret->Team == XWing::Team::EMPIRE))) )
 								turret->Firing = (dist_to_target < turret->MaxFiringDist) && ((i_dot_up > -0.01) || (t_dot_up > -0.01));
 							
 							if( turret->Firing && parent_ship && (parent_ship->Category() == ShipClass::CATEGORY_CAPITAL) )
@@ -5515,8 +5564,8 @@ void XWingServer::BeginFlying( uint16_t player_id, bool respawn )
 			{
 				Waypoints[ 1 ].push_back( Waypoints[ 0 ][ i ] );
 				Waypoints[ 2 ].push_back( Waypoints[ 0 ][ i ] );
-				Waypoints[ 1 ][ i ].MoveAlong( &(deathstar->Up), 5.5 );
-				Waypoints[ 2 ][ i ].MoveAlong( &(deathstar->Up), -5.5 );
+				Waypoints[ 1 ][ i ].MoveAlong( &(deathstar->Up), 5. );
+				Waypoints[ 2 ][ i ].MoveAlong( &(deathstar->Up), -5. );
 			}
 			
 			// Add long distance approach paths for mission mode.
@@ -6700,7 +6749,7 @@ void XWingServer::ShipKilled( Ship *ship, GameObject *killer_obj, Player *killer
 			TeamScores[ ship->Team ] --;
 	}
 	
-	TriggerEvent( MissionEvent::TRIGGER_ON_DESTROYED, ship, victim );
+	TriggerEvent( MissionEvent::TRIGGER_ON_DESTROYED, ship, killer_obj, victim );
 }
 
 
@@ -6886,12 +6935,12 @@ void XWingServer::SpawnShipTurrets( const Ship *ship, std::set<uint32_t> *add_ob
 		}
 	}
 	
-	std::map<std::string,ModelObject>::const_iterator model_turrets = ship->Shape.Objects.find( "Turrets" );
+	std::map<std::string,ModelObject*>::const_iterator model_turrets = ship->Shape.Objects.find( "Turrets" );
 	if( model_turrets != ship->Shape.Objects.end() )
 	{
 		Vec3D up( 0., 1., 0. );
 		Vec3D fwd( 1., 0., 0. );
-		for( std::vector<Vec3D>::const_iterator point_iter = model_turrets->second.Points.begin(); point_iter != model_turrets->second.Points.end(); point_iter ++ )
+		for( std::vector<Vec3D>::const_iterator point_iter = model_turrets->second->Points.begin(); point_iter != model_turrets->second->Points.end(); point_iter ++ )
 		{
 			Turret *turret = new Turret();
 			turret->Data = &Data;
@@ -6901,7 +6950,7 @@ void XWingServer::SpawnShipTurrets( const Ship *ship, std::set<uint32_t> *add_ob
 			turret->Attach( ship, &(*point_iter), &up, &fwd, false );
 			Data.AddObject( turret );
 		}
-		for( std::vector< std::vector<Vec3D> >::const_iterator line_iter = model_turrets->second.Lines.begin(); line_iter != model_turrets->second.Lines.end(); line_iter ++ )
+		for( std::vector< std::vector<Vec3D> >::const_iterator line_iter = model_turrets->second->Lines.begin(); line_iter != model_turrets->second->Lines.end(); line_iter ++ )
 		{
 			if( line_iter->size() >= 2 )
 			{
@@ -6992,7 +7041,7 @@ void XWingServer::SendAddedObjects( const std::set<uint32_t> *add_object_ids )
 }
 
 
-void XWingServer::TriggerEvent( uint8_t trigger, const GameObject *object, const Player *player )
+void XWingServer::TriggerEvent( uint8_t trigger, const GameObject *object, const GameObject *by_obj, const Player *player )
 {
 	uint8_t team = XWing::Team::NONE;
 	uint8_t group = 0;
@@ -7029,17 +7078,52 @@ void XWingServer::TriggerEvent( uint8_t trigger, const GameObject *object, const
 	if( player_id )
 		name.clear();  // Do not match name triggers on player ships.
 	
-	TriggerEvent( trigger, team, group, objective, player_id, name );
+	uint16_t flags = 0;
+	flags |= player_id ? MissionEvent::TRIGGERFLAG_PLAYER : MissionEvent::TRIGGERFLAG_AI;
+	if( team == XWing::Team::REBEL )
+		flags |= MissionEvent::TRIGGERFLAG_REBEL;
+	else if( team == XWing::Team::EMPIRE )
+		flags |= MissionEvent::TRIGGERFLAG_EMPIRE;
+	if( objective )
+		flags |= MissionEvent::TRIGGERFLAG_OBJECTIVE;
+	
+	std::string by_name;
+	uint8_t by_group = 0;
+	if( by_obj )
+	{
+		uint16_t by_player = by_obj->PlayerID;
+		Turret *by_turret = (Turret*)( (by_obj->Type() == XWing::Object::TURRET) ? by_obj : NULL );
+		Ship *by_ship = by_turret ? by_turret->ParentShip() : (Ship*)( (by_obj->Type() == XWing::Object::SHIP) ? by_obj : NULL );
+		uint8_t by_team = (by_turret ? by_turret->Team : (by_ship ? by_ship->Team : (uint8_t)(XWing::Team::NONE)));
+		
+		if( by_ship )
+		{
+			by_name = by_ship->Name;
+			by_group = by_ship->Group;
+		}
+		
+		flags |= by_player ? MissionEvent::TRIGGERFLAG_BY_PLAYER : MissionEvent::TRIGGERFLAG_BY_AI;
+		if( by_team == XWing::Team::REBEL )
+			flags |= MissionEvent::TRIGGERFLAG_BY_REBEL;
+		else if( by_team == XWing::Team::EMPIRE )
+			flags |= MissionEvent::TRIGGERFLAG_BY_EMPIRE;
+		if( by_ship && by_ship->IsMissionObjective )
+			flags |= MissionEvent::TRIGGERFLAG_BY_OBJECTIVE;
+		if( by_turret )
+			flags |= MissionEvent::TRIGGERFLAG_BY_TURRET;
+	}
+	
+	TriggerEvent( trigger, flags, name, group, by_name, by_group );
 }
 
 
-void XWingServer::TriggerEvent( uint8_t trigger, uint8_t team, uint8_t group, bool objective, uint16_t player_id, std::string name )
+void XWingServer::TriggerEvent( uint8_t trigger, uint16_t flags, std::string target_name, uint8_t target_group, std::string by_name, uint8_t by_group )
 {
 	std::map< uint8_t, std::vector<MissionEvent> >::iterator trigger_iter = EventTriggers.find( trigger );
 	if( trigger_iter != EventTriggers.end() )
 	{
 		for( std::vector<MissionEvent>::iterator event_iter = trigger_iter->second.begin(); event_iter != trigger_iter->second.end(); event_iter ++ )
-			event_iter->Activated( team, group, objective, player_id, name );
+			event_iter->Activated( flags, target_name, target_group, by_name, by_group );
 	}
 }
 
@@ -7230,7 +7314,14 @@ std::string XWingServer::ChosenShip( const Player *player, bool allow_spectator 
 		if( ship == "Spectator" )
 			return allow_spectator ? ship : allowed_ships.at(0);
 		if( ship.empty() )
-			return allowed_ships.at(0);
+		{
+			std::string default_ship = allowed_ships.at(0);
+			if( Str::EqualsInsensitive( default_ship, "rebel_gunner" ) )
+				return "Rebel Gunner";
+			else if( Str::EqualsInsensitive( default_ship, "empire_gunner" ) )
+				return "Imperial Gunner";
+			return default_ship;
+		}
 		
 		bool gunner = (Str::FindInsensitive( ship, "Gunner" ) >= 0);
 		

@@ -1,6 +1,6 @@
 ----------------------------------------
 |            X-Wing Revival            |
-|       0.4.4 Alpha (2024-07-27)       |
+|       0.4.5 Alpha (2024-08-28)       |
 |     by Raptor007 (Blair Sherman)     |
 | http://raptor007.com/x-wing-revival/ |
 ----------------------------------------
@@ -492,6 +492,12 @@ console commands to execute, such as "sv gametype yavin" or "sv rebel_fighter A/
 
 
 == VERSION HISTORY ==
+
+Alpha 0.4.5 (2024-08-28):
+ * Fixed collision detection bugs and improved performance.
+ * Fixed missing Lamba shuttle textures on case-sensitive Linux.
+ * Added more detail to turret and starfighter laser firing animations.
+ * Campaign progress is now saved separately from settings.
 
 Alpha 0.4.4 (2024-07-27):
  * Joystick and controller deadzones can be precisely calibrated.

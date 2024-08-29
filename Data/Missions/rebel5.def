@@ -74,7 +74,7 @@ spawn T/F "Black 2" empire at -2030 50 100 from player facing 1 0 0
 spawn T/F "Black 3" empire at -2060 -50 100 from player facing 1 0 0
 
 at 4:35 if player alive
-spawn YT1300 "M.Falcon" rebel at 1000 100 0 from player facing -1 0 0
+spawn YT1300 "M.Falcon" rebel at 2000 0 100 from player facing -1 0 0
 
 at 4:36 while "M.Falcon" alive
 stfu true
@@ -111,7 +111,8 @@ alert r5_behind.wav It came from... behind!
 //alert r5_tail.wav Watch it, you've got one on your tail!
 
 on victory
-next_mission rebel1 // FIXME
+next_mission rebel6
+wait 1
 alert great_shot.wav Great shot, kid!
 wait 1.2
 message That was one in a million!

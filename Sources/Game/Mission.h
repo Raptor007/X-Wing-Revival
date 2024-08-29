@@ -30,11 +30,11 @@ public:
 class MissionEvent
 {
 public:
-	uint8_t Trigger, TargetGroup;
+	uint8_t Trigger, TargetGroup, ByGroup;
 	uint16_t TriggerFlags;
 	size_t Number;
 	double Time, Delay, Chance;
-	std::string Target;
+	std::string Target, ByName;
 	std::vector<std::string> TriggerIf;
 	
 	std::string Message, Sound;
@@ -48,18 +48,16 @@ public:
 	
 	std::string PropertyName, PropertyValue;
 	
-	//std::string ID;
-	//bool Enabled;
 	size_t Triggered, Used;
 	double GoTime;
 	
 	
-	MissionEvent( uint8_t trigger, uint16_t flags = 0x0000, double time = 0., double delay = 0., size_t number = 0, std::string target = "", uint8_t target_group = 0, std::vector<std::string> trigger_if = std::vector<std::string>(), double chance = 1. );
+	MissionEvent( uint8_t trigger, uint16_t flags = 0x0000, double time = 0., double delay = 0., size_t number = 0, std::string target = "", uint8_t target_group = 0, std::vector<std::string> trigger_if = std::vector<std::string>(), double chance = 1., std::string by_name = "", uint8_t by_group = 0 );
 	MissionEvent( const MissionEvent &other );
 	virtual ~MissionEvent();
 	
-	bool MatchesConditions( uint8_t team = XWing::Team::NONE, uint8_t group = 0, bool objective = false, uint16_t player_id = 0, std::string name = "" ) const;
-	void Activated( uint8_t team = XWing::Team::NONE, uint8_t group = 0, bool objective = false, uint16_t player_id = 0, std::string name = "" );
+	bool MatchesConditions( uint16_t flags, std::string target_name = "", uint8_t target_group = 0, std::string by_name = "", uint8_t by_group = 0 ) const;
+	void Activated( uint16_t flags, std::string target_name = "", uint8_t target_group = 0, std::string by_name = "", uint8_t by_group = 0 );
 	
 	bool Ready( void );
 	void FireWhenReady( std::set<uint32_t> *add_object_ids );
@@ -79,15 +77,23 @@ public:
 	
 	enum
 	{
-		TRIGGERFLAG_ONLY_REBEL     = 0x0001,
-		TRIGGERFLAG_ONLY_EMPIRE    = 0x0002,
-		TRIGGERFLAG_ONLY_PLAYER    = 0x0004,
-		TRIGGERFLAG_ONLY_AI        = 0x0008,
-		TRIGGERFLAG_ONLY_OBJECTIVE = 0x0010,
-		TRIGGERFLAG_ONLY_GROUP     = 0x0020,
+		TRIGGERFLAG_REBEL          = 0x0001,
+		TRIGGERFLAG_EMPIRE         = 0x0002,
+		TRIGGERFLAG_PLAYER         = 0x0004,
+		TRIGGERFLAG_AI             = 0x0008,
+		TRIGGERFLAG_OBJECTIVE      = 0x0010,
+		TRIGGERFLAG_GROUP          = 0x0020,
 		TRIGGERFLAG_TIME_REMAINING = 0x0040,
 		TRIGGERFLAG_REPEAT         = 0x0080,
-		TRIGGERFLAG_RECHECK_IF     = 0x0100
+		TRIGGERFLAG_RECHECK_IF     = 0x0100,
+		TRIGGERFLAG_BY_REBEL       = 0x0200,
+		TRIGGERFLAG_BY_EMPIRE      = 0x0400,
+		TRIGGERFLAG_BY_PLAYER      = 0x0800,
+		TRIGGERFLAG_BY_AI          = 0x1000,
+		TRIGGERFLAG_BY_OBJECTIVE   = 0x2000,
+		TRIGGERFLAG_BY_GROUP       = 0x4000,
+		TRIGGERFLAG_BY_TURRET      = 0x8000,
+		TRIGGERFLAGS_BY            = 0xFE00
 	};
 	
 	enum

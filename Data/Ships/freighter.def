@@ -1,0 +1,27 @@
+id FRT
+name Freighter
+category capital
+team any
+radius 75
+speed 25
+accel 8
+roll 5 4
+pitch 4 3
+yaw 4 3
+health 1500
+shield 2000
+recover 30
+recharge 1
+ramming 2000
+explode 0.1
+engine 9 0 -51.6 engine_blue.ani 7 1 1 1 0.333
+engine 6 0 -51.7 engine_blue.ani 7 1 1 1 0.333
+engine 3 0 -51.8 engine_blue.ani 7 1 1 1 0.333
+engine 0 0 -51.9 engine_blue.ani 7 1 1 1 0.333
+engine -3 0 -51.8 engine_blue.ani 7 1 1 1 0.333
+engine -6 0 -51.7 engine_blue.ani 7 1 1 1 0.333
+engine -9 0 -51.6 engine_blue.ani 7 1 1 1 0.333
+model freighter.obj
+model_collision freighter.obj
+cockpit freighter.obj 0 10 37
+model_scale 0.022

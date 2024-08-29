@@ -145,7 +145,7 @@ bool DeathStarBox::WillCollide( const GameObject *other, double dt, std::string 
 			{
 				Vec3D ship_motion = ship->MotionVector * dt;
 				ModelArrays array_inst;
-				for( std::map<std::string,ModelObject>::const_iterator obj_iter = ship->Shape.Objects.begin(); obj_iter != ship->Shape.Objects.end(); obj_iter ++ )
+				for( std::map<std::string,ModelObject*>::const_iterator obj_iter = ship->Shape.Objects.begin(); obj_iter != ship->Shape.Objects.end(); obj_iter ++ )
 				{
 					/*
 					// Don't detect collisions with destroyed subsystems.
@@ -153,9 +153,9 @@ bool DeathStarBox::WillCollide( const GameObject *other, double dt, std::string 
 					if( (subsystem_iter != ship->Subsystems.end()) && (subsystem_iter->second <= 0.) )
 						continue;
 					*/
-					for( std::map<std::string,ModelArrays>::const_iterator array_iter = obj_iter->second.Arrays.begin(); array_iter != obj_iter->second.Arrays.end(); array_iter ++ )
+					for( std::map<std::string,ModelArrays*>::const_iterator array_iter = obj_iter->second->Arrays.begin(); array_iter != obj_iter->second->Arrays.end(); array_iter ++ )
 					{
-						array_inst.BecomeInstance( &(array_iter->second) );
+						array_inst.BecomeInstance( array_iter->second );
 						array_inst.MakeWorldSpace( ship );
 						for( size_t i = 0; i < array_inst.VertexCount; i ++ )
 						{

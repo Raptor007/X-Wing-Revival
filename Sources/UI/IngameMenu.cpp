@@ -33,7 +33,21 @@ IngameMenu::IngameMenu( void )
 	
 	AddElement( new IngameMenuResumeButton( &button_rect, ButtonFont ));
 	
-	if( Raptor::Game->Data.PropertyAsBool("respawn")
+	bool respawn = Raptor::Game->Data.PropertyAsBool("respawn");
+	bool campaign = false;
+	if( Raptor::Game->Data.PropertyAsString("gametype") == "mission" )
+	{
+		// Campaign missions do not allow respawn.
+		// FIXME: Server should set mission_respawn property and we should check that instead.
+		std::string mission = Raptor::Game->Data.PropertyAsString("mission");
+		if( Str::BeginsWith( mission, "rebel" ) || Str::BeginsWith( mission, "empire" ) )
+		{
+			respawn = false;
+			campaign = true;
+		}
+	}
+	
+	if( respawn
 	&&  Raptor::Game->Data.PropertyAsBool("allow_ship_change",true)
 	&& (Raptor::Game->Data.PropertyAsString("player_ship").empty()  || Str::Count(Raptor::Game->Data.PropertyAsString("player_ship"), " "))
 	&& (Raptor::Game->Data.PropertyAsString("player_ships").empty() || Str::Count(Raptor::Game->Data.PropertyAsString("player_ships")," ")) )
@@ -41,7 +55,7 @@ IngameMenu::IngameMenu( void )
 		AddElement( new IngameMenuShipDropDown( &button_rect, ButtonFont ));
 		AddElement( new IngameMenuGroupDropDown( &button_rect, ButtonFont ));
 	}
-	else if( player_team != "Spectator" )
+	else if( (player_team != "Spectator") && ! campaign )
 		AddElement( new IngameMenuGroupDropDown( &button_rect, ButtonFont ));
 	AddElement( new IngameMenuPrefsButton( &button_rect, ButtonFont ));
 	AddElement( new IngameMenuLeaveButton( &button_rect, ButtonFont ));

@@ -24,6 +24,7 @@ xw_start()
   then
     echo "$SERVICE is already running!"
   else
+    as_user "screen -wipe >/dev/null"
     echo "Starting $SERVICE..."
     as_user "cd $GAMEPATH && screen -S $LABEL -dm /bin/sh -c 'stdbuf -oL -eL ./$SERVICE $PARAMS >>server.log 2>>server.log'"
     sleep 0.5

@@ -90,8 +90,8 @@ public:
 	
 	void SendAddedObjects( const std::set<uint32_t> *add_object_ids );
 	
-	void TriggerEvent( uint8_t trigger, const GameObject *object, const Player *player = NULL );
-	void TriggerEvent( uint8_t trigger, uint8_t team = XWing::Team::NONE, uint8_t group = 0, bool objective = false, uint16_t player_id = 0, std::string name = "" );
+	void TriggerEvent( uint8_t trigger, const GameObject *object, const GameObject *by_obj = NULL, const Player *player = NULL );
+	void TriggerEvent( uint8_t trigger, uint16_t flags, std::string target_name = "", uint8_t target_group = 0, std::string by_name = "", uint8_t by_group = 0 );
 	
 	bool CheckCondition( const std::vector<std::string> &terms );
 	std::set<Ship*> MatchingShips( const std::vector<std::string> &terms );

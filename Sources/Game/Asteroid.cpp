@@ -55,17 +55,17 @@ void Asteroid::ClientInit( void )
 	if( Shape && Shape->Materials.size() )
 	{
 		// Use the model's values if available.
-		for( std::map<std::string,ModelMaterial>::iterator mtl_iter = Shape->Materials.begin(); mtl_iter != Shape->Materials.end(); mtl_iter ++ )
+		for( std::map<std::string,ModelMaterial*>::iterator mtl_iter = Shape->Materials.begin(); mtl_iter != Shape->Materials.end(); mtl_iter ++ )
 		{
 			// We want to match the most-used material of the model.
-			if( (int) mtl_iter->second.Arrays.VertexCount > best_vertex_count )
+			if( (int) mtl_iter->second->Arrays.VertexCount > best_vertex_count )
 			{
-				Texture.BecomeInstance( &(mtl_iter->second.Texture) );
-				Ambient = mtl_iter->second.Ambient;
-				Diffuse = mtl_iter->second.Diffuse;
-				Specular = mtl_iter->second.Specular;
-				Shininess = mtl_iter->second.Shininess;
-				best_vertex_count = mtl_iter->second.Arrays.VertexCount;
+				Texture.BecomeInstance( &(mtl_iter->second->Texture) );
+				Ambient = mtl_iter->second->Ambient;
+				Diffuse = mtl_iter->second->Diffuse;
+				Specular = mtl_iter->second->Specular;
+				Shininess = mtl_iter->second->Shininess;
+				best_vertex_count = mtl_iter->second->Arrays.VertexCount;
 			}
 		}
 	}

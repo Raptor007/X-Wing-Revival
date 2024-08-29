@@ -69,17 +69,17 @@ void DeathStar::ClientInit( void )
 	if( DetailSide.Materials.size() )
 	{
 		// Use the model's values if available.
-		for( std::map<std::string,ModelMaterial>::iterator mtl_iter = DetailSide.Materials.begin(); mtl_iter != DetailSide.Materials.end(); mtl_iter ++ )
+		for( std::map<std::string,ModelMaterial*>::iterator mtl_iter = DetailSide.Materials.begin(); mtl_iter != DetailSide.Materials.end(); mtl_iter ++ )
 		{
 			// We want to match the most-used material of the model.
-			if( (int) mtl_iter->second.Arrays.VertexCount > best_vertex_count )
+			if( (int) mtl_iter->second->Arrays.VertexCount > best_vertex_count )
 			{
-				Texture.BecomeInstance( &(mtl_iter->second.Texture) );
-				Ambient = mtl_iter->second.Ambient;
-				Diffuse = mtl_iter->second.Diffuse;
-				Specular = mtl_iter->second.Specular;
-				Shininess = mtl_iter->second.Shininess;
-				best_vertex_count = mtl_iter->second.Arrays.VertexCount;
+				Texture.BecomeInstance( &(mtl_iter->second->Texture) );
+				Ambient = mtl_iter->second->Ambient;
+				Diffuse = mtl_iter->second->Diffuse;
+				Specular = mtl_iter->second->Specular;
+				Shininess = mtl_iter->second->Shininess;
+				best_vertex_count = mtl_iter->second->Arrays.VertexCount;
 			}
 		}
 	}
@@ -95,16 +95,16 @@ void DeathStar::ClientInit( void )
 		best_vertex_count = -1;
 		
 		// Use the model's values if available.
-		for( std::map<std::string,ModelMaterial>::iterator mtl_iter = DetailBottom.Materials.begin(); mtl_iter != DetailBottom.Materials.end(); mtl_iter ++ )
+		for( std::map<std::string,ModelMaterial*>::iterator mtl_iter = DetailBottom.Materials.begin(); mtl_iter != DetailBottom.Materials.end(); mtl_iter ++ )
 		{
 			// We want to match the most-used material of the model.
-			if( (int) mtl_iter->second.Arrays.VertexCount > best_vertex_count )
+			if( (int) mtl_iter->second->Arrays.VertexCount > best_vertex_count )
 			{
-				BottomAmbient = mtl_iter->second.Ambient;
-				BottomDiffuse = mtl_iter->second.Diffuse;
-				BottomSpecular = mtl_iter->second.Specular;
-				BottomShininess = mtl_iter->second.Shininess;
-				best_vertex_count = mtl_iter->second.Arrays.VertexCount;
+				BottomAmbient = mtl_iter->second->Ambient;
+				BottomDiffuse = mtl_iter->second->Diffuse;
+				BottomSpecular = mtl_iter->second->Specular;
+				BottomShininess = mtl_iter->second->Shininess;
+				best_vertex_count = mtl_iter->second->Arrays.VertexCount;
 			}
 		}
 	}
@@ -195,16 +195,16 @@ bool DeathStar::WillCollide( const GameObject *other, double dt, std::string *th
 				return false;
 			
 			ModelArrays array_inst;
-			for( std::map<std::string,ModelObject>::const_iterator obj_iter = ship->Shape.Objects.begin(); obj_iter != ship->Shape.Objects.end(); obj_iter ++ )
+			for( std::map<std::string,ModelObject*>::const_iterator obj_iter = ship->Shape.Objects.begin(); obj_iter != ship->Shape.Objects.end(); obj_iter ++ )
 			{
 				// Don't detect collisions with destroyed subsystems.
 				std::map<std::string,double>::const_iterator subsystem_iter = ship->Subsystems.find( obj_iter->first );
 				if( (subsystem_iter != ship->Subsystems.end()) && (subsystem_iter->second <= 0.) )
 					continue;
 				
-				for( std::map<std::string,ModelArrays>::const_iterator array_iter = obj_iter->second.Arrays.begin(); array_iter != obj_iter->second.Arrays.end(); array_iter ++ )
+				for( std::map<std::string,ModelArrays*>::const_iterator array_iter = obj_iter->second->Arrays.begin(); array_iter != obj_iter->second->Arrays.end(); array_iter ++ )
 				{
-					array_inst.BecomeInstance( &(array_iter->second) );
+					array_inst.BecomeInstance( array_iter->second );
 					array_inst.MakeWorldSpace( ship );
 					for( size_t i = 0; i < array_inst.VertexCount; i ++ )
 					{
