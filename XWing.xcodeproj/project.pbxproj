@@ -15,6 +15,7 @@
 		2C814FFE29DD282000AE7B00 /* strtok_r.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2C814FFC29DD282000AE7B00 /* strtok_r.cpp */; };
 		2C81500129DD283C00AE7B00 /* Randomizer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2C814FFF29DD283C00AE7B00 /* Randomizer.cpp */; };
 		2C81500429DD289100AE7B00 /* ScrollArea.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2C81500229DD289100AE7B00 /* ScrollArea.cpp */; };
+		2C87407F2CF86F5200DF1BB8 /* MissionUploader.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2C87407D2CF86F5200DF1BB8 /* MissionUploader.cpp */; };
 		2CAACE972AEA7CEC0049807F /* Checkpoint.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2CAACE952AEA7CEC0049807F /* Checkpoint.cpp */; };
 		2CABFEB0240537E9005387AD /* ShipClass.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2CABFEAF240537E9005387AD /* ShipClass.cpp */; };
 		2CBA723A137A7FD2006633A8 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2CBA7239137A7FD2006633A8 /* Cocoa.framework */; };
@@ -107,6 +108,9 @@
 		2CD2E217191D6FB6003E46AA /* AudioToolbox.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2CD2E216191D6FB6003E46AA /* AudioToolbox.framework */; };
 		2CD2E219191D6FBE003E46AA /* IOKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2CD2E218191D6FBE003E46AA /* IOKit.framework */; };
 		2CD2E21B191D6FC5003E46AA /* Carbon.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2CD2E21A191D6FC5003E46AA /* Carbon.framework */; };
+		2CE636922D1ECE7F00BA007C /* IMA.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2CE6368E2D1ECE7F00BA007C /* IMA.cpp */; };
+		2CE636932D1ECE7F00BA007C /* Microphone.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2CE636902D1ECE7F00BA007C /* Microphone.cpp */; };
+		2CE636962D1ECE8B00BA007C /* PlaybackBuffer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2CE636942D1ECE8700BA007C /* PlaybackBuffer.cpp */; };
 		2CEFC42A1EBBADD90044B237 /* HeadState.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2CEFC4281EBBADD90044B237 /* HeadState.cpp */; };
 		8D11072B0486CEB800E47090 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 089C165CFE840E0CC02AAC07 /* InfoPlist.strings */; };
 /* End PBXBuildFile section */
@@ -141,6 +145,8 @@
 		2C81500029DD283C00AE7B00 /* Randomizer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Randomizer.h; sourceTree = "<group>"; };
 		2C81500229DD289100AE7B00 /* ScrollArea.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ScrollArea.cpp; sourceTree = "<group>"; };
 		2C81500329DD289100AE7B00 /* ScrollArea.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ScrollArea.h; sourceTree = "<group>"; };
+		2C87407D2CF86F5200DF1BB8 /* MissionUploader.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MissionUploader.cpp; sourceTree = "<group>"; };
+		2C87407E2CF86F5200DF1BB8 /* MissionUploader.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MissionUploader.h; sourceTree = "<group>"; };
 		2CAACE952AEA7CEC0049807F /* Checkpoint.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Checkpoint.cpp; sourceTree = "<group>"; };
 		2CAACE962AEA7CEC0049807F /* Checkpoint.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Checkpoint.h; sourceTree = "<group>"; };
 		2CABFEAE240537E5005387AD /* ShipClass.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ShipClass.h; sourceTree = "<group>"; };
@@ -323,6 +329,12 @@
 		2CD2E216191D6FB6003E46AA /* AudioToolbox.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AudioToolbox.framework; path = ../../../../../System/Library/Frameworks/AudioToolbox.framework; sourceTree = "<group>"; };
 		2CD2E218191D6FBE003E46AA /* IOKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = IOKit.framework; path = ../../../../../System/Library/Frameworks/IOKit.framework; sourceTree = "<group>"; };
 		2CD2E21A191D6FC5003E46AA /* Carbon.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Carbon.framework; path = ../../../../../System/Library/Frameworks/Carbon.framework; sourceTree = "<group>"; };
+		2CE6368E2D1ECE7F00BA007C /* IMA.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = IMA.cpp; sourceTree = "<group>"; };
+		2CE6368F2D1ECE7F00BA007C /* IMA.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = IMA.h; sourceTree = "<group>"; };
+		2CE636902D1ECE7F00BA007C /* Microphone.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Microphone.cpp; sourceTree = "<group>"; };
+		2CE636912D1ECE7F00BA007C /* Microphone.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Microphone.h; sourceTree = "<group>"; };
+		2CE636942D1ECE8700BA007C /* PlaybackBuffer.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = PlaybackBuffer.cpp; sourceTree = "<group>"; };
+		2CE636952D1ECE8B00BA007C /* PlaybackBuffer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PlaybackBuffer.h; sourceTree = "<group>"; };
 		2CEFC4281EBBADD90044B237 /* HeadState.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = HeadState.cpp; sourceTree = "<group>"; };
 		2CEFC4291EBBADD90044B237 /* HeadState.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = HeadState.h; sourceTree = "<group>"; };
 		8D1107310486CEB800E47090 /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
@@ -466,6 +478,8 @@
 				2CD2DD2A191D6D08003E46AA /* LobbyMenu.h */,
 				2CD2DD2B191D6D08003E46AA /* MainMenu.cpp */,
 				2CD2DD2C191D6D08003E46AA /* MainMenu.h */,
+				2C87407D2CF86F5200DF1BB8 /* MissionUploader.cpp */,
+				2C87407E2CF86F5200DF1BB8 /* MissionUploader.h */,
 				2CD2DD2D191D6D08003E46AA /* PrefsMenu.cpp */,
 				2CD2DD2E191D6D08003E46AA /* PrefsMenu.h */,
 			);
@@ -644,8 +658,14 @@
 		2CD2E013191D6D38003E46AA /* Sound */ = {
 			isa = PBXGroup;
 			children = (
+				2CE6368E2D1ECE7F00BA007C /* IMA.cpp */,
+				2CE6368F2D1ECE7F00BA007C /* IMA.h */,
+				2CE636902D1ECE7F00BA007C /* Microphone.cpp */,
+				2CE636912D1ECE7F00BA007C /* Microphone.h */,
 				2CD2E014191D6D38003E46AA /* PanningSound.cpp */,
 				2CD2E015191D6D38003E46AA /* PanningSound.h */,
+				2CE636942D1ECE8700BA007C /* PlaybackBuffer.cpp */,
+				2CE636952D1ECE8B00BA007C /* PlaybackBuffer.h */,
 				2CD2E016191D6D38003E46AA /* SoundOut.cpp */,
 				2CD2E017191D6D38003E46AA /* SoundOut.h */,
 			);
@@ -882,6 +902,10 @@
 				2CCB58F22B745B5F00A8B03A /* DockingBay.cpp in Sources */,
 				2C53CE912BE05ACF007F7E8C /* Mission.cpp in Sources */,
 				2C3F651B2C6606070055B3B9 /* CampaignMenu.cpp in Sources */,
+				2C87407F2CF86F5200DF1BB8 /* MissionUploader.cpp in Sources */,
+				2CE636922D1ECE7F00BA007C /* IMA.cpp in Sources */,
+				2CE636932D1ECE7F00BA007C /* Microphone.cpp in Sources */,
+				2CE636962D1ECE8B00BA007C /* PlaybackBuffer.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

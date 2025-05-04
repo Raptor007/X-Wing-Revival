@@ -15,9 +15,9 @@ class DeathStar : public GameObject
 {
 public:
 	double TrenchWidth, TrenchDepth, TextureSize, DetailHeight, SurfaceDetailHeight;
-	Animation Texture;
+	Animation Texture, BumpMap;
 	Color Ambient, Diffuse, Specular, BottomAmbient, BottomDiffuse, BottomSpecular;
-	float Shininess, BottomShininess;
+	float Shininess, BottomShininess, BumpScale, BottomBumpScale;
 	Model DetailBottom, DetailSide, DetailSurface;
 	
 	

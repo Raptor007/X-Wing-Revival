@@ -1,5 +1,6 @@
 id CRS
 name Mon Calamari Cruiser
+squadron Cruiser
 category capital
 team rebel
 radius 650

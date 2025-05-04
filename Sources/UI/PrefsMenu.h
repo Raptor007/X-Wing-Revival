@@ -41,14 +41,15 @@ class PrefsMenu : public Window
 {
 public:
 	Font *LabelFont, *TitleFont, *ItemFont, *ButtonFont, *ControlFont, *BindFont;
-	std::map<std::string,std::string> Previous;
+	std::map<std::string,std::string> PrevGfx, PrevSnd;
 	int Page;
 	
 	PrefsMenu( void );
 	virtual ~PrefsMenu();
 	
 	void WatchSetting( const std::string &name );
-	bool WatchedSettingsChanged( void );
+	bool GfxSettingsChanged( void );
+	bool SndSettingsChanged( void );
 	
 	void UpdateContents( void );
 	bool ChangePage( int page );
@@ -61,7 +62,8 @@ public:
 	
 	enum
 	{
-		PAGE_PREFERENCES = 0,
+		PAGE_VIDEO = 0,
+		PAGE_AUDIO,
 		PAGE_CONTROLS,
 		PAGE_CALIBRATION,
 		NUM_PAGES

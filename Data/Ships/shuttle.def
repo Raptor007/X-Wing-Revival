@@ -20,6 +20,7 @@ ramming 900
 explode 0.9
 weapon laser 4.88 -0.895 4.3
 weapon laser -4.88 -0.895 4.3
+firetime laser_green 0.4
 engine 2.5 -1.032 -7.7 engine_blue.png 3 1 1 1 0.2
 engine -2.5 -1.032 -7.7 engine_blue.png 3 1 1 1 0.2
 engine 4 -1.032 -7.7 engine_blue.png 3 1 1 1 0.2

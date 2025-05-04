@@ -1,0 +1,57 @@
+mission_name Rebel 8: Interdicted
+mission_desc Defeat the Interdictor fleet to escape.
+mission_objs INT
+gametype fleet
+player_team rebel
+player_ship X/W A/W Y/W B/W
+empire_fighter T/I
+empire_bomber GUN
+rebel_fighter X/W
+rebel_bomber A/W
+empire_waves 4
+rebel_waves 3
+rebel_flagship FRG
+empire_flagship ISD
+rebel_cruisers 2
+empire_cruisers 3
+ai_respawn true
+respawn_time 60
+asteroids 16
+
+at 0:03
+alert r8_interdictors.wav We need to take out those interdictors before we can get outta here.
+wait 4
+alert r8_x-wings.wav X-Wings, take out their turrets first.
+wait 3
+alert r8_a-wings.wav A-Wings, keep those fighters off us.
+
+on destroyed INT
+mission_objs ISD,INT
+
+on respawn INT while ISD alive
+wait 1.5
+alert r8_flagship.wav We're gonna have to take down the flagship to stop the reinforcements.
+
+on destroyed ISD
+mission_objs ISD,INT
+
+on victory
+next_mission rebel1
+wait 3
+alert theforce.wav The force will be with you.
+wait 0.8
+jump player ships
+wait 0.2
+message Always.
+
+on defeat
+wait 1.5
+alert Silly/failed.wav You blew it, and you took me down with you!
+wait 1.5
+message I thought you had great reflexes!
+wait 1.7
+message What happened to you??
+wait 0.8
+message I used to have, like, a good pilot!
+wait 1.5
+message Man, you're slipping.

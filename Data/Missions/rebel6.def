@@ -1,5 +1,6 @@
 mission_name Rebel 6: Exodus Road
 mission_desc Escape from Yavin with the Empire hot on your trail.
+mission_objs fighters,gunboats,bombers
 gametype hunt
 player_team rebel
 player_ship rebel_gunner X/W Y/W
@@ -15,11 +16,7 @@ empire_waves 7
 rebel_wave_dist 7000
 empire_wave_dist 5000
 player_spawn 4000 0 -300 -1 0 0
-
-//at 0:01 //if no player ships
-//alert r6_dropby.wav Good morning!
-//wait 1.3
-//message Nice of you to drop by.
+asteroids 8
 
 at 0:03
 alert r6_fun.wav Here's where the fun begins...
@@ -43,6 +40,8 @@ on hit "M.Falcon"
 wait 1.5
 alert r6_1100fire.wav Eleven o'clock!  Fire!
 hit1 true
+wait 2
+ai_flock true
 
 on damaged "M.Falcon" while ( alive "M.Falcon" ) and ( hit1 true )
 wait 2
@@ -54,32 +53,37 @@ hit1 false
 
 on damaged "M.Falcon" while ( alive "M.Falcon" ) and ( hit2 true )
 wait 2
-alert r6_dontworry.wav Hear me, baby?
-wait 0.5
+alert r6_hearme.wav Hear me, baby?
+wait 0.6
 message Hold together.
 hit3 true
 hit2 false
+wait 3
+ai_flock false
 
 on destroyed "M.Falcon"
 hit1 false
 hit2 false
 hit3 false
 
-on empire destroyed by player turret
+on empire destroyed by "M.Falcon" ai
+wait 1.5
+alert r6_haha.wav Hahaaa!
 wait 2
+cocky true
+
+on empire destroyed by player if cocky true
+wait 1.5
 alert r6_cocky.wav Great kid!
 wait 0.8
 message Don't get cocky.
-
-on empire destroyed by "M.Falcon"
-wait 1.5
-alert r6_haha.wav Hahaaa!
+cocky false
 
 when ( no empire here ) and ( players alive )
 victory
 
 on victory
-//next_mission rebel7
+next_mission rebel7
 wait 3
 alert r1_win2.wav All craft, prepare to jump to hyperspace on my mark.
 wait 3.3

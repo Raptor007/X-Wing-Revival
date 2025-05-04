@@ -1,8 +1,9 @@
-mission_name Rebel 4: Colavas System
-mission_desc Provide escort for a reconnaisance mission.
+mission_name Rebel 4: From a Hidden Base
+mission_desc Provide escort for a senator's secret rendezvous in the Colavas System.
+mission_objs "Tantive IV,Maria"
 gametype hunt
 player_team rebel
-player_ship X/W
+player_ship X/W Y/W
 defending_team rebel
 rebel_flagship CRV
 rebel_flagship_name "Tantive IV"
@@ -10,9 +11,9 @@ rebel_fighter X/W
 empire_fighter T/F
 empire_bomber GUN
 rebel_waves 2
-empire_waves 4
-rebel_wave_dist 4000
-empire_wave_dist 3500
+empire_waves 3
+rebel_wave_dist 5000
+empire_wave_dist 4500
 ai_fighter_ratio 10
 player_spawn 8000 0 0 -0.95 0 -0.15
 rebel_spawn 7700 0 0 -0.95 0 -0.15
@@ -57,6 +58,8 @@ wait 2
 message Good luck!
 wait 1
 jump "Tantive IV"
+wait 1.5
+jump player ships
 
 on defeat
 wait 1.5

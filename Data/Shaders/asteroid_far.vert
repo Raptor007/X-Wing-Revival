@@ -1,4 +1,4 @@
-#if BLASTPOINTS > 0
+#ifdef BLASTPOINTS
 #undef BLASTPOINTS
 #define BLASTPOINTS 0
 #endif
@@ -20,7 +20,7 @@ precision highp float;
 // Shader variables.
 
 #ifndef LIGHT_QUALITY
-#define LIGHT_QUALITY 2
+#define LIGHT_QUALITY 4
 #endif
 
 #ifndef DIRECTIONAL_LIGHTS
@@ -30,6 +30,17 @@ precision highp float;
 #ifndef POINT_LIGHTS
 #define POINT_LIGHTS 4
 #endif
+
+#ifndef BLASTPOINTS
+#define BLASTPOINTS 0
+#endif
+
+#ifndef BLASTPOINT_QUALITY
+#define BLASTPOINT_QUALITY 2
+#endif
+
+
+// Debug variables.
 
 #ifndef AMBIENT_COLOR
 #define AMBIENT_COLOR AmbientColor
@@ -47,6 +58,10 @@ precision highp float;
 #define SHININESS Shininess
 #endif
 
+#ifndef AMBIENT_LIGHT
+#define AMBIENT_LIGHT AmbientLight
+#endif
+
 
 // Camera position:
 uniform vec3 CamPos;
@@ -60,6 +75,13 @@ uniform vec3 AmbientColor;
 uniform vec3 DiffuseColor;
 uniform vec3 SpecularColor;
 uniform float Shininess;
+
+#if LIGHT_QUALITY >= 3
+attribute vec3 BumpTangent;
+attribute vec3 BumpBitangent;
+varying vec3 WorldTangent;
+varying vec3 WorldBitangent;
+#endif
 
 // World light properties:
 
@@ -114,8 +136,8 @@ uniform float PointLight3Radius;
 #endif
 
 
-#if LIGHT_QUALITY
-// We always do ambient light and directional diffuse per-vertex.
+#if (LIGHT_QUALITY >= 1) && (LIGHT_QUALITY < 4)
+// Do ambient light and directional diffuse per-vertex when not bump-mapping.
 
 varying vec3 Color;
 
@@ -226,21 +248,32 @@ void main( void )
 			WorldNormal *= normal_dot_cam / abs(normal_dot_cam);
 		#endif
 		
-		// Just do the ambient light and directional diffuse per-vertex.
-		vec3 diffuse = AmbientLight;
-		#if DIRECTIONAL_LIGHTS > 0
-			diffuse += directional_light( WorldNormal, DirectionalLight0Dir, DirectionalLight0WrapAround ) * DirectionalLight0Color;
+		#if LIGHT_QUALITY >= 3
+			// Translate tangent and bitangent vectors into worldspace for bump-mapping.
+			WorldTangent   = normalize( vec3( dot(BumpTangent,  XVec), dot(BumpTangent,  YVec), dot(BumpTangent,  ZVec) ) );
+			WorldBitangent = normalize( vec3( dot(BumpBitangent,XVec), dot(BumpBitangent,YVec), dot(BumpBitangent,ZVec) ) );
 		#endif
-		#if DIRECTIONAL_LIGHTS > 1
-			diffuse += directional_light( WorldNormal, DirectionalLight1Dir, DirectionalLight1WrapAround ) * DirectionalLight1Color;
+		
+		#if LIGHT_QUALITY < 4
+			// Ambient light per-vertex.
+			vec3 diffuse = AMBIENT_LIGHT;
+			
+			// Directional diffuse per-vertex.
+			#if DIRECTIONAL_LIGHTS > 0
+				diffuse += directional_light( WorldNormal, DirectionalLight0Dir, DirectionalLight0WrapAround ) * DirectionalLight0Color;
+			#endif
+			#if DIRECTIONAL_LIGHTS > 1
+				diffuse += directional_light( WorldNormal, DirectionalLight1Dir, DirectionalLight1WrapAround ) * DirectionalLight1Color;
+			#endif
+			#if DIRECTIONAL_LIGHTS > 2
+				diffuse += directional_light( WorldNormal, DirectionalLight2Dir, DirectionalLight2WrapAround ) * DirectionalLight2Color;
+			#endif
+			#if DIRECTIONAL_LIGHTS > 3
+				diffuse += directional_light( WorldNormal, DirectionalLight3Dir, DirectionalLight3WrapAround ) * DirectionalLight3Color;
+			#endif
+			
+			Color = AMBIENT_COLOR + (DIFFUSE_COLOR*diffuse);
 		#endif
-		#if DIRECTIONAL_LIGHTS > 2
-			diffuse += directional_light( WorldNormal, DirectionalLight2Dir, DirectionalLight2WrapAround ) * DirectionalLight2Color;
-		#endif
-		#if DIRECTIONAL_LIGHTS > 3
-			diffuse += directional_light( WorldNormal, DirectionalLight3Dir, DirectionalLight3WrapAround ) * DirectionalLight3Color;
-		#endif
-		Color = AMBIENT_COLOR + (DIFFUSE_COLOR*diffuse);
 		
 	#elif LIGHT_QUALITY
 		// We'll do most of the work here, per-vertex.
@@ -259,7 +292,7 @@ void main( void )
 		#endif
 		
 		// Calculate total color of diffuse and specular lighting.
-		vec3 diffuse = AmbientLight;
+		vec3 diffuse = AMBIENT_LIGHT;
 		vec3 specular = vec3( 0.0, 0.0, 0.0 );
 		
 		#if DIRECTIONAL_LIGHTS > 0

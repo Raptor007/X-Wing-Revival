@@ -49,7 +49,7 @@ Turret::Turret( uint32_t id ) : BlastableObject( id, XWing::Object::TURRET )
 	GunShape = NULL;
 	
 	GunPitch = 0.;
-	GunPitchRate = 0.;
+	GunPitchRate = PrevGunPitchRate = 0.;
 	
 	Firing = false;
 	WeaponIndex = 0;
@@ -244,9 +244,9 @@ Pos3D Turret::HeadPos( void ) const
 }
 
 
-std::map<int,Shot*> Turret::NextShots( GameObject *target, uint8_t firing_mode ) const
+std::vector<Shot*> Turret::NextShots( GameObject *target, uint8_t firing_mode ) const
 {
-	std::map<int,Shot*> shots;
+	std::vector<Shot*> shots;
 	
 	Pos3D gun = GunPos();
 	
@@ -286,14 +286,14 @@ std::map<int,Shot*> Turret::NextShots( GameObject *target, uint8_t firing_mode )
 		
 		shot->MoveAlong( &Right, weapon_index ? -GunWidth : GunWidth ); // FIXME: Make turret weapon positions customizable?
 		
-		shots[ weapon_index ] = shot;
+		shots.push_back( shot );
 	}
 	
 	return shots;
 }
 
 
-std::map<int,Shot*> Turret::AllShots( GameObject *target ) const
+std::vector<Shot*> Turret::AllShots( GameObject *target ) const
 {
 	return NextShots( target, GunWidth ? 2 : 1 ); // FIXME: Make turret weapon positions customizable?
 }
@@ -444,10 +444,10 @@ void Turret::ReadFromInitPacket( Packet *packet, int8_t precision )
 	}
 	else
 	{
-		bool smooth_pos = SmoothPos;
-		SmoothPos = false;
+		double smooth_radius = SmoothRadius;
+		SmoothRadius = 0.;
 		GameObject::ReadFromUpdatePacketFromServer( packet, -127 );
-		SmoothPos = smooth_pos;
+		SmoothRadius = smooth_radius;
 	}
 	
 	// Extact GunPitch in range (-180,180) from int16.
@@ -576,16 +576,13 @@ void Turret::AddToUpdatePacketFromClient( Packet *packet, int8_t precision )
 	uint8_t firing_and_mode = FiringMode;
 	if( Firing )
 		firing_and_mode |= 0x80;
-	if( ((XWingGame*)( Raptor::Game ))->ZeroLagServer )  // v0.4 server would be confused by ZeroLag data.
+	if( PredictedShots )
 	{
-		if( PredictedShots )
-		{
-			firing_and_mode |= 0x40;  // ZeroLag Shot(s) Fired
-			PredictedShots --;
-		}
-		else if( Firing && Raptor::Game->Cfg.SettingAsInt("net_zerolag",2) )
-			firing_and_mode &= ~0x80;  // If we are using ZeroLag mode for this weapon, only send Firing with each shot.
+		firing_and_mode |= 0x40;  // ZeroLag Shot(s) Fired
+		PredictedShots --;
 	}
+	else if( Firing && Raptor::Game->Cfg.SettingAsInt("net_zerolag",2) )
+		firing_and_mode &= ~0x80;  // If we are using ZeroLag mode for this weapon, only send Firing with each shot.
 	packet->AddUChar( firing_and_mode );
 	
 	packet->AddUInt( Target );
@@ -718,6 +715,7 @@ void Turret::Update( double dt )
 	if( GunPitchRate )
 		PitchGun( GunPitchRate * dt );
 	
+	PrevGunPitchRate = GunPitchRate;
 	GameObject::Update( dt );
 	UpdatePos();
 }
@@ -757,7 +755,7 @@ void Turret::Draw( bool allow_shader_change )
 			Raptor::Game->ShaderMgr.SelectAndCopyVars( Raptor::Game->Res.GetShader("deathstar") );
 		
 		if( game->View == XWing::View::GUNNER )
-			pos.Yaw( YawRate * -0.004 );
+			pos.Yaw( (YawRate + PrevYawRate) * -0.002 );
 		
 		if( BodyShape )
 			BodyShape->DrawAt( &pos, 0.022 );
@@ -767,7 +765,7 @@ void Turret::Draw( bool allow_shader_change )
 			Pos3D gun = GunPos( &pos );
 			
 			if( game->View == XWing::View::GUNNER )
-				gun.Pitch( GunPitchRate * -0.004 );
+				gun.Pitch( (GunPitchRate + PrevGunPitchRate) * -0.002 );
 			
 			// FIXME: Set recoil properties in ShipClass?
 			double recoil = FiringClock.ElapsedSeconds() / std::min<double>( 1., SingleShotDelay * 0.75 );

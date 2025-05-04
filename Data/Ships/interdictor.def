@@ -1,5 +1,6 @@
 id INT
 name Interdictor Cruiser
+squadron Interdict
 category capital
 team empire
 radius 350

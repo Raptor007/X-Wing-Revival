@@ -1,0 +1,91 @@
+mission_name Rebel 7: Destroy Convoy
+mission_desc A large Imperial convoy carrying occupation troops is the target.
+mission_objs TRN,VSD,ISD
+gametype team_elim
+player_team rebel
+player_ship X/W A/W B/W
+rebel_fighter X/W
+empire_fighter TRN
+rebel_waves 1
+empire_waves 8
+rebel_wave_dist 7000
+empire_wave_dist 5000
+player_spawn 4000 0 -300 -1 0 0
+rebel_spawn 4100 0 -200 -1 0 0
+respawn_time 45
+
+at 0:00
+spawn empire FRT at -4000 -100 0
+spawn empire FRT at -4100 100 -100
+spawn empire FRT at -6000 -200 -100
+spawn empire FRT at -6100 100 -300
+spawn empire FRT at -8000 -100 -100
+spawn empire FRT at -8100 300 -200
+spawn empire FRT at -10000 -100 200
+spawn empire FRT at -10100 -300 -200
+spawn empire FRT at -12000 200 100
+spawn empire FRT at -12100 100 -200
+spawn empire FRT at -14000 -200 300
+spawn empire FRT at -14100 300 -200
+spawn empire GUN at -3500 100 100 respawn
+spawn empire GUN at -3500 -100 -100 respawn
+spawn rebel B/W "Gold 1" group 2 at 3500 0 -300 facing -1 0 0
+spawn rebel B/W "Gold 2" group 2 at 3700 10 -200 facing -1 0 0
+spawn rebel B/W "Gold 3" group 2 at 3900 20 -100 facing -1 0 0
+spawn rebel B/W "Gold 4" group 2 at 4100 30 -200 facing -1 0 0
+spawn rebel A/W "Blue 1" group 4 at 4500 100 -300 facing -1 0 0
+spawn rebel A/W "Blue 2" group 4 at 4700 200 -200 facing -1 0 0
+spawn rebel A/W "Blue 3" group 4 at 4900 300 -100 facing -1 0 0
+spawn rebel A/W "Blue 4" group 4 at 5100 400 -200 facing -1 0 0
+
+at 6:00
+mission_objs TRN,FRT,VSD,ISD
+
+on destroyed TRN #30
+mission_objs TRN,FRT,VSD,ISD
+
+at 7:00 while players alive
+chat Sensors detect 1 new Star Destroyer arriving.
+wait 2
+mission_objs VSD,ISD
+spawn empire VSD "Resolute" at -10000 0 0
+wait 1
+alert r7_stardest.wav Star Destroyer, comin' right at us.
+wait 3.5
+alert r7_identify.wav If they identify us we're in big trouble!
+wait 5
+spawn empire T/I at -9800 0 -500 respawn
+spawn empire T/I at -9900 100 -500 respawn
+spawn empire T/I at -9900 -100 -500 respawn
+wait 3
+spawn empire T/F at -9800 0 -300 respawn
+spawn empire T/F at -9900 100 -300 respawn
+spawn empire T/F at -9900 -100 -300 respawn
+wait 3
+spawn empire T/B at -9800 0 -500 respawn
+spawn empire T/B at -9900 100 -500 respawn
+spawn empire T/B at -9900 -100 -500 respawn
+respawn_time 60
+
+on destroyed ISD
+mission_objs TRN,FRT,VSD,ISD
+
+on destroyed VSD
+mission_objs TRN,FRT,VSD,ISD
+
+on victory
+next_mission rebel8
+wait 5
+jump player ships
+
+on defeat
+wait 1.5
+alert Silly/failed.wav You blew it, and you took me down with you!
+wait 1.5
+message I thought you had great reflexes!
+wait 1.7
+message What happened to you??
+wait 0.8
+message I used to have, like, a good pilot!
+wait 1.5
+message Man, you're slipping.

@@ -49,7 +49,7 @@ public:
 	std::map<uint8_t,Clock> FiringClocks;
 	std::map<uint8_t,int8_t> Ammo;
 	std::map<uint8_t,uint8_t> FiringMode;
-	uint8_t WeaponIndex;
+	std::map<uint8_t,uint8_t> WeaponIndex;
 	uint8_t FiredThisFrame;
 	std::deque<uint8_t> PredictedShots;
 	
@@ -62,6 +62,7 @@ public:
 	Clock EngineSoundClock;
 	std::string EngineSoundPrev;
 	std::vector<ShipEngine> Engines;
+	float EngineFlicker;
 	
 	
 	Ship( uint32_t id = 0 );
@@ -117,13 +118,14 @@ public:
 	int ExplosionSeed( void ) const;
 	const char *FlybySound( double speed ) const;
 	
-	std::map<int,Shot*> NextShots( GameObject *target = NULL, uint8_t firing_mode = 0 ) const;
-	std::map<int,Shot*> AllShots( GameObject *target = NULL ) const;
+	std::vector<Shot*> NextShots( GameObject *target = NULL, uint8_t firing_mode = 0 ) const;
+	std::vector<Shot*> AllShots( GameObject *target = NULL ) const;
 	void JustFired( void );
 	void JustFired( uint8_t weapon, uint8_t mode );
 	bool NextWeapon( void );
 	bool NextFiringMode( void );
 	uint8_t CurrentFiringMode( void ) const;
+	uint8_t CurrentWeaponIndex( void ) const;
 	double ShotDelay( uint8_t weapon = 0 ) const;
 	double LastFired( uint8_t weapon = 0 ) const;
 	int8_t AmmoForWeapon( uint8_t weapon = 0 ) const;
@@ -133,6 +135,7 @@ public:
 	Pos3D TargetCenter( uint8_t subsystem = 0 ) const;
 	std::string SubsystemName( uint8_t subsystem ) const;
 	uint8_t SubsystemID( std::string subsystem ) const;
+	double SubsystemMaxHealth( uint8_t subsystem ) const;
 	
 	void ResetTurrets( void ) const;
 	Turret *AttachedTurret( uint8_t index = 0 ) const;

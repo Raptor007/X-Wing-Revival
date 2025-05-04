@@ -3,11 +3,14 @@ mission_desc Defend the medical frigate until evacuation is complete.
 gametype hunt
 player_team rebel
 player_ship X/W
+player_group 3
 defending_team rebel
 rebel_flagship FRG
 rebel_flagship_name Redemption
 rebel_flagship_shields 0.2
 rebel_bomber X/W
+rebel_fighter_squadron Green
+rebel_fighter_group 3
 empire_fighter_squadron Delta
 rebel_waves 1
 empire_waves 1
@@ -62,9 +65,8 @@ alert r2_transports.wav The transports are away!
 at 1:15 if phase 1
 phase 2
 
-//if ( no empire here ) and ( phase 1 )
-//wait 3
-//phase 2
+when ( phase 1 ) and ( no empire here ) and ( no players within 2K of "Redemption" )
+phase 2
 
 when phase 2
 spawn empire FRG "Warspite" at 5500 0 0 facing -0.5 -0.8 0
@@ -76,13 +78,17 @@ spawn empire T/B "Gamma 3" at 5030 -100 -100 facing -1 0 0
 wait 2
 alert r2_begin.wav They're heading for the medical frigate!
 
-on empire fighter destroyed if ( no empire fighters here ) and ( players alive ) and ( phase 2 )
-wait 2
-alert r2_win.wav That's the last of 'em!  Good shooting.
+on empire fighter destroyed if ( phase 2 ) and ( no empire fighters here ) and ( players alive )
 wait 3
 jump "Warspite"
+wait 2
+alert r2_secure.wav Alright, the area is secured!
+wait 1.5
+message Nice shooting.
+phase 3
 
-when ( no empire here ) and ( "Redemption" alive ) and ( "Korolev" alive ) and ( phase 2 )
+when ( phase 3 ) and ( "Redemption" alive ) and ( "Korolev" alive )
+wait 2
 victory
 
 on victory
@@ -91,6 +97,8 @@ wait 3
 jump "Korolev"
 wait 2
 jump "Redemption"
+wait 2
+jump player ships
 
 on defeat
 wait 1.5

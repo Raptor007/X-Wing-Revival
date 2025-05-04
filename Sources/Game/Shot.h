@@ -19,6 +19,7 @@ public:
 	Model Shape;
 	Animation Anim;
 	bool Drawn, Predicted;
+	double WidthScale;
 	
 	uint32_t FiredFrom;
 	uint8_t WeaponIndex;

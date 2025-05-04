@@ -4,8 +4,8 @@ squadron Gold
 category bomber
 team rebel
 radius 4.5
-speed 170
-accel 65
+speed 175
+accel 70
 roll 90 80
 pitch 55 35
 yaw 45 25

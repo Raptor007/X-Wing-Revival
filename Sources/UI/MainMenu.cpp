@@ -313,6 +313,22 @@ bool MainMenu::HandleEvent( SDL_Event *event )
 }
 
 
+bool MainMenu::KeyDown( SDLKey key )
+{
+	if( key == SDLK_F10 ) // FIXME: Check for XWing::Controls::PREFS instead?
+	{
+		Layer *prefs_menu = Raptor::Game->Layers.Find("PrefsMenu");
+		if( prefs_menu )
+			prefs_menu->Remove();
+		else
+			Raptor::Game->Layers.Add( new PrefsMenu() );
+		return true;
+	}
+	
+	return false;
+}
+
+
 // ---------------------------------------------------------------------------
 
 

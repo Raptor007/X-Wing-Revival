@@ -922,11 +922,35 @@
 				Name="Sound"
 				>
 				<File
+					RelativePath="..\RaptorEngine\Sound\IMA.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\RaptorEngine\Sound\IMA.h"
+					>
+				</File>
+				<File
+					RelativePath="..\RaptorEngine\Sound\Microphone.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\RaptorEngine\Sound\Microphone.h"
+					>
+				</File>
+				<File
 					RelativePath="..\RaptorEngine\Sound\PanningSound.cpp"
 					>
 				</File>
 				<File
 					RelativePath="..\RaptorEngine\Sound\PanningSound.h"
+					>
+				</File>
+				<File
+					RelativePath="..\RaptorEngine\Sound\PlaybackBuffer.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\RaptorEngine\Sound\PlaybackBuffer.h"
 					>
 				</File>
 				<File
@@ -1213,6 +1237,14 @@
 				</File>
 				<File
 					RelativePath=".\Sources\UI\MainMenu.h"
+					>
+				</File>
+				<File
+					RelativePath=".\Sources\UI\MissionUploader.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\Sources\UI\MissionUploader.h"
 					>
 				</File>
 				<File

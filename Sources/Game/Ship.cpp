@@ -15,6 +15,7 @@
 #include "Shot.h"
 #include "Asteroid.h"
 #include "Checkpoint.h"
+#include "DeathStar.h"
 
 
 Ship::Ship( uint32_t id ) : BlastableObject( id, XWing::Object::SHIP )
@@ -59,7 +60,7 @@ void Ship::Clear( void )
 	FiredThisFrame = 0;
 	PredictedShots.clear();
 	FiringMode.clear();
-	WeaponIndex = 0;
+	WeaponIndex.clear();
 	
 	Target = 0;
 	TargetLock = 0.f;
@@ -69,6 +70,7 @@ void Ship::Clear( void )
 	EngineSoundDir = 0;
 	EngineSoundClock.Reset();
 	EngineSoundPrev = "";
+	EngineFlicker = 1.f;
 }
 
 
@@ -126,6 +128,7 @@ void Ship::SetClass( const ShipClass *ship_class )
 			{
 				Engines.push_back( ShipEngine( &*engine_iter ) );
 				Engines.back().Texture.Timer.Sync( &DeathClock );
+				Engines.back().Texture.Timer.TimeScale = 1.;
 			}
 		}
 		else if( Class->Shape.VertexCount() )
@@ -171,7 +174,7 @@ void Ship::Reset( void )
 	TargetLock = 0.f;
 	TargetSubsystem = 0;
 	Firing = false;
-	WeaponIndex = 0;
+	WeaponIndex.clear();
 	Ammo.clear();
 	SelectedWeapon = 0;
 	PredictedShots.clear();
@@ -898,9 +901,9 @@ const char *Ship::FlybySound( double speed ) const
 }
 
 
-std::map<int,Shot*> Ship::NextShots( GameObject *target, uint8_t firing_mode ) const
+std::vector<Shot*> Ship::NextShots( GameObject *target, uint8_t firing_mode ) const
 {
-	std::map<int,Shot*> shots;
+	std::vector<Shot*> shots;
 	
 	if( ! SelectedWeapon )
 		return shots;
@@ -915,7 +918,7 @@ std::map<int,Shot*> Ship::NextShots( GameObject *target, uint8_t firing_mode ) c
 	
 	for( int num = 0; num < (int) firing_mode; num ++ )
 	{
-		int weapon_index = WeaponIndex + num;
+		int weapon_index = CurrentWeaponIndex() + num;
 		
 		Shot *shot = new Shot();
 		shot->Copy( this );
@@ -954,7 +957,7 @@ std::map<int,Shot*> Ship::NextShots( GameObject *target, uint8_t firing_mode ) c
 		shot->MoveAlong( &Up, up );
 		shot->MoveAlong( &Right, right );
 		
-		shots[ weapon_index ] = shot;
+		shots.push_back( shot );
 		
 		// If we had a lock for a seeking weapon, give the shot its target.
 		if( ((shot->ShotType == Shot::TYPE_TORPEDO) || (shot->ShotType == Shot::TYPE_MISSILE)) && target && (TargetLock >= 1.) )
@@ -962,40 +965,13 @@ std::map<int,Shot*> Ship::NextShots( GameObject *target, uint8_t firing_mode ) c
 			shot->Seeking = target->ID;
 			shot->SeekingSubsystem = TargetSubsystem;
 		}
-		
-		// Treat turbolasers as omnidirectional turrets.  Aim at the intercept point.
-		if( target && (shot->ShotType == Shot::TYPE_TURBO_LASER_GREEN || shot->ShotType == Shot::TYPE_TURBO_LASER_RED) )
-		{
-			// First aim at the ship.
-			Vec3D vec_to_target( target->X - shot->X, target->Y - shot->Y, target->Z - shot->Z );
-			shot->Fwd.Copy( &vec_to_target );
-			shot->Fwd.ScaleTo( 1. );
-			shot->FixVectors();
-			shot->MotionVector.Copy( &(shot->Fwd) );
-			shot->MotionVector.ScaleTo( shot->Speed() );
-			
-			// Adjust for the intercept point.
-			double dist_to_target = vec_to_target.Length();
-			Vec3D shot_vec = shot->MotionVector;
-			shot_vec -= target->MotionVector;
-			double time_to_target = dist_to_target / shot_vec.Length();
-			Vec3D vec_to_intercept = vec_to_target;
-			vec_to_intercept.X += target->MotionVector.X * time_to_target;
-			vec_to_intercept.Y += target->MotionVector.Y * time_to_target;
-			vec_to_intercept.Z += target->MotionVector.Z * time_to_target;
-			shot->Fwd.Copy( &vec_to_intercept );
-			shot->Fwd.ScaleTo( 1. );
-			shot->FixVectors();
-			shot->MotionVector.Copy( &(shot->Fwd) );
-			shot->MotionVector.ScaleTo( shot->Speed() );
-		}
 	}
 	
 	return shots;
 }
 
 
-std::map<int,Shot*> Ship::AllShots( GameObject *target ) const
+std::vector<Shot*> Ship::AllShots( GameObject *target ) const
 {
 	return NextShots( target, WeaponCount(SelectedWeapon) );
 }
@@ -1022,9 +998,9 @@ void Ship::JustFired( uint8_t weapon, uint8_t mode )
 	
 	if( (SelectedWeapon == weapon) && ! FiredThisFrame )
 	{
-		WeaponIndex ++;
-		if( WeaponIndex >= WeaponCount(weapon) )
-			WeaponIndex = 0;
+		WeaponIndex[ weapon ] ++;
+		if( WeaponIndex[ weapon ] >= WeaponCount(weapon) )
+			WeaponIndex[ weapon ] = 0;
 	}
 	
 	FiredThisFrame ++;
@@ -1048,7 +1024,6 @@ bool Ship::NextWeapon( void )
 	
 	if( SelectedWeapon != prev )
 	{
-		WeaponIndex = 0;
 		FiringClocks[ SelectedWeapon ].Reset();
 		return true;
 	}
@@ -1094,6 +1069,13 @@ uint8_t Ship::CurrentFiringMode( void ) const
 	if( (ammo_iter != Ammo.end()) && (ammo_iter->second >= 0) && (ammo_iter->second < (int8_t)firing_mode) )
 		return ammo_iter->second;
 	return firing_mode;
+}
+
+
+uint8_t Ship::CurrentWeaponIndex( void ) const
+{
+	std::map<uint8_t,uint8_t>::const_iterator index_iter = WeaponIndex.find( SelectedWeapon );
+	return (index_iter != WeaponIndex.end()) ? index_iter->second : 0;
 }
 
 
@@ -1208,6 +1190,20 @@ float Ship::LockingOn( const GameObject *target ) const
 		Ship *t = (Ship*) target;
 		if( t->Health <= 0. )
 			return 0.f;
+		if( t->Category() == ShipClass::CATEGORY_TARGET )
+		{
+			// Find the Death Star trench.
+			for( std::map<uint32_t,GameObject*>::iterator obj_iter = Data->GameObjects.begin(); obj_iter != Data->GameObjects.end(); obj_iter ++ )
+			{
+				if( obj_iter->second->Type() == XWing::Object::DEATH_STAR )
+				{
+					DeathStar *ds = (DeathStar*) obj_iter->second;
+					if( !(ds->WithinTrenchW(this) && ds->WithinTrenchH(this)) )  // Don't allow locking onto exhaust port from outside the trench.
+						return 0.f;
+					break;
+				}
+			}
+		}
 		double target_radius = subsystem_radius ? subsystem_radius : t->Radius();
 		required_dot = std::min<double>( 0.95, dist_to_target / (20. * target_radius) );
 	}
@@ -1291,6 +1287,18 @@ uint8_t Ship::SubsystemID( std::string subsystem ) const
 		name_iter --;
 	}
 	return subsystem_num;
+}
+
+
+double Ship::SubsystemMaxHealth( uint8_t subsystem ) const
+{
+	if( Class )
+	{
+		std::map<std::string,double>::const_iterator subsystem_iter = Class->Subsystems.find( SubsystemName(subsystem) );
+		if( subsystem_iter != Class->Subsystems.end() )
+			return subsystem_iter->second;
+	}
+	return 0.;
 }
 
 
@@ -1442,7 +1450,7 @@ void Ship::AddToInitPacket( Packet *packet, int8_t precision )
 	packet->AddFloat( ShieldR );
 	
 	packet->AddUChar( SelectedWeapon | (ShieldPos << 6) );
-	packet->AddUChar( CurrentFiringMode() | (WeaponIndex << 4) );
+	packet->AddUChar( CurrentFiringMode() | (CurrentWeaponIndex() << 4) );
 	packet->AddUInt( Target );
 	packet->AddUChar( TargetSubsystem );
 	packet->AddChar( Num::UnitFloatTo8( (Target && LockingOn(Data->GetObject(Target))) ? (TargetLock / 2.f) : 0.f ) );
@@ -1488,8 +1496,8 @@ void Ship::ReadFromInitPacket( Packet *packet, int8_t precision )
 	SetShieldPos(   (weapon_shield & 0xC0) >> 6 );
 	SelectedWeapon = weapon_shield & 0x3F;
 	uint8_t firing_mode = packet->NextUChar();
-	FiringMode[ SelectedWeapon ] =  firing_mode & 0x0F;
-	WeaponIndex                  = (firing_mode & 0xF0) >> 4;
+	FiringMode[ SelectedWeapon ]  =  firing_mode & 0x0F;
+	WeaponIndex[ SelectedWeapon ] = (firing_mode & 0xF0) >> 4;
 	Target = packet->NextUInt();
 	TargetSubsystem = packet->NextUChar();
 	TargetLock = Num::UnitFloatFrom8( packet->NextChar() ) * 2.f;
@@ -1514,7 +1522,7 @@ void Ship::AddToUpdatePacketFromServer( Packet *packet, int8_t precision )
 	
 	packet->AddFloat( Health );
 	packet->AddUChar( SelectedWeapon | (ShieldPos << 6) );
-	packet->AddUChar( CurrentFiringMode() | (WeaponIndex << 4) );
+	packet->AddUChar( CurrentFiringMode() | (CurrentWeaponIndex() << 4) );
 	packet->AddUInt( Target );
 	packet->AddUChar( TargetSubsystem );
 	packet->AddChar( Num::UnitFloatTo8( (Target && LockingOn(Data->GetObject(Target))) ? (TargetLock / 2.f) : 0.f ) );
@@ -1547,8 +1555,8 @@ void Ship::ReadFromUpdatePacketFromServer( Packet *packet, int8_t precision )
 	SetShieldPos(   (weapon_shield & 0xC0) >> 6 );
 	SelectedWeapon = weapon_shield & 0x3F;
 	uint8_t firing_mode = packet->NextUChar();
-	FiringMode[ SelectedWeapon ] =  firing_mode & 0x0F;
-	WeaponIndex                  = (firing_mode & 0xF0) >> 4;
+	FiringMode[ SelectedWeapon ]  =  firing_mode & 0x0F;
+	WeaponIndex[ SelectedWeapon ] = (firing_mode & 0xF0) >> 4;
 	Target = packet->NextUInt();
 	TargetSubsystem = packet->NextUChar();
 	TargetLock = Num::UnitFloatFrom8( packet->NextChar() ) * 2.f;
@@ -1594,10 +1602,8 @@ void Ship::AddToUpdatePacketFromClient( Packet *packet, int8_t precision )
 	{
 		uint8_t predicted = PredictedShots.front();
 		PredictedShots.pop_front();
-		firing_and_mode = (predicted & 0x0F) | 0x80;
+		firing_and_mode = (predicted & 0x0F) | 0xE0;  // ZeroLag Shot(s) Fired
 		selected_weapon = (predicted & 0xF0) >> 4;
-		if( ((XWingGame*)( Raptor::Game ))->ZeroLagServer )  // v0.4 server would be confused by ZeroLag data.
-			firing_and_mode |= 0x60;  // ZeroLag shot from v0.4.2 client.
 	}
 	else if( Firing )
 	{
@@ -1660,7 +1666,6 @@ void Ship::ReadFromUpdatePacketFromClient( Packet *packet, int8_t precision )
 	
 	if( SelectedWeapon != prev_selected_weapon )
 	{
-		WeaponIndex = 0;
 		if( ! zerolag_shot )
 			FiringClocks[ SelectedWeapon ].Reset();
 	}
@@ -2403,6 +2408,8 @@ void Ship::Update( double dt )
 		TargetSubsystem = 0;
 	}
 	
+	EngineFlicker = Rand::Double( 0.875, 1.125 );
+	
 	GameObject::Update( dt );
 	
 	// After applying rotations in GameObject::Update, make sure MotionVector matches Fwd direction.
@@ -2448,7 +2455,7 @@ void Ship::Draw( void )
 	}
 	
 	// Engine glow is based on throttle level.
-	float engine_power = ((Health > 0.) && MaxSpeed()) ? (MotionVector.Length() / MaxSpeed()) : std::max<float>( 0.f, 1. - DeathClock.ElapsedSeconds() );
+	float engine_power = ((Health > 0.) && MaxSpeed()) ? ((MotionVector.Length() + PrevMotionVector.Length()) / (MaxSpeed() * 2.)) : std::max<float>( 0.f, 1. - DeathClock.ElapsedSeconds() );
 	float r = std::min<float>( 1.f, powf( engine_power, 0.6f ) * 1.02f );
 	float g = std::min<float>( 1.f, powf( engine_power, 1.3f ) * 1.01f );
 	float b = std::min<float>( 1.f, powf( engine_power, 1.5f ) * 1.01f );

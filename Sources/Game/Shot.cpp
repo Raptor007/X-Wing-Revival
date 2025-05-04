@@ -22,7 +22,9 @@ Shot::Shot( uint32_t id ) : GameObject( id, XWing::Object::SHOT )
 	Seeking = 0;
 	SeekingSubsystem = 0;
 	Drawn = false;
+	WidthScale = 1.;
 	Predicted = false;
+	SmoothRadius = 2048.;  // Large radius allows fast missiles to seek smoothly.
 }
 
 
@@ -47,6 +49,7 @@ void Shot::Copy( const Shot *other, bool keep_pos )
 	Anim             = other->Anim;
 	Shape.BecomeInstance( &(other->Shape) );  // NOTE: This could be a problem if Shot.Shape is responsible for any allocated arrays, but it should just be an instance.
 	Drawn            = other->Drawn;
+	WidthScale       = other->WidthScale;
 	ShotType         = other->ShotType;
 	FiredFrom        = other->FiredFrom;
 	WeaponIndex      = other->WeaponIndex;
@@ -65,7 +68,7 @@ void Shot::ClientInit( void )
 		{
 			Shot *predicted_shot = game->ClientShots[ ShotType ][ WeaponIndex ].front();
 			game->ClientShots[ ShotType ][ WeaponIndex ].pop_front();
-			Copy( predicted_shot, Seeking );
+			Copy( predicted_shot );
 			Data->RemoveObject( predicted_shot->ID );
 			return;
 		}
@@ -98,7 +101,7 @@ void Shot::ClientInit( void )
 	else
 		Anim.BecomeInstance( Raptor::Game->Res.GetAnimation("laser_unknown.ani") );
 	
-	if( Raptor::Game->State >= XWing::State::FLYING )
+	if( (Raptor::Game->State >= XWing::State::FLYING) && ! Drawn )
 	{
 		GameObject *fired_from = Data->GetObject( FiredFrom );
 		
@@ -205,12 +208,9 @@ void Shot::ClientInit( void )
 		{
 			Ship *ship = (Ship*) fired_from;
 			if( (ship->PlayerID != Raptor::Game->PlayerID) && (ship->SelectedWeapon != ShotType) && (ship->Ammo.find(ShotType) != ship->Ammo.end()) )
-			{
 				ship->SelectedWeapon = ShotType;
-				ship->WeaponIndex = 0;
-			}
 			if( ! ship->FiredThisFrame )
-				ship->WeaponIndex = WeaponIndex;
+				ship->WeaponIndex[ ShotType ] = WeaponIndex;
 			ship->JustFired( ShotType, 1 );
 			if( (ship->PlayerID != Raptor::Game->PlayerID) || Predicted )
 				ship->FiringMode[ ShotType ] = ship->FiredThisFrame;
@@ -250,7 +250,7 @@ double Shot::Damage( void ) const
 double Shot::HullDamage( void ) const
 {
 	if( ShotType == TYPE_ION_CANNON )
-		return 5.;
+		return 1.;
 	else if( ShotType == TYPE_MISSILE )
 		return 95.;
 	
@@ -282,9 +282,9 @@ double Shot::AsteroidDamage( void ) const
 double Shot::Speed( void ) const
 {
 	if( ShotType == TYPE_TURBO_LASER_GREEN )
-		return 600.;
+		return 700.;
 	else if( ShotType == TYPE_TURBO_LASER_RED )
-		return 600.;
+		return 700.;
 	else if( ShotType == TYPE_QUAD_LASER_RED )
 		return 750.;
 	else if( ShotType == TYPE_ION_CANNON )
@@ -344,26 +344,64 @@ Color Shot::LightColor( void ) const
 	// Return the color of the dynamic light for this shot.
 	// We store the radius in the "alpha" variable.
 	
-	if( ShotType == TYPE_LASER_RED )
-		return Color( 0.85f, 0.f, 0.f, 15.f );
-	else if( ShotType == TYPE_LASER_GREEN )
-		return Color( 0.f, 0.4f, 0.f, 15.f );
-	else if( ShotType == TYPE_TURBO_LASER_RED )
-		return Color( 0.85f, 0.f, 0.f, 16.f );
-	else if( ShotType == TYPE_TURBO_LASER_GREEN )
-		return Color( 0.f, 0.4f, 0.f, 16.f );
-	else if( ShotType == TYPE_QUAD_LASER_RED )
-		return Color( 0.8f, 0.f, 0.f, 14.f );
-	else if( ShotType == TYPE_ION_CANNON )
-		return Color( 0.f, 0.3f, 1.f, 20.f );
-	else if( ShotType == TYPE_TORPEDO )
-		return Color( 1.f, 0.7f, 0.4f, 17.f );
-	else if( ShotType == TYPE_MISSILE )
-		return Color( 0.9f, 0.5f, 0.1f, 17.f );
-	else if( ShotType == TYPE_SUPERLASER )
-		return Color( 0.f, 0.9f, 0.01f, 10000.f );
+	float scale = WidthScale;  // Flicker
 	
-	return Color( 1.f, 1.f, 1.f, 15.f );
+	if( ShotType == TYPE_LASER_RED )
+	{
+		if( ! Drawn )
+			return Color( 0.85f, 0.03f, 0.f, 20.f * scale );
+		return Color( 0.85f, 0.f, 0.f, 15.f * scale );
+	}
+	else if( ShotType == TYPE_LASER_GREEN )
+	{
+		if( ! Drawn )
+			return Color( 0.02f, 0.4f, 0.f, 17.f * scale );
+		return Color( 0.f, 0.4f, 0.f, 15.f * scale );
+	}
+	else if( ShotType == TYPE_TURBO_LASER_RED )
+	{
+		if( ! Drawn )
+			return Color( 0.85f, 0.08f, 0.f, 32.f * scale );
+		return Color( 0.85f, 0.f, 0.f, 16.f * scale );
+	}
+	else if( ShotType == TYPE_TURBO_LASER_GREEN )
+	{
+		if( ! Drawn )
+			return Color( 0.07f, 0.4f, 0.01f, 40.f * scale );
+		return Color( 0.f, 0.4f, 0.f, 16.f * scale );
+	}
+	else if( ShotType == TYPE_QUAD_LASER_RED )
+	{
+		if( ! Drawn )
+			return Color( 0.8f, 0.1f, 0.f, 7.f * scale );
+		return Color( 0.8f, 0.f, 0.f, 14.f * scale );
+	}
+	else if( ShotType == TYPE_ION_CANNON )
+	{
+		if( ! Drawn )
+			return Color( 0.01f * scale, 0.3f, 1.f, 25.f * scale );
+		return Color( 0.f, 0.3f, 1.f, 20.f * scale );
+	}
+	else if( ShotType == TYPE_TORPEDO )
+	{
+		if( ! Drawn )
+			return Color( 1.f, 0.7f, 0.1f * scale, 12.f * scale );
+		return Color( 1.f, 0.7f, 0.4f * scale, 18.f * powf( scale, 1.5f ) );
+	}
+	else if( ShotType == TYPE_MISSILE )
+	{
+		if( ! Drawn )
+			return Color( 0.9f, 0.5f * scale, 0.1f * scale, 10.f * scale );
+		return Color( 0.9f, 0.5f * scale, 0.1f * scale, 17.f * powf( scale, 1.25f ) );
+	}
+	else if( ShotType == TYPE_SUPERLASER )
+	{
+		if( ! Drawn )
+			return Color( 0.f, 0.9f, 0.f, 100000.f * scale * scale );
+		return Color( 0.f, 0.9f, 0.01f, 10000.f * scale );
+	}
+	
+	return Color( 1.f, 1.f, 1.f, 15.f * (Drawn ? 1.f : 1.25f) * scale );
 }
 
 
@@ -429,9 +467,14 @@ void Shot::AddToInitPacket( Packet *packet, int8_t precision )
 	
 	packet->AddUChar( ShotType );
 	packet->AddUInt( Seeking );
-	packet->AddUInt( FiredFrom );
-	if( FiredFrom )
-		packet->AddUChar( WeaponIndex );
+	if( ! Drawn )
+	{
+		packet->AddUInt( FiredFrom );
+		if( FiredFrom )
+			packet->AddUChar( WeaponIndex );
+	}
+	else
+		packet->AddUInt( 0 );  // This is okay as long as clients only use FiredFrom for initial positioning.
 }
 
 
@@ -452,17 +495,21 @@ void Shot::ReadFromInitPacket( Packet *packet, int8_t precision )
 	
 	if( FiredFrom )
 	{
-		WeaponIndex = packet->NextUChar();
+		WeaponIndex = packet->NextUChar() & 0x7F;
 		
 		const GameObject *fired_from = Data->GetObject( FiredFrom );
 		if( fired_from )
 		{
 			PlayerID = fired_from->PlayerID;
-			StartAtWeapon( fired_from );
+			if( ! Drawn )
+				StartAtWeapon( fired_from );
 		}
 	}
 	
 	FixVectors();
+	PrevPos.Copy( this );
+	
+	Lifetime.TimeScale = Data->TimeScale;
 }
 
 
@@ -554,6 +601,16 @@ void Shot::Update( double dt )
 	Lifetime.SetTimeScale( Data->TimeScale );
 	//Anim.Timer.SetTimeScale( Data->TimeScale );  // Pause and slow-motion actually look better without this.
 	
+	WidthScale = Rand::Double( 0.75, 1.25 );  // Flicker
+	
+	if( ! ClientSide() )
+		Drawn = true;
+	else if( ! Drawn )
+	{
+		StartAtWeapon();
+		return;
+	}
+	
 	if( Seeking )
 	{
 		GameObject *target = Data ? Data->GetObject( Seeking ) : NULL;
@@ -637,13 +694,15 @@ void Shot::Draw( void )
 	double ahead  = DrawAhead();
 	double behind = DrawBehind();
 	double width  = DrawWidth();
+	double animation_time = Predicted ? (1. / 48.) : (1. / 72.);
 	
 	// If the shot is behind us, don't draw it.
 	Vec3D vec_to_front( X + Fwd.X * ahead  - Raptor::Game->Cam.X, Y + Fwd.Y * ahead  - Raptor::Game->Cam.Y, Z + Fwd.Z * ahead  - Raptor::Game->Cam.Z );
 	Vec3D vec_to_rear(  X - Fwd.X * behind - Raptor::Game->Cam.X, Y - Fwd.Y * behind - Raptor::Game->Cam.Y, Z - Fwd.Z * behind - Raptor::Game->Cam.Z );
 	if( (Raptor::Game->Cam.Fwd.Dot( &vec_to_front ) < 0.) && (Raptor::Game->Cam.Fwd.Dot( &vec_to_rear ) < 0.) )
 	{
-		Drawn = true;
+		if( (! Drawn) && ((Raptor::Game->Gfx.DrawTo == Raptor::Game->Head.EyeR) || ! Raptor::Game->Gfx.DrawTo) )  // Only set Drawn on right eye or main framebuffer.
+			Drawn = (Lifetime.ElapsedSeconds() + Raptor::Game->FrameTime * Data->TimeScale) >= animation_time;
 		return;
 	}
 	
@@ -668,14 +727,7 @@ void Shot::Draw( void )
 		// Calculate corners.
 		Vec3D vec_to_shot( X - Raptor::Game->Cam.X, Y - Raptor::Game->Cam.Y, Z - Raptor::Game->Cam.Z );
 		vec_to_shot.ScaleTo( 1. );
-		Vec3D out = Raptor::Game->Cam.Right * Raptor::Game->Cam.Right.Dot(&Fwd) + Raptor::Game->Cam.Up * Raptor::Game->Cam.Up.Dot(&Fwd);
-		if( out.Length() < 0.1 ) 
-		{
-			Vec2D vec( vec_to_shot.Dot(&(Raptor::Game->Cam.Right)), vec_to_shot.Dot(&(Raptor::Game->Cam.Up)) );
-			double rotation = -1. * Num::RadToDeg( atan2( vec.Y, vec.X ) );
-			out = Raptor::Game->Cam.Right;
-			out.RotateAround( &(Raptor::Game->Cam.Fwd), rotation );
-		}
+		Vec3D out = Fwd.Cross( &vec_to_shot ).Cross( &(Raptor::Game->Cam.Fwd) );
 		out.ScaleTo( width );
 		Vec3D cw = out;
 		cw.RotateAround( &(Raptor::Game->Cam.Fwd), 90. );
@@ -687,6 +739,10 @@ void Shot::Draw( void )
 		// Draw order is based on whether the shot is heading towards or away from the camera.
 		bool going_away = (Raptor::Game->Cam.Fwd.Dot(&Fwd) > 0.);
 		behind *= -1.;
+		if( ! Drawn )
+			ahead *= WidthScale;
+		else if( ShotType == Shot::TYPE_TORPEDO )
+			behind *= WidthScale;
 		
 		glEnable( GL_TEXTURE_2D );
 		glBindTexture( GL_TEXTURE_2D, Anim.CurrentFrame() );
@@ -762,7 +818,7 @@ void Shot::Draw( void )
 					
 					// Rear
 					glTexCoord2i( 0, 0 );
-					glVertex3d( X + Fwd.X * behind, Y + Fwd.Y * behind, Z + Fwd.Z * behind );
+					glVertex3d( X + PrevPos.Fwd.X * behind, Y + PrevPos.Fwd.Y * behind, Z + PrevPos.Fwd.Z * behind );
 					
 					// Clockwise
 					glTexCoord2i( 0, 1 );
@@ -775,9 +831,9 @@ void Shot::Draw( void )
 		glBegin( GL_QUADS );
 			
 			// Muzzle flash on first frame.
-			double scale = 1.;
+			double scale = WidthScale;  // Flicker
 			if( (! Drawn) && (ShotType != Shot::TYPE_QUAD_LASER_RED) && (ShotType != Shot::TYPE_MISSILE) && (ShotType != Shot::TYPE_TORPEDO) )
-				scale = ((ShotType == Shot::TYPE_TURBO_LASER_GREEN) || (ShotType == Shot::TYPE_TURBO_LASER_GREEN)) ? 4. : 2.5;
+				scale *= ((ShotType == Shot::TYPE_TURBO_LASER_GREEN) || (ShotType == Shot::TYPE_TURBO_LASER_GREEN)) ? 4. : 2.5;
 			
 			// Outside
 			glTexCoord2i( 0, 0 );
@@ -887,7 +943,7 @@ void Shot::Draw( void )
 					
 					// Rear
 					glTexCoord2i( 0, 0 );
-					glVertex3d( X + Fwd.X * behind, Y + Fwd.Y * behind, Z + Fwd.Z * behind );
+					glVertex3d( X + PrevPos.Fwd.X * behind, Y + PrevPos.Fwd.Y * behind, Z + PrevPos.Fwd.Z * behind );
 					
 					// Clockwise
 					glTexCoord2i( 0, 1 );
@@ -900,7 +956,8 @@ void Shot::Draw( void )
 		glDisable( GL_TEXTURE_2D );
 	}
 	
-	Drawn = true;
+	if( (! Drawn) && ((Raptor::Game->Gfx.DrawTo == Raptor::Game->Head.EyeR) || ! Raptor::Game->Gfx.DrawTo) )  // Only set Drawn on right eye or main framebuffer.
+		Drawn = (Lifetime.ElapsedSeconds() + Raptor::Game->FrameTime * Data->TimeScale) >= animation_time;
 }
 
 
@@ -948,7 +1005,7 @@ double Shot::DrawBehind( void ) const
 double Shot::DrawWidth( void ) const
 {
 	if( ShotType == TYPE_TORPEDO )
-		return 1.25;
+		return 1.625;
 	else if( ShotType == TYPE_MISSILE )
 		return 1.125;
 	

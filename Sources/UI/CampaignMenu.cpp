@@ -47,7 +47,7 @@ CampaignMenu::CampaignMenu( void )
 	empire_button->Enabled = (Raptor::Game->Res.Find("Missions/empire1.def")[0] == '.');
 	AddElement( empire_button );
 	if( ! empire_button->Enabled )
-		AddElement( new Label( &rect, "COMING\n2025", TitleFont, Font::ALIGN_MIDDLE_CENTER ) );  // FIXME: Temporary.
+		AddElement( new Label( &rect, "MISSION\nDATA\nMISSING", TitleFont, Font::ALIGN_MIDDLE_CENTER ) );
 	
 	rect.w = 150;
 	rect.h = 50;
@@ -120,6 +120,13 @@ void CampaignMenuTeamButton::Draw( void )
 	Camera cam;
 	cam.FOV = 30;
 	Pos3D pos = cam + cam.Fwd * (hovering ? 2. : 2.25);
+	if( Raptor::Game->Gfx.DrawTo )
+	{
+		if( Raptor::Game->Gfx.DrawTo == Raptor::Game->Head.EyeL )
+			pos.MoveAlong( &(cam.Right), Raptor::Game->Cfg.SettingAsDouble("vr_logo_sep",0.01) );
+		else if( Raptor::Game->Gfx.DrawTo == Raptor::Game->Head.EyeR )
+			pos.MoveAlong( &(cam.Right), Raptor::Game->Cfg.SettingAsDouble("vr_logo_sep",0.01) * -1. );
+	}
 	pos.RotateAround( &(pos.Up), Rotation * -1. );
 	Raptor::Game->Gfx.Setup3D( &cam, Rect.h ? (Rect.w / (double) Rect.h) : 1. );
 	
@@ -207,6 +214,15 @@ void CampaignMenuTeamButton::Clicked( Uint8 button )
 	XWingGame *game = (XWingGame*) Raptor::Game;
 	game->CampaignTeam = Team;
 	game->Host();
+	
+	if( game->Cfg.SettingAsBool("darkside") && Raptor::Server->IsRunning() )
+	{
+		Packet info = Packet( Raptor::Packet::INFO );
+		info.AddUShort( 1 );
+		info.AddString( "darkside" );
+		info.AddString( "true" );
+		game->Net.Send( &info );
+	}
 }
 
 

@@ -3,12 +3,11 @@ mission_desc Asteroid field obstacle course.
 gametype team_race
 player_team rebel
 player_ship A/W X/W Y/W B/W YT1300
-rebel_fighter A/W
-rebel_bomber X/W
+player_group 4
+race_lap 5
 team_race_checkpoints 20
 ai_waves 0
 asteroids 32
-bg nebula
 
 at 0:03
 alert r0_begin.wav Alright, here's an easy one for you.
@@ -27,11 +26,12 @@ message See how fast you can do it.
 
 on player checkpoint #13
 wait 3
-chat Sensors detect 1 new TIE Fighter arriving.
+chat Sensors detect 1 unknown starfighter arriving.
 wait 1
 spawn T/F "Unknown" at -7000 0 0
+mission_objs fighters
 wait 1
-alert r0_company.wav Looks like we've got company.
+alert r0_company.wav Looks like we have company.
 wait 2
 alert r0_attack.wav This is not a drill!  Take 'em out.
 gametype team_elim
@@ -49,6 +49,8 @@ on victory
 next_mission rebel1
 wait 3
 alert r0_win.wav Sorry to cut the training short, but we'd better get back to the fleet.
+wait 4
+jump player ships
 
 on defeat
 wait 1.5

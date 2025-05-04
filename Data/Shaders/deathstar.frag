@@ -1,7 +1,11 @@
 // Death Star does not currently track blast points, so keep rendering simple.
-#if BLASTPOINTS > 0
+#ifdef BLASTPOINTS
 #undef BLASTPOINTS
 #define BLASTPOINTS 0
+#endif
+
+#ifndef FOG_DIST
+#define FOG_DIST 65536.0
 #endif
 
 // ---------------------------------------------------------------------------
@@ -14,7 +18,7 @@ precision highp float;
 // Shader variables.
 
 #ifndef LIGHT_QUALITY
-#define LIGHT_QUALITY 2
+#define LIGHT_QUALITY 4
 #endif
 
 #ifndef DIRECTIONAL_LIGHTS
@@ -24,6 +28,17 @@ precision highp float;
 #ifndef POINT_LIGHTS
 #define POINT_LIGHTS 4
 #endif
+
+#ifndef BLASTPOINTS
+#define BLASTPOINTS 0
+#endif
+
+#ifndef BLASTPOINT_QUALITY
+#define BLASTPOINT_QUALITY 2
+#endif
+
+
+// Debug variables.
 
 #ifndef AMBIENT_COLOR
 #define AMBIENT_COLOR AmbientColor
@@ -41,13 +56,28 @@ precision highp float;
 #define SHININESS Shininess
 #endif
 
+#ifndef BUMP_SCALE
+#define BUMP_SCALE BumpScale
+#endif
+
+#ifndef AMBIENT_LIGHT
+#define AMBIENT_LIGHT AmbientLight
+#endif
+
 
 // Material properties:
 uniform sampler2D Texture;
 uniform float Alpha;
 uniform vec3 AmbientColor;
 
-#if LIGHT_QUALITY
+#if LIGHT_QUALITY >= 3
+uniform sampler2D BumpMap;
+uniform float BumpScale;
+varying vec3 WorldTangent;
+varying vec3 WorldBitangent;
+#endif
+
+#if (LIGHT_QUALITY >= 1) && (LIGHT_QUALITY < 4)
 // Interpolates automatically from vertex shader.
 varying vec3 Color;
 #endif
@@ -201,6 +231,37 @@ void main( void )
 		vec3 diffuse = vec3( 0.0, 0.0, 0.0 );
 		vec3 specular = vec3( 0.0, 0.0, 0.0 );
 		
+		#if LIGHT_QUALITY >= 3
+			vec4 bump = texture2D( BumpMap, gl_TexCoord[0].st );
+			#ifdef DEBUG
+				gl_FragColor.rgb *= 0.125;
+				gl_FragColor.rgb += bump.rgb;
+			#endif
+			vec3 bump_t = WorldTangent   * (bump.r * 2.0 - 1.0);
+			vec3 bump_b = WorldBitangent * (bump.g * 2.0 - 1.0);
+			vec3 bump_n = world_normal   * (bump.b * 2.0 - 1.0);
+			world_normal = normalize( mix( world_normal, bump_t + bump_b + bump_n, bump.a * BUMP_SCALE ) );
+		#endif
+		
+		#if LIGHT_QUALITY >= 4
+			vec3 Color = AMBIENT_COLOR;
+			diffuse = AMBIENT_LIGHT;
+			
+			// Do the directional diffuse per-pixel for bump-mapping.
+			#if DIRECTIONAL_LIGHTS > 0
+				diffuse += directional_light( world_normal, DirectionalLight0Dir, DirectionalLight0WrapAround ) * DirectionalLight0Color;
+			#endif
+			#if DIRECTIONAL_LIGHTS > 1
+				diffuse += directional_light( world_normal, DirectionalLight1Dir, DirectionalLight1WrapAround ) * DirectionalLight1Color;
+			#endif
+			#if DIRECTIONAL_LIGHTS > 2
+				diffuse += directional_light( world_normal, DirectionalLight2Dir, DirectionalLight2WrapAround ) * DirectionalLight2Color;
+			#endif
+			#if DIRECTIONAL_LIGHTS > 3
+				diffuse += directional_light( world_normal, DirectionalLight3Dir, DirectionalLight3WrapAround ) * DirectionalLight3Color;
+			#endif
+		#endif
+		
 		#if DIRECTIONAL_LIGHTS > 0
 			specular += pow( directional_light( vec_to_cam, reflect(DirectionalLight0Dir,world_normal), DirectionalLight0WrapAround ), SHININESS ) * DirectionalLight0Color;
 		#endif
@@ -257,8 +318,8 @@ void main( void )
 		gl_FragColor.a *= Alpha;
 	#endif
 	
-	// ---------------------------------------------------------------------------
-	
-	// Apply Death Star distance fog.
-	gl_FragColor.rgb *= clamp( 65536.0 - gl_FragCoord.z * 65536.0, 0.0, 1.0 );
+	#ifdef FOG_DIST
+		// Apply Death Star distance fog (if applicable).
+		gl_FragColor.rgb *= clamp( FOG_DIST - gl_FragCoord.z * FOG_DIST, 0.0, 1.0 );
+	#endif
 }

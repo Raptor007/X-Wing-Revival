@@ -198,7 +198,7 @@ void DeathStarBox::Update( double dt )
 
 void DeathStarBox::Draw( void )
 {
-	bool change_shaders = (Raptor::Game->Cfg.SettingAsInt("g_shader_light_quality") >= 2) && Raptor::Game->ShaderMgr.Active();
+	bool change_shaders = (Raptor::Game->Gfx.LightQuality >= 2) && Raptor::Game->ShaderMgr.Active();
 	Shader *prev_shader = Raptor::Game->ShaderMgr.Selected;
 	if( change_shaders )
 		Raptor::Game->ShaderMgr.SelectAndCopyVars( Raptor::Game->Res.GetShader("deathstar") );

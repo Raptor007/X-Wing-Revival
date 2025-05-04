@@ -39,6 +39,7 @@ RenderLayer::RenderLayer( void )
 	SmallFont = Raptor::Game->Res.GetFont( "Verdana.ttf", 15 );
 	RadarDirectionFont = Raptor::Game->Res.GetFont( "ProFont.ttf", 22 );
 	ScreenFont = Raptor::Game->Res.GetFont( "ProFont.ttf", 48 );
+	Mic.BecomeInstance( Raptor::Game->Res.GetAnimation("mic.ani") );
 	
 	for( int i = 0; i < STAR_COUNT * 3; i ++ )
 		Stars[ i ] = Rand::Double( -10000., 10000. );
@@ -132,7 +133,7 @@ void RenderLayer::SetWorldLights( bool deathstar, float ambient_scale, const std
 	}
 	else if( Raptor::Game->Data.PropertyAsString("bg") == "nebula" )
 	{
-		ambient.Set( 0.75f, 0.75f, 0.75f, 1.f );
+		ambient.Set( 0.75f, 0.7f, 0.75f, 1.f );
 		
 		dir[ 0 ].Set( 0.897, -0.389, 0.208 );
 		dir[ 0 ].ScaleTo( 1. );
@@ -156,7 +157,7 @@ void RenderLayer::SetWorldLights( bool deathstar, float ambient_scale, const std
 	}
 	else
 	{
-		ambient.Set( 0.75f, 0.75f, 0.75f, 1.f );
+		ambient.Set( 0.72f, 0.7f, 0.8f, 1.f );
 		
 		dir[ 0 ].Set( 0.07, -0.8, 0.6 );
 		dir[ 0 ].ScaleTo( 1. );
@@ -166,12 +167,12 @@ void RenderLayer::SetWorldLights( bool deathstar, float ambient_scale, const std
 		dir[ 1 ].Set( 0.9, 0.3, 0.25 );
 		dir[ 1 ].ScaleTo( 1. );
 		color[ 1 ].Set( 0.22, 0.2, 0.2, 1.f );
-		wrap_around[ 1 ] = 1.0;
+		wrap_around[ 1 ] = 0.875;
 		
 		dir[ 2 ].Set( -0.01, -0.86, -0.51 );
 		dir[ 2 ].ScaleTo( 1. );
 		color[ 2 ].Set( 0.2, 0.15, 0.3, 1.f );
-		wrap_around[ 2 ] = 0.5;
+		wrap_around[ 2 ] = 1.0;
 		
 		dir[ 3 ].Set( -0.35, -0.75, -0.56 );
 		dir[ 3 ].ScaleTo( 1. );
@@ -404,9 +405,6 @@ void RenderLayer::Draw( void )
 	
 	XWingGame *game = (XWingGame*) Raptor::Game;
 	
-	
-	// Update the 2D drawable area.
-	
 	Rect.x = 0;
 	Rect.y = 0;
 	Rect.w = game->Gfx.W;
@@ -421,7 +419,7 @@ void RenderLayer::Draw( void )
 		Rect.h = 480;
 	}
 	
-	bool screensaver = game->Cfg.SettingAsBool("screensaver") || game->Cfg.SettingAsBool("cinematic");
+	bool cinematic = (game->Cfg.SettingAsBool("cinematic") || game->Cfg.SettingAsBool("screensaver")) && ! game->Input.ControlPressed( game->Controls[ XWing::Control::SCORES ] );
 	
 	
 	// Update contained elements.
@@ -649,22 +647,25 @@ void RenderLayer::Draw( void )
 		double cycle_time = game->Cfg.SettingAsDouble("view_cycle_time",7.);
 		if( cycle_time <= 0. )
 			cycle_time = 7.;
+
+		uint8_t ship_category = observed_ship ? observed_ship->Category() : (uint8_t) ShipClass::CATEGORY_UNKNOWN;
+		bool ship_turret = observed_ship && observed_ship->AttachedTurret();
 		
 		double cam_picker = observed_ship ? fmod( observed_ship->Lifetime.ElapsedSeconds(), cycle_time * 5. ) : fmod( PlayTime.ElapsedSeconds(), cycle_time * 7. );
 		if( cam_picker < cycle_time )
 			game->View = XWing::View::CINEMA;
 		else if( cam_picker < cycle_time * 2. )
-			game->View = (observed_ship && (observed_ship->Category() == ShipClass::CATEGORY_CAPITAL) && observed_ship->AttachedTurret()) ? XWing::View::GUNNER : XWing::View::COCKPIT;
+			game->View = ((ship_category == ShipClass::CATEGORY_CAPITAL) && ship_turret) ? XWing::View::GUNNER : ((ship_category == ShipClass::CATEGORY_TRANSPORT) ? XWing::View::FIXED : XWing::View::COCKPIT);
 		else if( cam_picker < cycle_time * 3. )
-			game->View = (observed_ship && (observed_ship->Category() == ShipClass::CATEGORY_CAPITAL)) ? XWing::View::FIXED : XWing::View::SELFIE;
+			game->View = (ship_category == ShipClass::CATEGORY_CAPITAL) ? XWing::View::FIXED : XWing::View::SELFIE;
 		else if( cam_picker < cycle_time * 4. )
-			game->View = (observed_ship && (observed_ship->Category() == ShipClass::CATEGORY_CAPITAL)) ? XWing::View::CINEMA : XWing::View::CHASE;
+			game->View = (ship_category == ShipClass::CATEGORY_CAPITAL) ? XWing::View::CINEMA : XWing::View::CHASE;
 		else if( cam_picker < cycle_time * 5. )
-			game->View = (observed_ship && observed_ship->AttachedTurret()) ? XWing::View::GUNNER : XWing::View::COCKPIT;
+			game->View = ship_turret ? XWing::View::GUNNER : XWing::View::COCKPIT;
 		else if( cam_picker < cycle_time * 6. )
 			game->View = XWing::View::CINEMA;
 		else
-			game->View = (observed_ship && observed_ship->AttachedTurret()) ? XWing::View::GUNNER : XWing::View::FIXED;
+			game->View = ship_turret ? XWing::View::GUNNER : XWing::View::FIXED;
 	}
 	
 	
@@ -871,9 +872,9 @@ void RenderLayer::Draw( void )
 			Cam.Copy( observed_ship );
 			if( game->View == XWing::View::CHASE )
 			{
-				Cam.Yaw  ( observed_ship->YawRate   * -0.045 );
-				Cam.Pitch( observed_ship->PitchRate * -0.025 );
-				Cam.Roll ( observed_ship->RollRate  * -0.025 );
+				Cam.Yaw  ( (observed_ship->YawRate   + observed_ship->PrevYawRate  ) * -0.025 );
+				Cam.Pitch( (observed_ship->PitchRate + observed_ship->PrevPitchRate) * -0.025 );
+				Cam.Roll ( (observed_ship->RollRate  + observed_ship->PrevRollRate ) * -0.015 );
 			}
 		}
 		
@@ -1007,6 +1008,8 @@ void RenderLayer::Draw( void )
 			{
 				if( observed_ship->Category() == ShipClass::CATEGORY_CAPITAL )
 					camera_dist = 160.;
+				else if( observed_ship->Category() == ShipClass::CATEGORY_TRANSPORT )
+					camera_dist = 25.;
 				// FIXME: Offsets to selfie cam should be defined in ShipClass, not hard-coded here!
 				else if( Str::BeginsWith( ship_class, "T/" ) )
 					camera_dist = 16.;
@@ -1039,6 +1042,11 @@ void RenderLayer::Draw( void )
 			Cam = observed_turret->HeadPos();
 			game->View = XWing::View::GUNNER;
 		}
+		
+		// Apply camera angle change, then clear it to prevent endless spinning.
+		Cam.Yaw( game->LookYaw );
+		Cam.Pitch( game->LookPitch );
+		game->LookYaw = game->LookPitch = 0.;
 	}
 	
 	// Determine which player we are observing.
@@ -1547,6 +1555,7 @@ void RenderLayer::Draw( void )
 					std::string target_name = "";
 					std::string target_status = "";
 					bool target_seeking_us = false;
+					bool classic = Raptor::Game->Cfg.SettingAsBool("ui_classic");
 					
 					if( target )
 					{
@@ -1562,7 +1571,34 @@ void RenderLayer::Draw( void )
 							target_name = target->Class->ShortName + ((target_name.length() == max_name_length) ? std::string(":") : std::string(": ")) + ((target_name.length() > max_name_length) ? target_name.substr(0,max_name_length) : target_name);
 						}
 						
-						if( target->Health < (target->MaxHealth() * 0.7) )
+						if( ! classic )
+						{
+							if( target->Category() == ShipClass::CATEGORY_TARGET )
+							{
+								if( target->Health < (target->MaxHealth() * 0.7) )
+									target_status = "SURFACE\nIMPACT";
+							}
+							else
+							{
+								char shield_str[ 5 ] = "NONE", hull_str[ 5 ] = "100%";
+								double max_shield = target->MaxShield();
+								if( max_shield )
+								{
+									double shield = std::min<double>( target->ShieldF, target->ShieldR );
+									if( target->ShieldPos == Ship::SHIELD_FRONT )
+										shield = target->ShieldF * 0.5;
+									else if( target->ShieldPos == Ship::SHIELD_REAR )
+										shield = target->ShieldR * 0.5;
+									if( shield > 0. )
+										snprintf( shield_str, sizeof(shield_str), "%3.0f%%", ceil( 100. * shield / max_shield ) );
+									else
+										snprintf( shield_str, sizeof(shield_str), "DOWN" );
+								}
+								snprintf( hull_str, sizeof(hull_str), "%3.0f%%", std::min<double>( 100., ceil(100. * target->Health / target->MaxHealth()) ) );
+								target_status = std::string("SHLD      HULL\n") + std::string(shield_str) + std::string("      ") + std::string(hull_str);
+							}
+						}
+						else if( target->Health < (target->MaxHealth() * 0.7) )
 							target_status = "Hull Damaged";
 						else if( (target->MaxShield() > 0.)
 						&&  (   ((target->ShieldF <= 0.) && (target->ShieldPos != Ship::SHIELD_REAR))
@@ -1622,7 +1658,7 @@ void RenderLayer::Draw( void )
 					ScreenFont->DrawText( target_name, target_framebuffer->W / 2, 10, Font::ALIGN_TOP_CENTER, red, green, blue, 1.f );
 					
 					// Draw target status (health).
-					ScreenFont->DrawText( target_status, target_framebuffer->W / 2, 10 + ScreenFont->PointSize, Font::ALIGN_TOP_CENTER, 1.f, 1.f, 0.5f, 1.f );
+					ScreenFont->DrawText( target_status, target_framebuffer->W / 2, ScreenFont->PointSize + (classic ? 10 : 15), Font::ALIGN_TOP_CENTER, 1.f, 1.f, 0.5f, 1.f );
 					
 					int dist = vec_to_target.Length();
 					if( target && observed_ship->TargetSubsystem )
@@ -1632,14 +1668,15 @@ void RenderLayer::Draw( void )
 						// Draw selected subsystem.
 						if( observed_ship && observed_ship->TargetSubsystem )
 						{
-							std::string subsystem_name = target->SubsystemName( observed_ship->TargetSubsystem );
+							std::string subsystem_id = target->SubsystemName( observed_ship->TargetSubsystem );
+							std::string subsystem_name = subsystem_id;
 							
 							if( ! game->Cfg.SettingAsBool("ugly_names",false) )
 							{
 								// Clean up name.
 								const char *subsystem_name_cstr = subsystem_name.c_str();
 								if( strncmp( subsystem_name_cstr, "ShieldGen", strlen("ShieldGen") ) == 0 )
-									subsystem_name = "Shield Generator";
+									subsystem_name = classic ? "Shield Generator" : "SHIELD GEN";
 								else
 								{
 									// Remove "Critical" prefix.
@@ -1658,13 +1695,48 @@ void RenderLayer::Draw( void )
 								}
 							}
 							
-							ScreenFont->DrawText( subsystem_name, target_framebuffer->W / 2, target_framebuffer->H - 10 - ScreenFont->PointSize, Font::ALIGN_BOTTOM_CENTER, 0.9f, 0.9f, 0.9f, 1.f );
+							if( ! classic )
+							{
+								// Display subsystem health.
+								
+								subsystem_name = Str::CapitalizedCopy(subsystem_name);
+								if( subsystem_name.length() > strlen("SHIELD GEN ") )
+									subsystem_name += std::string("\n");
+								else while( subsystem_name.length() < strlen("SHIELD GEN ") )
+									subsystem_name += std::string(" ");
+								
+								double max_health = target->SubsystemMaxHealth( observed_ship->TargetSubsystem );
+								if( max_health )
+								{
+									char health_str[ 5 ] = "100%";
+									double health = target->Subsystems[ subsystem_id ];
+									if( health > 0. )
+									{
+										snprintf( health_str, sizeof(health_str), "%3.0f%%", ceil( 100. * health / max_health ) );
+										subsystem_name += std::string(health_str);
+									}
+								}
+							}
+							
+							ScreenFont->DrawText( subsystem_name, target_framebuffer->W / 2, target_framebuffer->H - ScreenFont->PointSize - (classic ? 10 : 25), Font::ALIGN_BOTTOM_CENTER, 0.9f, 0.9f, 0.9f, 1.f );
 						}
 					}
 					
 					// Draw target distance.
-					ScreenFont->DrawText( "Dist: ", 10, target_framebuffer->H - 10, Font::ALIGN_BOTTOM_LEFT, 0.5f, 0.5f, 1.f, 1.f );
-					ScreenFont->DrawText( Num::ToString(dist), target_framebuffer->W - 10, target_framebuffer->H - 10, Font::ALIGN_BOTTOM_RIGHT, 0.5f, 0.5f, 1.f, 1.f );
+					if( classic )
+					{
+						ScreenFont->DrawText( "Dist:", 10, target_framebuffer->H - 10, Font::ALIGN_BOTTOM_LEFT, 0.5f, 0.5f, 1.f, 1.f );
+						ScreenFont->DrawText( Num::ToString(dist), target_framebuffer->W - 10, target_framebuffer->H - 10, Font::ALIGN_BOTTOM_RIGHT, 0.5f, 0.5f, 1.f, 1.f );
+					}
+					else
+					{
+						char dist_buf[ 32 ];
+						if( dist < 1000 )
+							snprintf( dist_buf, sizeof(dist_buf),  "DIST:%5i",    dist );
+						else
+							snprintf( dist_buf, sizeof(dist_buf), " DIST:%5.1fK", dist / 1000. );
+						ScreenFont->DrawText( dist_buf, target_framebuffer->W / 2, target_framebuffer->H - 20, Font::ALIGN_BOTTOM_CENTER, 0.5f, 0.5f, 1.f, 1.f );
+					}
 				}
 				
 				
@@ -1890,14 +1962,14 @@ void RenderLayer::Draw( void )
 					
 					if( target || (target_obj && (target_obj->Type() == XWing::Object::SHOT)) )
 					{
-						std::map<int,Shot*> test_shots = observed_ship->NextShots();
-						for( std::map<int,Shot*>::iterator shot_iter = test_shots.begin(); shot_iter != test_shots.end(); shot_iter ++ )
+						std::vector<Shot*> test_shots = observed_ship->NextShots();
+						for( std::vector<Shot*>::iterator shot_iter = test_shots.begin(); shot_iter != test_shots.end(); shot_iter ++ )
 						{
-							shot_vec.Copy( &(shot_iter->second->MotionVector) );
-							if( (! shot_on_target) && target_obj->WillCollide( shot_iter->second, shot_iter->second->MaxLifetime() ) )
+							shot_vec.Copy( &((*shot_iter)->MotionVector) );
+							if( (! shot_on_target) && target_obj->WillCollide( *shot_iter, (*shot_iter)->MaxLifetime() ) )
 								shot_on_target = true;
 							
-							delete shot_iter->second;
+							delete *shot_iter;
 						}
 					}
 					
@@ -2193,7 +2265,9 @@ void RenderLayer::Draw( void )
 	SetBackground();
 	DrawBackground();
 	DrawStars();
-	DrawDebris();
+	
+	if( ! in_hyperspace )
+		DrawDebris( dynamic_lights, &shots, &effects );
 	
 	
 	// Draw the cockpit if we're doing 3D cockpit.
@@ -2220,13 +2294,13 @@ void RenderLayer::Draw( void )
 			if( target && ! shots_checked )
 			{
 				// See if the crosshair is lined up so the next shot would hit.
-				std::map<int,Shot*> test_shots = observed_turret->NextShots();
-				for( std::map<int,Shot*>::iterator shot_iter = test_shots.begin(); shot_iter != test_shots.end(); shot_iter ++ )
+				std::vector<Shot*> test_shots = observed_turret->NextShots();
+				for( std::vector<Shot*>::iterator shot_iter = test_shots.begin(); shot_iter != test_shots.end(); shot_iter ++ )
 				{
-					if( (! shot_on_target) && target->WillCollide( shot_iter->second, shot_iter->second->MaxLifetime() ) )
+					if( (! shot_on_target) && target->WillCollide( *shot_iter, (*shot_iter)->MaxLifetime() ) )
 						shot_on_target = true;
 					
-					delete shot_iter->second;
+					delete *shot_iter;
 				}
 				
 				shots_checked = true;
@@ -2244,13 +2318,13 @@ void RenderLayer::Draw( void )
 		else if( target && ! shots_checked )
 		{
 			// See if the crosshair is lined up so the next shot would hit.
-			std::map<int,Shot*> test_shots = observed_ship->NextShots();
-			for( std::map<int,Shot*>::iterator shot_iter = test_shots.begin(); shot_iter != test_shots.end(); shot_iter ++ )
+			std::vector<Shot*> test_shots = observed_ship->NextShots();
+			for( std::vector<Shot*>::iterator shot_iter = test_shots.begin(); shot_iter != test_shots.end(); shot_iter ++ )
 			{
-				if( (! shot_on_target) && target->WillCollide( shot_iter->second, shot_iter->second->MaxLifetime() ) )
+				if( (! shot_on_target) && target->WillCollide( *shot_iter, (*shot_iter)->MaxLifetime() ) )
 					shot_on_target = true;
 				
-				delete shot_iter->second;
+				delete *shot_iter;
 			}
 			
 			shots_checked = true;
@@ -2405,11 +2479,12 @@ void RenderLayer::Draw( void )
 			game->Gfx.Setup3D( &(game->Cam) );
 			if( use_shaders )
 				game->ShaderMgr.Set3f( "CamPos", game->Cam.X, game->Cam.Y, game->Cam.Z );
-			if( (! vr) || game->Cfg.SettingAsBool("vr_sway",false) )
+			double sway = vr ? game->Cfg.SettingAsDouble("vr_sway") : game->Cfg.SettingAsDouble("g_sway",1.,1.);
+			if( sway )
 			{
-				cockpit_pos.Yaw(   observed_ship->YawRate   * 0.01 );
-				cockpit_pos.Pitch( observed_ship->PitchRate * 0.005 );
-				cockpit_pos.Roll(  observed_ship->RollRate  * 0.015 );
+				cockpit_pos.Yaw  ( sway * (observed_ship->YawRate   + observed_ship->PrevYawRate  ) * 0.005 );
+				cockpit_pos.Pitch( sway * (observed_ship->PitchRate + observed_ship->PrevPitchRate) * 0.0025 );
+				cockpit_pos.Roll ( sway * (observed_ship->RollRate  + observed_ship->PrevRollRate ) * 0.0075 );
 			}
 			cockpit_pos.MoveAlong( &(cockpit_pos.Fwd),   cockpit_fwd   * cockpit_scale );
 			cockpit_pos.MoveAlong( &(cockpit_pos.Up),    cockpit_up    * cockpit_scale );
@@ -2494,17 +2569,20 @@ void RenderLayer::Draw( void )
 				// Don't draw an external view of a ship whose cockpit we're in.
 				if( (game->View == XWing::View::COCKPIT) && (ship == observed_ship) && (ship->Health > 0.) )
 				{
-					// But do draw our engine glow.
-					double ship_throttle = (ship->JumpProgress < 1.) ? 0. : ship->GetThrottle();
-					if( (ship_throttle >= 0.75) && ship->Engines.size() && game->Cfg.SettingAsBool("g_engine_glow",true) )
+					if( view_str != "crosshair" )
 					{
-						float engine_alpha = (ship_throttle - 0.75f) * 4.f * (float) game->Cfg.SettingAsDouble("g_engine_glow_cockpit",0.5);
-						std::map<ShipEngine*,Pos3D> engines = ship->EnginePositions();
-						for( std::map<ShipEngine*,Pos3D>::const_iterator engine_iter = engines.begin(); engine_iter != engines.end(); engine_iter ++ )
+						// But do draw our engine glow.
+						double ship_throttle = (ship->JumpProgress < 1.) ? 0. : ship->GetThrottle();
+						if( (ship_throttle >= 0.75) && ship->Engines.size() && game->Cfg.SettingAsBool("g_engine_glow",true) )
 						{
-							double dist_fwd = engine_iter->second.DistAlong( &(game->Cam.Fwd), &(game->Cam) );
-							if( dist_fwd > 0. )
-								sorted_renderables.insert( std::pair<double,Renderable>( dist_fwd, Renderable( engine_iter->first, &(engine_iter->second), engine_alpha, ship_throttle ) ) );
+							float engine_alpha = (ship_throttle - 0.75f) * 4.f * ship->EngineFlicker * (float) game->Cfg.SettingAsDouble("g_engine_glow_cockpit",0.5);
+							std::map<ShipEngine*,Pos3D> engines = ship->EnginePositions();
+							for( std::map<ShipEngine*,Pos3D>::const_iterator engine_iter = engines.begin(); engine_iter != engines.end(); engine_iter ++ )
+							{
+								double dist_fwd = engine_iter->second.DistAlong( &(game->Cam.Fwd), &(game->Cam) );
+								if( dist_fwd > 0. )
+									sorted_renderables.insert( std::pair<double,Renderable>( dist_fwd, Renderable( engine_iter->first, &(engine_iter->second), engine_alpha, ship_throttle ) ) );
+							}
 						}
 					}
 					continue;
@@ -2526,7 +2604,7 @@ void RenderLayer::Draw( void )
 					double ship_throttle = ship->GetThrottle();
 					if( (ship_throttle >= 0.75) && ship->Engines.size() && game->Cfg.SettingAsBool("g_engine_glow",true) )
 					{
-						float engine_alpha = (ship_throttle - 0.75f) * 4.f;
+						float engine_alpha = (ship_throttle - 0.75f) * 4.f * ship->EngineFlicker;
 						double engine_scale = std::min<double>( 2., ship_throttle );
 						if( (game->View == XWing::View::GUNNER) && (ship == observed_ship) )
 						{
@@ -2751,19 +2829,52 @@ void RenderLayer::Draw( void )
 		}
 		
 		
-		if( target || (target_obj && ( (target_obj->Type() == XWing::Object::SHOT) || (target_obj->Type() == XWing::Object::CHECKPOINT) )) )
+		if( ( target || (target_obj && ( (target_obj->Type() == XWing::Object::SHOT) || (target_obj->Type() == XWing::Object::CHECKPOINT) )) ) && ! jumped_out )
 		{
 			// Draw target box.
 			
+			double l = 0.;  // NOTE: Default value 0 is checked to see if the up and right vectors still need to be set.
 			double h = 10.;
 			double w = 10.;
 			double max_dist = 2000.;
+			int style = Raptor::Game->Cfg.SettingAsInt( "ui_box_style", 1 );
+			Vec3D up    = game->Cam.Up    * h / 2.;  // FIXME: These names are confusing in the context of ui_box_style 1.
+			Vec3D right = game->Cam.Right * w / 2.;  //
 			
 			if( target )
 			{
-				h = fabs( game->Cam.Up.Dot( &(target->Up) ) * target->Shape.GetHeight() ) + fabs( game->Cam.Up.Dot( &(target->Fwd) ) * target->Shape.GetLength() ) + fabs( game->Cam.Up.Dot( &(target->Right) ) * target->Shape.GetWidth() );
-				w = fabs( game->Cam.Right.Dot( &(target->Up) ) * target->Shape.GetHeight() ) + fabs( game->Cam.Right.Dot( &(target->Fwd) ) * target->Shape.GetLength() ) + fabs( game->Cam.Right.Dot( &(target->Right) ) * target->Shape.GetWidth() );
 				max_dist = target->Shape.GetTriagonal() * 50.;
+				if( style )
+				{
+					l = target->Shape.GetLength();
+					h = target->Shape.GetHeight();
+					w = target->Shape.GetWidth();
+					Vec3D plane_normal = (style == 2) ? game->Cam.Fwd : (*target - game->Cam).Unit();
+					double fwd_out   = fabs(target->Fwd.DotPlane(   plane_normal )) * l * 0.6;
+					double up_out    = fabs(target->Up.DotPlane(    plane_normal )) * h * 0.6;
+					double right_out = fabs(target->Right.DotPlane( plane_normal )) * w * 0.6;
+					// FIXME: Smooth out the jumpiness when switching which is longest.
+					if( (fwd_out >= up_out) && (fwd_out >= right_out) )
+					{
+						up = target->Fwd.AlongPlane( plane_normal ).Unit() * fwd_out;
+						right = up.Unit().Cross( plane_normal ) * (up_out + right_out) * 0.7;
+					}
+					else if( up_out >= right_out )
+					{
+						up = target->Up.AlongPlane( plane_normal ).Unit() * up_out;
+						right = up.Unit().Cross( plane_normal ) * (fwd_out + right_out) * 0.7;
+					}
+					else
+					{
+						up = target->Right.AlongPlane( plane_normal ).Unit() * right_out;
+						right = up.Unit().Cross( plane_normal ) * (fwd_out + up_out) * 0.7;
+					}
+				}
+				else
+				{
+					h = fabs( game->Cam.Up.Dot( &(target->Up) ) * target->Shape.GetHeight() ) + fabs( game->Cam.Up.Dot( &(target->Fwd) ) * target->Shape.GetLength() ) + fabs( game->Cam.Up.Dot( &(target->Right) ) * target->Shape.GetWidth() );
+					w = fabs( game->Cam.Right.Dot( &(target->Up) ) * target->Shape.GetHeight() ) + fabs( game->Cam.Right.Dot( &(target->Fwd) ) * target->Shape.GetLength() ) + fabs( game->Cam.Right.Dot( &(target->Right) ) * target->Shape.GetWidth() );
+				}
 			}
 			else if( target_obj->Type() == XWing::Object::CHECKPOINT )
 			{
@@ -2771,15 +2882,46 @@ void RenderLayer::Draw( void )
 				w = h = (checkpoint->Radius * 0.75);
 			}
 			
-			Vec3D up = game->Cam.Up * h / 2.;
-			Vec3D right = game->Cam.Right * w / 2.;
+			if( ! l )  // If we're using ui_box_style 1 and targeting a ship, these vectors are already set.
+			{
+				up    = game->Cam.Up    * h / 2.;
+				right = game->Cam.Right * w / 2.;
+			}
+			
 			float red = 1.f, green = 1.f, blue = 1.f, alpha = 1.f;
+			bool friendly = (observed_team && target && target->Team && (target->Team == observed_team)) || (target_obj->Type() == XWing::Object::CHECKPOINT);
+			std::vector<double> box_color = game->Cfg.SettingAsDoubles( friendly ? "ui_box_color2" : "ui_box_color" );
+			if( box_color.size() >= 3 )
+			{
+				red   = box_color[ 0 ];
+				green = box_color[ 1 ];
+				blue  = box_color[ 2 ];
+				if( box_color.size() >= 4 )
+					alpha = box_color[ 3 ];
+			}
+			else if( target->Team && Str::EqualsInsensitive( game->Cfg.SettingAsString( friendly ? "ui_box_color2" : "ui_box_color" ), "team" ) )
+			{
+				if( target->Team == XWing::Team::REBEL )
+				{
+					green = 0.4f;
+					blue  = 0.3f;
+				}
+				else if( target->Team == XWing::Team::EMPIRE )
+				{
+					red   = 0.3f;
+					green = 0.6f;
+				}
+			}
+			else if( friendly )
+				red = blue = 0.f;
+			
+			float thickness = game->Cfg.SettingAsDouble( "ui_box_line", 1.5f, 1.5f );
 			
 			std::deque<Pos3D> positions;
 			positions.push_back( target_obj );
 			
 			// Draw target box around selected subsystem.
-			if( target && observed_ship && (observed_ship->TargetSubsystem) )
+			if( target && observed_ship && observed_ship->TargetSubsystem )
 				positions.push_back( target->TargetCenter( observed_ship->TargetSubsystem ) );
 			
 			// Turret gunners get another target box for the intercept point.
@@ -2811,19 +2953,47 @@ void RenderLayer::Draw( void )
 					pos.MoveAlong( &vec_to_target, max_dist - dist );
 				}
 				
-				game->Gfx.DrawLine3D( pos.X - right.X + up.X, pos.Y - right.Y + up.Y, pos.Z - right.Z + up.Z, pos.X - right.X / 2. + up.X, pos.Y - right.Y / 2. + up.Y, pos.Z - right.Z / 2. + up.Z, 1.f, red, green, blue, alpha );
-				game->Gfx.DrawLine3D( pos.X - right.X + up.X, pos.Y - right.Y + up.Y, pos.Z - right.Z + up.Z, pos.X - right.X + up.X / 2., pos.Y - right.Y + up.Y / 2., pos.Z - right.Z + up.Z / 2., 1.f, red, green, blue, alpha );
+				game->Gfx.DrawLine3D( pos.X - right.X + up.X, pos.Y - right.Y + up.Y, pos.Z - right.Z + up.Z, pos.X - right.X / 2. + up.X, pos.Y - right.Y / 2. + up.Y, pos.Z - right.Z / 2. + up.Z, thickness, red, green, blue, alpha );
+				game->Gfx.DrawLine3D( pos.X - right.X + up.X, pos.Y - right.Y + up.Y, pos.Z - right.Z + up.Z, pos.X - right.X + up.X / 2., pos.Y - right.Y + up.Y / 2., pos.Z - right.Z + up.Z / 2., thickness, red, green, blue, alpha );
 				
-				game->Gfx.DrawLine3D( pos.X + right.X + up.X, pos.Y + right.Y + up.Y, pos.Z + right.Z + up.Z, pos.X + right.X / 2. + up.X, pos.Y + right.Y / 2. + up.Y, pos.Z + right.Z / 2. + up.Z, 1.f, red, green, blue, alpha );
-				game->Gfx.DrawLine3D( pos.X + right.X + up.X, pos.Y + right.Y + up.Y, pos.Z + right.Z + up.Z, pos.X + right.X + up.X / 2., pos.Y + right.Y + up.Y / 2., pos.Z + right.Z + up.Z / 2., 1.f, red, green, blue, alpha );
+				game->Gfx.DrawLine3D( pos.X + right.X + up.X, pos.Y + right.Y + up.Y, pos.Z + right.Z + up.Z, pos.X + right.X / 2. + up.X, pos.Y + right.Y / 2. + up.Y, pos.Z + right.Z / 2. + up.Z, thickness, red, green, blue, alpha );
+				game->Gfx.DrawLine3D( pos.X + right.X + up.X, pos.Y + right.Y + up.Y, pos.Z + right.Z + up.Z, pos.X + right.X + up.X / 2., pos.Y + right.Y + up.Y / 2., pos.Z + right.Z + up.Z / 2., thickness, red, green, blue, alpha );
 				
-				game->Gfx.DrawLine3D( pos.X + right.X - up.X, pos.Y + right.Y - up.Y, pos.Z + right.Z - up.Z, pos.X + right.X / 2. - up.X, pos.Y + right.Y / 2. - up.Y, pos.Z + right.Z / 2. - up.Z, 1.f, red, green, blue, alpha );
-				game->Gfx.DrawLine3D( pos.X + right.X - up.X, pos.Y + right.Y - up.Y, pos.Z + right.Z - up.Z, pos.X + right.X - up.X / 2., pos.Y + right.Y - up.Y / 2., pos.Z + right.Z - up.Z / 2., 1.f, red, green, blue, alpha );
+				game->Gfx.DrawLine3D( pos.X + right.X - up.X, pos.Y + right.Y - up.Y, pos.Z + right.Z - up.Z, pos.X + right.X / 2. - up.X, pos.Y + right.Y / 2. - up.Y, pos.Z + right.Z / 2. - up.Z, thickness, red, green, blue, alpha );
+				game->Gfx.DrawLine3D( pos.X + right.X - up.X, pos.Y + right.Y - up.Y, pos.Z + right.Z - up.Z, pos.X + right.X - up.X / 2., pos.Y + right.Y - up.Y / 2., pos.Z + right.Z - up.Z / 2., thickness, red, green, blue, alpha );
 				
-				game->Gfx.DrawLine3D( pos.X - right.X - up.X, pos.Y - right.Y - up.Y, pos.Z - right.Z - up.Z, pos.X - right.X / 2. - up.X, pos.Y - right.Y / 2. - up.Y, pos.Z - right.Z / 2. - up.Z, 1.f, red, green, blue, alpha );
-				game->Gfx.DrawLine3D( pos.X - right.X - up.X, pos.Y - right.Y - up.Y, pos.Z - right.Z - up.Z, pos.X - right.X - up.X / 2., pos.Y - right.Y - up.Y / 2., pos.Z - right.Z - up.Z / 2., 1.f, red, green, blue, alpha );
+				game->Gfx.DrawLine3D( pos.X - right.X - up.X, pos.Y - right.Y - up.Y, pos.Z - right.Z - up.Z, pos.X - right.X / 2. - up.X, pos.Y - right.Y / 2. - up.Y, pos.Z - right.Z / 2. - up.Z, thickness, red, green, blue, alpha );
+				game->Gfx.DrawLine3D( pos.X - right.X - up.X, pos.Y - right.Y - up.Y, pos.Z - right.Z - up.Z, pos.X - right.X - up.X / 2., pos.Y - right.Y - up.Y / 2., pos.Z - right.Z - up.Z / 2., thickness, red, green, blue, alpha );
 				
-				if( observed_turret )
+				if( target && observed_ship && observed_ship->TargetSubsystem && (pos_iter == positions.begin()) )
+				{
+					if( style == 1 )
+					{
+						Vec3D plane_normal = (target->TargetCenter(observed_ship->TargetSubsystem) - game->Cam).Unit();
+						double fwd_out   = fabs(target->Fwd.DotPlane(   plane_normal ));
+						double up_out    = fabs(target->Up.DotPlane(    plane_normal ));
+						double right_out = fabs(target->Right.DotPlane( plane_normal ));
+						if( (fwd_out >= up_out) && (fwd_out >= right_out) )
+						{
+							up = target->Fwd.AlongPlane( plane_normal );
+							right = up.Unit().Cross( plane_normal );
+						}
+						else if( up_out >= right_out )
+						{
+							up = target->Up.AlongPlane( plane_normal );
+							right = up.Unit().Cross( plane_normal );
+						}
+						else
+						{
+							up = target->Right.AlongPlane( plane_normal );
+							right = up.Unit().Cross( plane_normal );
+						}
+					}
+					// FIXME: Get actual size of subsystem!
+					up.ScaleTo( 17. );
+					right.ScaleTo( 17. );
+				}
+				else if( observed_turret )
 				{
 					// Change the parameters for the intercept box.
 					red   = crosshair_red;
@@ -2831,12 +3001,6 @@ void RenderLayer::Draw( void )
 					blue  = crosshair_blue;
 					up.ScaleBy( 0.8 );
 					right.ScaleBy( 0.8 );
-				}
-				else
-				{
-					// FIXME: Get actual size of subsystem!
-					up.ScaleTo( 17. );
-					right.ScaleTo( 17. );
 				}
 			}
 			
@@ -2890,17 +3054,17 @@ void RenderLayer::Draw( void )
 				glVertex3d( crosshair_pos.X - right.X - up.X / 2., crosshair_pos.Y - right.Y - up.Y / 2., crosshair_pos.Z - right.Z - up.Z / 2. );
 				
 				// FIXME: Just iterate on the list of weapon ports in ShipClass instead of calling AllShots!
-				std::map<int,Shot*> all_weapons = (observed_object == observed_ship) ? observed_ship->AllShots() : std::map<int,Shot*>();
-				for( std::map<int,Shot*>::iterator shot_iter = all_weapons.begin(); shot_iter != all_weapons.end(); shot_iter ++ )
+				std::vector<Shot*> all_weapons = (observed_object == observed_ship) ? observed_ship->AllShots() : std::vector<Shot*>();
+				for( std::vector<Shot*>::iterator shot_iter = all_weapons.begin(); shot_iter != all_weapons.end(); shot_iter ++ )
 				{
-					weapon_vec.Set( shot_iter->second->X - observed_object->X, shot_iter->second->Y - observed_object->Y, shot_iter->second->Z - observed_object->Z );
+					weapon_vec.Set( (*shot_iter)->X - observed_object->X, (*shot_iter)->Y - observed_object->Y, (*shot_iter)->Z - observed_object->Z );
 					relative_weapon_vec.Set( weapon_vec.Dot(&(observed_object->Right)), weapon_vec.Dot(&(observed_object->Up)) );
 					relative_weapon_vec.ScaleTo( (relative_weapon_vec.Length() > 0.001) ? 1. : 0. );
 					weapon_pos.Copy( &crosshair_pos );
 
-					if( (shot_iter->second->ShotType == Shot::TYPE_TORPEDO) || (shot_iter->second->ShotType == Shot::TYPE_MISSILE) )
+					if( ((*shot_iter)->ShotType == Shot::TYPE_TORPEDO) || ((*shot_iter)->ShotType == Shot::TYPE_MISSILE) )
 						relative_weapon_vec.ScaleBy( 0.9 );
-					else if( shot_iter->second->ShotType == Shot::TYPE_ION_CANNON )
+					else if( (*shot_iter)->ShotType == Shot::TYPE_ION_CANNON )
 						relative_weapon_vec.ScaleBy( 0.95 );
 					
 					weapon_pos.MoveAlong( &right, relative_weapon_vec.X );
@@ -2916,47 +3080,47 @@ void RenderLayer::Draw( void )
 			// Draw little dots for all selected weapon ports.
 			glPointSize( 2.f );
 			glBegin( GL_POINTS );
-				for( std::map<int,Shot*>::iterator shot_iter = all_weapons.begin(); shot_iter != all_weapons.end(); shot_iter ++ )
+				for( std::vector<Shot*>::iterator shot_iter = all_weapons.begin(); shot_iter != all_weapons.end(); shot_iter ++ )
 				{
-					weapon_vec.Set( shot_iter->second->X - observed_object->X, shot_iter->second->Y - observed_object->Y, shot_iter->second->Z - observed_object->Z );
+					weapon_vec.Set( (*shot_iter)->X - observed_object->X, (*shot_iter)->Y - observed_object->Y, (*shot_iter)->Z - observed_object->Z );
 					relative_weapon_vec.Set( weapon_vec.Dot(&(observed_object->Right)), weapon_vec.Dot(&(observed_object->Up)) );
 					relative_weapon_vec.ScaleTo( (relative_weapon_vec.Length() > 0.001) ? 1. : 0. );
 					weapon_pos.Copy( &crosshair_pos );
 					
-					if( (shot_iter->second->ShotType == Shot::TYPE_TORPEDO) || (shot_iter->second->ShotType == Shot::TYPE_MISSILE) )
+					if( ((*shot_iter)->ShotType == Shot::TYPE_TORPEDO) || ((*shot_iter)->ShotType == Shot::TYPE_MISSILE) )
 						relative_weapon_vec.ScaleBy( 0.9 );
-					else if( shot_iter->second->ShotType == Shot::TYPE_ION_CANNON )
+					else if( (*shot_iter)->ShotType == Shot::TYPE_ION_CANNON )
 						relative_weapon_vec.ScaleBy( 0.95 );
 					
 					weapon_pos.MoveAlong( &right, relative_weapon_vec.X * 3.6 );
 					weapon_pos.MoveAlong( &up, relative_weapon_vec.Y * 3.6 );
 					glVertex3d( weapon_pos.X, weapon_pos.Y, weapon_pos.Z );
 					
-					delete shot_iter->second;
+					delete *shot_iter;
 				}
 			glEnd();
 			
 			// Draw big dots for the next shots to fire.
-			glPointSize( 5.f );
+			glPointSize( 7.f );
 			glBegin( GL_POINTS );
-			std::map<int,Shot*> next_weapons = (observed_object == observed_ship) ? observed_ship->NextShots() : std::map<int,Shot*>();
-				for( std::map<int,Shot*>::iterator shot_iter = next_weapons.begin(); shot_iter != next_weapons.end(); shot_iter ++ )
+				std::vector<Shot*> next_weapons = (observed_object == observed_ship) ? observed_ship->NextShots() : std::vector<Shot*>();
+				for( std::vector<Shot*>::iterator shot_iter = next_weapons.begin(); shot_iter != next_weapons.end(); shot_iter ++ )
 				{
-					weapon_vec.Set( shot_iter->second->X - observed_object->X, shot_iter->second->Y - observed_object->Y, shot_iter->second->Z - observed_object->Z );
+					weapon_vec.Set( (*shot_iter)->X - observed_object->X, (*shot_iter)->Y - observed_object->Y, (*shot_iter)->Z - observed_object->Z );
 					relative_weapon_vec.Set( weapon_vec.Dot(&(observed_object->Right)), weapon_vec.Dot(&(observed_object->Up)) );
 					relative_weapon_vec.ScaleTo( (relative_weapon_vec.Length() > 0.001) ? 1. : 0. );
 					weapon_pos.Copy( &crosshair_pos );
 					
-					if( (shot_iter->second->ShotType == Shot::TYPE_TORPEDO) || (shot_iter->second->ShotType == Shot::TYPE_MISSILE) )
+					if( ((*shot_iter)->ShotType == Shot::TYPE_TORPEDO) || ((*shot_iter)->ShotType == Shot::TYPE_MISSILE) )
 						relative_weapon_vec.ScaleBy( 0.9 );
-					else if( shot_iter->second->ShotType == Shot::TYPE_ION_CANNON )
+					else if( (*shot_iter)->ShotType == Shot::TYPE_ION_CANNON )
 						relative_weapon_vec.ScaleBy( 0.95 );
 					
 					weapon_pos.MoveAlong( &right, relative_weapon_vec.X * 3.6 );
 					weapon_pos.MoveAlong( &up, relative_weapon_vec.Y * 3.6 );
 					glVertex3d( weapon_pos.X, weapon_pos.Y, weapon_pos.Z );
 					
-					delete shot_iter->second;
+					delete *shot_iter;
 				}
 			glEnd();
 			
@@ -2974,7 +3138,7 @@ void RenderLayer::Draw( void )
 		{
 			// Here we'll draw target info, unless it's done via cockpit screens.
 			
-			if( (target || dead_target) && need_target_holo )
+			if( (target || dead_target) && need_target_holo && ! jumped_out )
 			{
 				// Show holographic targetting display.
 				
@@ -3069,7 +3233,43 @@ void RenderLayer::Draw( void )
 				}
 				
 				std::string target_status;
-				if( ! target )
+				bool classic = Raptor::Game->Cfg.SettingAsBool("ui_classic");
+				std::string dist_label = "Dist:";
+				std::string dist_str = Num::ToString(dist);
+				
+				if( ! classic )
+				{
+					char shield_str[ 5 ] = "----", hull_str[ 5 ] = "----";
+					if( target )
+					{
+						double max_shield = target->MaxShield();
+						if( max_shield )
+						{
+							double shield = std::min<double>( target->ShieldF, target->ShieldR );
+							if( target->ShieldPos == Ship::SHIELD_FRONT )
+								shield = target->ShieldF * 0.5;
+							else if( target->ShieldPos == Ship::SHIELD_REAR )
+								shield = target->ShieldR * 0.5;
+							if( shield > 0. )
+								snprintf( shield_str, sizeof(shield_str), "%3.0f%%", ceil( 100. * shield / max_shield ) );
+							else
+								snprintf( shield_str, sizeof(shield_str), "DOWN" );
+						}
+						else
+							snprintf( shield_str, sizeof(shield_str), "NONE" );
+						snprintf( hull_str, sizeof(hull_str), "%3.0f%%", ceil( 100. * target->Health / target->MaxHealth() ) );
+					}
+					target_status = std::string("SHLD:") + std::string(shield_str) + std::string("  HULL:") + std::string(hull_str);
+					
+					dist_label = "DIST:";
+					char dist_buf[ 32 ];
+					if( dist < 1000 )
+						snprintf( dist_buf, sizeof(dist_buf), "%i ", dist );
+					else
+						snprintf( dist_buf, sizeof(dist_buf), "%.1fK", dist / 1000. );
+					dist_str = std::string(dist_buf);
+				}
+				else if( ! target )
 					target_status = "Destroyed";
 				else if( target->Health < (target->MaxHealth() * 0.7) )
 					target_status = "Hull Damaged";
@@ -3096,9 +3296,9 @@ void RenderLayer::Draw( void )
 					// Draw target distance.
 					text_pos.MoveAlong( &(text_pos.Up), -0.025 );
 					text_pos.MoveAlong( &(text_pos.Right), -0.075 );
-					BigFont->DrawText3D( "Dist: ", &text_pos, Font::ALIGN_TOP_LEFT, holo_color1.Red, holo_color2.Green, holo_color2.Blue, holo_color1.Alpha, 0.001 );
+					BigFont->DrawText3D( dist_label, &text_pos, Font::ALIGN_TOP_LEFT, holo_color1.Red, holo_color2.Green, holo_color2.Blue, holo_color1.Alpha, 0.001 );
 					text_pos.MoveAlong( &(text_pos.Right), 0.15 );
-					BigFont->DrawText3D( Num::ToString(dist), &text_pos, Font::ALIGN_TOP_RIGHT, holo_color1.Red, holo_color2.Green, holo_color2.Blue, holo_color1.Alpha, 0.001 );
+					BigFont->DrawText3D( dist_str, &text_pos, Font::ALIGN_TOP_RIGHT, holo_color1.Red, holo_color2.Green, holo_color2.Blue, holo_color1.Alpha, 0.001 );
 				}
 				else
 				{
@@ -3113,10 +3313,11 @@ void RenderLayer::Draw( void )
 					SmallFont->DrawText( target_status, Rect.x + Rect.w/2,     Rect.h - 17, Font::ALIGN_BOTTOM_CENTER, 1.f, 1.f, 0.f, alpha );
 					
 					// Draw target distance.
-					SmallFont->DrawText( "Dist: ", Rect.x + Rect.w/2 - 59, Rect.h,     Font::ALIGN_BOTTOM_LEFT, 0.f,  0.f,  0.f, alpha * 0.8f );
-					SmallFont->DrawText( "Dist: ", Rect.x + Rect.w/2 - 60, Rect.h - 2, Font::ALIGN_BOTTOM_LEFT, holo_color1.Red, holo_color1.Green, holo_color1.Blue, alpha );
-					SmallFont->DrawText( Num::ToString(dist), Rect.x + Rect.w/2 + 61, Rect.h,     Font::ALIGN_BOTTOM_RIGHT, 0.f,  0.f,  0.f, alpha * 0.8f );
-					SmallFont->DrawText( Num::ToString(dist), Rect.x + Rect.w/2 + 60, Rect.h - 1, Font::ALIGN_BOTTOM_RIGHT, holo_color1.Red, holo_color1.Green, holo_color1.Blue, alpha );
+					int dist_sep = classic ? 60 : 42;
+					SmallFont->DrawText( dist_label, Rect.x + Rect.w/2 - (dist_sep-1), Rect.h,     Font::ALIGN_BOTTOM_LEFT, 0.f,  0.f,  0.f, alpha * 0.8f );
+					SmallFont->DrawText( dist_label, Rect.x + Rect.w/2 -  dist_sep,    Rect.h - 2, Font::ALIGN_BOTTOM_LEFT, holo_color1.Red, holo_color1.Green, holo_color1.Blue, alpha );
+					SmallFont->DrawText( dist_str,   Rect.x + Rect.w/2 + (dist_sep+1), Rect.h,     Font::ALIGN_BOTTOM_RIGHT, 0.f,  0.f,  0.f, alpha * 0.8f );
+					SmallFont->DrawText( dist_str,   Rect.x + Rect.w/2 +  dist_sep,    Rect.h - 1, Font::ALIGN_BOTTOM_RIGHT, holo_color1.Red, holo_color1.Green, holo_color1.Blue, alpha );
 				}
 			}
 			
@@ -3189,7 +3390,7 @@ void RenderLayer::Draw( void )
 							}
 							if( ship->Category() == ShipClass::CATEGORY_CAPITAL )
 								radius = 0.005;
-							else if( (ship->Target == observed_object->ID) && ((int) observed_object->Lifetime.ElapsedMilliseconds() % ((ship->TargetLock >= 1.f) ? 200 : 600) <= 50) )
+							else if( (ship->Target == observed_object->ID) && ((int) observed_object->Lifetime.ElapsedMilliseconds() % ((ship->TargetLock >= 1.f) ? 200 : ((ship->TargetLock > 0.f) ? 400 : 800)) <= 50) )
 								radius = 0.0055;
 						}
 						else if( shot )
@@ -3218,7 +3419,7 @@ void RenderLayer::Draw( void )
 								red = 0.f;
 								green = 0.5f;
 								blue = 0.5f;
-								radius = 0.0035;
+								radius = 0.0025;
 							}
 						}
 						
@@ -3264,7 +3465,7 @@ void RenderLayer::Draw( void )
 						}
 						if( target->Category() == ShipClass::CATEGORY_CAPITAL )
 							radius = 0.006;
-						else if( (target->Target == observed_object->ID) && ((int) observed_object->Lifetime.ElapsedMilliseconds() % ((target->TargetLock >= 1.f) ? 200 : 600) <= 50) )
+						else if( (target->Target == observed_object->ID) && ((int) observed_object->Lifetime.ElapsedMilliseconds() % ((target->TargetLock >= 1.f) ? 200 : ((target->TargetLock > 0.f) ? 400 : 800)) <= 50) )
 							radius = 0.0055;
 					}
 					else if( target_obj->Type() == XWing::Object::SHOT )
@@ -3303,7 +3504,7 @@ void RenderLayer::Draw( void )
 	
 	// If we're spectating, show who we're watching.
 	
-	if( (observed_player && (observed_player->ID == game->PlayerID)) || screensaver || vr )
+	if( (observed_player && (observed_player->ID == game->PlayerID)) || cinematic || vr )
 		;
 	else if( observed_player )
 	{
@@ -3321,24 +3522,63 @@ void RenderLayer::Draw( void )
 	
 	// If the round is over, player is holding the scores key, or player is dead in VR, show the scores.
 	
-	bool draw_scores = (game->State >= XWing::State::ROUND_ENDED) && ! screensaver;
+	bool draw_scores = (game->State >= XWing::State::ROUND_ENDED) && ! cinematic;
 	if( ! draw_scores )
 		draw_scores = game->Input.ControlPressed( game->Controls[ XWing::Control::SCORES ] );
 	if( ! draw_scores )
-		draw_scores = vr && observed_ship && (observed_ship->PlayerID == game->PlayerID) && (observed_ship->Health <= 0.);
+		draw_scores = vr && observed_ship && (observed_ship->PlayerID == game->PlayerID) && (observed_ship->Health <= 0.) && ! cinematic;
 	if( draw_scores )
 		DrawScores();
 	
 	
+	// If we're waiting to spawn, show the respawn clock and beep.
+	
+	double respawn_in = draw_scores ? 0. : game->RespawnTimer.CountUpToSecs;
+	if( respawn_in > 0. )
+	{
+		float respawn_time = game->RespawnTimer.RemainingSeconds();
+		if( respawn_time > 0. )
+		{
+			static int prev_respawn_seconds = 0;
+			int respawn_seconds = ceilf( respawn_time );
+			
+			if( ! cinematic )
+			{
+				std::string respawn_str = Num::ToString( respawn_seconds );
+				Player *player = game->Data.GetPlayer( game->PlayerID );
+				std::string player_team = player ? player->PropertyAsString("team") : "";
+				float r = 1.f, g = 1.f, b = 1.f, a = std::min<float>( 1.f, fmodf( respawn_time, 1.f ) * 2.f );
+				if( player_team == "Rebel" )
+					g = b = a;
+				else if( player_team == "Empire" )
+					r = g = a*a*a;
+				game->Gfx.Setup2D();
+				BigFont->DrawText( respawn_str, Rect.x + Rect.w/2, Rect.y + 60, Font::ALIGN_MIDDLE_CENTER, r,g,b,a );
+			}
+			
+			if( (respawn_seconds != prev_respawn_seconds) && (respawn_seconds <= 3) )
+				game->Snd.Play( game->Res.GetSound("beep_respawn.wav") );
+			
+			prev_respawn_seconds = respawn_seconds;
+		}
+	}
+	else if( respawn_in < 0. )
+	{
+		float g = fabsf( cos( PlayTime.ElapsedSeconds() * M_PI ) ) * 0.5f;
+		game->Gfx.Setup2D();
+		BigFont->DrawText( "Flagship Lost", Rect.x + Rect.w/2, Rect.y + 60, Font::ALIGN_MIDDLE_CENTER, 1.f,g,0.f,1.f );
+	}
+	
+	
 	// Flash "PAUSED" or current time scale if altered, unless in screensaver or cinematic mode.
 	
-	if( (game->Data.TimeScale != 1.) && ! screensaver )
+	if( (game->Data.TimeScale != 1.) && ! cinematic )
 	{
 		float r = fabsf( cos( PlayTime.ElapsedSeconds() * M_PI ) );
 		float g = 0.5f + r * 0.5f;
 		float b = 1.f;
 		game->Gfx.Setup2D();
-		if( game->Data.TimeScale < 0.01 )
+		if( game->Data.TimeScale < 0.0000011 )
 		{
 			BigFont->DrawText( "PAUSED", Rect.x + Rect.w/2 + 2, Rect.y + Rect.h * 0.47 + 2, Font::ALIGN_MIDDLE_CENTER, 0.f,0.f,0.f,0.8f );
 			BigFont->DrawText( "PAUSED", Rect.x + Rect.w/2,     Rect.y + Rect.h * 0.47,     Font::ALIGN_MIDDLE_CENTER, r,  g,  b,  1.f );
@@ -3351,10 +3591,15 @@ void RenderLayer::Draw( void )
 	}
 	
 	
+	// Show who is talking on comms.
+	
+	DrawVoice();
+	
+	
 	// Don't show non-chat messages in VR unless the chat box is open or show scores button is held.
 	
 	MessageOutput->Visible = true;
-	MessageOutput->SetTypeToDraw( TextConsole::MSG_NORMAL, draw_scores || MessageInput->Visible || (! (vr || screensaver)) || game->Cfg.SettingAsBool("vr_messages") );
+	MessageOutput->SetTypeToDraw( TextConsole::MSG_NORMAL, draw_scores || MessageInput->Visible || (! (vr || cinematic)) || game->Cfg.SettingAsBool("vr_messages") );
 	MessageOutput->ScrollTime = ((const XWingGame*)( game ))->OverlayScroll;
 	
 	
@@ -3403,9 +3648,37 @@ void RenderLayer::DrawStars( void )
 }
 
 
-void RenderLayer::DrawDebris( void )
+void RenderLayer::DrawDebris( int dynamic_lights, std::list<Shot*> *shots, std::list<Effect*> *effects )
 {
 	int debris_count = std::min<int>( DEBRIS_COUNT, Raptor::Game->Cfg.SettingAsInt( "g_debris", 500 ) );
+	int debris_quality = Raptor::Game->Cfg.SettingAsInt( "g_debris_quality", 3, 1 );
+	
+	if( debris_quality <= 0 )
+		return;
+	
+	GLuint texture = 0;
+	bool use_shaders = (debris_quality >= 2) && Raptor::Game->Cfg.SettingAsBool("g_shader_enable");
+	
+	if( use_shaders )
+	{
+		Raptor::Game->ShaderMgr.Select( Raptor::Game->Res.GetShader("model") );
+		Raptor::Game->ShaderMgr.ResumeShaders();
+		
+		// Debris material properties.
+		texture = Raptor::Game->Res.GetTexture("grey.jpg");
+		Raptor::Game->ShaderMgr.Set3f( "AmbientColor",  0.25,  0.25,  0.25 );
+		Raptor::Game->ShaderMgr.Set3f( "DiffuseColor",  0.5,   0.5,   0.5 );
+		Raptor::Game->ShaderMgr.Set3f( "SpecularColor", 0.125, 0.125, 0.125 );
+		Raptor::Game->ShaderMgr.Set1f( "Alpha", 1. );
+		Raptor::Game->ShaderMgr.Set1f( "Shininess", 10. );
+		
+		// Debris lighting.
+		SetWorldLights( ((XWingGame*)( Raptor::Game ))->GameType == XWing::GameType::BATTLE_OF_YAVIN );
+		if( (debris_quality >= 3) && dynamic_lights )
+			SetDynamicLights( &(Raptor::Game->Cam), NULL, dynamic_lights, shots, effects );
+		else
+			ClearDynamicLights();
+	}
 	
 	for( int i = 0; i < debris_count; i ++ )
 	{
@@ -3416,7 +3689,14 @@ void RenderLayer::DrawDebris( void )
 			dist = Raptor::Game->Cam.Dist( &(Debris[ i ]) );
 		}
 		
-		Raptor::Game->Gfx.DrawSphere3D( Debris[ i ].X, Debris[ i ].Y, Debris[ i ].Z, 0.1, 3, 0, 0.5f, 0.5f, 0.5f, 1.f );
+		Raptor::Game->Gfx.DrawSphere3D( Debris[ i ].X, Debris[ i ].Y, Debris[ i ].Z, 0.1, 3, texture, 0.5f, 0.5f, 0.5f, 1.f );
+	}
+	
+	if( use_shaders )
+	{
+		ClearMaterial();
+		ClearDynamicLights();
+		Raptor::Game->ShaderMgr.StopShaders();
 	}
 }
 
@@ -3473,6 +3753,8 @@ void RenderLayer::DrawScores( void )
 	}
 	
 	double remaining_secs = ((XWingGame*)( Raptor::Game ))->RoundTimer.RemainingSeconds();
+	if( (remaining_secs <= 0.) && Raptor::Game->Cfg.SettingAsBool("clock",true) )
+		remaining_secs = ((XWingGame*)( Raptor::Game ))->RoundTimer.ElapsedSeconds();
 	if( remaining_secs > 0. )
 	{
 		int minutes = remaining_secs / 60.;
@@ -3480,8 +3762,8 @@ void RenderLayer::DrawScores( void )
 		char time_string[ 32 ] = "";
 		snprintf( time_string, 32, "%i:%02i", minutes, seconds );
 		
-		BigFont->DrawText( std::string(time_string), Rect.x + Rect.w/2 + 2, 62, Font::ALIGN_MIDDLE_CENTER, 0.f, 0.f, 0.f, 0.8f );
-		BigFont->DrawText( std::string(time_string), Rect.x + Rect.w/2, 60, Font::ALIGN_MIDDLE_CENTER, 1.f, 1.f, 1.f, 1.f );
+		BigFont->DrawText( std::string(time_string), Rect.x + Rect.w/2 + 2, Rect.y + 62, Font::ALIGN_MIDDLE_CENTER, 0.f, 0.f, 0.f, 0.8f );
+		BigFont->DrawText( std::string(time_string), Rect.x + Rect.w/2,     Rect.y + 60, Font::ALIGN_MIDDLE_CENTER, 1.f, 1.f, 1.f, 1.f );
 	}
 	
 	int y = Rect.y + 100;
@@ -3489,7 +3771,7 @@ void RenderLayer::DrawScores( void )
 	XWingGame *game = (XWingGame*) Raptor::Game;
 	uint32_t gametype = game->GameType;
 	bool ffa = (gametype == XWing::GameType::FFA_ELIMINATION) || (gametype == XWing::GameType::FFA_DEATHMATCH) || (gametype == XWing::GameType::FFA_RACE);
-	bool objective = (gametype != XWing::GameType::TEAM_ELIMINATION) && (gametype != XWing::GameType::TEAM_DEATHMATCH) && (gametype != XWing::GameType::TEAM_RACE) && ! ffa;
+	bool objective = (gametype != XWing::GameType::TEAM_ELIMINATION) && (gametype != XWing::GameType::TEAM_DEATHMATCH) && (gametype != XWing::GameType::TEAM_RACE) && (gametype != XWing::GameType::CTF) && ! ffa;
 	
 	if( ! ffa )
 	{
@@ -3541,6 +3823,11 @@ void RenderLayer::DrawScores( void )
 		{
 			SmallFont->DrawText( "Checkpoints", Rect.x + Rect.w/2 + 162, y + 2, Font::ALIGN_MIDDLE_RIGHT, 0.f, 0.f, 0.f, 0.8f );
 			SmallFont->DrawText( "Checkpoints", Rect.x + Rect.w/2 + 160, y, Font::ALIGN_MIDDLE_RIGHT, 1.f, 1.f, 1.f, 1.f );
+		}
+		else if( gametype == XWing::GameType::CTF )
+		{
+			SmallFont->DrawText( "Score", Rect.x + Rect.w/2 + 162, y + 2, Font::ALIGN_MIDDLE_RIGHT, 0.f, 0.f, 0.f, 0.8f );
+			SmallFont->DrawText( "Score", Rect.x + Rect.w/2 + 160, y, Font::ALIGN_MIDDLE_RIGHT, 1.f, 1.f, 1.f, 1.f );
 		}
 		SmallFont->DrawText( "Kills", Rect.x + Rect.w/2 + 242, y + 2, Font::ALIGN_MIDDLE_RIGHT, 0.f, 0.f, 0.f, 0.8f );
 		SmallFont->DrawText( "Kills", Rect.x + Rect.w/2 + 240, y, Font::ALIGN_MIDDLE_RIGHT, 1.f, 1.f, 1.f, 1.f );
@@ -3602,7 +3889,7 @@ void RenderLayer::DrawScores( void )
 		}
 		else
 		{
-			if( (gametype == XWing::GameType::TEAM_RACE) || (gametype == XWing::GameType::FFA_RACE) )
+			if( (gametype == XWing::GameType::TEAM_RACE) || (gametype == XWing::GameType::FFA_RACE) || (gametype == XWing::GameType::CTF) )
 			{
 				BigFont->DrawText( Num::ToString(score_iter->Score), Rect.x + Rect.w/2 + 162, y + 2, Font::ALIGN_MIDDLE_RIGHT, 0.f, 0.f, 0.f, 0.8f );
 				BigFont->DrawText( Num::ToString(score_iter->Score), Rect.x + Rect.w/2 + 160, y, Font::ALIGN_MIDDLE_RIGHT, red, green, blue, 1.f );
@@ -3634,6 +3921,85 @@ void RenderLayer::DrawScores( void )
 	}
 	
 	glPopMatrix();
+}
+
+
+void RenderLayer::DrawVoice( void )
+{
+	XWingGame *game = (XWingGame*) Raptor::Game;
+	int voice_y = Rect.h;
+	
+	for( std::map<uint16_t,Player*>::const_iterator player_iter = game->Data.Players.begin(); player_iter != game->Data.Players.end(); player_iter ++ )
+	{
+		uint8_t voice_channel = player_iter->second->VoiceChannel();
+		if( voice_channel )
+		{
+			std::string display_name = player_iter->second->Name;
+			Color display_color;
+			
+			std::string team = player_iter->second->PropertyAsString("team");
+			if( team.empty() )
+			{
+				team = game->Data.PropertyAsString("player_team");
+				if( team.length() )
+					team[ 0 ] = toupper( team[ 0 ] );
+			}
+			
+			if( ! team.empty() )
+				display_name += std::string(" [") + team + std::string("]");
+			
+			if( voice_channel == Raptor::VoiceChannel::TEAM )
+			{
+				display_color.Green = (player_iter->first == game->PlayerID) ? 1.f  : 0.875f;
+				display_color.Red   = (player_iter->first == game->PlayerID) ? 0.5f : 0.f;
+				display_color.Blue  = 0.f;
+			}
+			else if( Str::EqualsInsensitive( team, "Rebel" ) )
+			{
+				display_color.Red = 1.f;
+				if( player_iter->first == game->PlayerID )
+				{
+					display_color.Green = 0.37f;
+					display_color.Blue  = 0.25f;
+				}
+				else
+				{
+					display_color.Green = 0.12f;
+					display_color.Blue  = 0.12f;
+				}
+			}
+			else if( Str::EqualsInsensitive( team, "Empire" ) )
+			{
+				display_color.Blue = 1.f;
+				if( player_iter->first == game->PlayerID )
+				{
+					display_color.Red   = 0.f;
+					display_color.Green = 0.62f;
+				}
+				else
+				{
+					display_color.Red   = 0.25f;
+					display_color.Green = 0.37f;
+				}
+			}
+			else if( player_iter->first == game->PlayerID )
+				display_color.Blue = 0.f;
+			
+			if( voice_y == Rect.h )
+				game->Gfx.Setup2D();
+			
+			int font_ascent = BigFont->GetAscent();
+			GLuint mic_texture = Mic.CurrentFrame();
+			
+			game->Gfx.DrawRect2D( Rect.w - 1 - font_ascent, voice_y - 1 - font_ascent, Rect.w - 1, voice_y - 1, mic_texture, 0.f,0.f,0.f,0.8f );
+			game->Gfx.DrawRect2D( Rect.w - 3 - font_ascent, voice_y - 3 - font_ascent, Rect.w - 3, voice_y - 3, mic_texture, display_color.Red,display_color.Green,display_color.Blue,display_color.Alpha );
+			
+			BigFont->DrawText( display_name, Rect.w - 3 - font_ascent, voice_y - 1, Font::ALIGN_BOTTOM_RIGHT, 0.f,0.f,0.f,0.8f );
+			BigFont->DrawText( display_name, Rect.w - 5 - font_ascent, voice_y - 3, Font::ALIGN_BOTTOM_RIGHT, display_color.Red,display_color.Green,display_color.Blue,display_color.Alpha );
+			
+			voice_y -= font_ascent + 4;
+		}
+	}
 }
 
 
@@ -3730,7 +4096,8 @@ void RenderLayer::UpdateSaitek( const Ship *ship, bool is_player )
 		memset( text_buffer, 0, 32 );
 		if( target )
 		{
-			snprintf( text_buffer, 17, "%-16.16s", target->Name.c_str() );
+			const Player *owner = target->Owner();
+			snprintf( text_buffer, 17, "%-16.16s", (owner ? owner->Name : target->Name).c_str() );
 			double dist = ship->Dist( target );
 			if( locked_on )
 				snprintf( text_buffer + 12, 5, "LOCK" );

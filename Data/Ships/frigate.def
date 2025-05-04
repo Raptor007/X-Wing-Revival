@@ -1,5 +1,6 @@
 id FRG
 name Nebulon-B Frigate
+squadron Frigate
 category capital
 team any
 radius 200

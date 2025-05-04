@@ -1,5 +1,6 @@
 id FRT
-name Freighter
+name Bulk Freighter
+squadron Freighter
 category capital
 team any
 radius 75

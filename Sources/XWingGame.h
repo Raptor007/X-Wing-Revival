@@ -17,10 +17,10 @@ class XWingGame : public RaptorGame
 {
 public:
 	std::map<std::string,std::string> MissionList;
-	bool ZeroLagServer;
+	std::set<uint32_t> ServerFeatures;
 	
 	uint32_t GameType;
-	Clock RoundTimer;
+	Clock RoundTimer, RespawnTimer;
 	uint8_t CampaignTeam;
 	
 	uint32_t ObservedShipID;

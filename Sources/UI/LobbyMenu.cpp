@@ -9,6 +9,7 @@
 #include "Num.h"
 #include "PrefsMenu.h"
 #include "FleetMenu.h"
+#include "MissionUploader.h"
 #include <algorithm>
 
 
@@ -27,7 +28,8 @@ LobbyMenu::LobbyMenu( void )
 		Rect.h = 480;
 	}
 	
-	Background.BecomeInstance( Raptor::Game->Res.GetAnimation("bg_lobby.ani") );
+	bool empire_campaign = (((const XWingGame*)( Raptor::Game ))->CampaignTeam == XWing::Team::EMPIRE);
+	Background.BecomeInstance( Raptor::Game->Res.GetAnimation( empire_campaign ? "bg_lobby2.ani" : "bg_lobby.ani" ) );
 	
 	bool tiny = (Rect.h < 720) || (Rect.w < 800);
 	TitleFont = Raptor::Game->Res.GetFont( "Verdana.ttf", tiny ? 24 : 30 );
@@ -96,7 +98,7 @@ LobbyMenu::LobbyMenu( void )
 	MessageInput->SelectedAlpha = MessageInput->Alpha;
 	
 	int label_size = tiny ? 12 : 17;
-	int value_size = tiny ? 16 : 22;
+	int value_size = tiny ? 15 : 22;
 	ConfigOrder.push_back( new LobbyMenuConfiguration( "permissions", "", 0, tiny ? 14 : 17 ) );
 	ConfigOrder.push_back( NULL );
 	ConfigOrder.push_back( new LobbyMenuConfiguration( "gametype", "Game Type", tiny ? 12 : 17, tiny ? 22 : 27 ) );
@@ -110,9 +112,10 @@ LobbyMenu::LobbyMenu( void )
 	ConfigOrder.push_back( new LobbyMenuConfiguration( "empire_frigates", "Imperial Battleships", label_size, value_size ) );
 	ConfigOrder.push_back( new LobbyMenuConfiguration( "empire_cruisers", "Imperial Cruisers", label_size, value_size ) );
 	ConfigOrder.push_back( NULL );
+	ConfigOrder.push_back( new LobbyMenuConfiguration( "race_circuit", "Race Mode", label_size, value_size ) );
+	ConfigOrder.push_back( new LobbyMenuConfiguration( "race_lap", "Lap Length", label_size, value_size ) );
 	ConfigOrder.push_back( new LobbyMenuConfiguration( "team_race_checkpoints", "Race Length", label_size, value_size ) );
 	ConfigOrder.push_back( new LobbyMenuConfiguration( "ffa_race_checkpoints", "Race Length", label_size, value_size ) );
-	ConfigOrder.push_back( new LobbyMenuConfiguration( "race_lap", "Lap Length", label_size, value_size ) );
 	ConfigOrder.push_back( new LobbyMenuConfiguration( "tdm_kill_limit", "Team Kill Limit", label_size, value_size ) );
 	ConfigOrder.push_back( new LobbyMenuConfiguration( "dm_kill_limit", "Kill Limit", label_size, value_size ) );
 	ConfigOrder.push_back( new LobbyMenuConfiguration( "hunt_time_limit", "Time Limit", label_size, value_size ) );
@@ -129,6 +132,8 @@ LobbyMenu::LobbyMenu( void )
 	ConfigOrder.push_back( new LobbyMenuConfiguration( "allow_team_change", "Allow Team Change", label_size, value_size ) );
 	ConfigOrder.push_back( NULL );
 	ConfigOrder.push_back( new LobbyMenuConfiguration( "defaults", "", label_size, value_size ) );
+	ConfigOrder.push_back( NULL );
+	ConfigOrder.push_back( new LobbyMenuConfiguration( "upload_mission", "", label_size, value_size ) );
 	
 	for( std::vector<LobbyMenuConfiguration*>::iterator config_iter = ConfigOrder.begin(); config_iter != ConfigOrder.end(); config_iter ++ )
 	{
@@ -229,6 +234,8 @@ void LobbyMenu::UpdateRects( void )
 		MessageList->Rect.y = PlayerList->Rect.y + PlayerList->Rect.h + MessageList->Rect.x;
 	}
 	
+	MessageList->Selected = NULL;
+	
 	Layer *prev = NULL;
 	double x = PlayerList->Rect.x + PlayerList->Rect.w + 10;
 	double y = PlayerName->Rect.y + TitleFont->PointSize;
@@ -288,14 +295,29 @@ void LobbyMenu::UpdatePlayerList( void )
 	std::string prev_selected = PlayerList->SelectedValue();
 	PlayerList->Clear();
 	
-	bool ffa = (Raptor::Game->Data.PropertyAsString("gametype").find("ffa_") == 0);
+	XWingGame *game = (XWingGame*) Raptor::Game;
+	std::string gametype = game->Data.PropertyAsString("gametype");
+	bool ffa = (gametype.find("ffa_") == 0);
+	std::string player_team = game->Data.PropertyAsString("player_team");
+	if( player_team.length() )
+		player_team[ 0 ] = toupper( player_team[ 0 ] );
+	else if( gametype == "mission" )
+	{
+		std::string mission_id = game->Data.PropertyAsString("mission");
+		if( Str::BeginsWith( mission_id, "rebel" ) )
+			player_team = "Rebel";
+		else if( Str::BeginsWith( mission_id, "empire" ) )
+			player_team = "Empire";
+	}
 	
-	for( std::map<uint16_t,Player*>::iterator player_iter = Raptor::Game->Data.Players.begin(); player_iter != Raptor::Game->Data.Players.end(); player_iter ++ )
+	for( std::map<uint16_t,Player*>::iterator player_iter = game->Data.Players.begin(); player_iter != game->Data.Players.end(); player_iter ++ )
 	{
 		std::string display_name = player_iter->second->Name;
+		Color display_color;
 		
 		std::string ship = player_iter->second->PropertyAsString("ship");
-		std::string team = player_iter->second->PropertyAsString("team");
+		std::string team = player_team.empty() ? player_iter->second->PropertyAsString("team") : player_team;
+		
 		if( ship == "Rebel Gunner" )
 		{
 			display_name += " [Gunner]";
@@ -309,29 +331,78 @@ void LobbyMenu::UpdatePlayerList( void )
 		else if( ship.length() )
 			display_name += " [" + ship + "]";
 		else if( team.length() )
-			display_name += " [" + team + "]";  // Auto-Assigned
+		{
+			if( player_team.empty() )
+				display_name += " [" + team + "]";  // Auto-Assigned
+		}
 		else if( ! ffa )
 			display_name += " [Auto-Assign]";
 		
-		if( ship.length() && (ship != "Spectator") && ! ffa )
+		if( (ship.empty() && team.empty()) || ffa )
 		{
-			if( ! team.length() )
+			if( player_iter->first == game->PlayerID )
+				display_color.Blue = 0.f;
+		}
+		else if( ship == "Spectator" )
+		{
+			if( player_iter->first == game->PlayerID )
+			{
+				display_color.Red = display_color.Green = 0.75f;
+				display_color.Blue = 0.f;
+			}
+			else
+				display_color.Red = display_color.Green = display_color.Blue = 0.5f;
+		}
+		else
+		{
+			if( team.empty() )
 			{
 				// Ship selected in a team game, but not playing yet.
 				
-				const ShipClass *ship_class = ((XWingGame*)( Raptor::Game ))->GetShipClass( ship );
+				const ShipClass *ship_class = game->GetShipClass( ship );
 				if( ship_class && (ship_class->Team == XWing::Team::REBEL) )
 					team = "Rebel";
 				else if( ship_class && (ship_class->Team == XWing::Team::EMPIRE) )
 					team = "Empire";
-				/*
 				else if( ship_class ) // Classes without a team, such as CRV and FRG.
-					team = "Rebel"; // FIXME: Make sure this matches XWingServer SpawnShip!
-				*/
+					team = "Rebel";
 			}
 			
 			if( team.length() )
 			{
+				if( Str::EqualsInsensitive( team, "Rebel" ) )
+				{
+					display_color.Red = 1.f;
+					if( player_iter->first == game->PlayerID )
+					{
+						display_color.Green = 0.37f;
+						display_color.Blue  = 0.25f;
+						if( Background.Name != "bg_lobby.ani" )
+							Background.BecomeInstance( game->Res.GetAnimation("bg_lobby.ani") );
+					}
+					else
+					{
+						display_color.Green = 0.12f;
+						display_color.Blue  = 0.12f;
+					}
+				}
+				else if( Str::EqualsInsensitive( team, "Empire" ) )
+				{
+					display_color.Blue = 1.f;
+					if( player_iter->first == game->PlayerID )
+					{
+						display_color.Red   = 0.f;
+						display_color.Green = 0.62f;
+						if( Background.Name != "bg_lobby2.ani" )
+							Background.BecomeInstance( game->Res.GetAnimation("bg_lobby2.ani") );
+					}
+					else
+					{
+						display_color.Red   = 0.25f;
+						display_color.Green = 0.37f;
+					}
+				}
+				
 				int group = player_iter->second->PropertyAsInt("group");
 				if( group == 1 )
 					display_name += " [" + team + " - Red]";
@@ -348,10 +419,15 @@ void LobbyMenu::UpdatePlayerList( void )
 			}
 		}
 		
-		PlayerList->AddItem( Num::ToString( player_iter->second->ID ), display_name );
+		uint8_t voice_channel = player_iter->second->VoiceChannel();
+		if( voice_channel )
+			display_name += std::string( (voice_channel == Raptor::VoiceChannel::ALL) ? "  (:" : "  (;" )  // Team voice channel uses winking face.
+			              + std::string( (((int)( game->RoundTimer.ElapsedMilliseconds() + 30. * player_iter->first ) % 200) < 100) ? "-D)" : "-I )" );
+		
+		PlayerList->AddItem( Num::ToString( player_iter->second->ID ), display_name, &display_color );
 	}
 	
-	PlayerList->Select( prev_selected );
+	//PlayerList->Select( prev_selected );  // NOTE: Uncomment to allow selecting players in the list (maybe for a mute feature).
 }
 
 
@@ -363,8 +439,13 @@ void LobbyMenu::UpdateMessageList( void )
 		std::string prev_selected = MessageList->SelectedValue();
 		MessageList->Clear();
 		
+		Color chat_color( 1.f, 1.f, 0.f, 1.f );
+		
 		for( size_t i = 0; i < msg_count; i ++ )
-			MessageList->AddItem( Num::ToString((int)i), Raptor::Game->Msg.Messages.at(i)->Text );
+		{
+			uint32_t msg_type = Raptor::Game->Msg.Messages.at(i)->Type;
+			MessageList->AddItem( Num::ToString((int)i), Raptor::Game->Msg.Messages.at(i)->Text, (msg_type == TextConsole::MSG_CHAT) ? &chat_color : NULL );
+		}
 		
 		if( ! prev_selected.empty() )
 			MessageList->Select( prev_selected );
@@ -404,11 +485,12 @@ void LobbyMenu::UpdateInfoBoxes( void )
 	else if( gametype == "fleet" )
 		Configs["gametype"]->Value->LabelText = "Fleet Battle";
 	else if( gametype == "mission" )
-		Configs["gametype"]->Value->LabelText = "Mission";
+		Configs["gametype"]->Value->LabelText = Raptor::Game->Data.PropertyAsString("campaign").length() ? "Campaign" : "Mission";
 	else
 		Configs["gametype"]->Value->LabelText = gametype;
 	
 	Configs["mission"]->Value->LabelText = Raptor::Game->Data.PropertyAsString( "mission_name", Raptor::Game->Data.PropertyAsString("mission","Select Mission").c_str() );
+	Configs["mission"]->Value->Blue = Str::EndsWith( Raptor::Game->Data.PropertyAsString("mission"), "*" ) ? 0.f : 1.f;
 	
 	if( (gametype == "mission") && ShipDropDown->Value.length() )
 	{
@@ -423,6 +505,8 @@ void LobbyMenu::UpdateInfoBoxes( void )
 				allowed_ships.push_back( "Rebel Gunner" );
 			if( std::find( allowed_ships.begin(), allowed_ships.end(), "empire_gunner" ) != allowed_ships.end() )
 				allowed_ships.push_back( "Imperial Gunner" );
+			if( (game->Data.Players.size() > 1) && ! Raptor::Server->IsRunning() )
+				allowed_ships.push_back( "Spectator" );
 		}
 		
 		// Switch to Auto-Assign if the selected ship isn't allowed on the current mission.
@@ -516,14 +600,16 @@ void LobbyMenu::UpdateInfoBoxes( void )
 		}
 	}
 	
+	Configs["race_circuit"]->Value->LabelText = Raptor::Game->Data.PropertyAsBool("race_circuit") ? "Classic Circuit" : "First Touch";
+	
+	int race_lap = Raptor::Game->Data.PropertyAsInt("race_lap");
+	Configs["race_lap"]->Value->LabelText = race_lap ? (Num::ToString(race_lap) + std::string(" Checkpoints")) : "Random Scatter";
+	
 	int team_rate_checkpoints = Raptor::Game->Data.PropertyAsInt("team_race_checkpoints");
 	Configs["team_race_checkpoints"]->Value->LabelText = team_rate_checkpoints ? (Num::ToString(team_rate_checkpoints) + std::string(" Checkpoints")) : "Unlimited";
 	
 	int ffa_race_checkpoints = Raptor::Game->Data.PropertyAsInt("ffa_race_checkpoints");
 	Configs["ffa_race_checkpoints"]->Value->LabelText = ffa_race_checkpoints ? (Num::ToString(ffa_race_checkpoints) + std::string(" Checkpoints")) : "Unlimited";
-	
-	int race_lap = Raptor::Game->Data.PropertyAsInt("race_lap");
-	Configs["race_lap"]->Value->LabelText = Num::ToString(race_lap) + std::string(" Checkpoints");
 	
 	int race_time_limit = Raptor::Game->Data.PropertyAsInt("race_time_limit");
 	Configs["race_time_limit"]->Value->LabelText = race_time_limit ? (Num::ToString(race_time_limit) + std::string(" min")) : "Unlimited";
@@ -870,6 +956,12 @@ void LobbyMenu::UpdateInfoBoxes( void )
 	// Only show Race settings for Kessel Run.
 	if( gametype == "team_race" )
 	{
+		Configs["race_circuit"]->Visible = true;
+		Configs["race_circuit"]->Enabled = true;
+		
+		Configs["race_lap"]->Visible = true;
+		Configs["race_lap"]->Enabled = true;
+		
 		Configs["team_race_checkpoints"]->Visible = true;
 		Configs["team_race_checkpoints"]->Enabled = true;
 		
@@ -877,14 +969,17 @@ void LobbyMenu::UpdateInfoBoxes( void )
 		Configs["ffa_race_checkpoints"]->Visible = false;
 		Configs["ffa_race_checkpoints"]->Enabled = false;
 		
-		Configs["race_lap"]->Visible = true;
-		Configs["race_lap"]->Enabled = true;
-		
 		Configs["race_time_limit"]->Visible = true;
 		Configs["race_time_limit"]->Enabled = true;
 	}
 	else if( gametype == "ffa_race" )
 	{
+		Configs["race_circuit"]->Visible = true;
+		Configs["race_circuit"]->Enabled = true;
+		
+		Configs["race_lap"]->Visible = true;
+		Configs["race_lap"]->Enabled = true;
+		
 		Configs["team_race_checkpoints"]->ShowButton = false;
 		Configs["team_race_checkpoints"]->Visible = false;
 		Configs["team_race_checkpoints"]->Enabled = false;
@@ -892,14 +987,19 @@ void LobbyMenu::UpdateInfoBoxes( void )
 		Configs["ffa_race_checkpoints"]->Visible = true;
 		Configs["ffa_race_checkpoints"]->Enabled = true;
 		
-		Configs["race_lap"]->Visible = true;
-		Configs["race_lap"]->Enabled = true;
-		
 		Configs["race_time_limit"]->Visible = true;
 		Configs["race_time_limit"]->Enabled = true;
 	}
 	else
 	{
+		Configs["race_circuit"]->ShowButton = false;
+		Configs["race_circuit"]->Visible = false;
+		Configs["race_circuit"]->Enabled = false;
+		
+		Configs["race_lap"]->ShowButton = false;
+		Configs["race_lap"]->Visible = false;
+		Configs["race_lap"]->Enabled = false;
+		
 		Configs["team_race_checkpoints"]->ShowButton = false;
 		Configs["team_race_checkpoints"]->Visible = false;
 		Configs["team_race_checkpoints"]->Enabled = false;
@@ -907,10 +1007,6 @@ void LobbyMenu::UpdateInfoBoxes( void )
 		Configs["ffa_race_checkpoints"]->ShowButton = false;
 		Configs["ffa_race_checkpoints"]->Visible = false;
 		Configs["ffa_race_checkpoints"]->Enabled = false;
-		
-		Configs["race_lap"]->ShowButton = false;
-		Configs["race_lap"]->Visible = false;
-		Configs["race_lap"]->Enabled = false;
 		
 		Configs["race_time_limit"]->ShowButton = false;
 		Configs["race_time_limit"]->Visible = false;
@@ -922,6 +1018,13 @@ void LobbyMenu::UpdateInfoBoxes( void )
 	{
 		Configs["mission"]->Visible = true;
 		Configs["mission"]->Enabled = true;
+		
+		bool allow_upload = (admin || permissions_all) && (Raptor::Game->Cfg.SettingAsBool("debug") || ! Raptor::Server->IsRunning());
+		// FIXME: Check if there are any custom missions to upload.
+		Configs["upload_mission"]->ShowButton = allow_upload;
+		Configs["upload_mission"]->Visible = allow_upload;
+		Configs["upload_mission"]->Enabled = allow_upload;
+		Configs["upload_mission"]->Value->LabelText = "Upload Custom Mission";
 		
 		Configs["respawn"]->ShowButton = false;
 		Configs["respawn"]->Visible = false;
@@ -976,15 +1079,18 @@ void LobbyMenu::UpdateInfoBoxes( void )
 		Configs["empire_frigates"]->Visible = false;
 		Configs["empire_frigates"]->Enabled = false;
 		
+		Configs["race_circuit"]->ShowButton = false;
+		Configs["race_circuit"]->Visible = false;
+		Configs["race_circuit"]->Enabled = false;
+		Configs["race_lap"]->ShowButton = false;
+		Configs["race_lap"]->Visible = false;
+		Configs["race_lap"]->Enabled = false;
 		Configs["team_race_checkpoints"]->ShowButton = false;
 		Configs["team_race_checkpoints"]->Visible = false;
 		Configs["team_race_checkpoints"]->Enabled = false;
 		Configs["ffa_race_checkpoints"]->ShowButton = false;
 		Configs["ffa_race_checkpoints"]->Visible = false;
 		Configs["ffa_race_checkpoints"]->Enabled = false;
-		Configs["race_lap"]->ShowButton = false;
-		Configs["race_lap"]->Visible = false;
-		Configs["race_lap"]->Enabled = false;
 		Configs["race_time_limit"]->ShowButton = false;
 		Configs["race_time_limit"]->Visible = false;
 		Configs["race_time_limit"]->Enabled = false;
@@ -1007,6 +1113,10 @@ void LobbyMenu::UpdateInfoBoxes( void )
 		Configs["mission"]->ShowButton = false;
 		Configs["mission"]->Visible = false;
 		Configs["mission"]->Enabled = false;
+		
+		Configs["upload_mission"]->ShowButton = false;
+		Configs["upload_mission"]->Visible = false;
+		Configs["upload_mission"]->Enabled = false;
 		
 		Configs["customize_fleet"]->Visible = true;
 		Configs["customize_fleet"]->Enabled = true;
@@ -1120,6 +1230,13 @@ bool LobbyMenu::KeyDown( SDLKey key )
 			
 			return true;
 		}
+		else if( key == SDLK_F8 )
+		{
+			MissionUploader *mission_uploader = new MissionUploader();
+			mission_uploader->Draggable = ! Raptor::Game->Head.VR;
+			Raptor::Game->Layers.Add( mission_uploader );
+			return true;
+		}
 		else if( key == SDLK_F10 )
 		{
 			PrefsMenu *prefs = new PrefsMenu();
@@ -1149,6 +1266,13 @@ bool LobbyMenu::KeyDown( SDLKey key )
 			UpdatePlayerName();
 			return true;
 		}
+	}
+	else if( key == SDLK_F8 )
+	{
+		MissionUploader *mission_uploader = new MissionUploader();
+		mission_uploader->Draggable = ! Raptor::Game->Head.VR;
+		Raptor::Game->Layers.Add( mission_uploader );
+		return true;
 	}
 	else if( key == SDLK_F10 )
 	{
@@ -1335,6 +1459,10 @@ void LobbyMenuShipDropDown::Update( void )
 			else
 				AddItem( *allowed_iter, *allowed_iter );
 		}
+		
+		// Allow spectating someone else's campaign.
+		if( (FindItem("Spectator") < 0) && (Raptor::Game->Data.Players.size() > 1) && ! Raptor::Server->IsRunning() )
+			AddItem( "Spectator", "[Spectator]" );
 	}
 	else
 	{
@@ -1487,7 +1615,7 @@ void LobbyMenuConfigChangeButton::Clicked( Uint8 button )
 	
 	std::string value = Raptor::Game->Data.PropertyAsString( config->Property );
 	
-	bool go_prev = ((button == SDL_BUTTON_RIGHT) || (button == SDL_BUTTON_WHEELUP));
+	bool go_prev = ((button == SDL_BUTTON_RIGHT) || (button == SDL_BUTTON_WHEELDOWN));
 	
 	bool darkside = (Raptor::Game->Cfg.SettingAsBool("darkside",false) || Raptor::Game->Data.PropertyAsBool("darkside",false)) && ! Raptor::Game->Data.PropertyAsBool("lightside",false);
 	
@@ -1526,14 +1654,29 @@ void LobbyMenuConfigChangeButton::Clicked( Uint8 button )
 	
 	else if( config->Property == "mission" )
 	{
-		XWingGame *game = (XWingGame*) Raptor::Game;
-		std::map<std::string,std::string>::const_iterator find_mission = game->MissionList.find( value );
-		if( find_mission == game->MissionList.end() )
-			value = game->MissionList.size() ? (go_prev ? game->MissionList.rbegin()->first : game->MissionList.begin()->first) : "rebel1";
-		else if( go_prev && (find_mission == game->MissionList.begin()) )
-			value = game->MissionList.rbegin()->first;
-		else if( (! go_prev) && (value == game->MissionList.rbegin()->first) )
-			value = game->MissionList.begin()->first;
+		std::string campaign = Raptor::Game->Data.PropertyAsString("campaign");
+		std::map<std::string,std::string> mission_list = ((XWingGame*)( Raptor::Game ))->MissionList;
+		if( campaign.length() )
+		{
+			for( std::map<std::string,std::string>::iterator mission_iter = mission_list.begin(); mission_iter != mission_list.end(); )
+			{
+				std::map<std::string,std::string>::iterator mission_next = mission_iter;
+				mission_next ++;
+				
+				if( ! Str::BeginsWith( mission_iter->first, campaign ) )
+					mission_list.erase( mission_iter );
+				
+				mission_iter = mission_next;
+			}
+		}
+		
+		std::map<std::string,std::string>::const_iterator find_mission = mission_list.find( value );
+		if( find_mission == mission_list.end() )
+			value = mission_list.size() ? (go_prev ? mission_list.rbegin()->first : mission_list.begin()->first) : "rebel1";
+		else if( go_prev && (find_mission == mission_list.begin()) )
+			value = mission_list.rbegin()->first;
+		else if( (! go_prev) && (value == mission_list.rbegin()->first) )
+			value = mission_list.begin()->first;
 		else
 		{
 			if( go_prev )
@@ -1558,6 +1701,20 @@ void LobbyMenuConfigChangeButton::Clicked( Uint8 button )
 		return;
 	}
 	
+	else if( config->Property == "upload_mission" )
+	{
+		MissionUploader *mission_uploader = (MissionUploader*) Raptor::Game->Layers.Find("MissionUploader");
+		if( mission_uploader )
+			mission_uploader->Remove();
+		else
+		{
+			MissionUploader *mission_uploader = new MissionUploader();
+			mission_uploader->Draggable = ! Raptor::Game->Head.VR;
+			Raptor::Game->Layers.Add( mission_uploader );
+		}
+		return;
+	}
+	
 	else if( (config->Property == "tdm_kill_limit") || (config->Property == "dm_kill_limit") )
 	{
 		int new_kill_limit = atoi( value.c_str() ) + (go_prev ? -10 : 10);
@@ -1574,6 +1731,28 @@ void LobbyMenuConfigChangeButton::Clicked( Uint8 button )
 		value = Num::ToString( new_kill_limit );
 	}
 	
+	else if( config->Property == "race_circuit" )
+	{
+		value = Str::AsBool(value) ? "false" : "true";
+	}
+	
+	else if( config->Property == "race_lap" )
+	{
+		int new_checkpoints = atoi( value.c_str() ) + (go_prev ? -1 : 1);
+		
+		// Allow 0 (scatter) or 3-7 checkpoints.
+		if( new_checkpoints == 1 )
+			new_checkpoints = 3;
+		else if( new_checkpoints == 2 )
+			new_checkpoints = 0;
+		else if( new_checkpoints < 0 )
+			new_checkpoints = 7;
+		else if( new_checkpoints > 7 )
+			new_checkpoints = 0;
+		
+		value = Num::ToString( new_checkpoints );
+	}
+	
 	else if( (config->Property == "team_race_checkpoints") || (config->Property == "ffa_race_checkpoints") )
 	{
 		int new_checkpoints = atoi( value.c_str() ) + (go_prev ? -10 : 10);
@@ -1584,18 +1763,6 @@ void LobbyMenuConfigChangeButton::Clicked( Uint8 button )
 			new_checkpoints = 0;
 		else if( new_checkpoints > 200 )
 			new_checkpoints = 0;
-		
-		value = Num::ToString( new_checkpoints );
-	}
-	
-	else if( config->Property == "race_lap" )
-	{
-		int new_checkpoints = atoi( value.c_str() ) + (go_prev ? -1 : 1);
-		
-		if( new_checkpoints < 2 )
-			new_checkpoints = 20;
-		else if( new_checkpoints > 20 )
-			new_checkpoints = 2;
 		
 		value = Num::ToString( new_checkpoints );
 	}
@@ -1648,11 +1815,14 @@ void LobbyMenuConfigChangeButton::Clicked( Uint8 button )
 		
 		value = Num::ToString( new_ai_skill );
 		
-		uint8_t campaign = ((XWingGame*)( Raptor::Game ))->CampaignTeam;
-		if( campaign == XWing::Team::REBEL )
-			Raptor::Game->Cfg.Settings[ "rebel_difficulty" ] = value;
-		else if( campaign == XWing::Team::EMPIRE )
-			Raptor::Game->Cfg.Settings[ "empire_difficulty" ] = value;
+		if( Raptor::Game->Data.PropertyAsString("gametype") == "mission" )
+		{
+			// Change stored difficulty if we are hosting a campaign.
+			
+			std::string campaign = Raptor::Game->Data.PropertyAsString("campaign");
+			if( campaign.length() )  // FIXME: Make sure it's a valid campaign?
+				Raptor::Game->Cfg.Settings[ campaign + std::string("_difficulty") ] = value;
+		}
 	}
 	
 	else if( (config->Property == "respawn") || (config->Property == "allow_team_change") )

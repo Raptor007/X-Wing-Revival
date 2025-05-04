@@ -7,22 +7,33 @@
 #include "XWingServer.h"
 #include "Str.h"
 #include "Num.h"
+#include "File.h"
 #include <fstream>
 #include <algorithm>
 
 
 bool Mission::Load( const std::string &filename )
 {
+	std::vector<std::string> lines = File::AsLines( filename.c_str() );
+	return Parse( lines );
+}
+
+
+bool Mission::Parse( const std::string &content )
+{
+	std::vector<std::string> lines = Str::SplitToVector( content, "\n" );
+	return Parse( lines );
+}
+
+
+bool Mission::Parse( std::vector<std::string> &lines )
+{
 	Properties.clear();
 	Events.clear();
 	
-	std::ifstream input( filename.c_str() );
-	if( ! input.is_open() )
-		return false;
-	
 	bool reading_properties = true;
 	uint8_t event_trigger = MissionEvent::TRIGGER_NEVER;
-	uint16_t event_trigger_flags = 0x0000;
+	uint32_t event_trigger_flags = 0x00000000;
 	double event_time = 0.;
 	size_t event_number = 0;
 	std::string event_target;
@@ -33,13 +44,9 @@ bool Mission::Load( const std::string &filename )
 	double event_delay = 0.;
 	double event_chance = 1.;
 	
-	char buffer[ 1024 ] = "";
-	while( ! input.eof() )
+	for( size_t i = 0; i < lines.size(); i ++ )
 	{
-		buffer[ 0 ] = '\0';
-		input.getline( buffer, sizeof(buffer) );
-		
-		std::list<std::string> parsed = CStr::ParseCommand( buffer );
+		std::list<std::string> parsed = Str::ParseCommand( lines.at( i ) );
 		if( ! parsed.size() )
 			continue;
 		
@@ -48,6 +55,26 @@ bool Mission::Load( const std::string &filename )
 		std::transform( var.begin(), var.end(), var.begin(), tolower );
 		parsed.erase( parsed.begin() );
 		std::vector<std::string> args( parsed.begin(), parsed.end() );
+		
+		/*
+		// Separate any grouped parentheses into their own tokens.
+		// FIXME: Commented-out to avoid possible infinite loop.
+		//        This means for now, missions must have parens ( spaced out ) !
+		for( size_t i = 0; i < args.size(); i ++ )
+		{
+			while( (args[ i ].length() > 1) && (args[ i ][ 0 ] == '(') )
+			{
+				args.insert( args.begin() + i, "(" );
+				args[ i + 1 ].erase( args[ i + 1 ].begin() );
+				i ++;
+			}
+			while( (args[ i ].length() > 1) && (args[ i ][ args[ i ].length() - 1 ] == ')') )
+			{
+				args[ i ].erase( args[ i ].rbegin().base() );
+				args.insert( args.begin() + i + 1, ")" );
+			}
+		}
+		*/
 		
 		bool event_trigger_line = (var == "at") || (var == "on") || (var == "when") || (var == "while") || strchr( var.c_str() , ':' );
 		
@@ -107,8 +134,15 @@ bool Mission::Load( const std::string &filename )
 				}
 				else if( ((var == "when") || (var == "if") || (var == "while")) && args.size() )
 				{
+					if( (args.size() > 1) && (args.at(0) == "always") )
+					{
+						event_trigger_flags |= MissionEvent::TRIGGERFLAG_RECHECK_IF;
+						args.erase( args.begin() );
+					}
+					
 					event_if = args;
 					args.clear();
+					
 					if( var == "while" )
 					{
 						event_trigger_flags |= MissionEvent::TRIGGERFLAG_RECHECK_IF;
@@ -130,12 +164,16 @@ bool Mission::Load( const std::string &filename )
 						event_trigger_flags |= MissionEvent::TRIGGERFLAG_BY_OBJECTIVE;
 					else if( var == "turret" )
 						event_trigger_flags |= MissionEvent::TRIGGERFLAG_BY_TURRET;
+					else if( var == "ship" )
+						event_trigger_flags |= MissionEvent::TRIGGERFLAG_BY_SHIP;
 					else if( (var == "group") && args.size() )
 					{
 						event_trigger_flags |= MissionEvent::TRIGGERFLAG_BY_GROUP;
 						event_by_group = atoi( args.at(0).c_str() );
 						args.erase( args.begin() );
 					}
+					else if( (var.at(0) == '#') && ! event_number )
+						event_number = atoi( var.c_str() + 1 );
 					else if( event_trigger && event_by_name.empty() )
 						event_by_name = unmodified_var;
 				}
@@ -172,6 +210,10 @@ bool Mission::Load( const std::string &filename )
 						event_trigger = MissionEvent::TRIGGER_ON_DAMAGE;
 					else if( var == "destroyed" )
 						event_trigger = MissionEvent::TRIGGER_ON_DESTROYED;
+					else if( var == "spawn" )
+						event_trigger = MissionEvent::TRIGGER_ON_SPAWN;
+					else if( var == "respawn" )
+						event_trigger = MissionEvent::TRIGGER_ON_RESPAWN;
 					else if( var.at(0) == '#' )
 						event_number = atoi( var.c_str() + 1 );
 					else if( (var == "target") && args.size() )
@@ -264,6 +306,8 @@ bool Mission::Load( const std::string &filename )
 						spawn_flags |= MissionEvent::SPAWNFLAG_EMPIRE;
 					else if( subvar == "objective" )
 						spawn_flags |= MissionEvent::SPAWNFLAG_OBJECTIVE;
+					else if( subvar == "respawn" )
+						spawn_flags |= MissionEvent::SPAWNFLAG_RESPAWN;
 					/*
 					else if( subvar == "hero" )
 						spawn_flags |= MissionEvent::SPAWNFLAG_HERO;
@@ -308,6 +352,7 @@ bool Mission::Load( const std::string &filename )
 					else if( (subvar == "group") && args.size() )
 					{
 						spawn_group = atoi( args.at(0).c_str() );
+						args.erase( args.begin() );
 					}
 					else if( (subvar == "message") && args.size() )
 					{
@@ -369,15 +414,25 @@ bool Mission::Load( const std::string &filename )
 			}
 		}
 	}
-	input.close();
 	
 	// Return true if we loaded at least the gametype.
 	return (Properties.find("gametype") != Properties.end());
 }
 
 
+std::string Mission::PropertyAsString( const std::string &name, const std::string &ifndef ) const
+{
+	std::map<std::string,std::string>::const_iterator property_iter = Properties.find( name );
+	if( property_iter != Properties.end() )
+		return property_iter->second;
+	return ifndef;
+}
 
-MissionEvent::MissionEvent( uint8_t trigger, uint16_t trigger_flags, double time, double delay, size_t number, std::string target, uint8_t target_group, std::vector<std::string> trigger_if, double chance, std::string by_name, uint8_t by_group )
+
+// ---------------------------------------------------------------------------
+
+
+MissionEvent::MissionEvent( uint8_t trigger, uint32_t trigger_flags, double time, double delay, size_t number, std::string target, uint8_t target_group, std::vector<std::string> trigger_if, double chance, std::string by_name, uint8_t by_group )
 {
 	Trigger = trigger;
 	TriggerFlags = trigger_flags;
@@ -446,7 +501,7 @@ MissionEvent::~MissionEvent()
 }
 
 
-bool MissionEvent::MatchesConditions( uint16_t flags, std::string target_name, uint8_t target_group, std::string by_name, uint8_t by_group ) const
+bool MissionEvent::MatchesConditions( uint32_t flags, std::string target_name, uint8_t target_group, std::string by_name, uint8_t by_group ) const
 {
 	XWingServer *server = (XWingServer*)( Raptor::Server );
 	
@@ -491,22 +546,24 @@ bool MissionEvent::MatchesConditions( uint16_t flags, std::string target_name, u
 		return false;
 	if( (TriggerFlags & TRIGGERFLAG_BY_TURRET   ) && ! (flags & TRIGGERFLAG_BY_TURRET) )
 		return false;
+	if( (TriggerFlags & TRIGGERFLAG_BY_SHIP     ) && ! (flags & TRIGGERFLAG_BY_SHIP) )
+		return false;
 	
 	if( (TriggerFlags & TRIGGERFLAG_GROUP       ) && (target_group != TargetGroup) )
 		return false;
 	if( (TriggerFlags & TRIGGERFLAG_BY_GROUP    ) && (by_group != ByGroup) )
 		return false;
 	
-	if( ! (Target.empty() || Str::EqualsInsensitive( target_name, Target )) )
+	if( ! (Target.empty() || Str::ContainsInsensitive( target_name, Target )) )
 		return false;
-	if( ! (ByName.empty() || Str::EqualsInsensitive( by_name, ByName )) )
+	if( ! (ByName.empty() || Str::ContainsInsensitive( by_name, ByName )) )
 		return false;
 	
 	return true;
 }
 
 
-void MissionEvent::Activated( uint16_t flags, std::string target_name, uint8_t target_group, std::string by_name, uint8_t by_group )
+void MissionEvent::Activated( uint32_t flags, std::string target_name, uint8_t target_group, std::string by_name, uint8_t by_group )
 {
 	XWingServer *server = (XWingServer*)( Raptor::Server );
 	
@@ -689,6 +746,8 @@ void MissionEvent::FireWhenReady( std::set<uint32_t> *add_object_ids )
 			mission_complete.AddString( PropertyValue );
 			server->Net.SendAll( &mission_complete );
 		}
+		else if( Str::EqualsInsensitive( PropertyName, "mission_objs" ) )
+			server->SetProperty( PropertyName, PropertyValue );  // XWingServer::SetProperty sends mission_objs to clients.
 		else
 			server->Data.SetProperty( PropertyName, value );
 	}
@@ -707,7 +766,10 @@ void MissionEvent::FireWhenReady( std::set<uint32_t> *add_object_ids )
 			Ship *ship = server->SpawnShip( sc, team, add_object_ids );
 			ship->Group = SpawnGroup;
 			ship->IsMissionObjective = SpawnFlags & SPAWNFLAG_OBJECTIVE;
+			ship->CanRespawn         = SpawnFlags & SPAWNFLAG_RESPAWN;
 			// FIXME: SpawnFlags & SPAWNFLAG_HERO
+			ship->JumpProgress = (this->Time + this->Delay) ? 0. : 1.;
+			ship->SetThrottle( 1., 999. );
 			
 			if( SpawnName.length() )
 				ship->Name = SpawnName;

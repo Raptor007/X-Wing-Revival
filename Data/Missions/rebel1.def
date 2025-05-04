@@ -1,5 +1,6 @@
 mission_name Rebel 1: Battle of Turkana
 mission_desc Defend the fleet from enemy TIE Fighters.
+mission_objs fighters,gunboats,bombers
 gametype fleet
 player_team rebel
 player_ship X/W Y/W
@@ -22,10 +23,14 @@ player_spawn 4000 0 0
 
 at 0:02
 alert r1_begin.wav All groups assume attack coordinates.
+wait 4
+chat TargetObjective (default O) targets your current objectives.
 
 on player damaged while player alive
 wait 4
 alert r1_repair.wav You can come back to the docking bay if you need repairs.
+wait 3.5
+chat TargetDockable (default H) selects the nearest friendly hangar.
 
 on empire fighter destroyed if no empire fighters alive
 wait 4

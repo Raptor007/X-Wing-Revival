@@ -1,0 +1,85 @@
+mission_name Empire 2: Milk Run
+mission_desc Fly defense for a supply convoy.
+mission_objs friendly FRT
+gametype team_elim
+player_team empire
+player_ship T/F T/I GUN
+defending_team empire
+empire_fighter T/F
+rebel_fighter X/W
+empire_waves 3
+rebel_waves 2
+player_spawn -10500 0 -1100
+empire_spawn -10000 0 -2000
+rebel_spawn 8100 0 -200 -1 0 0
+
+at 0:00
+spawn empire objective FRT at -4000 -100 0
+spawn empire objective FRT at -4100 100 -100
+spawn empire objective FRT at -6000 -200 -100
+spawn empire objective FRT at -6100 100 -300
+spawn empire objective FRT at -8000 -100 -100
+spawn empire objective FRT at -8100 300 -200
+spawn empire objective FRT at -10000 -100 200
+spawn empire objective FRT at -10100 -300 -200
+spawn empire objective FRT at -12000 200 100
+spawn empire objective FRT at -12100 100 -200
+spawn empire objective FRT at -14000 -200 300
+spawn empire objective FRT at -14100 300 -200
+gametype hunt
+frt_lost false
+spawn rebel Y/W "Gold 1" group 2 at 7500 0 -300 facing -1 0 0
+spawn rebel Y/W "Gold 2" group 2 at 7700 10 -200 facing -1 0 0
+spawn rebel Y/W "Gold 3" group 2 at 7900 20 -100 facing -1 0 0
+spawn rebel Y/W "Gold 4" group 2 at 8100 30 -200 facing -1 0 0
+wait 3
+alert e2_intel.wav Intelligence is still trying to figure out how a small time regional group managed to launch an operation...
+wait 5.2
+alert e2_sight.wav Tangos in sight.
+wait 1.4
+alert e2_go.wav Go go go!
+wait 0.7
+message Move it!
+wait 2
+alert e2_careful.wav Be careful out there.
+
+on destroyed FRT
+frt_lost true
+wait 2
+sound e2_lost.wav
+wait 0.6
+message Target lost.
+
+on destroyed empire by player
+wait 4
+alert e1_watchfire.wav Watch your fire!
+
+on destroyed rebel by player #5
+impressive true
+
+on destroyed rebel by empire ai
+wait 1.5
+alert e1_gotem.wav Got 'em!
+
+on destroyed rebel by empire ai #3
+wait 1.5
+alert e1_neutralized.wav Threat neutralized.
+
+on destroyed rebel if no rebel ships here
+wait 2.5
+alert e2_quiet.wav It looks quiet...
+wait 3
+alert e1_notangos.wav No tangos in sight.
+wait 2.5
+victory
+
+on victory
+next_mission empire3
+
+on victory if ( frt_lost false ) and ( impressive true )
+wait 3
+alert impressive.wav Impressive.
+
+on defeat
+wait 3
+alert failed.wav You have failed me for the last time.

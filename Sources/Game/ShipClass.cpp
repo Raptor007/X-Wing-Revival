@@ -129,7 +129,7 @@ ShipClass::~ShipClass()
 
 static uint8_t ShotTypeFromString( std::string type, uint8_t team )
 {
-	std::transform( type.begin(), type.end(), type.begin(), tolower );
+	type = Str::LowercaseCopy( type );
 	
 	if( (type == "red_laser") || (type == "laser_red") )
 		return Shot::TYPE_LASER_RED;

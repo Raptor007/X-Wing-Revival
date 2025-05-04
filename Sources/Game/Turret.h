@@ -31,7 +31,7 @@ public:
 	std::string BodyModel, GunModel;
 	Model *BodyShape, *GunShape;
 	
-	double GunPitch, GunPitchRate;
+	double GunPitch, GunPitchRate, PrevGunPitchRate;
 	
 	double Health;
 	
@@ -70,8 +70,8 @@ public:
 	Pos3D GunPos( const Pos3D *body_pos = NULL ) const;
 	Pos3D HeadPos( void ) const;
 	
-	std::map<int,Shot*> NextShots( GameObject *target = NULL, uint8_t firing_mode = 0 ) const;
-	std::map<int,Shot*> AllShots( GameObject *target = NULL ) const;
+	std::vector<Shot*> NextShots( GameObject *target = NULL, uint8_t firing_mode = 0 ) const;
+	std::vector<Shot*> AllShots( GameObject *target = NULL ) const;
 	void JustFired( void );
 	double ShotDelay( void ) const;
 	

@@ -271,14 +271,17 @@ FleetMenuDropDown::FleetMenuDropDown( SDL_Rect *rect, Font *font, std::string va
 	std::set<uint8_t> teams, categories;
 	teams.insert( XWing::Team::NONE );
 	teams.insert( (Str::FindInsensitive( Name, "rebel_" ) >= 0) ? XWing::Team::REBEL : XWing::Team::EMPIRE );
-	if( (Str::FindInsensitive( Name, "_fighter" ) >= 0) || (Str::FindInsensitive( Name, "_bomber" ) >= 0) || (Str::FindInsensitive( Name, "_cruiser" ) >= 0) )
+	if( (Str::FindInsensitive( Name, "_fighter" ) >= 0) || (Str::FindInsensitive( Name, "_bomber" ) >= 0) || (Str::FindInsensitive( Name, "_cruiser" ) >= 0) || (Str::FindInsensitive( Name, "_frigate" ) >= 0) )
 	{
 		categories.insert( ShipClass::CATEGORY_FIGHTER );
 		categories.insert( ShipClass::CATEGORY_BOMBER );
 		categories.insert( ShipClass::CATEGORY_GUNBOAT );
 	}
 	if( (Str::FindInsensitive( Name, "_flagship" ) >= 0) || (Str::FindInsensitive( Name, "_cruiser" ) >= 0) || (Str::FindInsensitive( Name, "_frigate" ) >= 0) )
+	{
 		categories.insert( ShipClass::CATEGORY_CAPITAL );
+		//categories.insert( ShipClass::CATEGORY_TRANSPORT );
+	}
 	
 	std::set<std::string> special_allowed;
 	if( variable == "rebel_flagship" )

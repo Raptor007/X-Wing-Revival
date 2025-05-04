@@ -26,6 +26,7 @@ public:
 	int KillLimit;
 	int TimeLimit;
 	int Checkpoints;
+	bool CheckpointFirstTouch;
 	bool PlayersTakeEmptyShips;
 	bool Respawn;
 	double RespawnDelay, RebelCruiserRespawn, EmpireCruiserRespawn;
@@ -38,7 +39,6 @@ public:
 	std::map< std::string, std::set<uint32_t> > Squadrons;
 	
 	uint32_t CollisionGroup;
-	//Clock CollisionClock;
 	std::map<uint32_t,uint32_t> CollisionWith;
 	//std::map<uint32_t,Pos3D> CollisionAt;
 	
@@ -68,11 +68,13 @@ public:
 	bool CompatibleVersion( std::string version ) const;
 	void AcceptedClient( ConnectedClient *client );
 	void DroppedClient( ConnectedClient *client );
+	bool SetPlayerProperty( Player *player, std::string name, std::string value, bool force = false );
 	
 	void Update( double dt );
 	void SetProperty( std::string name, std::string value );
 	
 	void ResetToStartingObjects( void );
+	void ClearMissionData( void );
 	bool SelectMission( std::string mission_id = "", bool load = true );
 	void ToggleCountdown( const Player *player = NULL );
 	uint32_t ParseGameType( std::string gametype ) const;
@@ -90,8 +92,8 @@ public:
 	
 	void SendAddedObjects( const std::set<uint32_t> *add_object_ids );
 	
-	void TriggerEvent( uint8_t trigger, const GameObject *object, const GameObject *by_obj = NULL, const Player *player = NULL );
-	void TriggerEvent( uint8_t trigger, uint16_t flags, std::string target_name = "", uint8_t target_group = 0, std::string by_name = "", uint8_t by_group = 0 );
+	void TriggerEvent( uint8_t trigger, const GameObject *object, const GameObject *by_obj = NULL, const Player *player = NULL, const Player *by_player = NULL );
+	void TriggerEvent( uint8_t trigger, uint32_t flags, std::string target_name = "", uint8_t target_group = 0, std::string by_name = "", uint8_t by_group = 0 );
 	
 	bool CheckCondition( const std::vector<std::string> &terms );
 	std::set<Ship*> MatchingShips( const std::vector<std::string> &terms );

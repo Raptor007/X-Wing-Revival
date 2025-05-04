@@ -1,6 +1,6 @@
 ----------------------------------------
 |            X-Wing Revival            |
-|       0.4.5 Alpha (2024-08-28)       |
+|        0.5 Alpha (2025-05-04)        |
 |     by Raptor007 (Blair Sherman)     |
 | http://raptor007.com/x-wing-revival/ |
 ----------------------------------------
@@ -13,15 +13,20 @@ of a classic LucasArts X-Wing game, but X-Wing Revival has developed into its ow
 take on the genre, with a focus on fast dogfighting, epic battles, multiplayer balance,
 and staying true to classic Star Wars ship designs.  (TIE Fighters don't have missiles!)
 
+Basically: a 90's combat flight sim with early 2000's graphics and modern internet play.
+
 If you're looking for the official X-Wing title of 2020, check out Star Wars Squadrons:
   https://store.steampowered.com/app/1222730/STAR_WARS_Squadrons/
 
 
 == CREDITS AND THANKS ==
 
-Ship models were shamelessly pilfered from X-Wing Alliance asset files, including many
+Ship models were shamelessly pilfered from X-Wing Alliance asset files, including some
 beautiful high-res models from the X-Wing Alliance Upgrade Project.
   https://xwaupgrade.com/
+
+The campaign uses voice clips from the Star Wars trilogy, Dark Forces, Indiana Jones,
+Rainbow Six, Rogue Spear, Halo, and the CollegeHumor sketch "Stormtroopers' 9/11".
 
 Special thanks to NoJoe, Peter, and Sawyer for all the test flights, and to The Rebel
 Alliance for helping me bring balance to the forces.
@@ -111,7 +116,7 @@ Linux asks what application to open files of type "executable" with.
     window.  Now double-clicking "X-Wing Revival.elf" should run it.
 
 
-== PREFERENCES ==
+== VIDEO PREFERENCES ==
 
 --Graphics--
 
@@ -120,8 +125,8 @@ Linux asks what application to open files of type "executable" with.
 
   FOV: Set horizontal field of view in degrees.  Default "auto" uses vFOV 60.
 
-  MSAA (Antialiasing): Use multiple samples to reduce jagged edges.  Can be GPU-heavy,
-    especially when VR is enabled.  (Renamed from "FSAA" to avoid confusion with FXAA.)
+  MSAA (Antialiasing): Use multiple samples to reduce jagged edges.  GPU-heavy at high
+    res, in VR, or with bump-mapping.  (Renamed from "FSAA" to avoid FXAA confusion.)
 
   VSync (Vertical Synchronization): Eliminate tearing by only drawing frames when the
     monitor is ready to refresh.  Recommended for fast systems, but turning this off is
@@ -143,8 +148,9 @@ Linux asks what application to open files of type "executable" with.
     Recommended for performance and better appearance, but a few old motherboards may
     perform better with this off, and some ancient video cards require this off.
 
-  Lighting: Per-pixel can be GPU-heavy, especially in VR, but looks much better on
-    large surfaces like capital ships and the Death Star trench.  Requires shaders.
+  Lighting: Quality of shader-based lighting.  Lower quality levels perform more work
+    per vertex rather than per pixel.  Highest quality levels use bump-mapping to add
+    more detailed lighting to some surfaces, which can be GPU-heavy.
 
   Dynamic Lights: Number of point light sources (lasers, torpedos, explosions, etc) to
     use for lighting each object.  Higher values use a bit more CPU and GPU power.
@@ -162,6 +168,10 @@ Linux asks what application to open files of type "executable" with.
 
   Engine Glow: Draw engine glow effects.  Very little performance impact on most GPUs.
 
+  Debris: Scatter tiny rocks throughout space to help visualize your speed.
+
+  Sway: Tilt the 3D cockpit to simulate motion.
+
   Asteroid Level of Detail: Controls how far away asteroids render in higher detail.
     Can be somewhat CPU-heavy and GPU-heavy with many asteroids, especially in VR.
     NOTE: This is even more CPU-heavy when shaders are disabled!
@@ -170,15 +180,31 @@ Linux asks what application to open files of type "executable" with.
     Can be somewhat GPU-heavy and CPU-heavy, especially in VR.
     NOTE: This is even more CPU-heavy when shaders are disabled!
 
-  FPS: Show framerate (and physics rate if hosting) in bottom right.
+--UI--
+
+  Target Box: Color of the box around selected enemy targets.  Default: White
+
+  Friendly: Color of the box around selected friendly targets.  Default: Green
+
+  Thickness: Line width of target box.  Default: Medium
+
+  Classic Target Box: Draw as rectangle aligned with camera up/right vectors.
+
+  Classic Target Info: Vague target health instead of hull and shield percent.
+
+  Show Framerate: Show graphics FPS (and physics if hosting) in bottom right.
+
+  Cinematic Mode: Hide UI elements that look bad in recordings.
 
 --Virtual Reality--
 
-  Enable VR Mode: Enable VR HMD output and seated head tracking, using OpenVR/SteamVR.
-    Tested with the HTC Vive, and it should work for the Oculus Rift, Valve Index, or
-    any other HMD.  Non-Vive headsets may require view tweaks below.  VERY GPU-HEAVY!
+  VR Mode: Enable VR HMD output and seated head tracking, using OpenVR/SteamVR.
+    Tested with the HTC Vive, and it should work for the Oculus Rift, Valve Index,
+    or any other HMD.  Some headsets may require view tweaks below.  VERY GPU-HEAVY!
 
-  Sway: Enable cockpit swaying motions in VR.  More immersive, but can be nauseating.
+  Start in VR: Enable VR mode at launch.  Equivalent to "-vr" command-line parameter.
+
+  Sway: Enable cockpit motion in VR.  More immersive, but can be nauseating.
 
   FOVW / FOVH: Field of view in degrees; negative means vertical FOV.  Default: -111
 
@@ -186,27 +212,52 @@ Linux asks what application to open files of type "executable" with.
 
   Center Offset: Offset in pixels from screen center to eye center.  Default: 87
 
---Sound--
-
-  Volume: Master volume that affects all playback.
-
-  Effects: Volume of sound effects.
-
-  Engines: Engine sound volume, relative to effect volume.
-
-  Music: Volume of all music, including end-of-round victory/defeat music.
-
-  Menu Music: Play background music in the menus and lobby.
-
-  Game Music: Play background music while flying.
-
-  S.Alarm: Play alarm sound when losing a deflector shield.
-
 --Networking--
 
   Rate: Send updates to the server at this rate.  Default: 30
 
   Predict: Shots fire immediately instead of waiting for server.  Default: All My Shots
+
+
+== AUDIO PREFERENCES ==
+
+--Volumes--
+
+  Master: Master volume that affects all playback.
+
+  Effects: Volume of sound effects.
+
+  Engines: Engine sound volume, relative to effect volume.
+
+  Comlink: Player voice volume.
+
+  Music: Volume of all music, including end-of-round victory/defeat music.
+
+  Music in Menus: Play background music in the menus and lobby.
+
+  Music During Flight: Play background music while flying.
+
+  Shield Alarm: Play alarm klaxon when your shields drop.  Default: All Ships
+
+--Mixing Quality--
+
+  Output Channels: Stereo, quadraphonic, or 5.1/7.1 surround.  Default: Stereo
+
+  Sample Depth: 16-bit/24-bit integer or 32-bit floating point.  Default: 16-Bit
+
+  Rate: Samples per second.  Default: 44.1KHz
+
+--Commlink--
+
+  Microphone Input Gain: Recording volume of your microphone.  Default: Auto
+
+  Maximum Playback Gain: Loudest allowed incoming voice.  Default: +24 dB
+
+  Always Use Automatic Gain: Ignore gain settings of incoming voice.
+
+  Positional Team Voice: Hear teammate voices from the direction of their ships.
+
+  Music Scale for Comms: Reduce music volume when receiving voice.  Default: 30%
 
 
 == CONTROLS ==
@@ -451,6 +502,7 @@ You can control X-Wing Revival's behavior with these command-line options:
   -dedicated: Host a dedicated server console instead of playing.
   -set <name> <value>: Change a variable's value.
   -windowed: Start windowed, not fullscreen.
+  -vr: Start in VR mode.
   -safe: Use old fixed-pipeline OpenGL at 640x480 with minimal extensions.
   -screensaver: Load in screensaver mode.  Moving the mouse will quit.
 
@@ -492,6 +544,23 @@ console commands to execute, such as "sv gametype yavin" or "sv rebel_fighter A/
 
 
 == VERSION HISTORY ==
+
+Alpha 0.5 (2025-05-04):
+ * Multiplayer voice commlink with optional positional audio.
+ * More progress on both campaigns.  Respawn is allowed when playing coop.
+ * Improved graphics, such as bump-mapped lighting and new shot effects.
+ * Surround sound and hi-def audio modes added.  Improved explosion sounds.
+ * Increased speed of turbolaser bolts.  Turrets pick targets a bit smarter.
+ * Y-Wings now go nearly as fast as X-Wings, though X-Wings maneuver better.
+ * Targeting computer shows hull/shield damage.  HUD box fits target shape.
+ * Target Crosshair should no longer stutter in large fleet battles.
+ * Improved AI avoidance of friendly fire and collisions (somewhat).
+ * Fixed missile/torpedo rubber-banding and other shot prediction bugs.
+ * Fixed fullscreen resolution change in SDL2.
+ * Fixed shield alarm not working in double-front/double-rear modes.
+ * Added more Kessel Run options and fixed Team Kessel Run victory check.
+ * Death Star exhaust port can only be locked onto from within the trench.
+ * Lobby background image and player name colors now represent chosen team.
 
 Alpha 0.4.5 (2024-08-28):
  * Fixed collision detection bugs and improved performance.

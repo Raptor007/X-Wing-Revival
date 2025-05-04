@@ -29,10 +29,12 @@ DeathStar::DeathStar( uint32_t id ) : GameObject( id, XWing::Object::DEATH_STAR 
 	Diffuse.Set( 0.4f, 0.4f, 0.4f, 1.f );
 	Specular.Set( 0.1f, 0.1f, 0.1f, 1.f );
 	Shininess = 1.f;
+	BumpScale = 0.f;
 	BottomAmbient.Set( -0.35f, -0.35f, -0.35f, 1.f );
 	BottomDiffuse.Set( 0.4f, 0.4f, 0.4f, 1.f );
 	BottomSpecular.Set( 0.1f, 0.1f, 0.1f, 1.f );
 	BottomShininess = 1.f;
+	BottomBumpScale = 0.f;
 }
 
 
@@ -75,10 +77,12 @@ void DeathStar::ClientInit( void )
 			if( (int) mtl_iter->second->Arrays.VertexCount > best_vertex_count )
 			{
 				Texture.BecomeInstance( &(mtl_iter->second->Texture) );
+				BumpMap.BecomeInstance( &(mtl_iter->second->BumpMap) );
 				Ambient = mtl_iter->second->Ambient;
 				Diffuse = mtl_iter->second->Diffuse;
 				Specular = mtl_iter->second->Specular;
 				Shininess = mtl_iter->second->Shininess;
+				BumpScale = mtl_iter->second->BumpScale;
 				best_vertex_count = mtl_iter->second->Arrays.VertexCount;
 			}
 		}
@@ -104,6 +108,7 @@ void DeathStar::ClientInit( void )
 				BottomDiffuse = mtl_iter->second->Diffuse;
 				BottomSpecular = mtl_iter->second->Specular;
 				BottomShininess = mtl_iter->second->Shininess;
+				BottomBumpScale = mtl_iter->second->BumpScale;
 				best_vertex_count = mtl_iter->second->Arrays.VertexCount;
 			}
 		}
@@ -251,9 +256,21 @@ void DeathStar::Draw( void )
 {
 	bool use_shaders = Raptor::Game->ShaderMgr.Active();
 	Shader *prev_shader = Raptor::Game->ShaderMgr.Selected;
-	bool change_shaders = use_shaders && (Raptor::Game->Cfg.SettingAsInt("g_shader_light_quality") >= 1);
+	bool change_shaders = use_shaders && (Raptor::Game->Gfx.LightQuality >= 1);
 	if( change_shaders )
 		Raptor::Game->ShaderMgr.SelectAndCopyVars( Raptor::Game->Res.GetShader("deathstar") );
+	
+	int real_light_quality = Raptor::Game->Gfx.LightQuality;
+	if( (real_light_quality >= 3) && ! Raptor::Game->Cfg.SettingAsBool( "g_deathstar_bumpmap", true ) )
+		Raptor::Game->Gfx.LightQuality = 2;
+	
+	GLint tangent_loc = -1, bitangent_loc = -1;
+	if( use_shaders )
+	{
+		tangent_loc   = Raptor::Game->ShaderMgr.AttribLoc( "BumpTangent"   );
+		bitangent_loc = Raptor::Game->ShaderMgr.AttribLoc( "BumpBitangent" );
+	}
+	bool use_bumpmap = (tangent_loc >= 0) && (bitangent_loc >= 0) && (Raptor::Game->Gfx.LightQuality >= 3);
 	
 	double cam_up = Raptor::Game->Cam.DistAlong(&Up,this);
 	double cam_right = Raptor::Game->Cam.DistAlong(&Right,this);
@@ -374,6 +391,8 @@ void DeathStar::Draw( void )
 		}
 	}
 	
+	Raptor::Game->Gfx.LightQuality = real_light_quality;
+	
 	Pos3D slice[ 4 ];
 	slice[ 0 ].Copy( &center );
 	slice[ 0 ].MoveAlong( &Right, TrenchWidth / -2. );
@@ -384,15 +403,35 @@ void DeathStar::Draw( void )
 	slice[ 3 ].Copy( &(slice[ 1 ]) );
 	slice[ 3 ].MoveAlong( &Up, TrenchDepth * -1. );
 	
+	glEnable( GL_TEXTURE_2D );
+	
 	if( use_shaders )
 	{
 		Raptor::Game->ShaderMgr.Set3f( "AmbientColor", Ambient.Red, Ambient.Green, Ambient.Blue );
 		Raptor::Game->ShaderMgr.Set3f( "DiffuseColor", Diffuse.Red, Diffuse.Green, Diffuse.Blue );
 		Raptor::Game->ShaderMgr.Set3f( "SpecularColor", Specular.Red, Specular.Green, Specular.Blue );
 		Raptor::Game->ShaderMgr.Set1f( "Shininess", Shininess );
+		
+		Raptor::Game->ShaderMgr.Set1i( "Texture", 0 );
+		Raptor::Game->ShaderMgr.Set1i( "BumpMap", 1 );
+		
+		glActiveTexture( GL_TEXTURE0 + 1 ); // BumpMap
+		
+		if( use_bumpmap && BumpMap.Frames.size() )
+		{
+			glBindTexture( GL_TEXTURE_2D, BumpMap.CurrentFrame() );
+			Raptor::Game->ShaderMgr.Set1f( "BumpScale", BumpScale );
+		}
+		else
+		{
+			glBindTexture( GL_TEXTURE_2D, 0 );
+			Raptor::Game->ShaderMgr.Set1f( "BumpScale", 0. );
+			glVertexAttrib3f( tangent_loc,   Up.X, Up.Y, Up.Z );
+			glVertexAttrib3f( bitangent_loc, Up.X, Up.Y, Up.Z );
+		}
 	}
 	
-	glEnable( GL_TEXTURE_2D );
+	glActiveTexture( GL_TEXTURE0 + 0 ); // Texture
 	glBindTexture( GL_TEXTURE_2D, Texture.CurrentFrame() );
 	glColor4f( 1.f, 1.f, 1.f, 1.f );
 	
@@ -413,6 +452,11 @@ void DeathStar::Draw( void )
 		{
 			// Surface Left
 			glNormal3d( Up.X, Up.Y, Up.Z );
+			if( use_bumpmap )
+			{
+				glVertexAttrib3f( tangent_loc,   Right.X,  Right.Y,  Right.Z  );
+				glVertexAttrib3f( bitangent_loc, -(Fwd.X), -(Fwd.Y), -(Fwd.Z) );
+			}
 			glTexCoord2d( 0., texture_fwd_offset );
 			glVertex3d( slice[ 0 ].X + Fwd.X * trench_fwd - Right.X * trench_fwd, slice[ 0 ].Y + Fwd.Y * trench_fwd - Right.Y * trench_fwd, slice[ 0 ].Z + Fwd.Z * trench_fwd - Right.Z * trench_fwd );
 			glTexCoord2d( 0., texture_fwd_offset + textures_fwd );
@@ -424,6 +468,11 @@ void DeathStar::Draw( void )
 			
 			// Surface Right
 			glNormal3d( Up.X, Up.Y, Up.Z );
+			if( use_bumpmap )
+			{
+				glVertexAttrib3f( tangent_loc,   Right.X,  Right.Y,  Right.Z  );
+				glVertexAttrib3f( bitangent_loc, -(Fwd.X), -(Fwd.Y), -(Fwd.Z) );
+			}
 			glTexCoord2d( 0., texture_fwd_offset );
 			glVertex3d( slice[ 1 ].X + Fwd.X * trench_fwd, slice[ 1 ].Y + Fwd.Y * trench_fwd, slice[ 1 ].Z + Fwd.Z * trench_fwd );
 			glTexCoord2d( 0., texture_fwd_offset + textures_fwd );
@@ -438,6 +487,11 @@ void DeathStar::Draw( void )
 		{
 			// Wall Left
 			glNormal3d( Right.X, Right.Y, Right.Z );
+			if( use_bumpmap )
+			{
+				glVertexAttrib3f( tangent_loc, -(Fwd.X), -(Fwd.Y), -(Fwd.Z) );
+				glVertexAttrib3f( bitangent_loc,  Up.X,     Up.Y,     Up.Z  );
+			}
 			glTexCoord2d( -texture_fwd_offset, 0. );
 			glVertex3d( slice[ 0 ].X - Fwd.X * trench_fwd, slice[ 0 ].Y - Fwd.Y * trench_fwd, slice[ 0 ].Z - Fwd.Z * trench_fwd );
 			glTexCoord2d( -texture_fwd_offset, tx_depth );
@@ -452,6 +506,11 @@ void DeathStar::Draw( void )
 		{
 			// Wall Right
 			glNormal3d( -(Right.X), -(Right.Y), -(Right.Z) );
+			if( use_bumpmap )
+			{
+				glVertexAttrib3f( tangent_loc,  Fwd.X, Fwd.Y, Fwd.Z );
+				glVertexAttrib3f( bitangent_loc, Up.X,  Up.Y,  Up.Z );
+			}
 			glTexCoord2d( texture_fwd_offset, 0. );
 			glVertex3d( slice[ 1 ].X + Fwd.X * trench_fwd, slice[ 1 ].Y + Fwd.Y * trench_fwd, slice[ 1 ].Z + Fwd.Z * trench_fwd );
 			glTexCoord2d( texture_fwd_offset, tx_depth );
@@ -469,6 +528,7 @@ void DeathStar::Draw( void )
 			Raptor::Game->ShaderMgr.Set3f( "DiffuseColor", BottomDiffuse.Red, BottomDiffuse.Green, BottomDiffuse.Blue );
 			Raptor::Game->ShaderMgr.Set3f( "SpecularColor", BottomSpecular.Red, BottomSpecular.Green, BottomSpecular.Blue );
 			Raptor::Game->ShaderMgr.Set1f( "Shininess", BottomShininess );
+			Raptor::Game->ShaderMgr.Set1f( "BumpScale", use_bumpmap ? BottomBumpScale : 0.f );
 			glBegin( GL_QUADS );
 		}
 		
@@ -476,6 +536,11 @@ void DeathStar::Draw( void )
 		{
 			// Bottom
 			glNormal3d( Up.X, Up.Y, Up.Z );
+			if( use_bumpmap )
+			{
+				glVertexAttrib3f( tangent_loc,   Right.X,  Right.Y,  Right.Z  );
+				glVertexAttrib3f( bitangent_loc, -(Fwd.X), -(Fwd.Y), -(Fwd.Z) );
+			}
 			glTexCoord2d( 0., texture_fwd_offset );
 			glVertex3d( slice[ 2 ].X + Fwd.X * trench_fwd, slice[ 2 ].Y + Fwd.Y * trench_fwd, slice[ 2 ].Z + Fwd.Z * trench_fwd );
 			glTexCoord2d( 0., textures_fwd + texture_fwd_offset );
@@ -496,6 +561,7 @@ void DeathStar::Draw( void )
 		Raptor::Game->ShaderMgr.Set3f( "DiffuseColor", 0.f, 0.f, 0.f );
 		Raptor::Game->ShaderMgr.Set3f( "SpecularColor", 0.f, 0.f, 0.f );
 		Raptor::Game->ShaderMgr.Set1f( "Shininess", 0.f );
+		Raptor::Game->ShaderMgr.Set1f( "BumpScale", 0.f );
 	}
 }
 

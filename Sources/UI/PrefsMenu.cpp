@@ -16,6 +16,8 @@
 
 PrefsMenu::PrefsMenu( void )
 {
+	Name = "PrefsMenu";
+	
 	Rect.x = Raptor::Game->Gfx.W/2 - 640/2;
 	Rect.y = Raptor::Game->Gfx.H/2 - 480/2;
 	Rect.w = 640;
@@ -31,16 +33,14 @@ PrefsMenu::PrefsMenu( void )
 	ItemFont    = LabelFont;
 	ButtonFont  = TitleFont;
 	ControlFont = Raptor::Game->Res.GetFont( "Geneva.ttf",  12 );
-	BindFont    = Raptor::Game->Res.GetFont( "Verdana.ttf", 10 );
+	BindFont    = Raptor::Game->Res.GetFont( "Verdana.ttf", 11 );
 	
-	Page = PAGE_PREFERENCES;
+	Page = PAGE_VIDEO;
 	UpdateContents();
 	
 	WatchSetting( "g_fullscreen" );
-#if ! SDL_VERSION_ATLEAST(2,0,0)
 	WatchSetting( "g_res_fullscreen_x" );
 	WatchSetting( "g_res_fullscreen_y" );
-#endif
 	WatchSetting( "g_vsync" );
 	WatchSetting( "g_bpp" );
 	WatchSetting( "g_zbits" );
@@ -55,6 +55,17 @@ PrefsMenu::PrefsMenu( void )
 	WatchSetting( "g_shader_point_lights" );
 	WatchSetting( "g_shader_blastpoints" );
 	WatchSetting( "g_shader_blastpoint_quality" );
+#if SDL_VERSION_ATLEAST(2,0,0)
+	WatchSetting( "s_channels" );
+	WatchSetting( "s_depth" );
+	WatchSetting( "s_rate" );
+#endif
+	WatchSetting( "s_buffer" );
+	WatchSetting( "s_mix_channels" );
+	WatchSetting( "s_mic_buffer" );
+	WatchSetting( "s_mic_device" );
+	if( ! Raptor::Game->Mic.Device )
+		WatchSetting( "s_mic_init" );
 }
 
 
@@ -65,21 +76,24 @@ PrefsMenu::~PrefsMenu()
 
 void PrefsMenu::WatchSetting( const std::string &name )
 {
-	Previous[ name ] = Raptor::Game->Cfg.SettingAsString( name );
+	if( Str::BeginsWith( name, "s_" ) )
+		PrevSnd[ name ] = Raptor::Game->Cfg.SettingAsString( name );
+	else
+		PrevGfx[ name ] = Raptor::Game->Cfg.SettingAsString( name );
 }
 
 
-bool PrefsMenu::WatchedSettingsChanged( void )
+bool PrefsMenu::GfxSettingsChanged( void )
 {
 	// Toggling shaders only requires restart when enabling if any Shader::Load occurred while they were disabled.
 	bool shader_enable = Raptor::Game->Cfg.SettingAsBool( "g_shader_enable" );
-	if( shader_enable && (Previous[ "g_shader_enable" ] != Raptor::Game->Cfg.SettingAsString( "g_shader_enable" )) && Raptor::Game->Res.ShadersNeedReload() )
+	if( shader_enable && (PrevGfx[ "g_shader_enable" ] != Raptor::Game->Cfg.SettingAsString( "g_shader_enable" )) && Raptor::Game->Res.ShadersNeedReload() )
 	{
 		//Raptor::Game->Console.Print( "PrefsMenu::WatchedSettingsChanged: g_shader_enable" );
 		return true;
 	}
 	
-	for( std::map<std::string,std::string>::const_iterator prev_iter = Previous.begin(); prev_iter != Previous.end(); prev_iter ++ )
+	for( std::map<std::string,std::string>::const_iterator prev_iter = PrevGfx.begin(); prev_iter != PrevGfx.end(); prev_iter ++ )
 	{
 		// We already decided above if g_shader_enable requires a restart.
 		if( prev_iter->first == "g_shader_enable" )
@@ -96,7 +110,24 @@ bool PrefsMenu::WatchedSettingsChanged( void )
 		// Restart if any other watched variable was changed.
 		if( prev_iter->second != Raptor::Game->Cfg.SettingAsString( prev_iter->first ) )
 		{
-			//Raptor::Game->Console.Print( std::string("PrefsMenu::WatchedSettingsChanged: ") + prev_iter->first );
+			if( Raptor::Game->Cfg.SettingAsBool("debug") )
+				Raptor::Game->Console.Print( std::string("PrefsMenu::GfxSettingsChanged: ") + prev_iter->first );
+			return true;
+		}
+	}
+	
+	return false;
+}
+
+
+bool PrefsMenu::SndSettingsChanged( void )
+{
+	for( std::map<std::string,std::string>::const_iterator prev_iter = PrevSnd.begin(); prev_iter != PrevSnd.end(); prev_iter ++ )
+	{
+		if( prev_iter->second != Raptor::Game->Cfg.SettingAsString( prev_iter->first ) )
+		{
+			if( Raptor::Game->Cfg.SettingAsBool("debug") )
+				Raptor::Game->Console.Print( std::string("PrefsMenu::SndSettingsChanged: ") + prev_iter->first );
 			return true;
 		}
 	}
@@ -129,19 +160,22 @@ void PrefsMenu::UpdateContents( void )
 	
 	rect.x = Rect.w/2 - 310;
 	rect.y = 10;
-	rect.w = 225;
+	rect.w = 125;
 	rect.h = 40;
-	AddElement( new PrefsMenuPageButton( &rect, TitleFont, "Preferences", PAGE_PREFERENCES, (Page == PAGE_PREFERENCES) ) );
+	AddElement( new PrefsMenuPageButton( &rect, TitleFont, "Video", PAGE_VIDEO, (Page == PAGE_VIDEO) ) );
 	
-	rect.x += rect.w + 10;
-	rect.w = 165;
+	rect.x += rect.w + 5;
+	AddElement( new PrefsMenuPageButton( &rect, TitleFont, "Audio", PAGE_AUDIO, (Page == PAGE_AUDIO) ) );
+	
+	rect.x += rect.w + 5;
+	rect.w = 155;
 	AddElement( new PrefsMenuPageButton( &rect, TitleFont, "Controls", PAGE_CONTROLS, (Page == PAGE_CONTROLS) ) );
 	
-	rect.x += rect.w + 10;
-	rect.w = 210;
+	rect.x += rect.w + 5;
+	rect.w = 200;
 	AddElement( new PrefsMenuPageButton( &rect, TitleFont, "Calibration", PAGE_CALIBRATION, (Page == PAGE_CALIBRATION) ) );
 	
-	if( Page == PrefsMenu::PAGE_PREFERENCES )
+	if( Page == PrefsMenu::PAGE_VIDEO )
 	{
 		// --------------------------------------------------------------------------------------------------------------------
 		// Graphics
@@ -156,10 +190,6 @@ void PrefsMenu::UpdateContents( void )
 		rect.y = 10 + group->TitleFont->GetAscent();
 		rect.h = ItemFont ? ItemFont->GetHeight() : 18;
 		
-#if SDL_VERSION_ATLEAST(2,0,0)
-		rect.w = 110;
-		group->AddElement( new PrefsMenuCheckBox( &rect, LabelFont, "Fullscreen", "g_fullscreen" ) );
-#else
 		rect.w = 115;
 		group->AddElement( new PrefsMenuCheckBox( &rect, LabelFont, "Fullscreen:", "g_fullscreen" ) );
 		rect.x += rect.w + 5;
@@ -171,9 +201,8 @@ void PrefsMenu::UpdateContents( void )
 		rect.x += rect.w + 5;
 		rect.w = 60;
 		group->AddElement( new PrefsMenuTextBox( &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, "g_res_fullscreen_y" ) );
-#endif
-		rect.x += rect.w + 15;
 		rect.w = 90;
+		rect.x = group_rect.w - rect.w - 10;
 		PrefsMenuDropDown *fov_dropdown = new PrefsMenuDropDown( &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, 0, "g_fov" );
 		fov_dropdown->AddItem( "auto", "FOV Auto" );
 		std::set<int> fov_list;
@@ -242,15 +271,17 @@ void PrefsMenu::UpdateContents( void )
 		rect.w = 90;
 		group->AddElement( new PrefsMenuCheckBox( &rect, LabelFont, "Shaders", "g_shader_enable" ) );
 		rect.x += rect.w + 10;
-		rect.w = 165;
+		rect.w = 170;
 		PrefsMenuDropDown *light_quality_dropdown = new PrefsMenuDropDown( &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, 0, "g_shader_light_quality" );
 		light_quality_dropdown->AddItem( "0", "No Lighting" );
 		light_quality_dropdown->AddItem( "1", "Per-Vertex Lighting" );
 		light_quality_dropdown->AddItem( "2", "Per-Pixel Lighting" );
+		light_quality_dropdown->AddItem( "3", "Partial BumpMap" );
+		light_quality_dropdown->AddItem( "4", "BumpMap Lighting" );
 		light_quality_dropdown->Update();
 		group->AddElement( light_quality_dropdown );
 		rect.x += rect.w + 10;
-		rect.w = 125;
+		rect.w = 120;
 		PrefsMenuDropDown *dynamic_lights_dropdown = new PrefsMenuDropDown( &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, 0, "g_shader_point_lights" );
 		dynamic_lights_dropdown->AddItem( "0", "No Dynamic" );
 		dynamic_lights_dropdown->AddItem( "1", "1 Dynamic" );
@@ -375,10 +406,27 @@ void PrefsMenu::UpdateContents( void )
 		group->Rect.h = rect.y + rect.h + 13;
 		group_rect.h = group->Rect.h;
 		
-		rect.x = blastpoint_quality_dropdown->Rect.x + 15;
-		rect.w = blastpoint_quality_dropdown->Rect.w - 15;
-		rect.y = (effects_dropdown->Rect.y + asteroid_lod_dropdown->Rect.y) / 2;
-		group->AddElement( new PrefsMenuCheckBox( &rect, LabelFont, "FPS", "showfps" ) );
+		rect.w = 75;
+		rect.x = group_rect.w - rect.w - 10;
+		rect.y = effects_dropdown->Rect.y;
+		PrefsMenuCheckBox *g_debris_checkbox = new PrefsMenuCheckBox( &rect, LabelFont, "Debris", "g_debris", "500", "0" );
+		if( Raptor::Game->Cfg.SettingAsInt("g_debris") )
+		{
+			g_debris_checkbox->Checked = true;
+			g_debris_checkbox->Image.BecomeInstance( g_debris_checkbox->ImageNormalChecked );  // FIXME: This should probably be moved to RaptorEngine.
+		}
+		group->AddElement( g_debris_checkbox );
+		
+		rect.w = 65;
+		rect.x = group_rect.w - rect.w - 10;
+		rect.y = asteroid_lod_dropdown->Rect.y;
+		PrefsMenuCheckBox *g_sway_checkbox = new PrefsMenuCheckBox( &rect, LabelFont, "Sway", "g_sway", "1", "0" );
+		if( Raptor::Game->Cfg.SettingAsDouble("g_sway") )
+		{
+			g_sway_checkbox->Checked = true;
+			g_sway_checkbox->Image.BecomeInstance( g_sway_checkbox->ImageNormalChecked );  // FIXME: This should probably be moved to RaptorEngine.
+		}
+		group->AddElement( g_sway_checkbox );
 		
 		// --------------------------------------------------------------------------------------------------------------------
 		// Virtual Reality
@@ -389,19 +437,29 @@ void PrefsMenu::UpdateContents( void )
 		
 		rect.x = 10;
 		rect.y = 10 + group->TitleFont->GetAscent();
-		rect.w = 160;
-		group->AddElement( new PrefsMenuVRCheckBox( &rect, LabelFont, "Enable VR Mode" ) );
+		rect.w = 90;
+		group->AddElement( new PrefsMenuVRCheckBox( &rect, LabelFont, "VR Mode" ) );
 		
-		rect.x += rect.w + 20;
-		rect.w = 70;
-		group->AddElement( new PrefsMenuCheckBox( &rect, LabelFont, "Sway", "vr_sway" ) );
+		rect.x += rect.w + 5;
+		rect.w = 110;
+		group->AddElement( new PrefsMenuCheckBox( &rect, LabelFont, "Start in VR", "vr_always" ) );
+		
+		rect.x += rect.w + 5;
+		rect.w = 65;
+		PrefsMenuCheckBox *vr_sway_checkbox = new PrefsMenuCheckBox( &rect, LabelFont, "Sway", "vr_sway", "1", "0" );
+		if( Raptor::Game->Cfg.SettingAsDouble("vr_sway") )
+		{
+			vr_sway_checkbox->Checked = true;
+			vr_sway_checkbox->Image.BecomeInstance( vr_sway_checkbox->ImageNormalChecked );  // FIXME: This should probably be moved to RaptorEngine.
+		}
+		group->AddElement( vr_sway_checkbox );
 		
 		rect.y += rect.h + 8;
 		rect.x = 10;
 		rect.w = 165;
 		group->AddElement( new Label( &rect, "FOV / vFOV(-):", LabelFont, Font::ALIGN_MIDDLE_LEFT ) );
 		rect.x += rect.w + 5;
-		rect.w = 95;
+		rect.w = 105;
 		group->AddElement( new PrefsMenuTextBox( &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, "vr_fov" ) );
 		
 		rect.y += rect.h + 8;
@@ -409,7 +467,7 @@ void PrefsMenu::UpdateContents( void )
 		rect.w = 165;
 		group->AddElement( new Label( &rect, "Eye Separation (m):", LabelFont, Font::ALIGN_MIDDLE_LEFT ) );
 		rect.x += rect.w + 5;
-		rect.w = 95;
+		rect.w = 105;
 		group->AddElement( new PrefsMenuTextBox( &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, "vr_separation" ) );
 		
 		rect.y += rect.h + 8;
@@ -417,11 +475,12 @@ void PrefsMenu::UpdateContents( void )
 		rect.w = 165;
 		group->AddElement( new Label( &rect, "Center Offset (px):", LabelFont, Font::ALIGN_MIDDLE_LEFT ) );
 		rect.x += rect.w + 5;
-		rect.w = 95;
+		rect.w = 105;
 		group->AddElement( new PrefsMenuTextBox( &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, "vr_offset" ) );
 		
 		group->Rect.w = rect.x + rect.w + 10;
 		group->Rect.h = rect.y + rect.h + 10;
+		vr_sway_checkbox->Rect.x = group->Rect.w - vr_sway_checkbox->Rect.w - 10;
 		
 		// --------------------------------------------------------------------------------------------------------------------
 		// Networking
@@ -437,7 +496,7 @@ void PrefsMenu::UpdateContents( void )
 		rect.w = 45;
 		group->AddElement( new Label( &rect, "Rate:", LabelFont, Font::ALIGN_MIDDLE_LEFT ) );
 		rect.x += rect.w + 5;
-		rect.w = 50;
+		rect.w = 45;
 		PrefsMenuDropDown *netrate_dropdown = new PrefsMenuDropDown( &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, 0, "netrate" );
 		std::set<int> rate_list;
 		int current_rate = Raptor::Game->Cfg.SettingAsInt("netrate");
@@ -474,22 +533,116 @@ void PrefsMenu::UpdateContents( void )
 		rect.y = group->Rect.y + group->Rect.h + 10;
 		rect.w = 100;
 		rect.h = ItemFont ? ItemFont->GetHeight() : 18;
-		AddElement( new PrefsMenuSecretCheckBox( &rect, LabelFont, "Dark Side" ) );
+		PrefsMenuSecretCheckBox *darkside_checkbox = new PrefsMenuSecretCheckBox( &rect, LabelFont, "Dark Side" );
+		AddElement( darkside_checkbox );
 		
 		// --------------------------------------------------------------------------------------------------------------------
-		// Sound
+		// UI
 		
 		group_rect.x += group_rect.w + 10;
 		group_rect.y = 50;
 		group_rect.w = Rect.w - group_rect.x - 10;
-		group = new GroupBox( &group_rect, "Sound", ItemFont );
+		group = new GroupBox( &group_rect, "UI", ItemFont );
 		AddElement( group );
 		rect.x = 10;
 		rect.y = 10 + group->TitleFont->GetAscent();
 		
+		rect.w = 90;
+		group->AddElement( new Label( &rect, "Target Box:", LabelFont, Font::ALIGN_MIDDLE_LEFT ) );
+		rect.x += rect.w + 5;
+		rect.w = 75;
+		PrefsMenuDropDown *color1_dropdown = new PrefsMenuDropDown( &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, 0, "ui_box_color" );
+		color1_dropdown->InvertMouseWheel = false;
+		color1_dropdown->AddItem( "1,1,1,1",   "White" );
+		color1_dropdown->AddItem( "1,0.1,0,1", "Red" );
+		color1_dropdown->AddItem( "0,1,0,1",   "Green" );
+		color1_dropdown->AddItem( "0,0.4,1,1", "Blue" );
+		color1_dropdown->AddItem( "0,1,1,1",   "Cyan" );
+		color1_dropdown->AddItem( "1,0,1,1",   "Magenta" );
+		color1_dropdown->AddItem( "1,1,0,1",   "Yellow" );
+		color1_dropdown->AddItem( "1,0.5,0,1", "Orange" );
+		color1_dropdown->AddItem( "0.5,0,1,1", "Purple" );
+		color1_dropdown->AddItem( "1,0.5,1,1", "Pink" );
+		color1_dropdown->AddItem( "team",      "Team" );
+		color1_dropdown->Update();
+		group->AddElement( color1_dropdown );
+		
+		rect.x = 10;
+		rect.y += rect.h + 8;
+		rect.w = 90;
+		group->AddElement( new Label( &rect, "Friendly:", LabelFont, Font::ALIGN_MIDDLE_LEFT ) );
+		rect.x += rect.w + 5;
+		rect.w = 75;
+		PrefsMenuDropDown *color2_dropdown = new PrefsMenuDropDown( &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, 0, "ui_box_color2" );
+		color2_dropdown->InvertMouseWheel = false;
+		color2_dropdown->AddItem( "1,1,1,1",   "White" );
+		color2_dropdown->AddItem( "1,0.1,0,1", "Red" );
+		color2_dropdown->AddItem( "0,1,0,1",   "Green" );
+		color2_dropdown->AddItem( "0,0.4,1,1", "Blue" );
+		color2_dropdown->AddItem( "0,1,1,1",   "Cyan" );
+		color2_dropdown->AddItem( "1,0,1,1",   "Magenta" );
+		color2_dropdown->AddItem( "1,1,0,1",   "Yellow" );
+		color2_dropdown->AddItem( "1,0.5,0,1", "Orange" );
+		color2_dropdown->AddItem( "0.5,0,1,1", "Purple" );
+		color2_dropdown->AddItem( "1,0.5,1,1", "Pink" );
+		color2_dropdown->AddItem( "team",      "Team" );
+		color2_dropdown->Update();
+		group->AddElement( color2_dropdown );
+		
+		rect.x = 10;
+		rect.y += rect.h + 8;
+		rect.w = 90;
+		group->AddElement( new Label( &rect, "Thickness:", LabelFont, Font::ALIGN_MIDDLE_LEFT ) );
+		rect.x += rect.w + 5;
+		rect.w = 75;
+		PrefsMenuDropDown *thickness_dropdown = new PrefsMenuDropDown( &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, 0, "ui_box_line" );
+		thickness_dropdown->AddItem( "1",   "Slim" );
+		thickness_dropdown->AddItem( "1.5", "Medium" );
+		thickness_dropdown->AddItem( "2",   "Thic" );
+		thickness_dropdown->AddItem( "2.5", "Thicc" );
+		thickness_dropdown->AddItem( "3",   "Thiccc" );
+		thickness_dropdown->AddItem( "3.5", "Thicccc" );
+		thickness_dropdown->AddItem( "4",   "Thiccccc" );
+		thickness_dropdown->Update();
+		group->AddElement( thickness_dropdown );
+		
+		rect.x = 10;
+		rect.y += rect.h + 8;
+		rect.w = 170;
+		group->AddElement( new PrefsMenuCheckBox( &rect, LabelFont, "Classic Target Box", "ui_box_style", "0", "1" ) );
+		
+		rect.y += rect.h + 8;
+		rect.w = 175;
+		group->AddElement( new PrefsMenuCheckBox( &rect, LabelFont, "Classic Target Info", "ui_classic" ) );
+		
+		rect.y += rect.h + 8;
+		rect.y += rect.h + 8;
+		rect.w = 155;
+		group->AddElement( new PrefsMenuCheckBox( &rect, LabelFont, "Show Framerate", "showfps" ) );
+		
+		rect.x = 10;
+		rect.y += rect.h + 8;
+		rect.w = 150;
+		group->AddElement( new PrefsMenuCheckBox( &rect, LabelFont, "Cinematic Mode", "cinematic" ) );
+	}
+	else if( Page == PrefsMenu::PAGE_AUDIO )
+	{
+		// --------------------------------------------------------------------------------------------------------------------
+		// Sound Volume
+		
+		group_rect.x = 10;
+		group_rect.y = 50;
+		group_rect.w = 240;
+		group_rect.h = 30;
+		GroupBox *volume_group = group = new GroupBox( &group_rect, "Sound Volume", ItemFont );
+		AddElement( group );
+		
+		rect.x = 10;
+		rect.y = 10 + group->TitleFont->GetAscent();
 		rect.h = ItemFont ? ItemFont->GetHeight() : 18;
-		rect.w = 70;
-		group->AddElement( new Label( &rect, "Volume:", LabelFont, Font::ALIGN_MIDDLE_LEFT ) );
+		
+		rect.w = 65;
+		group->AddElement( new Label( &rect, "Master:", LabelFont, Font::ALIGN_MIDDLE_LEFT ) );
 		rect.x += rect.w + 5;
 		rect.w = 90;
 		PrefsMenuDropDown *s_volume_dropdown = new PrefsMenuDropDown( &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, 0, "s_volume" );
@@ -509,7 +662,7 @@ void PrefsMenu::UpdateContents( void )
 		
 		rect.y += rect.h + 8;
 		rect.x = 20;
-		rect.w = 70;
+		rect.w = 65;
 		group->AddElement( new Label( &rect, "Effects:", LabelFont, Font::ALIGN_MIDDLE_LEFT ) );
 		rect.x += rect.w + 5;
 		rect.w = 80;
@@ -530,8 +683,8 @@ void PrefsMenu::UpdateContents( void )
 		
 		rect.y += rect.h + 8;
 		rect.x = 30;
-		rect.w = 70;
-		group->AddElement( new Label( &rect, "Engines:", LabelFont, Font::ALIGN_MIDDLE_LEFT ) );
+		rect.w = 65;
+		group->AddElement( new Label( &rect, "Engine:", LabelFont, Font::ALIGN_MIDDLE_LEFT ) );
 		rect.x += rect.w + 5;
 		rect.w = 70;
 		PrefsMenuDropDown *s_engine_volume_dropdown = new PrefsMenuDropDown( &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, 0, "s_engine_volume" );
@@ -549,9 +702,30 @@ void PrefsMenu::UpdateContents( void )
 		s_engine_volume_dropdown->Update();
 		group->AddElement( s_engine_volume_dropdown );
 		
+		rect.y += rect.h + 8;
+		rect.x = 20;
+		rect.w = 65;
+		group->AddElement( new Label( &rect, "Comm:", LabelFont, Font::ALIGN_MIDDLE_LEFT ) );
+		rect.x += rect.w + 5;
+		rect.w = 80;
+		PrefsMenuDropDown *s_voice_volume_dropdown = new PrefsMenuDropDown( &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, 0, "s_voice_volume" );
+		s_voice_volume_dropdown->AddItem( "0",   "Mute" );
+		s_voice_volume_dropdown->AddItem( "0.1", "10%" );
+		s_voice_volume_dropdown->AddItem( "0.2", "20%" );
+		s_voice_volume_dropdown->AddItem( "0.3", "30%" );
+		s_voice_volume_dropdown->AddItem( "0.4", "40%" );
+		s_voice_volume_dropdown->AddItem( "0.5", "50%" );
+		s_voice_volume_dropdown->AddItem( "0.6", "60%" );
+		s_voice_volume_dropdown->AddItem( "0.7", "70%" );
+		s_voice_volume_dropdown->AddItem( "0.8", "80%" );
+		s_voice_volume_dropdown->AddItem( "0.9", "90%" );
+		s_voice_volume_dropdown->AddItem( "1",   "100%" );
+		s_voice_volume_dropdown->Update();
+		group->AddElement( s_voice_volume_dropdown );
+		
 		rect.x = 20;
 		rect.y += rect.h + 8;
-		rect.w = 70;
+		rect.w = 65;
 		group->AddElement( new Label( &rect, "Music:", LabelFont, Font::ALIGN_MIDDLE_LEFT ) );
 		rect.x += rect.w + 5;
 		rect.w = 80;
@@ -570,20 +744,21 @@ void PrefsMenu::UpdateContents( void )
 		s_music_volume_dropdown->Update();
 		group->AddElement( s_music_volume_dropdown );
 		
-		rect.x = 10;
+		rect.x = 30;
 		rect.y += rect.h + 8;
-		rect.w = 120;
-		group->AddElement( new PrefsMenuCheckBox( &rect, LabelFont, "Menu Music", "s_menu_music" ) );
+		rect.w = 140;
+		group->AddElement( new PrefsMenuCheckBox( &rect, LabelFont, "Music in Menus", "s_menu_music" ) );
 		
 		rect.y += rect.h + 8;
-		group->AddElement( new PrefsMenuCheckBox( &rect, LabelFont, "Flight Music", "s_game_music" ) );
+		rect.w = 170;
+		group->AddElement( new PrefsMenuCheckBox( &rect, LabelFont, "Music During Flight", "s_game_music" ) );
 		
-		rect.y += rect.h + 8;
 		rect.x = 10;
-		rect.w = 75;
-		group->AddElement( new Label( &rect, "S.Alarm:", LabelFont, Font::ALIGN_MIDDLE_LEFT ) );
+		rect.y += rect.h + 19;
+		rect.w = 115;
+		group->AddElement( new Label( &rect, "Shield Alarm:", LabelFont, Font::ALIGN_MIDDLE_LEFT ) );
 		rect.x += rect.w + 5;
-		rect.w = 85;
+		rect.w = 100;
 		PrefsMenuDropDown *s_shield_alarm_dropdown = new PrefsMenuDropDown( &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, 0, "s_shield_alarm_radius" );
 		s_shield_alarm_dropdown->AddItem( "0",  "Off" );
 		s_shield_alarm_dropdown->AddItem( "10", "YT-1300" );
@@ -591,11 +766,174 @@ void PrefsMenu::UpdateContents( void )
 		s_shield_alarm_dropdown->Update();
 		group->AddElement( s_shield_alarm_dropdown );
 		
-		rect.y += rect.h + 8;
+		group->Rect.h = rect.y + rect.h + 10;
+		
+		// --------------------------------------------------------------------------------------------------------------------
+		// Mixing Quality
+		
+		group_rect.x += group_rect.w + 10;
+		group_rect.y = 50;
+		group_rect.w = Rect.w - group_rect.x - 10;
+		group = new GroupBox( &group_rect, "Mixing Quality", ItemFont );
+		AddElement( group );
+		
 		rect.x = 10;
-		rect.w = group_rect.w - 20;
-		rect.h = group_rect.h - rect.y - rect.x;
-		group->AddElement( new PrefsMenuSillyButton( &rect, LabelFont ) );
+		rect.y = 10 + group->TitleFont->GetAscent();
+		rect.h = ItemFont ? ItemFont->GetHeight() : 18;
+		
+		rect.w = 145;
+		group->AddElement( new Label( &rect, "Output Channels:", LabelFont, Font::ALIGN_MIDDLE_LEFT ) );
+		rect.x += rect.w + 5;
+		rect.w = 200;
+		PrefsMenuDropDown *s_channels_dropdown = new PrefsMenuDropDown( &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, 0, "s_channels" );
+		s_channels_dropdown->AddItem( "2", "Stereo (2.0)" );
+		s_channels_dropdown->AddItem( "4", "Quadraphonic (4.0)" );
+		s_channels_dropdown->AddItem( "6", "Surround 5.1" );
+		s_channels_dropdown->AddItem( "8", "Surround 7.1" );
+#if SDL_VERSION_ATLEAST(2,0,0)
+		s_channels_dropdown->Update();
+#else
+		s_channels_dropdown->LabelText = "Stereo (2.0)";
+		s_channels_dropdown->Enabled = false;
+#endif
+		group->AddElement( s_channels_dropdown );
+		
+		rect.x = 10;
+		rect.y += rect.h + 8;
+		rect.w = 125;
+		group->AddElement( new Label( &rect, "Sample Depth:", LabelFont, Font::ALIGN_MIDDLE_LEFT ) );
+		rect.x += rect.w + 5;
+		rect.w = 65;
+		PrefsMenuDropDown *s_depth_dropdown = new PrefsMenuDropDown( &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, 0, "s_depth" );
+		s_depth_dropdown->AddItem( "16", "16-Bit" );
+		s_depth_dropdown->AddItem( "24", "24-Bit" );
+		s_depth_dropdown->AddItem( "32", "Float" );
+#if SDL_VERSION_ATLEAST(2,0,0)
+		s_depth_dropdown->Update();
+#else
+		s_depth_dropdown->LabelText = "16-Bit";
+		s_depth_dropdown->Enabled = false;
+#endif
+		group->AddElement( s_depth_dropdown );
+		
+		rect.x += rect.w + 20;
+		rect.w = 45;
+		group->AddElement( new Label( &rect, "Rate:", LabelFont, Font::ALIGN_MIDDLE_LEFT ) );
+		rect.x += rect.w + 5;
+		rect.w = 85;
+		PrefsMenuDropDown *s_rate_dropdown = new PrefsMenuDropDown( &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, 0, "s_rate" );
+		s_rate_dropdown->AddItem(  "44100", "44.1KHz" );
+		s_rate_dropdown->AddItem(  "48000", "48KHz" );
+		s_rate_dropdown->AddItem(  "88200", "88.2KHz" );
+		s_rate_dropdown->AddItem(  "96000", "96KHz" );
+		s_rate_dropdown->AddItem( "192000", "192KHz" );
+		// FIXME: Allow custom value to appear, preferrably in correct order.
+#if SDL_VERSION_ATLEAST(2,0,0)
+		s_rate_dropdown->Update();
+#else
+		s_rate_dropdown->LabelText = "44.1KHz";
+		s_rate_dropdown->Enabled = false;
+#endif
+		group->AddElement( s_rate_dropdown );
+		
+		group->Rect.h = rect.y + rect.h + 10;
+		
+		// --------------------------------------------------------------------------------------------------------------------
+		// Commlink
+		
+		group_rect.y += group->Rect.h + 10;
+		group_rect.w = Rect.w - group_rect.x - 10;
+		group = new GroupBox( &group_rect, "Commlink", ItemFont );
+		AddElement( group );
+		
+		rect.x = 10;
+		rect.y = 10 + group->TitleFont->GetAscent();
+		rect.h = ItemFont ? ItemFont->GetHeight() : 18;
+		
+		rect.w = 205;
+		group->AddElement( new Label( &rect, "Microphone Input Gain:", LabelFont, Font::ALIGN_MIDDLE_LEFT ) );
+		rect.x += rect.w + 5;
+		rect.w = 85;
+		PrefsMenuDropDown *s_mic_volume_dropdown = new PrefsMenuDropDown( &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, 0, "s_mic_volume" );
+		s_mic_volume_dropdown->AddItem( "0.5", "-6 dB" );
+		s_mic_volume_dropdown->AddItem( "0.7", "-3 dB" );
+		s_mic_volume_dropdown->AddItem( "1",   "+0 dB" );
+		s_mic_volume_dropdown->AddItem( "1.4", "+3 dB" );
+		s_mic_volume_dropdown->AddItem( "2",   "+6 dB" );
+		s_mic_volume_dropdown->AddItem( "2.8", "+9 dB" );
+		s_mic_volume_dropdown->AddItem( "auto","Auto" );
+		// FIXME: Allow custom value to appear, preferrably in correct order.
+		s_mic_volume_dropdown->Update();
+		group->AddElement( s_mic_volume_dropdown );
+		
+		rect.x = 10;
+		rect.y += rect.h + 8;
+		rect.w = 205;
+		group->AddElement( new Label( &rect, "Maximum Playback Gain:", LabelFont, Font::ALIGN_MIDDLE_LEFT ) );
+		rect.x += rect.w + 5;
+		rect.w = 85;
+		PrefsMenuDropDown *s_autogain_volume_dropdown = new PrefsMenuDropDown( &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, 0, "s_voice_autogain_volume" );
+		s_autogain_volume_dropdown->AddItem(   "1", " +0 dB" );
+		s_autogain_volume_dropdown->AddItem(   "2", " +6 dB" );
+		s_autogain_volume_dropdown->AddItem(   "4", "+12 dB" );
+		s_autogain_volume_dropdown->AddItem(   "8", "+18 dB" );
+		s_autogain_volume_dropdown->AddItem(  "16", "+24 dB" );
+		s_autogain_volume_dropdown->AddItem(  "32", "+30 dB" );
+		s_autogain_volume_dropdown->AddItem(  "64", "+36 dB" );
+		s_autogain_volume_dropdown->AddItem( "128", "+40 dB" );
+		// FIXME: Allow custom value to appear, preferrably in correct order.
+		s_autogain_volume_dropdown->Update();
+		group->AddElement( s_autogain_volume_dropdown );
+		
+		rect.x = 10;
+		rect.y += rect.h + 8;
+		rect.w = 240;
+		group->AddElement( new PrefsMenuCheckBox( &rect, LabelFont, "Always Use Automatic Gain", "s_voice_autogain_always" ) );
+		
+		rect.x = 10;
+		rect.y += rect.h + 8;
+		rect.w = 200;
+		PrefsMenuCheckBox *positional_checkbox = new PrefsMenuCheckBox( &rect, LabelFont, "Positional Team Voice", "s_voice_positional" );
+		group->AddElement( positional_checkbox );
+		if( Raptor::Game->Cfg.SettingAsBool("s_voice_positional") )
+		{
+			positional_checkbox->Checked = true;
+			positional_checkbox->Image.BecomeInstance( positional_checkbox->ImageNormalChecked );  // FIXME: This should probably be moved to RaptorEngine.
+			if( Raptor::Game->Cfg.SettingAsInt("s_voice_positional") >= 2 )
+			{
+				positional_checkbox->LabelText = "Positional Voice (All Channels)";
+				positional_checkbox->Rect.w = 250;
+			}
+		}
+		
+		rect.x = 10;
+		rect.y += rect.h + 8;
+		rect.w = 205;
+		group->AddElement( new Label( &rect, "Music Scale for Comms:", LabelFont, Font::ALIGN_MIDDLE_LEFT ) );
+		rect.x += rect.w + 5;
+		rect.w = 85;
+		PrefsMenuDropDown *s_music_scale_dropdown = new PrefsMenuDropDown( &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, 0, "s_voice_scale_music" );
+		s_music_scale_dropdown->AddItem( "0",   "Mute" );
+		s_music_scale_dropdown->AddItem( "0.1", "10%" );
+		s_music_scale_dropdown->AddItem( "0.2", "20%" );
+		s_music_scale_dropdown->AddItem( "0.3", "30%" );
+		s_music_scale_dropdown->AddItem( "0.4", "40%" );
+		s_music_scale_dropdown->AddItem( "0.5", "50%" );
+		s_music_scale_dropdown->AddItem( "0.6", "60%" );
+		s_music_scale_dropdown->AddItem( "0.7", "70%" );
+		s_music_scale_dropdown->AddItem( "0.8", "80%" );
+		s_music_scale_dropdown->AddItem( "0.9", "90%" );
+		s_music_scale_dropdown->AddItem( "1",   "100%" );
+		s_music_scale_dropdown->Update();
+		group->AddElement( s_music_scale_dropdown );
+		
+		group->Rect.h = rect.y + rect.h + 10;
+		
+		rect.x = volume_group->Rect.x;
+		rect.y = volume_group->Rect.y + volume_group->Rect.h + 10;
+		rect.w = Rect.w - rect.x * 2;
+		rect.h = 85;
+		AddElement( new PrefsMenuSillyButton( &rect, TitleFont ) );
 	}
 	else if( Page == PrefsMenu::PAGE_CONTROLS )
 	{
@@ -1076,6 +1414,10 @@ void PrefsMenu::UpdateContents( void )
 		rect.y += rect.h + 10;
 		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::CHAT ], ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
+		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::VOICE_TEAM ], ControlFont, BindFont ) );
+		rect.y += rect.h + 3;
+		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::VOICE_ALL ], ControlFont, BindFont ) );
+		rect.y += rect.h + 3;
 		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::SCORES ], ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
 		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::PAUSE ], ControlFont, BindFont ) );
@@ -1242,8 +1584,8 @@ void PrefsMenuVRCheckBox::Changed( void )
 			Raptor::Game->Cfg.Settings[ "g_asteroid_lod" ] = "0.5";
 		
 		// StartVR will set these and call Gfx.Restart if required; update UI and prevent the Done button from restarting again.
-		prefs_menu->Previous[ "g_framebuffers" ] = Raptor::Game->Cfg.Settings[ "g_framebuffers" ] = "true";
-		prefs_menu->Previous[ "g_vsync"        ] = Raptor::Game->Cfg.Settings[ "g_vsync"        ] = "false";
+		prefs_menu->PrevGfx[ "g_framebuffers" ] = Raptor::Game->Cfg.Settings[ "g_framebuffers" ] = "true";
+		prefs_menu->PrevGfx[ "g_vsync"        ] = Raptor::Game->Cfg.Settings[ "g_vsync"        ] = "false";
 	}
 	else
 	{
@@ -1275,6 +1617,10 @@ PrefsMenuSecretCheckBox::PrefsMenuSecretCheckBox( SDL_Rect *rect, Font *font, st
 {
 	TimesClicked = 0;
 	Visible = Raptor::Game->Cfg.SettingAsBool( variable );
+	
+	RedNormal = RedOver = 1.;
+	GreenNormal = BlueNormal = GreenOver = BlueOver = 0.;
+	GreenDown = 0.5;
 }
 
 
@@ -1405,6 +1751,7 @@ PrefsMenuDropDown::PrefsMenuDropDown( SDL_Rect *rect, Font *font, uint8_t align,
 	Green = 0.f;
 	Blue = 0.f;
 	Alpha = 0.75f;
+	InvertMouseWheel = true;
 	
 	Variable = variable;
 	Value = Raptor::Game->Cfg.SettingAsString( Variable );
@@ -1447,6 +1794,7 @@ PrefsMenuFilterDropDown::PrefsMenuFilterDropDown( SDL_Rect *rect, Font *font, ui
 	Green = 0.f;
 	Blue = 0.f;
 	Alpha = 0.75f;
+	InvertMouseWheel = true;
 	
 	if( Raptor::Game->Cfg.SettingAsBool( "g_mipmap", true ) )
 		Value = Raptor::Game->Cfg.SettingAsString( "g_af", "1" );
@@ -1497,14 +1845,24 @@ void PrefsMenuDoneButton::Clicked( Uint8 button )
 	if( button != SDL_BUTTON_LEFT )
 		return;
 	
-	// Restart graphics/shaders if necessary.
 	PrefsMenu *menu = (PrefsMenu*) Container;
-	if( menu->WatchedSettingsChanged() )
+	
+	// Apply joystick calibration.
+	PrefsMenuCalibrator *calibrator = (PrefsMenuCalibrator*) menu->FindElement("Calibrator");
+	if( calibrator && calibrator->AxisMax.size() )
+		calibrator->Apply();
+	
+	// Restart graphics/shaders if necessary.
+	if( menu->GfxSettingsChanged() )
 		Raptor::Game->Gfx.Restart();
 	
 	// Restart VR if it's checked but not working.
 	if( (! Raptor::Game->Head.VR) && Raptor::Game->Cfg.SettingAsBool("vr_enable") )
 		Raptor::Game->Head.RestartVR();
+	
+	// Restart sound if necessary.
+	if( menu->SndSettingsChanged() )
+		Raptor::Game->Snd.Initialize();
 	
 	// Start/stop the music.
 	if( Raptor::Game->State >= XWing::State::FLYING )
@@ -1532,7 +1890,8 @@ void PrefsMenuDoneButton::Clicked( Uint8 button )
 	
 #ifndef _DEBUG
 	// Make sure all resources that need to be loaded for these settings have been loaded.
-	((XWingGame*)( Raptor::Game ))->Precache();
+	if( Raptor::Game->Cfg.SettingAsBool( "precache", true, true ) )
+		((XWingGame*)( Raptor::Game ))->Precache();
 #endif
 	
 	Container->Remove();
@@ -1563,7 +1922,7 @@ void PrefsMenuDefaultsButton::Clicked( Uint8 button )
 	
 	PrefsMenu *menu = (PrefsMenu*) Container;
 	
-	if( menu->Page == PrefsMenu::PAGE_PREFERENCES )
+	if( menu->Page == PrefsMenu::PAGE_VIDEO )
 	{
 		std::map<std::string,std::string> prev_settings = Raptor::Game->Cfg.Settings;
 		Raptor::Game->Cfg.Settings.clear();
@@ -1576,6 +1935,7 @@ void PrefsMenuDefaultsButton::Clicked( Uint8 button )
 			||  (setting->first == "vr_enable")
 			||  (setting->first == "swap_yaw_roll")
 			||  (setting->first == "turret_invert")
+			||  Str::BeginsWith( setting->first, "s_" )
 			||  Str::BeginsWith( setting->first, "rebel_" )
 			||  Str::BeginsWith( setting->first, "empire_" )
 			||  Str::BeginsWith( setting->first, "joy_" )
@@ -1593,7 +1953,7 @@ void PrefsMenuDefaultsButton::Clicked( Uint8 button )
 			Raptor::Game->Cfg.Settings[ "g_deathstar_trench" ] = "3";
 			Raptor::Game->Cfg.Settings[ "g_deathstar_surface" ] = "2";
 			
-			int fsaa = Raptor::Game->Cfg.SettingAsInt( "g_fsaa", 4 );
+			int fsaa = Raptor::Game->Cfg.SettingAsInt( "g_fsaa", 3 );
 			if( fsaa > 2 )
 				Raptor::Game->Cfg.Settings[ "g_fsaa" ] = "2";
 			
@@ -1604,6 +1964,18 @@ void PrefsMenuDefaultsButton::Clicked( Uint8 button )
 			int maxfps = Raptor::Game->Cfg.SettingAsInt( "maxfps", 60 );
 			if( maxfps && (maxfps < 90) )
 				Raptor::Game->Cfg.Settings[ "maxfps" ] = "90";
+		}
+	}
+	else if( menu->Page == PrefsMenu::PAGE_AUDIO )
+	{
+		std::map<std::string,std::string> prev_settings = Raptor::Game->Cfg.Settings;
+		Raptor::Game->Cfg.Settings.clear();
+		Raptor::Game->SetDefaults();
+		
+		for( std::map<std::string,std::string>::const_iterator setting = prev_settings.begin(); setting != prev_settings.end(); setting ++ )
+		{
+			if( ! Str::BeginsWith( setting->first, "s_" ) )
+				Raptor::Game->Cfg.Settings[ setting->first ] = setting->second;
 		}
 		
 		if( Raptor::Game->Res.SearchPath.front() == "Sounds/Silly" )
@@ -1695,9 +2067,9 @@ PrefsMenuSillyButton::PrefsMenuSillyButton( SDL_Rect *rect, Font *pew_font ) : B
 	PewFont = pew_font;
 	
 	Red = 1.f;
-	Green = 0.f;
-	Blue = 1.f;
-	Alpha = 0.75f;
+	Green = 1.f;
+	Blue = 0.f;
+	Alpha = 1.f;
 }
 
 
@@ -1711,7 +2083,7 @@ void PrefsMenuSillyButton::Draw( void )
 	if( Raptor::Game->Res.SearchPath.front() == "Sounds/Silly" )
 	{
 		Button::Draw();
-		PewFont->DrawText( "PEW PEW", Rect.w/2, Rect.h/2, Font::ALIGN_MIDDLE_CENTER );
+		PewFont->DrawText( "PEW PEW", Rect.w/2, Rect.h/2, Font::ALIGN_MIDDLE_CENTER, 0.f,0.f,1.f,1.f );
 	}
 }
 
@@ -1912,6 +2284,10 @@ bool PrefsMenuBind::HandleEvent( SDL_Event *event )
 	else if( ((event->type == SDL_MOUSEBUTTONDOWN) || (event->type == SDL_MOUSEBUTTONUP))
 	&&       ((event->button.button == SDL_BUTTON_WHEELUP) || (event->button.button == SDL_BUTTON_WHEELDOWN)) )
 		return false;
+#if SDL_VERSION_ATLEAST(2,0,0)
+	else if( event->type == SDL_MOUSEWHEEL )
+		return false;
+#endif
 	
 	return Button::HandleEvent( event );
 }

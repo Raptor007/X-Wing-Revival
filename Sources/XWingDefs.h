@@ -32,6 +32,7 @@ namespace XWing
 			RESET_DEFAULTS = 'Anew',
 			GAMETYPE = 'Mode',
 			TIME_REMAINING = 'Time',
+			TIME_TO_RESPAWN = 'Wait',
 			EXPLOSION = 'Boom',
 			SHOT_HIT_SHIP = 'HitS',
 			SHOT_HIT_TURRET = 'HitT',
@@ -45,7 +46,8 @@ namespace XWing
 			ENGINE_SOUND = 'Engi',
 			CHECKPOINT = 'GoGo',
 			ACHIEVEMENT = 'Wow!',
-			MISSION_COMPLETE = 'Win!'
+			MISSION_COMPLETE = 'Win!',
+			UPLOAD_MISSION = 'Misn'
 		};
 	}
 	
@@ -84,6 +86,7 @@ namespace XWing
 			FFA_ELIMINATION = 'FFA ',
 			TEAM_DEATHMATCH = 'TDM ',
 			FFA_DEATHMATCH = 'DM  ',
+			CTF = 'CTF ',
 			TEAM_RACE = 'Kesl',
 			FFA_RACE = 'Race',
 			BATTLE_OF_YAVIN = 'Yavn',
@@ -96,7 +99,7 @@ namespace XWing
 	{
 		enum
 		{
-			ZERO_LAG = '0Lag'
+			ZERO_LAG = '0Lag'  // FIXME: Needed for v0.4.x but ignored in v0.5+ which always supports ZeroLag shots.
 		};
 	}
 	
@@ -192,6 +195,8 @@ namespace XWing
 			VIEW_CYCLE,
 			VIEW_INSTRUMENTS,
 			CHAT,
+			VOICE_TEAM,
+			VOICE_ALL,
 			MENU,
 			PREFS,
 			PAUSE,
@@ -199,7 +204,7 @@ namespace XWing
 			COUNT
 		};
 	}
-
+	
 	namespace View
 	{
 		enum

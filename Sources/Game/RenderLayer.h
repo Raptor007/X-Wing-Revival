@@ -30,7 +30,7 @@ class Renderable;
 class RenderLayer : public Layer
 {
 public:
-	Animation Background;
+	Animation Background, Mic;
 	std::string BackgroundName;
 	GLdouble Stars[ STAR_COUNT * 3 ];
 	Pos3D Debris[ DEBRIS_COUNT ];
@@ -55,8 +55,9 @@ public:
 	void Draw( void );
 	void DrawBackground( void );
 	void DrawStars( void );
-	void DrawDebris( void );
+	void DrawDebris( int dynamic_lights = 0, std::list<Shot*> *shots = NULL, std::list<Effect*> *effects = NULL );
 	void DrawScores( void );
+	void DrawVoice( void );
 	
 	#ifdef WIN32
 	void UpdateSaitek( const Ship *player_ship, bool is_player );

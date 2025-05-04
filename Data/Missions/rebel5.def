@@ -1,5 +1,6 @@
 mission_name Rebel 5: Operation Skyhook
 mission_desc It's not impossible!  I used to bullseye wamprats in my T-16 back home; they're not much bigger than 2 meters.
+mission_objs friendly fighters,friendly bombers
 gametype yavin
 player_team rebel
 player_ship X/W Y/W
@@ -8,86 +9,17 @@ yavin_repair_bay false
 yavin_turrets 150
 rebel_waves 5
 ai_fighter_ratio 3
-empire_waves 10
+empire_waves 8
 player_spawn 1200 -1600 30 0.6 0.8 0
 empire_spawn -12000 0 500
 empire_wave_dist 7700
 stfu true  // Cut the chatter during important dialogue.
 
-at 0:07
-alert r5_attack1.wav Accelerate to attack speed!
-trench_runners nobody
-wait 2
-stfu false
 
-at 0:35 if player alive
-stfu true
-alert r5_fighters.wav Squad leaders...
-wait 1.7
-message We've picked up a new group of signals.
-wait 2.3
-message Enemy fighters, coming your way!
-wait 3
-enemy_fighters true
-stfu false
+// Reactions
 
-at 1:45
-trench_runners X/W  // Just to get X-Wings moving towards the exhaust port.
-stfu true
-alert r5_gold.wav This is Gold Leader.
-wait 1.4
-message We're starting our attack run.
-trench_runners Y/W X/W
-wait 2
-trench_runners Y/W
-stfu false
-
-at 2:20
-stfu true
-alert r5_red1.wav Red Leader, this is Base 1.
-wait 2.1
-message Keep half your group out of range for the next run.
-wait 3
-alert r5_red2.wav Copy, Base 1.
-trench_runners default
-wait 2
-stfu false
-
-at 3:58 while player alive
-stfu true
-alert r5_thisisit.wav This is it!
-wait 2
-alert r5_attack2.wav Get set up for your attack run!
-wait 2
-trench_runners X/W Y/W T/F T/A
-stfu false
-
-at 4:10 while player alive
-stfu true
-alert r5_fighters2.wav Keep your eyes open for those fighters.
-wait 2
-stfu false
-
-at 4:20
-spawn T/A "Black 1" empire at -2000 0 100 from player facing 1 0 0
-spawn T/F "Black 2" empire at -2030 50 100 from player facing 1 0 0
-spawn T/F "Black 3" empire at -2060 -50 100 from player facing 1 0 0
-
-at 4:35 if player alive
-spawn YT1300 "M.Falcon" rebel at 2000 0 100 from player facing -1 0 0
-
-at 4:36 while "M.Falcon" alive
-stfu true
-alert r5_han1.wav Yeahoo!!
-wait 2
-alert r5_han2.wav You're all clear kid!
-wait 1.2
-message Now let's blow this thing and go home!
-wait 2
-stfu false
-
-on hit "Red 3" while ( alive "Red 3" ) and ( enemy_fighters true ) and ( stfu false )
-alert r5_wedge1.wav He's on me tight!  I can't shake him. // FIXME: Biggs
+on hit "Red 3" by empire ship while ( alive "Red 3" ) and ( stfu false )
+alert r5_biggs1.wav He's on me tight!  I can't shake him.
 
 on hit "Red 5" while ( alive "Red 5" ) and ( stfu false )
 wait 1
@@ -101,17 +33,116 @@ on hit "Red 6" while ( alive "Red 6" ) and ( stfu false )
 wait 2
 alert r5_porkins1.wav I've got a problem here.
 
-on destroyed "Red 6" if stfu false
+on destroyed "Red 6" while stfu false
 sound r5_porkins2.wav
 
-on destroyed "Gold 1" if ( ( trench_runners Y/W ) or ( trench_runners default ) ) and ( stfu false )
+on destroyed "Gold 1" by ship while ( ( trench_runners Y/W ) or ( trench_runners default ) ) and ( stfu false )
 alert r5_behind.wav It came from... behind!
 
-//on hit player if ( enemy_fighters true ) and ( stfu false )
-//alert r5_tail.wav Watch it, you've got one on your tail!
+on hit player by empire ship when stfu false
+wait 1.5
+alert r5_tail.wav Watch it, you've got one on your tail!
+
+
+// Surface Attack
+
+at 0:07
+alert r5_attack1.wav Accelerate to attack speed!
+trench_runners nobody
+wait 6.5
+alert r5_cover.wav Cover me!
+wait 2
+chat Keep track of changing objectives with TargetObjective (default O).
+stfu false
+
+at 0:35 if player alive
+stfu true
+alert r5_fighters.wav Squad leaders...
+wait 1.7
+message We've picked up a new group of signals.
+wait 2.3
+message Enemy fighters, coming your way!
+wait 1
+mission_objs fighters
+wait 2
+stfu false
+
+at 1:45
+trench_runners X/W  // Just to get X-Wings moving towards the exhaust port.
+mission_objs fighters,friendly fighters
+stfu true
+alert r5_gold.wav This is Gold Leader.
+wait 1.4
+message We're starting our attack run.
+trench_runners Y/W X/W
+wait 2
+trench_runners Y/W
+wait 1.5
+alert r5_gold2.wav Copy, Gold Leader.
+wait 2
+stfu false
+
+at 2:20
+stfu true
+alert r5_red1.wav Red Leader, this is Base 1.
+wait 2.1
+message Keep half your group out of range for the next run.
+wait 2
+mission_objs friendly fighters
+wait 1
+alert r5_red2.wav Copy, Base 1.
+trench_runners default
+wait 2
+stfu false
+
+at 2:57 while player alive
+stfu true
+mission_objs target
+wait 1
+alert r5_thisisit.wav This is it!
+wait 2
+alert r5_attack2.wav Get set up for your attack run!
+wait 2
+trench_runners X/W Y/W T/F T/A
+stfu false
+trench_run 1
+
+
+// Trench Run
+
+when ( trench_run 1 ) and ( player alive within trench ) and ( player alive within 10K of target )
+stfu true
+alert r5_fighters2.wav Keep your eyes open for those fighters.
+wait 10
+spawn T/A "Black 1" empire at -1700 0 100 from player facing 1 0 0
+spawn T/F "Black 2" empire at -1730 50 100 from player facing 1 0 0
+spawn T/F "Black 3" empire at -1760 -50 100 from player facing 1 0 0
+stfu false
+wait 15
+trench_run 2
+
+when ( trench_run 2 ) and ( player alive within trench ) and ( player alive within 5K of target )
+spawn YT1300 "M.Falcon" rebel at 2000 0 100 from player facing -1 0 0
+wait 1
+stfu true
+alert r5_han1.wav Yeahoo!!
+wait 2
+alert r5_han2.wav You're all clear kid!
+wait 1.2
+message Now let's blow this thing and go home!
+wait 2
+mission_objs target
+stfu false
+trench_run 3
+
+
+// Endings
 
 on victory
 next_mission rebel6
+
+on victory if trench_run 3
+mission_objs "M.Falcon"
 wait 1
 alert great_shot.wav Great shot, kid!
 wait 1.2

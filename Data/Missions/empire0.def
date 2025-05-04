@@ -1,0 +1,34 @@
+mission_name Empire 0: Imperial Academy
+mission_desc Execute the traitors.
+gametype team_elim
+player_team empire
+player_ship T/F T/I T/A T/B GUN
+empire_fighter T/F
+empire_waves 1
+rebel_waves 2
+rebel_ceasefire true
+empire_ceasefire true
+player_spawn -6000 0 0
+empire_spawn -5000 0 0
+
+at 0:02
+alert e0_team.wav Looks like we've got some new team members.
+wait 2.2
+message Welcome aboard.
+wait 3
+alert e0_badguys.wav Take out the bad guys.
+wait 1.5
+empire_ceasefire false
+wait 1
+chat TargetEnemy (default R) finds the nearest enemy.  (Their weapons and hyperdrives have been disabled.)
+
+on victory
+next_mission empire1
+wait 2
+alert e0_goodwork.wav Good work.
+wait 3.5
+alert e0_work.wav We've got work to do.
+
+on defeat
+wait 3
+alert failed.wav You have failed me for the last time.

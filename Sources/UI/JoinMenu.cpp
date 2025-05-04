@@ -300,10 +300,14 @@ JoinMenuListBox::~JoinMenuListBox()
 
 void JoinMenuListBox::Changed( void )
 {
-	if( LinkedTextBox )
-		LinkedTextBox->Text = SelectedValue();
-	
-	Raptor::Game->Cfg.Settings[ Variable ] = SelectedValue();
+	std::string value = SelectedValue();
+	if( value.length() )
+	{
+		if( LinkedTextBox )
+			LinkedTextBox->Text = value;
+		
+		Raptor::Game->Cfg.Settings[ Variable ] = value;
+	}
 }
 
 
@@ -374,6 +378,15 @@ void JoinMenuHostButton::Clicked( Uint8 button )
 		Raptor::Game->Cfg.Settings["name"] = "Rookie " + Num::ToString(Rand::Int(1,9));
 	
 	Raptor::Game->Host();
+	
+	if( Raptor::Game->Cfg.SettingAsBool("darkside") && Raptor::Server->IsRunning() )
+	{
+		Packet info = Packet( Raptor::Packet::INFO );
+		info.AddUShort( 1 );
+		info.AddString( "darkside" );
+		info.AddString( "true" );
+		Raptor::Game->Net.Send( &info );
+	}
 	
 	Container->Remove();
 }

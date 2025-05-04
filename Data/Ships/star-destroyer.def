@@ -1,5 +1,6 @@
 id ISD
 name Star Destroyer
+squadron Star Dest
 category capital
 team empire
 radius 1000

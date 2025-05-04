@@ -18,6 +18,7 @@
 #include "Rand.h"
 #include "Str.h"
 #include "Num.h"
+#include "Math3D.h"
 #include "Ship.h"
 #include "Shot.h"
 #include "Asteroid.h"
@@ -26,11 +27,11 @@
 #include "DeathStarBox.h"
 #include "ShipClass.h"
 #include "Checkpoint.h"
+#include "SaitekX52Pro.h"
 
 
 XWingGame::XWingGame( std::string version ) : RaptorGame( "X-Wing Revival", version )
 {
-	ZeroLagServer = false;
 	GameType = XWing::GameType::UNDEFINED;
 	CampaignTeam = XWing::Team::NONE;
 	ObservedShipID = 0;
@@ -142,6 +143,8 @@ XWingGame::XWingGame( std::string version ) : RaptorGame( "X-Wing Revival", vers
 	Controls[ XWing::Control::VIEW_CYCLE              ] = Input.AddControl( "ViewCycle" );
 	Controls[ XWing::Control::VIEW_INSTRUMENTS        ] = Input.AddControl( "ViewInstruments" );
 	Controls[ XWing::Control::CHAT                    ] = Input.AddControl( "Chat" );
+	Controls[ XWing::Control::VOICE_TEAM              ] = Input.AddControl( "VoiceTeam" );
+	Controls[ XWing::Control::VOICE_ALL               ] = Input.AddControl( "VoiceAll" );
 	Controls[ XWing::Control::MENU                    ] = Input.AddControl( "MainMenu" );
 	Controls[ XWing::Control::PREFS                   ] = Input.AddControl( "PrefsMenu" );
 	Controls[ XWing::Control::PAUSE                   ] = Input.AddControl( "Pause" );
@@ -160,6 +163,11 @@ void XWingGame::SetDefaultJoyTypes( void )
 	// Give these joysticks their own binds even if their axis mappings are the same.
 	Input.DeviceTypes.insert( "X52" );
 	Input.DeviceTypes.insert( "SideWinder" );
+	
+#ifndef WIN32
+	// Linux does not replace the device string for Xbox compatible controllers, and some do not contain "Xbox".
+	Input.DeviceTypes.insert( "ProEX" );
+#endif
 }
 
 
@@ -228,6 +236,7 @@ void XWingGame::SetDefaultControls( void )
 	Cfg.KeyBinds[ SDLK_F6           ] = Controls[ XWing::Control::TARGET2                 ];
 	Cfg.KeyBinds[ SDLK_F7           ] = Controls[ XWing::Control::TARGET3                 ];
 	Cfg.KeyBinds[ SDLK_F8           ] = Controls[ XWing::Control::TARGET4                 ];
+	Cfg.KeyBinds[ SDLK_F15          ] = Controls[ XWing::Control::PAUSE                   ];
 	Cfg.KeyBinds[ SDLK_1            ] = Controls[ XWing::Control::VIEW_COCKPIT            ];
 	Cfg.KeyBinds[ SDLK_2            ] = Controls[ XWing::Control::VIEW_CROSSHAIR          ];
 	Cfg.KeyBinds[ SDLK_3            ] = Controls[ XWing::Control::VIEW_CHASE              ];
@@ -240,6 +249,8 @@ void XWingGame::SetDefaultControls( void )
 	Cfg.KeyBinds[ SDLK_0            ] = Controls[ XWing::Control::VIEW_INSTRUMENTS        ];
 	Cfg.KeyBinds[ SDLK_RETURN       ] = Controls[ XWing::Control::CHAT                    ];
 	Cfg.KeyBinds[ SDLK_KP_ENTER     ] = Controls[ XWing::Control::CHAT                    ];
+	Cfg.KeyBinds[ SDLK_RALT         ] = Controls[ XWing::Control::VOICE_ALL               ];
+	Cfg.KeyBinds[ SDLK_RCTRL        ] = Controls[ XWing::Control::VOICE_TEAM              ];
 	Cfg.KeyBinds[ SDLK_ESCAPE       ] = Controls[ XWing::Control::MENU                    ];
 	Cfg.KeyBinds[ SDLK_F9           ] = Controls[ XWing::Control::MENU                    ];
 	Cfg.KeyBinds[ SDLK_F10          ] = Controls[ XWing::Control::PREFS                   ];
@@ -248,8 +259,8 @@ void XWingGame::SetDefaultControls( void )
 	Cfg.MouseBinds[ SDL_BUTTON_LEFT      ] = Controls[ XWing::Control::FIRE             ];
 	Cfg.MouseBinds[ SDL_BUTTON_RIGHT     ] = Controls[ XWing::Control::TARGET_CROSSHAIR ];
 	Cfg.MouseBinds[ SDL_BUTTON_MIDDLE    ] = Controls[ XWing::Control::WEAPON           ];
-	Cfg.MouseBinds[ SDL_BUTTON_X1        ] = Controls[ XWing::Control::THROTTLE_DOWN    ];
-	Cfg.MouseBinds[ SDL_BUTTON_X2        ] = Controls[ XWing::Control::THROTTLE_UP      ];
+	Cfg.MouseBinds[ SDL_BUTTON_X1        ] = Controls[ XWing::Control::VOICE_TEAM       ];
+	Cfg.MouseBinds[ SDL_BUTTON_X2        ] = Controls[ XWing::Control::VOICE_ALL        ];
 	Cfg.MouseBinds[ SDL_BUTTON_WHEELUP   ] = Controls[ XWing::Control::TARGET_PREV      ];
 	Cfg.MouseBinds[ SDL_BUTTON_WHEELDOWN ] = Controls[ XWing::Control::TARGET_NEXT      ];
 	
@@ -272,10 +283,10 @@ void XWingGame::SetDefaultControls( void )
 	Cfg.JoyButtonBinds[ "Joy" ][ 11 ] = Controls[ XWing::Control::CHEWIE_TAKE_THE_WHEEL   ];  // T4
 	Cfg.JoyButtonBinds[ "Joy" ][ 12 ] = Controls[ XWing::Control::SEAT_GUNNER1            ];  // T5
 	Cfg.JoyButtonBinds[ "Joy" ][ 13 ] = Controls[ XWing::Control::SEAT_GUNNER2            ];  // T6
-	Cfg.JoyButtonBinds[ "Joy" ][ 19 ] = Controls[ XWing::Control::TARGET1                 ];  // Hat 2 Up
-	Cfg.JoyButtonBinds[ "Joy" ][ 20 ] = Controls[ XWing::Control::TARGET2                 ];  // Hat 2 Right
-	Cfg.JoyButtonBinds[ "Joy" ][ 21 ] = Controls[ XWing::Control::TARGET3                 ];  // Hat 2 Down
-	Cfg.JoyButtonBinds[ "Joy" ][ 22 ] = Controls[ XWing::Control::TARGET4                 ];  // Hat 2 Left
+	Cfg.JoyButtonBinds[ "Joy" ][ 19 ] = Controls[ XWing::Control::TARGET_OBJECTIVE        ];  // Hat 2 Up
+	Cfg.JoyButtonBinds[ "Joy" ][ 20 ] = Controls[ XWing::Control::TARGET3                 ];  // Hat 2 Right
+	Cfg.JoyButtonBinds[ "Joy" ][ 21 ] = Controls[ XWing::Control::TARGET2                 ];  // Hat 2 Down
+	Cfg.JoyButtonBinds[ "Joy" ][ 22 ] = Controls[ XWing::Control::TARGET1                 ];  // Hat 2 Left
 	Cfg.JoyButtonBinds[ "Joy" ][ 23 ] = Controls[ XWing::Control::TARGET_STORE            ];  // Hat 3 Up
 	Cfg.JoyButtonBinds[ "Joy" ][ 24 ] = Controls[ XWing::Control::TARGET_NEXT             ];  // Hat 3 Right
 	Cfg.JoyButtonBinds[ "Joy" ][ 25 ] = Controls[ XWing::Control::SCORES                  ];  // Hat 3 Down
@@ -312,7 +323,7 @@ void XWingGame::SetDefaultControls( void )
 		Cfg.JoyButtonBinds[ "Joy" ][  6 ] = Controls[ XWing::Control::TARGET_NEAREST_ATTACKER ];  // F1
 		Cfg.JoyButtonBinds[ "Joy" ][  7 ] = Controls[ XWing::Control::TARGET_NEWEST_INCOMING  ];  // F2
 		Cfg.JoyButtonBinds[ "Joy" ][  8 ] = Controls[ XWing::Control::TARGET1                 ];  // F3
-		Cfg.JoyButtonBinds[ "Joy" ][  9 ] = Controls[ XWing::Control::TARGET2                 ];  // F4
+		Cfg.JoyButtonBinds[ "Joy" ][  9 ] = Controls[ XWing::Control::TARGET_OBJECTIVE        ];  // F4
 		Cfg.JoyButtonBinds[ "Joy" ][ 10 ] = Controls[ XWing::Control::SHIELD_DIR              ];  // >
 		Cfg.JoyButtonBinds[ "Joy" ][ 11 ] = Controls[ XWing::Control::SCORES                  ];  // <
 	}
@@ -373,6 +384,7 @@ void XWingGame::SetDefaultControls( void )
 	Cfg.JoyButtonBinds[ "Xbox" ][ 5 ] = Controls[ XWing::Control::FIRE             ];  // RB
 	Cfg.JoyButtonBinds[ "Xbox" ][ 6 ] = Controls[ XWing::Control::SCORES           ];  // Back
 	Cfg.JoyButtonBinds[ "Xbox" ][ 7 ] = Controls[ XWing::Control::SHIELD_DIR       ];  // Start
+	Cfg.JoyButtonBinds[ "Xbox" ][ 8 ] = Controls[ XWing::Control::VOICE_TEAM       ];  // Left Thumbstick Click
 	Cfg.JoyButtonBinds[ "Xbox" ][ 9 ] = Controls[ XWing::Control::LOOK_CENTER      ];  // Right Thumbstick Click
 	
 	Cfg.JoyHatBinds[ "Xbox" ][ 0 ][ SDL_HAT_UP    ] = Controls[ XWing::Control::TARGET_NEAREST_ENEMY    ];  // D-Pad Up
@@ -385,6 +397,23 @@ void XWingGame::SetDefaultControls( void )
 		Cfg.JoyAxisBinds  [ "Pad" ] = Cfg.JoyAxisBinds  [ "Xbox" ];
 		Cfg.JoyButtonBinds[ "Pad" ] = Cfg.JoyButtonBinds[ "Xbox" ];
 		Cfg.JoyHatBinds   [ "Pad" ] = Cfg.JoyHatBinds   [ "Xbox" ];
+	}
+	
+	if( Input.DeviceTypes.find("ProEX") != Input.DeviceTypes.end() )
+	{
+		Cfg.JoyAxisBinds  [ "ProEX" ] = Cfg.JoyAxisBinds  [ "Xbox" ];
+		Cfg.JoyButtonBinds[ "ProEX" ] = Cfg.JoyButtonBinds[ "Xbox" ];
+		Cfg.JoyHatBinds   [ "ProEX" ] = Cfg.JoyHatBinds   [ "Xbox" ];
+		
+		// Unbind downward-drifting right thumbstick axis on PowerA controllers.
+#ifndef WIN32
+		Cfg.JoyAxisBinds[ "ProEX" ][ 4 ] = 0;  // Right Thumbstick Y
+#elif SDL_VERSION_ATLEAST(2,0,0)
+		Cfg.JoyAxisBinds[ "ProEX" ][ 3 ] = 0;  // Right Thumbstick Y
+#else
+		Cfg.JoyAxisBinds[ "ProEX" ][ 3 ] = 0;  // Right Thumbstick Y
+#endif
+		Cfg.JoyButtonBinds[ "ProEX" ][ 9 ] = Controls[ XWing::Control::GLANCE_BACK ];  // Right Thumbstick Click
 	}
 	
 	if( Input.DeviceTypes.find("MFD") != Input.DeviceTypes.end() )
@@ -469,17 +498,27 @@ void XWingGame::SetDefaults( void )
 	Cfg.Settings[ "view" ] = "auto";
 	Cfg.Settings[ "spectator_view" ] = "auto";
 	
+	Cfg.Settings[ "g_fsaa" ] = (Raptor::Game->Gfx.DesktopW >= 3200) ? "2" : ( ((Raptor::Game->Gfx.DesktopW >= 1600) || (Raptor::Game->Gfx.DesktopW <= 0)) ? "3" : "4" );
 	Cfg.Settings[ "g_bg" ] = "true";
 	Cfg.Settings[ "g_stars" ] = "0";
 	Cfg.Settings[ "g_debris" ] = "500";
+	Cfg.Settings[ "g_debris_quality" ] = "3";
 	Cfg.Settings[ "g_engine_glow" ] = "true";
 	Cfg.Settings[ "g_effects" ] = "1";
+	Cfg.Settings[ "g_sway" ] = "1";
 	Cfg.Settings[ "g_asteroid_lod" ] = "1";
 	Cfg.Settings[ "g_deathstar_trench" ] = "4";
 	Cfg.Settings[ "g_deathstar_surface" ] = "4";
+	Cfg.Settings[ "g_deathstar_bumpmap" ] = "true";
 	Cfg.Settings[ "g_crosshair_thickness" ] = "1.5";
 	Cfg.Settings[ "g_shader_blastpoints" ] = "20";
 	Cfg.Settings[ "g_shader_blastpoint_quality" ] = "2";
+	
+	Cfg.Settings[ "ui_box_color" ] = "1,1,1,1";
+	Cfg.Settings[ "ui_box_color2" ] = "0,1,0,1";
+	Cfg.Settings[ "ui_box_line" ] = (Raptor::Game->Gfx.DesktopW >= 3200) ? "2.5" : "1.5";
+	Cfg.Settings[ "ui_box_style" ] = "1";
+	Cfg.Settings[ "ui_classic" ] = "false";
 	
 	Cfg.Settings[ "s_volume" ] = "0.2";
 	Cfg.Settings[ "s_effect_volume" ] = "0.5";
@@ -490,7 +529,8 @@ void XWingGame::SetDefaults( void )
 	Cfg.Settings[ "s_game_music" ] = "true";
 	Cfg.Settings[ "s_imuse" ] = "false";
 	
-	Cfg.Settings[ "vr_sway" ] = "false";
+	Cfg.Settings[ "vr_always" ] = "false";
+	Cfg.Settings[ "vr_sway" ] = "0";
 	Cfg.Settings[ "vr_messages" ] = "false";
 	
 	Cfg.Settings[ "joy_enable" ] = "true";
@@ -524,15 +564,26 @@ void XWingGame::Setup( int argc, char **argv )
 	Res.SearchPath.push_back( "Missions/Sounds" );
 	
 	bool screensaver = Cfg.SettingAsBool("screensaver");
+	bool vr = Cfg.SettingAsBool("vr_always");
 	bool safemode = false;
 	for( int i = 1; i < argc; i ++ )
 	{
 		if( strcasecmp( argv[ i ], "-safe" ) == 0 )
+		{
 			safemode = true;
+			vr = false;  // This still allows "-safe -vr" to enable both.
+		}
+		else if( strcasecmp( argv[ i ], "-vr" ) == 0 )
+			vr = true;
 	}
 	
 	// Campaign progress is stored separately so settings.cfg can be safely wiped.
+	Cfg.Settings[ "rebel_mission"  ] = "rebel0";
+	Cfg.Settings[ "empire_mission" ] = "empire0";
 	Cfg.Load( "campaign.cfg" );
+	
+	// VR at startup is enabled by "vr_always" setting or "-vr" parameter.
+	Cfg.Settings[ "vr_enable" ] = vr ? "true" : "false";
 	
 	if( screensaver )
 	{
@@ -542,7 +593,7 @@ void XWingGame::Setup( int argc, char **argv )
 		Cfg.Settings[ "saitek_enable" ] = "false";
 		Cfg.Settings[ "view" ] = Cfg.SettingAsString( "screensaver_view", "cycle" );
 		Cfg.Settings[ "spectator_view" ] = "auto";
-		Cfg.Settings[ "sv_netrate" ] = Cfg.Settings[ "sv_maxfps" ] = "60";
+		Cfg.Settings[ "sv_netrate" ] = Cfg.Settings[ "sv_maxfps" ] = "30";
 	}
 	else
 		Cfg.Settings[ "view" ] = "auto";
@@ -654,6 +705,7 @@ void XWingGame::Precache( void )
 	Res.GetSound("ion_cannon_2.wav");
 	Res.GetSound("explosion.wav");
 	Res.GetSound("explosion_2.wav");
+	Res.GetSound("explosion_3.wav");
 	Res.GetSound("damage_hull.wav");
 	Res.GetSound("damage_shield.wav");
 	Res.GetSound("hit_hull.wav");
@@ -682,6 +734,7 @@ void XWingGame::Precache( void )
 		Res.GetAnimation("shields_c.ani");
 		Res.GetAnimation("shields_f.ani");
 		Res.GetAnimation("shields_r.ani");
+		Res.GetAnimation("mic.ani");
 		
 		Res.GetAnimation("superlaser.ani");
 		Res.GetAnimation("deathstar.ani");
@@ -706,6 +759,7 @@ void XWingGame::Precache( void )
 		Res.GetSound("beep_ion3.wav");
 		Res.GetSound("beep_torpedo1.wav");
 		Res.GetSound("beep_torpedo2.wav");
+		Res.GetSound("beep_respawn.wav");
 		Res.GetSound("locking.wav");
 		Res.GetSound("locked.wav");
 		Res.GetSound("lock_warn.wav");
@@ -866,6 +920,7 @@ void XWingGame::Update( double dt )
 	dt *= Data.TimeScale;
 	
 	RoundTimer.SetTimeScale( Data.TimeScale );
+	RespawnTimer.SetTimeScale( Data.TimeScale );
 	
 	for( std::list<Effect>::iterator effect_iter = Data.Effects.begin(); effect_iter != Data.Effects.end(); effect_iter ++ )
 	{
@@ -934,9 +989,15 @@ void XWingGame::Update( double dt )
 #endif
 	}
 	
+	// Clear respawn timer when we're piloting or gunning.
+	if( (my_ship && (my_ship->Health > 0.)) || my_turret )
+		RespawnTimer.CountUpToSecs = 0.;
+	
 	Ship *observed_ship = (Ship*) Data.GetObject( ObservedShipID );
 	if( ! observed_ship )
 		observed_ship = my_ship;
+	
+	Mic.FromObject = my_turret ? my_turret->ID : (my_ship ? my_ship->ID : ObservedShipID);
 	
 	if( observed_ship && observed_ship->Class && (View == XWing::View::COCKPIT) )
 	{
@@ -985,11 +1046,12 @@ void XWingGame::Update( double dt )
 	}
 	
 	// Analog Axes
-	roll  = Num::Clamp( roll  + Input.ControlTotal(Controls[ XWing::Control::ROLL  ]) + Input.ControlTotal(Controls[ XWing::Control::ROLL_INVERTED  ]) + Input.ControlTotal(Controls[ XWing::Control::ROLL_RIGHT ]) - Input.ControlTotal(Controls[ XWing::Control::ROLL_LEFT ]), -1., 1. );
-	pitch = Num::Clamp( pitch + Input.ControlTotal(Controls[ XWing::Control::PITCH ]) + Input.ControlTotal(Controls[ XWing::Control::PITCH_INVERTED ]) + Input.ControlTotal(Controls[ XWing::Control::PITCH_UP ]) - Input.ControlTotal(Controls[ XWing::Control::PITCH_DOWN ]), -1., 1. );
-	yaw   = Num::Clamp( yaw   + Input.ControlTotal(Controls[ XWing::Control::YAW   ]) + Input.ControlTotal(Controls[ XWing::Control::YAW_INVERTED   ]) + Input.ControlTotal(Controls[ XWing::Control::YAW_RIGHT ]) - Input.ControlTotal(Controls[ XWing::Control::YAW_LEFT ]), -1., 1. );
+	roll  = Num::Clamp( roll  + Input.ControlTotal(Controls[ XWing::Control::ROLL  ]) + Input.ControlTotal(Controls[ XWing::Control::ROLL_INVERTED  ]) + Input.ControlTotal(Controls[ XWing::Control::ROLL_RIGHT ]) - Input.ControlTotal(Controls[ XWing::Control::ROLL_LEFT  ]), -1., 1. );
+	pitch = Num::Clamp( pitch + Input.ControlTotal(Controls[ XWing::Control::PITCH ]) + Input.ControlTotal(Controls[ XWing::Control::PITCH_INVERTED ]) + Input.ControlTotal(Controls[ XWing::Control::PITCH_UP   ]) - Input.ControlTotal(Controls[ XWing::Control::PITCH_DOWN ]), -1., 1. );
+	yaw   = Num::Clamp( yaw   + Input.ControlTotal(Controls[ XWing::Control::YAW   ]) + Input.ControlTotal(Controls[ XWing::Control::YAW_INVERTED   ]) + Input.ControlTotal(Controls[ XWing::Control::YAW_RIGHT  ]) - Input.ControlTotal(Controls[ XWing::Control::YAW_LEFT   ]), -1., 1. );
+	double analog_throttle = throttle;
 	if( Input.HasControlAxis(Controls[ XWing::Control::THROTTLE ]) || Input.HasControlAxis(Controls[ XWing::Control::THROTTLE_INVERTED ]) )
-		throttle = Num::Clamp( Input.ControlTotal(Controls[ XWing::Control::THROTTLE ]) + Input.ControlTotal(Controls[ XWing::Control::THROTTLE_INVERTED ]), 0., 1. );
+		analog_throttle = Num::Clamp( Input.ControlTotal(Controls[ XWing::Control::THROTTLE ]) + Input.ControlTotal(Controls[ XWing::Control::THROTTLE_INVERTED ]), 0., 1. );
 	double look_x = Num::Clamp( Input.ControlValue(Controls[ XWing::Control::LOOK_X ]) + Input.ControlValue(Controls[ XWing::Control::LOOK_X_INVERTED ]), -1., 1. );
 	double look_y = Num::Clamp( Input.ControlValue(Controls[ XWing::Control::LOOK_Y ]) + Input.ControlValue(Controls[ XWing::Control::LOOK_Y_INVERTED ]), -1., 1. );
 	if( look_x || look_y )
@@ -1041,11 +1103,6 @@ void XWingGame::Update( double dt )
 		pitch = Num::Clamp( Input.ControlTotal(Controls[ XWing::Control::PITCH_UP ]) - Input.ControlTotal(Controls[ XWing::Control::PITCH_DOWN ]), -1., 1. );
 	if( Input.ControlPressed(Controls[ XWing::Control::YAW_RIGHT ]) || Input.ControlPressed(Controls[ XWing::Control::YAW_LEFT ]) )
 		yaw = Num::Clamp( Input.ControlTotal(Controls[ XWing::Control::YAW_RIGHT ]) - Input.ControlTotal(Controls[ XWing::Control::YAW_LEFT ]), -1., 1. );
-	if( Input.ControlPressed(Controls[ XWing::Control::THROTTLE_UP ]) || Input.ControlPressed(Controls[ XWing::Control::THROTTLE_DOWN ]) )
-	{
-		double throttle_change = Num::Clamp( Input.ControlTotal(Controls[ XWing::Control::THROTTLE_UP ]) - Input.ControlTotal(Controls[ XWing::Control::THROTTLE_DOWN ]), -1., 1. );
-		throttle += throttle_change * FrameTime / 2.;
-	}
 	if( Input.ControlPressed(Controls[ XWing::Control::THROTTLE_100 ]) )
 		throttle = 1.;
 	else if( Input.ControlPressed(Controls[ XWing::Control::THROTTLE_66 ]) )
@@ -1054,6 +1111,17 @@ void XWingGame::Update( double dt )
 		throttle = 0.3333;
 	else if( Input.ControlPressed(Controls[ XWing::Control::THROTTLE_0 ]) )
 		throttle = 0.;
+	else if( Input.ControlPressed(Controls[ XWing::Control::THROTTLE_UP ]) || Input.ControlPressed(Controls[ XWing::Control::THROTTLE_DOWN ]) )
+	{
+		double throttle_change = Num::Clamp( Input.ControlTotal(Controls[ XWing::Control::THROTTLE_UP ]) - Input.ControlTotal(Controls[ XWing::Control::THROTTLE_DOWN ]), -1., 1. );
+		if( throttle_change > 0. )
+			throttle = std::max<double>( throttle, my_ship->GetThrottle() );
+		else if( throttle_change < 0. )
+			throttle = std::min<double>( throttle, my_ship->GetThrottle() );
+		throttle += throttle_change * FrameTime / 2.;
+	}
+	else
+		throttle = analog_throttle;
 	if( Input.ControlPressed(Controls[ XWing::Control::FIRE ]) )
 		firing = true;
 	if( Input.ControlPressed(Controls[ XWing::Control::TARGET_NOTHING ]) )
@@ -1106,6 +1174,25 @@ void XWingGame::Update( double dt )
 		Head.Recenter();
 	}
 	
+	static bool voice_transmit = false;
+	static uint8_t voice_channel = Raptor::VoiceChannel::TEAM;
+	if( Input.ControlPressed(Controls[ XWing::Control::VOICE_TEAM ]) )
+	{
+		if( (! voice_transmit) || (voice_channel != Raptor::VoiceChannel::TEAM) )
+			voice_transmit = Mic.Start( Raptor::VoiceChannel::TEAM );
+		voice_channel = Raptor::VoiceChannel::TEAM;
+	}
+	else if( Input.ControlPressed(Controls[ XWing::Control::VOICE_ALL ]) )
+	{
+		if( (! voice_transmit) || (voice_channel != Raptor::VoiceChannel::ALL) )
+			voice_transmit = Mic.Start( Raptor::VoiceChannel::ALL );
+		voice_channel = Raptor::VoiceChannel::ALL;
+	}
+	else if( voice_transmit )
+	{
+		Mic.Stop();
+		voice_transmit = false;
+	}
 	
 	static double target_wait = 0.;
 	
@@ -1147,7 +1234,7 @@ void XWingGame::Update( double dt )
 	const Ship *my_turret_parent = NULL;
 	bool ejecting = false;
 	static bool play_eject_sound = true;
-	std::map<int,Shot*> fire_shots;
+	std::vector<Shot*> fire_shots;
 	
 	if( Cfg.SettingAsBool("swap_yaw_roll") )
 	{
@@ -1169,8 +1256,7 @@ void XWingGame::Update( double dt )
 			if( zerolag && firing && (my_turret->FiringClock.ElapsedSeconds() >= my_turret->ShotDelay()) )
 			{
 				fire_shots = my_turret->NextShots();
-				if( ZeroLagServer )
-					my_turret->PredictedShots ++;
+				my_turret->PredictedShots ++;
 			}
 		}
 		
@@ -1202,8 +1288,7 @@ void XWingGame::Update( double dt )
 				if( zerolag && firing && my_ship->SelectedWeapon && my_ship->AmmoForWeapon() && ((zerolag >= 2) || (my_ship->MaxAmmo() < 0)) && (my_ship->LastFired() >= my_ship->ShotDelay()) )
 				{
 					fire_shots = my_ship->NextShots();
-					if( ZeroLagServer )
-						my_ship->PredictedShots.push_back( my_ship->CurrentFiringMode() | (my_ship->SelectedWeapon << 4) );
+					my_ship->PredictedShots.push_back( my_ship->CurrentFiringMode() | (my_ship->SelectedWeapon << 4) );
 				}
 				
 				std::string engine_sound = my_ship->SetThrottleGetSound( throttle, dt );
@@ -1319,7 +1404,7 @@ void XWingGame::Update( double dt )
 			
 			Vec3D my_fwd = my_turret ? my_turret->GunPos().Fwd : my_ship->Fwd;
 			Pos3D ahead( my_pos );
-			ahead.MoveAlong( &my_fwd, 5000. );
+			ahead.MoveAlong( &my_fwd, 30000. );
 			
 			Ship *best_ship = NULL;
 			double best_dot = 0., best_dist = 0.;
@@ -1355,15 +1440,18 @@ void XWingGame::Update( double dt )
 					
 					if( (ship->Category() == ShipClass::CATEGORY_CAPITAL) && ship->ComplexCollisionDetection() )
 					{
-						// Don't bother checking ships that aren't ahead of us.
-						Pos3D ship_far_end = *ship + my_fwd * (ship->Shape.GetTriagonal() / 2.);
+						// Don't bother checking capital ships that aren't directly ahead of us.
+						double ship_triagonal = ship->Shape.GetTriagonal();
+						if( Math3D::PointToLineSegDist( ship, my_pos, &ahead ) > ship_triagonal )
+							continue;
+						Pos3D ship_far_end = *ship + my_fwd * ship_triagonal / 2.;
 						Vec3D vec_to_end = ship_far_end - my_pos;
 						if( my_fwd.Dot(&vec_to_end) < 0.9 )
 							continue;
 						
 						std::string hit;
 						double dist = ship->Shape.DistanceFromLine( ship, NULL, NULL, &hit, ship->Exploded(), ship->ExplosionSeed(), my_pos, &ahead );
-						if( (dist < (ship->Shape.GetTriagonal() * 0.01)) && ! hit.empty() )
+						if( (dist < (ship_triagonal * 0.01)) && ! hit.empty() )
 						{
 							if( best_hit.empty() || (dist < best_dist) )
 							{
@@ -1401,19 +1489,20 @@ void XWingGame::Update( double dt )
 			}
 			
 			// Checking capital ships takes a while, so don't tank the framerate.
-			target_wait = my_pos->Lifetime.ElapsedSeconds() + 0.125;
+			target_wait = my_pos->Lifetime.ElapsedSeconds() + 0.25;
 		}
 		else if( target_nearest_enemy || target_nearest_attacker || target_target_attacker )
 		{
 			double best = 0.;
 			uint8_t category = ShipClass::CATEGORY_TARGET;
 			uint32_t id = 0;
+			const Ship *victim = my_ship;
 			
 			// FIXME: Dirty hack to fix error beep being played after successful retargeting.
 			if( target_target_attacker )
 			{
-				Ship *target_ship = (Ship*) Data.GetObject( target_id );
-				if( target_ship && (target_ship->Type() == XWing::Object::SHIP) && (target_ship->Team != my_team) )
+				victim = (Ship*) Data.GetObject( target_id );
+				if( victim && (victim->Type() == XWing::Object::SHIP) && (victim->Team != my_team) )
 					error_beep_allowed = false;
 			}
 			
@@ -1439,8 +1528,7 @@ void XWingGame::Update( double dt )
 						if( ship->Category() == ShipClass::CATEGORY_CAPITAL )
 							continue;
 						
-						// FIXME: Optimize by gathering victim data before this loop.
-						const Ship *victim = target_target_attacker ? (Ship*) Data.GetObject( target_id ) : my_ship;
+						// FIXME: Optimize by skipping the entire loop if (target_target_attacker || target_target_attacker) && ! victim.
 						if( ! victim )
 							continue;
 						if( victim->Type() != XWing::Object::SHIP )
@@ -1467,13 +1555,11 @@ void XWingGame::Update( double dt )
 						}
 					}
 					
-					// Prefer non-capital ship targets.
+					// Prefer fighters/bombers/gunboats over transports/capital.
 					uint8_t ship_category = ship->Category();
-					if( (ship_category > category) && (ship_category >= ShipClass::CATEGORY_CAPITAL) )
+					if( (ship_category > category) && (ship_category >= ShipClass::CATEGORY_TRANSPORT) )
 						continue;
-					
-					// Prefer non-capital ship targets.
-					if( (category >= ShipClass::CATEGORY_CAPITAL) && (ship_category < category) )
+					if( (category >= ShipClass::CATEGORY_TRANSPORT) && (ship_category < category) )
 						id = 0;
 					
 					double dist = my_pos->Dist( ship );
@@ -1538,13 +1624,15 @@ void XWingGame::Update( double dt )
 		else if( target_objective )
 		{
 			uint32_t id = 0;
+			std::string mission_objs = Data.PropertyAsString("mission_objs");
 			
-			if( (GameType == XWing::GameType::TEAM_RACE) || (GameType == XWing::GameType::FFA_RACE) )
+			if( (((GameType == XWing::GameType::TEAM_RACE) || (GameType == XWing::GameType::FFA_RACE)) && (mission_objs.empty() || (mission_objs == "default"))) || (mission_objs == "checkpoint") )
 				id = my_checkpoint;
 			else
 			{
 				double best_dist = 0.;
 				Ship *best = NULL;
+				std::vector<std::string> objectives = Str::SplitToVector( mission_objs, "," );
 				
 				for( std::list<Ship*>::iterator ship_iter = ships.begin(); ship_iter != ships.end(); ship_iter ++ )
 				{
@@ -1556,12 +1644,56 @@ void XWingGame::Update( double dt )
 							continue;
 						if( (ship->JumpProgress < 1.) || ship->JumpedOut )
 							continue;
-						if( my_team && (ship->Team == my_team) && (ship->Category() != ShipClass::CATEGORY_TARGET) && (GameType != XWing::GameType::CAPITAL_SHIP_HUNT) )
-							continue;
-						if( (ship->Group != 255) && ! ship->IsMissionObjective )
-							continue;
-						if( best && best->IsMissionObjective && ! ship->IsMissionObjective )
-							continue;
+						
+						if( mission_objs.empty() || (mission_objs == "default") )
+						{
+							if( my_team && (ship->Team == my_team) && (ship->Category() != ShipClass::CATEGORY_TARGET) && (GameType != XWing::GameType::CAPITAL_SHIP_HUNT) )
+								continue;
+							if( (ship->Group != 255) && ! ship->IsMissionObjective )
+								continue;
+							if( best && best->IsMissionObjective && ! ship->IsMissionObjective )
+								continue;
+						}
+						else
+						{
+							// If the mission has defined custom objectives, match only those.
+							bool match = false;
+							for( size_t i = 0; i < objectives.size(); i ++ )
+							{
+								std::string objective = objectives[ i ];
+								if( Str::BeginsWith( ship->Name, objective ) )
+								{
+									match = true;
+									break;
+								}
+								
+								if( my_team )
+								{
+									if( Str::BeginsWith( objective, "friendly " ) )
+									{
+										if( ship->Team != my_team )
+											continue;
+										objective = objective.substr( strlen("friendly ") );
+									}
+									else if( ship->Team == my_team )
+										continue;
+								}
+								
+								if( ((objective == "capital"   ) && (ship->Category() == ShipClass::CATEGORY_CAPITAL  ))
+								||  ((objective == "fighters"  ) && (ship->Category() == ShipClass::CATEGORY_FIGHTER  ))
+								||  ((objective == "gunboats"  ) && (ship->Category() == ShipClass::CATEGORY_GUNBOAT  ))
+								||  ((objective == "bombers"   ) && (ship->Category() == ShipClass::CATEGORY_BOMBER   ))
+								||  ((objective == "transports") && (ship->Category() == ShipClass::CATEGORY_TRANSPORT))
+								||  ((objective == "target"    ) && (ship->Category() == ShipClass::CATEGORY_TARGET   ))
+								||  (ship->Class && Str::BeginsWith( ship->Class->ShortName, objective )) )
+								{
+									match = true;
+									break;
+								}
+							}
+							if( ! match )
+								continue;
+						}
 						
 						double dist = ship->Dist( my_pos );
 						
@@ -1856,11 +1988,12 @@ void XWingGame::Update( double dt )
 	
 	
 	// ZeroLag shots.
-	for( std::map<int,Shot*>::iterator shot_iter = fire_shots.begin(); shot_iter != fire_shots.end(); shot_iter ++ )
+	for( std::vector<Shot*>::iterator shot_iter = fire_shots.begin(); shot_iter != fire_shots.end(); shot_iter ++ )
 	{
-		shot_iter->second->Predicted = true;
-		Data.AddObject( shot_iter->second );
-		ClientShots[ shot_iter->second->ShotType ][ shot_iter->first ].push_back( shot_iter->second );
+		(*shot_iter)->Predicted = true;
+		(*shot_iter)->Lifetime.TimeScale = Data.TimeScale;
+		Data.AddObject( *shot_iter );
+		ClientShots[ (*shot_iter)->ShotType ][ (*shot_iter)->WeaponIndex ].push_back( *shot_iter );
 	}
 	
 	// Clean up any lasers that never synchronized.
@@ -1871,7 +2004,7 @@ void XWingGame::Update( double dt )
 			while( shot_weapon_iter->second.size() && (shot_weapon_iter->second.front()->Lifetime.ElapsedSeconds() >= shot_weapon_iter->second.front()->MaxLifetime()) )
 			{
 				if( Cfg.SettingAsBool("debug") )
-					Console.Print( std::string("DEBUG: ZeroLag Shot ") + Num::ToString( (int) shot_weapon_iter->second.front()->ID ) + std::string(" never synchronized."), TextConsole::MSG_ERROR );
+					Console.Print( std::string("DEBUG: ZeroLag Shot ") + Num::ToString( (int) shot_weapon_iter->second.front()->ID ) + std::string(" (WeaponIndex ") + Num::ToString( (int) shot_weapon_iter->second.front()->WeaponIndex ) + std::string(") never synchronized."), TextConsole::MSG_ERROR );
 				Data.RemoveObject( shot_weapon_iter->second.front()->ID );
 				shot_weapon_iter->second.pop_front();
 			}
@@ -1911,6 +2044,10 @@ void XWingGame::Update( double dt )
 				
 				// Dead ships tell no tales.
 				if( ship->Health <= 0. )
+					continue;
+				
+				// Don't add flyby sounds for ships that aren't here.
+				if( ship->JumpedOut )
 					continue;
 				
 				// Make sure this ship has any flyby sounds.
@@ -2149,7 +2286,7 @@ bool XWingGame::HandleEvent( SDL_Event *event )
 	
 	if( pause )
 	{
-		if( Data.TimeScale < 1. )
+		if( Data.TimeScale < 0.0000011 )
 		{
 			Packet info = Packet( Raptor::Packet::INFO );
 			info.AddUShort( 1 );
@@ -2162,7 +2299,7 @@ bool XWingGame::HandleEvent( SDL_Event *event )
 			Packet info = Packet( Raptor::Packet::INFO );
 			info.AddUShort( 1 );
 			info.AddString( "time_scale" );
-			info.AddString( "0.0001" );
+			info.AddString( "0.000001" );
 			Raptor::Game->Net.Send( &info );
 		}
 		return true;
@@ -2195,7 +2332,8 @@ bool XWingGame::HandleEvent( SDL_Event *event )
 	if( change_view )
 	{
 		bool alive = (my_ship && (ObservedShipID == my_ship->ID)) || my_turret;
-		std::string var = (alive || Cfg.SettingAsBool("screensaver") || (Cfg.SettingAsString("view") != "auto")) ? "view" : "spectator_view";
+		bool screensaver = Cfg.SettingAsBool( "screensaver" );
+		std::string var = (alive || screensaver || (Cfg.SettingAsString("view") != "auto")) ? "view" : "spectator_view";
 		
 		std::string value = "auto";
 		if( control == Controls[ XWing::Control::VIEW_COCKPIT ] )
@@ -2227,6 +2365,8 @@ bool XWingGame::HandleEvent( SDL_Event *event )
 		Cfg.Settings[ var ] = value;
 		if( var != "view" )
 			Cfg.Settings[ "view" ] = "auto";
+		else if( screensaver )
+			Cfg.Settings[ "spectator_view" ] = "auto";
 		
 		return true;
 	}
@@ -2664,6 +2804,8 @@ void XWingGame::MessageReceived( std::string text, uint32_t type )
 
 bool XWingGame::ProcessPacket( Packet *packet )
 {
+	static Clock alarm_time;
+	
 	packet->Rewind();
 	PacketType type = packet->Type();
 	
@@ -2698,6 +2840,7 @@ bool XWingGame::ProcessPacket( Packet *packet )
 			Vec3D motion_vec( dx, dy, dz );
 			Data.Effects.push_back( Effect( Res.GetAnimation("explosion.ani"), size, Res.GetSound("explosion.wav"), loudness, &pos, &motion_vec, Rand::Bool() ? 360. : -360., speed_scale ) );
 			Snd.PlayPanned( Res.GetSound("explosion_2.wav"), pos.X, pos.Y, pos.Z, powf( loudness, 1.75f ) );
+			Snd.PlayPanned( Res.GetSound("explosion_3.wav"), pos.X, pos.Y, pos.Z, powf( loudness, 7.f ) );
 			double sqrt_size = sqrt(size);
 			subexplosions *= effects_quality;
 			for( int i = 0; i < subexplosions; i ++ )
@@ -2794,7 +2937,7 @@ bool XWingGame::ProcessPacket( Packet *packet )
 						sound = Res.GetSound("damage_shield.wav");
 					loudness = 2.;
 					
-					if( (ship->Health > 0.) && (old_shield_f > 0.) && (old_shield_r > 0.) && ((shield_f <= 0.) || (shield_r <= 0.)) )
+					if( (ship->Health > 0.) && ( ((old_shield_f > 0.) && (shield_f <= 0.)) || ((old_shield_r > 0.) && (shield_r <= 0.)) ) )
 					{
 						bool player_in_ship = (ship->PlayerID == Raptor::Game->PlayerID);
 						if( ! player_in_ship )
@@ -2812,11 +2955,12 @@ bool XWingGame::ProcessPacket( Packet *packet )
 						if( player_in_ship )
 						{
 							double min_radius = Cfg.SettingAsDouble( "s_shield_alarm_radius", 10. );
-							if( min_radius && (ship->Radius() >= min_radius) )
+							if( min_radius && (ship->Radius() >= min_radius) && (alarm_time.ElapsedSeconds() >= 1.) )
 							{
 								Mix_Chunk *alarm = Res.GetSound("shield_alarm.wav");
 								Snd.Play( alarm );
 								Snd.Play( alarm );
+								alarm_time.Reset();
 							}
 						}
 					}
@@ -3169,7 +3313,21 @@ bool XWingGame::ProcessPacket( Packet *packet )
 	
 	else if( type == XWing::Packet::TIME_REMAINING )
 	{
-		RoundTimer.Reset( packet->NextFloat() );
+		float remaining = packet->NextFloat();
+		if( remaining )
+			RoundTimer.Reset( remaining );
+		else
+			RoundTimer.CountUpToSecs = 0.;
+		return true;
+	}
+	
+	else if( type == XWing::Packet::TIME_TO_RESPAWN )
+	{
+		float remaining = packet->NextFloat();
+		if( remaining )
+			RespawnTimer.Reset( remaining );
+		else
+			RespawnTimer.CountUpToSecs = 0.;
 		return true;
 	}
 	
@@ -3177,6 +3335,7 @@ bool XWingGame::ProcessPacket( Packet *packet )
 	{
 		uint32_t ship_id = packet->NextUInt();
 		uint32_t next_checkpoint = packet->NextUInt();
+		uint8_t flags = packet->NextUChar();
 		
 		if( State >= XWing::State::FLYING )
 		{
@@ -3203,6 +3362,29 @@ bool XWingGame::ProcessPacket( Packet *packet )
 				}
 			}
 		}
+		
+		if( flags & 0x01 )  // CheckpointFirstTouch
+		{
+			for( std::map<uint32_t,GameObject*>::iterator obj_iter = Data.GameObjects.begin(); obj_iter != Data.GameObjects.end(); obj_iter ++ )
+			{
+				if( obj_iter->second->Type() == XWing::Object::SHIP )
+				{
+					Ship *ship = (Ship*) obj_iter->second;
+					ship->NextCheckpoint = next_checkpoint;
+					if( ship->Target )
+					{
+						const GameObject *target = Data.GetObject( ship->Target );
+						if( target && (target->Type() == XWing::Object::CHECKPOINT) )
+						{
+							ship->Target = next_checkpoint;
+							const Player *owner = ship->Owner();
+							if( owner && (owner->ID == PlayerID) )
+								Snd.Play( Res.GetSound("beep.wav") );
+						}
+					}
+				}
+			}
+		}
 	}
 	
 	else if( type == XWing::Packet::LOBBY )
@@ -3221,12 +3403,10 @@ bool XWingGame::ProcessPacket( Packet *packet )
 			
 			if( packet->Remaining() )
 			{
-				std::set<uint32_t> features;
+				ServerFeatures.clear();
 				uint8_t feature_count = packet->NextUChar();
 				for( uint8_t i = 0; i < feature_count; i ++ )
-					features.insert( packet->NextUInt() );
-				
-				ZeroLagServer = features.count( XWing::ServerFeature::ZERO_LAG );
+					ServerFeatures.insert( packet->NextUInt() );
 			}
 		}
 		
@@ -3344,6 +3524,8 @@ bool XWingGame::ProcessPacket( Packet *packet )
 
 void XWingGame::ChangeState( int state )
 {
+	RespawnTimer.Reset( 0. );
+	
 	if( state < XWing::State::FLYING )
 	{
 		GameType = XWing::GameType::UNDEFINED;
@@ -3374,7 +3556,7 @@ void XWingGame::Disconnected( void )
 {
 	Mouse.ShowCursor = true;
 	Data.TimeScale = 1.;
-	ZeroLagServer = false;
+	ServerFeatures.clear();
 	bool show_disconnected_popup = true;
 	
 	if( State >= XWing::State::LOBBY )
@@ -3396,11 +3578,36 @@ void XWingGame::Disconnected( void )
 	
 	if( show_disconnected_popup )
 		RaptorGame::Disconnected();
+	
+	#ifdef WIN32
+		if( Cfg.SettingAsBool("saitek_enable") )
+		{
+			for( int i = 0; i < 20; i ++ )
+				Saitek.SetX52ProLED( i, true );
+			
+			Saitek.SetX52ProLED( SaitekX52ProLED::ARed, false );
+			Saitek.SetX52ProLED( SaitekX52ProLED::BRed, false );
+			Saitek.SetX52ProLED( SaitekX52ProLED::DRed, false );
+			Saitek.SetX52ProLED( SaitekX52ProLED::ERed, false );
+			Saitek.SetX52ProLED( SaitekX52ProLED::T1Red, false );
+			Saitek.SetX52ProLED( SaitekX52ProLED::T3Red, false );
+			Saitek.SetX52ProLED( SaitekX52ProLED::T5Red, false );
+			Saitek.SetX52ProLED( SaitekX52ProLED::Hat2Red, false );
+			Saitek.SetX52ProLED( SaitekX52ProLED::ClutchRed, false );
+			
+			for( int i = 0; i < 3; i ++ )
+				Saitek.SetX52ProMFD( i, "" );
+			
+			Saitek.ClearFIPImage();
+		}
+	#endif
 }
 
 
 void XWingGame::ShowLobby( void )
 {
+	ObservedShipID = 0;
+	
 	if( Cfg.SettingAsBool("screensaver") )
 	{
 		if( Raptor::Server->IsRunning() && (State <= XWing::State::LOBBY) )
@@ -3438,8 +3645,9 @@ void XWingGame::ShowLobby( void )
 			Raptor::Server->Data.Properties["yavin_rebel_bomber"]    = Cfg.SettingAsString( "screensaver_rebel_bomber",    "Y/W"   );
 			Raptor::Server->Data.Properties["yavin_empire_fighter"]  = Cfg.SettingAsString( "screensaver_empire_fighter",  "T/F"   );
 			Raptor::Server->Data.Properties["defending_team"]        = Cfg.SettingAsString( "screensaver_defending_team",  "rebel" );
-			Raptor::Server->Data.Properties["asteroids"]             = Cfg.SettingAsString( "screensaver_asteroids",       "16"    );
+			Raptor::Server->Data.Properties["asteroids"]             = Cfg.SettingAsString( "screensaver_asteroids",       "32"    );
 			Raptor::Server->Data.Properties["bg"]                    = Cfg.SettingAsString( "screensaver_bg",              "stars" );
+			Raptor::Server->Data.Properties["time_scale"]            = Cfg.SettingAsString( "screensaver_time_scale",      "1"     );
 			Raptor::Server->Data.Properties["allow_ship_change"]     = "true";
 			Raptor::Server->Data.Properties["allow_team_change"]     = "true";
 			Data.Properties = Raptor::Server->Data.Properties;
@@ -3453,7 +3661,7 @@ void XWingGame::ShowLobby( void )
 		if( Raptor::Server->IsRunning() )
 		{
 			Packet fly = Packet( XWing::Packet::FLY );
-			Raptor::Game->Net.Send( &fly );
+			Net.Send( &fly );
 		}
 		
 		Mouse.ShowCursor = false;
@@ -3476,16 +3684,49 @@ void XWingGame::ShowLobby( void )
 		if( CampaignTeam && (State <= XWing::State::LOBBY) && Raptor::Server->IsRunning() )
 		{
 			Packet info( Raptor::Packet::INFO );
-			info.AddUShort( 3 );
+			info.AddUShort( 5 );
+			
 			info.AddString( "gametype" );
 			info.AddString( "mission" );
+			
 			info.AddString( "mission" );
 			info.AddString( (CampaignTeam == XWing::Team::EMPIRE) ? Cfg.SettingAsString("empire_mission","empire0") : Cfg.SettingAsString("rebel_mission","rebel0") );
+			
 			info.AddString( "ai_skill" );
 			info.AddString( (CampaignTeam == XWing::Team::EMPIRE) ? Cfg.SettingAsString("empire_difficulty","1") : Cfg.SettingAsString("rebel_difficulty","1") );
+			
+			info.AddString( "campaign" );
+			info.AddString( (CampaignTeam == XWing::Team::EMPIRE) ? "empire" : "rebel" );
+			
+			info.AddString( "permissions" );
+			info.AddString( "admin" );
+			
 			Net.Send( &info );
 		}
 	}
+	
+	#ifdef WIN32
+		if( Cfg.SettingAsBool("saitek_enable") )
+		{
+			for( int i = 0; i < 20; i ++ )
+				Saitek.SetX52ProLED( i, true );
+			
+			Saitek.SetX52ProLED( SaitekX52ProLED::AGreen, false );
+			Saitek.SetX52ProLED( SaitekX52ProLED::BGreen, false );
+			Saitek.SetX52ProLED( SaitekX52ProLED::DGreen, false );
+			Saitek.SetX52ProLED( SaitekX52ProLED::EGreen, false );
+			Saitek.SetX52ProLED( SaitekX52ProLED::T1Green, false );
+			Saitek.SetX52ProLED( SaitekX52ProLED::T3Green, false );
+			Saitek.SetX52ProLED( SaitekX52ProLED::T5Green, false );
+			Saitek.SetX52ProLED( SaitekX52ProLED::Hat2Green, false );
+			Saitek.SetX52ProLED( SaitekX52ProLED::ClutchGreen, false );
+			
+			for( int i = 0; i < 3; i ++ )
+				Saitek.SetX52ProMFD( i, "" );
+			
+			Saitek.ClearFIPImage();
+		}
+	#endif
 }
 
 
@@ -3498,16 +3739,25 @@ void XWingGame::BeginFlying( void )
 		else
 			Snd.StopMusic();
 		
+		// Always start flying in default view (1st person cockpit/gunner).
+		bool screensaver = Cfg.SettingAsBool( "screensaver" );
+		Cfg.Settings[ "view" ] = screensaver ? Cfg.SettingAsString( "screensaver_view", "cycle" ) : "auto";
+		
 		ObservedShipID = 0;
 		LookYaw = 0.;
 		LookPitch = 0.;
 		Head.Recenter();
 		
+		RoundTimer.Reset( 0. );
+		
 		Layers.RemoveAll();
 		Layers.Add( new RenderLayer() );
 		
-		if( Cfg.SettingAsBool("screensaver") )
+		if( screensaver )
 		{
+			// Use "view" rather than "spectator_view" in screensaver.
+			Cfg.Settings[ "spectator_view" ] = "auto";
+			
 			// Add an input handler to quit the screensaver when necessary.
 			AddScreensaverLayer();
 		}

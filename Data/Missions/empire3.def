@@ -1,0 +1,109 @@
+mission_name Empire 3: Strike Back
+mission_desc Lay a trap along a known Rebel supply corridor.
+gametype team_elim
+player_team empire
+player_ship T/I T/F T/B
+defending_team empire
+empire_fighter T/I
+rebel_fighter X/W
+rebel_fighter_squadron Rogue
+empire_waves 3
+rebel_waves 0
+player_spawn -5500 0 0
+empire_spawn -5000 0 0
+bg nebula
+int_lost false
+endgame false
+
+at 0:00
+spawn empire INT "Black Asp" objective at -2000 -500 100 facing 1 0 0
+spawn empire T/B at -4500 0 -300 facing 1 0 0
+spawn empire T/B at -4700 10 -200 facing 1 0 0
+spawn empire T/B at -4900 20 -100 facing 1 0 0
+
+at 0:02
+alert e3_payback.wav Time for a little payback.
+wait 2.5
+alert e3_ds1.wav To the Death Star!
+wait 1.5
+alert e3_ds1b.wav The Death Star!
+wait 3.5
+
+sound e3_ds2.wav
+wait 0.5
+message Do you guys remember where you were when it happened?
+wait 3.5
+alert e3_ds3.wav Yeah I remember I was in Coruscant in training,
+wait 2.4
+message waiting to hear if some friends made it out.
+wait 4
+alert e3_ds4.wav And... of course they didn't, because, ah well...
+wait 5
+alert e3_ds5.wav It blew up.
+wait 1.1
+message Evaporated.
+wait 0.5
+message Yeah like a big, colorful firecracker.
+wait 2.4
+message No one was gettin' out of there.
+wait 7
+chat Sensors detect 1 unknown capital ship arriving.
+wait 1
+spawn rebel CRV "PulsarSkate" at 7000 15 200 facing -0.4 0.6 0
+wait 2
+alert e3_catch.wav Our first catch of the day.
+wait 2
+alert e3_move.wav Let's move!
+wait 12
+chat Sensors detect 12 unknown starfighters arriving.
+wait 1
+spawn rebel X/W "Rogue 1" group 3 at 5500 2000 -300 facing -0.3 -0.7 0
+wait 0.8
+spawn rebel X/W "Rogue 2" group 3 at 5700 2010 -200 facing -0.3 -0.7 0
+wait 0.6
+spawn rebel X/W "Rogue 3" group 3 at 5900 2020 -100 facing -0.3 -0.7 0
+wait 0.3
+spawn rebel X/W "Rogue 4" group 3 at 6100 2030 -200 facing -0.3 -0.7 0
+alert e3_left.wav Enemy, left!
+
+at 1:00
+spawn rebel X/W "Rogue 5" group 3 at 6500 1500 -300 facing -0.3 -0.7 0
+gametype team_elim
+wait 1.2
+spawn rebel X/W "Rogue 6" group 3 at 6700 1510 -200 facing -0.3 -0.7 0
+wait 0.4
+spawn rebel X/W "Rogue 7" group 3 at 6900 1520 -100 facing -0.3 -0.7 0
+wait 0.9
+spawn rebel X/W "Rogue 8" group 3 at 7100 1530 -200 facing -0.3 -0.7 0
+
+at 1:20
+spawn rebel X/W "Rogue 9" group 3 at 4500 2500 -300 facing -0.3 -0.7 0
+gametype team_elim
+wait 0.6
+spawn rebel X/W "Rogue 10" group 3 at 4700 2510 -200 facing -0.3 -0.7 0
+wait 0.7
+spawn rebel X/W "Rogue 11" group 3 at 4900 2520 -100 facing -0.3 -0.7 0
+wait 0.6
+spawn rebel X/W "Rogue 12" group 3 at 5100 2530 -200 facing -0.3 -0.7 0
+endgame true
+
+on destroyed rebel by player #5
+impressive true
+
+on destroyed empire objective
+int_lost true
+
+on destroyed rebel if ( no rebel here ) and ( endgame true )
+wait 1
+alert e3_whooey.wav Whoooee!
+
+on victory
+next_mission empire1
+
+on victory if ( int_lost false ) and ( impressive true )
+wait 3
+alert impressive.wav Impressive.
+
+on defeat
+wait 3
+alert failed.wav You have failed me for the last time.
