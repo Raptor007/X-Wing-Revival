@@ -19,9 +19,9 @@
 	<key>CFBundleSignature</key>
 	<string>XWng</string>
 	<key>CFBundleVersion</key>
-	<string>0.5</string>
+	<string>0.5.1</string>
 	<key>CFBundleShortVersionString</key>
-	<string>0.5 Alpha</string>
+	<string>0.5.1 Alpha</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
 	<key>CFBundleIconFile</key>

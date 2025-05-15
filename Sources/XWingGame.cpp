@@ -32,6 +32,7 @@
 
 XWingGame::XWingGame( std::string version ) : RaptorGame( "X-Wing Revival", version )
 {
+	ChatSeparator = ":  ";
 	GameType = XWing::GameType::UNDEFINED;
 	CampaignTeam = XWing::Team::NONE;
 	ObservedShipID = 0;
@@ -143,6 +144,7 @@ XWingGame::XWingGame( std::string version ) : RaptorGame( "X-Wing Revival", vers
 	Controls[ XWing::Control::VIEW_CYCLE              ] = Input.AddControl( "ViewCycle" );
 	Controls[ XWing::Control::VIEW_INSTRUMENTS        ] = Input.AddControl( "ViewInstruments" );
 	Controls[ XWing::Control::CHAT                    ] = Input.AddControl( "Chat" );
+	Controls[ XWing::Control::CHAT_TEAM               ] = Input.AddControl( "ChatTeam" );
 	Controls[ XWing::Control::VOICE_TEAM              ] = Input.AddControl( "VoiceTeam" );
 	Controls[ XWing::Control::VOICE_ALL               ] = Input.AddControl( "VoiceAll" );
 	Controls[ XWing::Control::MENU                    ] = Input.AddControl( "MainMenu" );
@@ -248,7 +250,7 @@ void XWingGame::SetDefaultControls( void )
 	Cfg.KeyBinds[ SDLK_9            ] = Controls[ XWing::Control::VIEW_CYCLE              ];
 	Cfg.KeyBinds[ SDLK_0            ] = Controls[ XWing::Control::VIEW_INSTRUMENTS        ];
 	Cfg.KeyBinds[ SDLK_RETURN       ] = Controls[ XWing::Control::CHAT                    ];
-	Cfg.KeyBinds[ SDLK_KP_ENTER     ] = Controls[ XWing::Control::CHAT                    ];
+	Cfg.KeyBinds[ SDLK_KP_ENTER     ] = Controls[ XWing::Control::CHAT_TEAM               ];
 	Cfg.KeyBinds[ SDLK_RALT         ] = Controls[ XWing::Control::VOICE_ALL               ];
 	Cfg.KeyBinds[ SDLK_RCTRL        ] = Controls[ XWing::Control::VOICE_TEAM              ];
 	Cfg.KeyBinds[ SDLK_ESCAPE       ] = Controls[ XWing::Control::MENU                    ];
@@ -519,6 +521,8 @@ void XWingGame::SetDefaults( void )
 	Cfg.Settings[ "ui_box_line" ] = (Raptor::Game->Gfx.DesktopW >= 3200) ? "2.5" : "1.5";
 	Cfg.Settings[ "ui_box_style" ] = "1";
 	Cfg.Settings[ "ui_classic" ] = "false";
+	Cfg.Settings[ "ui_ship_preview" ] = "true";
+	Cfg.Settings[ "ui_ship_rotate" ] = "20";
 	
 	Cfg.Settings[ "s_volume" ] = "0.2";
 	Cfg.Settings[ "s_effect_volume" ] = "0.5";
@@ -716,13 +720,14 @@ void XWingGame::Precache( void )
 	bool screensaver = Cfg.SettingAsBool("screensaver");
 	if( screensaver )
 	{
-		Res.GetAnimation( Cfg.SettingAsString( "screensaver_bg", "stars" ) + std::string(".ani") );
+		Res.GetAnimation( Cfg.SettingAsString( "screensaver_bg", "nebula2" ) + std::string(".ani") );
 		if( Cfg.SettingAsBool( "screensaver_asteroids", true ) )
 			Res.GetModel("asteroid.obj");
 	}
 	else
 	{
 		Res.GetAnimation("nebula.ani");
+		Res.GetAnimation("nebula2.ani");
 		Res.GetAnimation("stars.ani");
 		Res.GetAnimation("bg_lobby.ani");
 		
@@ -1114,7 +1119,9 @@ void XWingGame::Update( double dt )
 	else if( Input.ControlPressed(Controls[ XWing::Control::THROTTLE_UP ]) || Input.ControlPressed(Controls[ XWing::Control::THROTTLE_DOWN ]) )
 	{
 		double throttle_change = Num::Clamp( Input.ControlTotal(Controls[ XWing::Control::THROTTLE_UP ]) - Input.ControlTotal(Controls[ XWing::Control::THROTTLE_DOWN ]), -1., 1. );
-		if( throttle_change > 0. )
+		if( ! my_ship )
+			;
+		else if( throttle_change > 0. )
 			throttle = std::max<double>( throttle, my_ship->GetThrottle() );
 		else if( throttle_change < 0. )
 			throttle = std::min<double>( throttle, my_ship->GetThrottle() );
@@ -2786,7 +2793,7 @@ void XWingGame::MessageReceived( std::string text, uint32_t type )
 {
 	bool important = false;
 	
-	if( type == TextConsole::MSG_CHAT )
+	if( (type == TextConsole::MSG_CHAT) || (type == TextConsole::MSG_TEAM) )
 	{
 		Snd.Play( Res.GetSound("chat.wav") );
 		important = true;
@@ -3614,40 +3621,40 @@ void XWingGame::ShowLobby( void )
 		{
 			// FIXME: Should this send an INFO packet instead of directly modifying server data from the client thread?
 			Raptor::Server->Data.Lock.Lock();
-			Raptor::Server->Data.Properties["gametype"]              = Cfg.SettingAsString( "screensaver_gametype",        "fleet" );
-			Raptor::Server->Data.Properties["dm_kill_limit"]         = Cfg.SettingAsString( "screensaver_kill_limit",      "0"     );
-			Raptor::Server->Data.Properties["tdm_kill_limit"]        = Cfg.SettingAsString( "screensaver_kill_limit",      "0"     );
-			Raptor::Server->Data.Properties["team_race_checkpoints"] = Cfg.SettingAsString( "screensaver_checkpoints",     "0"     );
-			Raptor::Server->Data.Properties["ffa_race_checkpoints"]  = Cfg.SettingAsString( "screensaver_checkpoints",     "0"     );
-			Raptor::Server->Data.Properties["hunt_time_limit"]       = Cfg.SettingAsString( "screensaver_time_limit",      "0"     );
-			Raptor::Server->Data.Properties["yavin_time_limit"]      = Cfg.SettingAsString( "screensaver_time_limit",      "0"     );
-			Raptor::Server->Data.Properties["race_time_limit"]       = Cfg.SettingAsString( "screensaver_time_limit",      "0"     );
-			Raptor::Server->Data.Properties["ai_waves"]              = Cfg.SettingAsString( "screensaver_ai_waves",        "7"     );
-			Raptor::Server->Data.Properties["ai_flock"]              = Cfg.SettingAsString( "screensaver_ai_flock",        "true"  );
-			Raptor::Server->Data.Properties["ai_respawn"]            = Cfg.SettingAsString( "screensaver_ai_respawn",      "true"  );
-			Raptor::Server->Data.Properties["ai_grouped"]            = Cfg.SettingAsString( "screensaver_ai_grouped",      "false" );
-			Raptor::Server->Data.Properties["spawn"]                 = Cfg.SettingAsString( "screensaver_spawn",           "T/A,YT1300");
-			Raptor::Server->Data.Properties["rebel_fighter"]         = Cfg.SettingAsString( "screensaver_rebel_fighter",   "X/W"   );
-			Raptor::Server->Data.Properties["rebel_bomber"]          = Cfg.SettingAsString( "screensaver_rebel_bomber",    "Y/W"   );
-			Raptor::Server->Data.Properties["rebel_cruiser"]         = Cfg.SettingAsString( "screensaver_rebel_cruiser",   "CRV"   );
-			Raptor::Server->Data.Properties["rebel_cruisers"]        = Cfg.SettingAsString( "screensaver_rebel_cruisers",  "3"     );
-			Raptor::Server->Data.Properties["rebel_frigate"]         = Cfg.SettingAsString( "screensaver_rebel_frigate",   "FRG"   );
-			Raptor::Server->Data.Properties["rebel_frigates"]        = Cfg.SettingAsString( "screensaver_rebel_frigates",  "1"     );
-			Raptor::Server->Data.Properties["rebel_flagship"]        = Cfg.SettingAsString( "screensaver_rebel_flagship",  "FRG"   );
-			Raptor::Server->Data.Properties["empire_fighter"]        = Cfg.SettingAsString( "screensaver_empire_fighter",  "T/I"   );
-			Raptor::Server->Data.Properties["empire_bomber"]         = Cfg.SettingAsString( "screensaver_empire_bomber",   "T/F"   );
-			Raptor::Server->Data.Properties["empire_cruiser"]        = Cfg.SettingAsString( "screensaver_empire_cruiser",  "INT"   );
-			Raptor::Server->Data.Properties["empire_cruisers"]       = Cfg.SettingAsString( "screensaver_empire_cruisers", "3"     );
-			Raptor::Server->Data.Properties["empire_frigate"]        = Cfg.SettingAsString( "screensaver_empire_frigate",  "ISD"   );
-			Raptor::Server->Data.Properties["empire_frigates"]       = Cfg.SettingAsString( "screensaver_empire_frigates", "1"     );
-			Raptor::Server->Data.Properties["empire_flagship"]       = Cfg.SettingAsString( "screensaver_empire_flagship", "ISD"   );
-			Raptor::Server->Data.Properties["yavin_rebel_fighter"]   = Cfg.SettingAsString( "screensaver_rebel_fighter",   "X/W"   );
-			Raptor::Server->Data.Properties["yavin_rebel_bomber"]    = Cfg.SettingAsString( "screensaver_rebel_bomber",    "Y/W"   );
-			Raptor::Server->Data.Properties["yavin_empire_fighter"]  = Cfg.SettingAsString( "screensaver_empire_fighter",  "T/F"   );
-			Raptor::Server->Data.Properties["defending_team"]        = Cfg.SettingAsString( "screensaver_defending_team",  "rebel" );
-			Raptor::Server->Data.Properties["asteroids"]             = Cfg.SettingAsString( "screensaver_asteroids",       "32"    );
-			Raptor::Server->Data.Properties["bg"]                    = Cfg.SettingAsString( "screensaver_bg",              "stars" );
-			Raptor::Server->Data.Properties["time_scale"]            = Cfg.SettingAsString( "screensaver_time_scale",      "1"     );
+			Raptor::Server->Data.Properties["gametype"]              = Cfg.SettingAsString( "screensaver_gametype",        "fleet"      );
+			Raptor::Server->Data.Properties["dm_kill_limit"]         = Cfg.SettingAsString( "screensaver_kill_limit",      "0"          );
+			Raptor::Server->Data.Properties["tdm_kill_limit"]        = Cfg.SettingAsString( "screensaver_kill_limit",      "0"          );
+			Raptor::Server->Data.Properties["team_race_checkpoints"] = Cfg.SettingAsString( "screensaver_checkpoints",     "0"          );
+			Raptor::Server->Data.Properties["ffa_race_checkpoints"]  = Cfg.SettingAsString( "screensaver_checkpoints",     "0"          );
+			Raptor::Server->Data.Properties["hunt_time_limit"]       = Cfg.SettingAsString( "screensaver_time_limit",      "0"          );
+			Raptor::Server->Data.Properties["yavin_time_limit"]      = Cfg.SettingAsString( "screensaver_time_limit",      "0"          );
+			Raptor::Server->Data.Properties["race_time_limit"]       = Cfg.SettingAsString( "screensaver_time_limit",      "0"          );
+			Raptor::Server->Data.Properties["ai_waves"]              = Cfg.SettingAsString( "screensaver_ai_waves",        "7"          );
+			Raptor::Server->Data.Properties["ai_flock"]              = Cfg.SettingAsString( "screensaver_ai_flock",        "true"       );
+			Raptor::Server->Data.Properties["ai_respawn"]            = Cfg.SettingAsString( "screensaver_ai_respawn",      "true"       );
+			Raptor::Server->Data.Properties["ai_grouped"]            = Cfg.SettingAsString( "screensaver_ai_grouped",      "false"      );
+			Raptor::Server->Data.Properties["spawn"]                 = Cfg.SettingAsString( "screensaver_spawn",           "T/A,YT1300" );
+			Raptor::Server->Data.Properties["rebel_fighter"]         = Cfg.SettingAsString( "screensaver_rebel_fighter",   "X/W"        );
+			Raptor::Server->Data.Properties["rebel_bomber"]          = Cfg.SettingAsString( "screensaver_rebel_bomber",    "Y/W"        );
+			Raptor::Server->Data.Properties["rebel_cruiser"]         = Cfg.SettingAsString( "screensaver_rebel_cruiser",   "CRV"        );
+			Raptor::Server->Data.Properties["rebel_cruisers"]        = Cfg.SettingAsString( "screensaver_rebel_cruisers",  "3"          );
+			Raptor::Server->Data.Properties["rebel_frigate"]         = Cfg.SettingAsString( "screensaver_rebel_frigate",   "FRG"        );
+			Raptor::Server->Data.Properties["rebel_frigates"]        = Cfg.SettingAsString( "screensaver_rebel_frigates",  "1"          );
+			Raptor::Server->Data.Properties["rebel_flagship"]        = Cfg.SettingAsString( "screensaver_rebel_flagship",  "FRG"        );
+			Raptor::Server->Data.Properties["empire_fighter"]        = Cfg.SettingAsString( "screensaver_empire_fighter",  "T/I"        );
+			Raptor::Server->Data.Properties["empire_bomber"]         = Cfg.SettingAsString( "screensaver_empire_bomber",   "T/F"        );
+			Raptor::Server->Data.Properties["empire_cruiser"]        = Cfg.SettingAsString( "screensaver_empire_cruiser",  "INT"        );
+			Raptor::Server->Data.Properties["empire_cruisers"]       = Cfg.SettingAsString( "screensaver_empire_cruisers", "3"          );
+			Raptor::Server->Data.Properties["empire_frigate"]        = Cfg.SettingAsString( "screensaver_empire_frigate",  "ISD"        );
+			Raptor::Server->Data.Properties["empire_frigates"]       = Cfg.SettingAsString( "screensaver_empire_frigates", "1"          );
+			Raptor::Server->Data.Properties["empire_flagship"]       = Cfg.SettingAsString( "screensaver_empire_flagship", "ISD"        );
+			Raptor::Server->Data.Properties["yavin_rebel_fighter"]   = Cfg.SettingAsString( "screensaver_rebel_fighter",   "X/W"        );
+			Raptor::Server->Data.Properties["yavin_rebel_bomber"]    = Cfg.SettingAsString( "screensaver_rebel_bomber",    "Y/W"        );
+			Raptor::Server->Data.Properties["yavin_empire_fighter"]  = Cfg.SettingAsString( "screensaver_empire_fighter",  "T/F"        );
+			Raptor::Server->Data.Properties["defending_team"]        = Cfg.SettingAsString( "screensaver_defending_team",  "rebel"      );
+			Raptor::Server->Data.Properties["asteroids"]             = Cfg.SettingAsString( "screensaver_asteroids",       "32"         );
+			Raptor::Server->Data.Properties["bg"]                    = Cfg.SettingAsString( "screensaver_bg",              "nebula2"    );
+			Raptor::Server->Data.Properties["time_scale"]            = Cfg.SettingAsString( "screensaver_time_scale",      "1"          );
 			Raptor::Server->Data.Properties["allow_ship_change"]     = "true";
 			Raptor::Server->Data.Properties["allow_team_change"]     = "true";
 			Data.Properties = Raptor::Server->Data.Properties;

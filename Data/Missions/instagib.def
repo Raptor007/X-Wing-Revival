@@ -1,6 +1,6 @@
 mission_name SuperLaser InstaGib
 mission_desc Fun for the whole family!
-mission_opts dm_kill_limit ai_waves asteroids bg
+mission_opts dm_kill_limit ai_waves asteroids bg respawn_time
 gametype ffa_dm
 player_ship T/F-S YT1300-S
 allow_ship_change true

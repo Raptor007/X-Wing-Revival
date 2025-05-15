@@ -18,13 +18,13 @@ explode 0.03
 firetime turbolaser 0.42
 turret_health 189
 docking_bay 5.1 -7.8 131.7 35
-engine 25.6 6 -155 engine_blue.ani 25 1 1 1 0.25
-engine -25.6 6 -155 engine_blue.ani 25 1 1 1 0.25
-engine 10.2 6 -155 engine_blue.ani 25 1 1 1 0.25
-engine -10.2 6 -155 engine_blue.ani 25 1 1 1 0.25
-engine 12.6 -19.7 -155 engine_blue.ani 25 1 1 1 0.25
-engine -12.6 -19.7 -155 engine_blue.ani 25 1 1 1 0.25
-engine 0 -33.3 -155 engine_blue.ani 25 1 1 1 0.25
+engine 25.6 6 -153 engine_yellow.ani 21 1 0.99 0.99 0.25
+engine -25.6 6 -153 engine_yellow.ani 21 1 0.99 0.99 0.25
+engine 10.2 6 -152 engine_yellow.ani 20 1 0.99 0.99 0.25
+engine -10.2 6 -152 engine_yellow.ani 20 1 0.99 0.99 0.25
+engine 10.7 -19.7 -152 engine_yellow.ani 20 1 0.99 0.99 0.25
+engine -10.7 -19.7 -152 engine_yellow.ani 20 1 0.99 0.99 0.25
+engine 0 -33.3 -153 engine_yellow.ani 21 1 0.99 0.99 0.25
 model nebulon-b.obj
 model_collision nebulon-b.obj
 cockpit nebulon-b.obj 0 25.6 -109.2

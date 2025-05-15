@@ -1,6 +1,6 @@
 ----------------------------------------
 |            X-Wing Revival            |
-|        0.5 Alpha (2025-05-04)        |
+|       0.5.1 Alpha (2025-05-15)       |
 |     by Raptor007 (Blair Sherman)     |
 | http://raptor007.com/x-wing-revival/ |
 ----------------------------------------
@@ -36,10 +36,9 @@ Alliance for helping me bring balance to the forces.
 == GAME TYPES ==
 
   Fleet Battle: Each team tries to destroy the enemy capital ships while defending
-    their own.  The last team with any surviving capital ship wins.  Respawn is only
-    possible while your team's flagship is alive, so prioritize its protection.
-    Cruisers and Battleships will respawn if their entire group is destroyed before
-    the flagship, but it takes time to replace a large group of capital ships.
+    their own.  The last team with any surviving capital ship wins.  Cruisers and
+    battleships will respawn if their entire group is destroyed before the flagship,
+    but it takes time to replace a large group of capital ships.
 
   Battle of Yavin: Rebels must fly down the trench and try to hit the exhaust port
     with a pair of proton torpedoes.  Imperials must try to prevent the Rebels from
@@ -97,6 +96,7 @@ My OS warns about or won't allow a downloaded or unsigned application to run.
 
   Mac: You might be able to just right-click to run an unsigned app.  (Unconfirmed.)
     The permanent fix to allow apps downloaded from anywhere is done in the Terminal:
+
       sudo spctl --global-disable
 
   I recommend the permanent fixes for power users only, or anyone who misses the 90's.
@@ -108,12 +108,19 @@ Should I run "X-Wing Revival.exe" or "X-Wing Revival Legacy.exe" on Windows?
     of X-Wing Revival, you can try "X-Wing Revival Legacy.exe" which is 32-bit SDL 1.2.
     NOTE: SDL 1.2 and 2.0 often have different joystick axis mappings, so you may
     need to alter control binds or restore defaults when switching between them.
+    NOTE: There is currently no microphone support in the Legacy exe.
 
 Linux asks what application to open files of type "executable" with.
 
   Click Cancel, then right-click "X-Wing Revival.elf", select "Properties", then go to
     the "Permissions" tab, and check "Allow this file to run as a program".  Close this
     window.  Now double-clicking "X-Wing Revival.elf" should run it.
+
+MacOS says the application "X-Wing Revival.app" cannot be opened.
+
+  Zipping/unzipping sometimes clobbers file permissions.  Easy fix in Terminal:
+
+    chmod +x "X-Wing Revival.app/Contents/MacOS/X-Wing Revival"
 
 
 == VIDEO PREFERENCES ==
@@ -188,9 +195,13 @@ Linux asks what application to open files of type "executable" with.
 
   Thickness: Line width of target box.  Default: Medium
 
-  Classic Target Box: Draw as rectangle aligned with camera up/right vectors.
+  Style: Classic Rect fits target into a box aligned to camera up/right vectors.
+    Modern fits a close rect matching the taret's angles.  Squared is similar
+    but makes a diamond shape with equal length sides.  Default: Modern
 
   Classic Target Info: Vague target health instead of hull and shield percent.
+
+  Rotate Lobby Ship: Controls if the ship model spins or just faces forward.
 
   Show Framerate: Show graphics FPS (and physics if hosting) in bottom right.
 
@@ -431,7 +442,8 @@ Linux asks what application to open files of type "executable" with.
    9: View Cycle
    0: View Instruments
    Tab: Show Scores
-   Return/Enter: Toggle/Send Chat
+   Return: Toggle/Send Chat
+   Keypad Enter: Toggle/Send Team Chat
    Esc/F10: Menu
    Backtick/Tilde: Toggle Console
 
@@ -486,6 +498,7 @@ When hosting, you can also use the "sv" command to control the server:
   sv netrate <num>: Adjust the network update rate for all clients.  Default: 30
   sv maxfps <num>: Adjust the simulation update rate.  Default: 60
   sv threads <num>: Use extra threads for capital ship collisions.  Default: 0
+  sv announce <true/false>: Send UDP broadcasts for LAN discovery.  Default: true
   sv port <num>: Change the TCP port number (after restart).  Default: 7000
   sv restart: Restart the server.
 
@@ -544,6 +557,16 @@ console commands to execute, such as "sv gametype yavin" or "sv rebel_fighter A/
 
 
 == VERSION HISTORY ==
+
+Alpha 0.5.1 (2025-05-15):
+ * Fixed crash when pressing throttle up/down while not flying a ship.
+ * Fixed "Target Objective" using mission objectives after leaving mission.
+ * Improved modern targeting box boundaries and added squared option.
+ * Lobby shows ship 3D model and can adjust Respawn Time and Preferences.
+ * Added environment background "Blue Nebula" (and renamed "Red Nebula").
+ * Nebulon-B Frigate engines are orange to match the movies.
+ * Respawn is allowed in Fleet Battle even after flagship is lost.
+ * Added team chat (default: keypad enter).  Fixed voice overlay in VR.
 
 Alpha 0.5 (2025-05-04):
  * Multiplayer voice commlink with optional positional audio.

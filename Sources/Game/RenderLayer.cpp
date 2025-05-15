@@ -55,6 +55,8 @@ RenderLayer::RenderLayer( void )
 	MessageInput->PassReturn = true;
 	MessageInput->EscDeselects = false;
 	MessageInput->PassEsc = true;
+	MessageInput->TabDeselects = false;
+	MessageInput->PassTab = true;
 	MessageInput->ClickOutDeselects = false;
 	MessageInput->Visible = false;
 	MessageInput->TextRed = 1.f;
@@ -154,6 +156,30 @@ void RenderLayer::SetWorldLights( bool deathstar, float ambient_scale, const std
 		dir[ 3 ].ScaleTo( 1. );
 		color[ 3 ].Set( 0.01, 0.1, 0.05, 1.f );
 		wrap_around[ 3 ] = 0.125;
+	}
+	else if( Raptor::Game->Data.PropertyAsString("bg") == "nebula2" )
+	{
+		ambient.Set( 0.85f, 0.74f, 0.75f, 1.f );
+		
+		dir[ 0 ].Set( 0.604, -0.384, 0.698 );
+		dir[ 0 ].ScaleTo( 1. );
+		color[ 0 ].Set( 1.31f, 1.3f, 1.29f, 1.f );
+		wrap_around[ 0 ] = 0.75;
+		
+		dir[ 1 ].Set( 0.7, -0.579, -0.419 );
+		dir[ 1 ].ScaleTo( 1. );
+		color[ 1 ].Set( 0.f, 0.25f, 0.9f, 1.f );
+		wrap_around[ 1 ] = 0.15;
+		
+		dir[ 2 ].Set( 0.255, 0.747, 0.594 );
+		dir[ 2 ].ScaleTo( 1. );
+		color[ 2 ].Set( 0.f, 0.3f, 0.8f, 1.f );
+		wrap_around[ 2 ] = 0.2;
+		
+		dir[ 3 ].Set( 0.372, -0.285, 0.884 );
+		dir[ 3 ].ScaleTo( 1. );
+		color[ 3 ].Set( 0.5f, 0.3f, 0.1f, 1.f );
+		wrap_around[ 3 ] = 0.25;
 	}
 	else
 	{
@@ -432,7 +458,7 @@ void RenderLayer::Draw( void )
 	else if( MessageInput->IsSelected() )
 	{
 		MessageInput->Rect.x = 3;
-		MessageInput->Rect.y = MessageInput->Rect.x;
+		MessageInput->Rect.y = 3;
 		MessageInput->Rect.w = Rect.w - (MessageInput->Rect.x * 2);
 		MessageInput->Rect.h = MessageInput->TextFont->GetHeight();
 		
@@ -2849,7 +2875,8 @@ void RenderLayer::Draw( void )
 					l = target->Shape.GetLength();
 					h = target->Shape.GetHeight();
 					w = target->Shape.GetWidth();
-					Vec3D plane_normal = (style == 2) ? game->Cam.Fwd : (*target - game->Cam).Unit();
+					Vec3D plane_normal = (style < 0) ? game->Cam.Fwd : (*target - game->Cam).Unit();
+					style = abs( style );
 					double fwd_out   = fabs(target->Fwd.DotPlane(   plane_normal )) * l * 0.6;
 					double up_out    = fabs(target->Up.DotPlane(    plane_normal )) * h * 0.6;
 					double right_out = fabs(target->Right.DotPlane( plane_normal )) * w * 0.6;
@@ -2857,17 +2884,17 @@ void RenderLayer::Draw( void )
 					if( (fwd_out >= up_out) && (fwd_out >= right_out) )
 					{
 						up = target->Fwd.AlongPlane( plane_normal ).Unit() * fwd_out;
-						right = up.Unit().Cross( plane_normal ) * (up_out + right_out) * 0.7;
+						right = up.Unit().Cross( plane_normal ) * ((style == 2) ? fwd_out : ((up_out + right_out) * 0.7));
 					}
 					else if( up_out >= right_out )
 					{
 						up = target->Up.AlongPlane( plane_normal ).Unit() * up_out;
-						right = up.Unit().Cross( plane_normal ) * (fwd_out + right_out) * 0.7;
+						right = up.Unit().Cross( plane_normal ) * ((style == 2) ? up_out : ((fwd_out + right_out) * 0.7));
 					}
 					else
 					{
 						up = target->Right.AlongPlane( plane_normal ).Unit() * right_out;
-						right = up.Unit().Cross( plane_normal ) * (fwd_out + up_out) * 0.7;
+						right = up.Unit().Cross( plane_normal ) * ((style == 2) ? right_out : ((fwd_out + up_out) * 0.7));
 					}
 				}
 				else
@@ -2882,7 +2909,7 @@ void RenderLayer::Draw( void )
 				w = h = (checkpoint->Radius * 0.75);
 			}
 			
-			if( ! l )  // If we're using ui_box_style 1 and targeting a ship, these vectors are already set.
+			if( ! l )  // If we're using ui_box_style 1/2 and targeting a ship, these vectors are already set.
 			{
 				up    = game->Cam.Up    * h / 2.;
 				right = game->Cam.Right * w / 2.;
@@ -2918,7 +2945,18 @@ void RenderLayer::Draw( void )
 			float thickness = game->Cfg.SettingAsDouble( "ui_box_line", 1.5f, 1.5f );
 			
 			std::deque<Pos3D> positions;
-			positions.push_back( target_obj );
+			Pos3D target_center = target_obj;
+			if( target && style )
+			{
+				// Adjust position of Modern and Squared targeting box to better fit nearby capital ships.
+				// FIXME: Needs a special case for players near the target center to put the box ahead of them (far end of target).
+				Vec3D vec_from_target = game->Cam - *target;
+				double target_length = target->Shape.GetLength();
+				double lengths_away = std::max<double>( 0.125, vec_from_target.Length() ) / target_length;
+				double fwd_move = target->Fwd.Dot( vec_from_target.Unit() ) * target_length * std::min<double>( 0.5, game->Cfg.SettingAsDouble( "ui_box_shift", 0.25 ) / (lengths_away * lengths_away) );
+				target_center += target->Fwd * fwd_move;
+			}
+			positions.push_back( target_center );
 			
 			// Draw target box around selected subsystem.
 			if( target && observed_ship && observed_ship->TargetSubsystem )
@@ -2967,7 +3005,7 @@ void RenderLayer::Draw( void )
 				
 				if( target && observed_ship && observed_ship->TargetSubsystem && (pos_iter == positions.begin()) )
 				{
-					if( style == 1 )
+					if( style > 0 )
 					{
 						Vec3D plane_normal = (target->TargetCenter(observed_ship->TargetSubsystem) - game->Cam).Unit();
 						double fwd_out   = fabs(target->Fwd.DotPlane(   plane_normal ));
@@ -3826,8 +3864,8 @@ void RenderLayer::DrawScores( void )
 		}
 		else if( gametype == XWing::GameType::CTF )
 		{
-			SmallFont->DrawText( "Score", Rect.x + Rect.w/2 + 162, y + 2, Font::ALIGN_MIDDLE_RIGHT, 0.f, 0.f, 0.f, 0.8f );
-			SmallFont->DrawText( "Score", Rect.x + Rect.w/2 + 160, y, Font::ALIGN_MIDDLE_RIGHT, 1.f, 1.f, 1.f, 1.f );
+			SmallFont->DrawText( "Captures", Rect.x + Rect.w/2 + 162, y + 2, Font::ALIGN_MIDDLE_RIGHT, 0.f, 0.f, 0.f, 0.8f );
+			SmallFont->DrawText( "Captures", Rect.x + Rect.w/2 + 160, y, Font::ALIGN_MIDDLE_RIGHT, 1.f, 1.f, 1.f, 1.f );
 		}
 		SmallFont->DrawText( "Kills", Rect.x + Rect.w/2 + 242, y + 2, Font::ALIGN_MIDDLE_RIGHT, 0.f, 0.f, 0.f, 0.8f );
 		SmallFont->DrawText( "Kills", Rect.x + Rect.w/2 + 240, y, Font::ALIGN_MIDDLE_RIGHT, 1.f, 1.f, 1.f, 1.f );
@@ -3986,20 +4024,26 @@ void RenderLayer::DrawVoice( void )
 				display_color.Blue = 0.f;
 			
 			if( voice_y == Rect.h )
+			{
+				glPushMatrix();
 				game->Gfx.Setup2D();
+			}
 			
 			int font_ascent = BigFont->GetAscent();
 			GLuint mic_texture = Mic.CurrentFrame();
 			
-			game->Gfx.DrawRect2D( Rect.w - 1 - font_ascent, voice_y - 1 - font_ascent, Rect.w - 1, voice_y - 1, mic_texture, 0.f,0.f,0.f,0.8f );
-			game->Gfx.DrawRect2D( Rect.w - 3 - font_ascent, voice_y - 3 - font_ascent, Rect.w - 3, voice_y - 3, mic_texture, display_color.Red,display_color.Green,display_color.Blue,display_color.Alpha );
+			game->Gfx.DrawRect2D( Rect.x + Rect.w - 1 - font_ascent, Rect.y + voice_y - 1 - font_ascent, Rect.x + Rect.w - 1, Rect.y + voice_y - 1, mic_texture, 0.f,0.f,0.f,0.8f );
+			game->Gfx.DrawRect2D( Rect.x + Rect.w - 3 - font_ascent, Rect.y + voice_y - 3 - font_ascent, Rect.x + Rect.w - 3, Rect.y + voice_y - 3, mic_texture, display_color.Red,display_color.Green,display_color.Blue,display_color.Alpha );
 			
-			BigFont->DrawText( display_name, Rect.w - 3 - font_ascent, voice_y - 1, Font::ALIGN_BOTTOM_RIGHT, 0.f,0.f,0.f,0.8f );
-			BigFont->DrawText( display_name, Rect.w - 5 - font_ascent, voice_y - 3, Font::ALIGN_BOTTOM_RIGHT, display_color.Red,display_color.Green,display_color.Blue,display_color.Alpha );
+			BigFont->DrawText( display_name, Rect.x + Rect.w - 3 - font_ascent, Rect.y + voice_y - 1, Font::ALIGN_BOTTOM_RIGHT, 0.f,0.f,0.f,0.8f );
+			BigFont->DrawText( display_name, Rect.x + Rect.w - 5 - font_ascent, Rect.y + voice_y - 3, Font::ALIGN_BOTTOM_RIGHT, display_color.Red,display_color.Green,display_color.Blue,display_color.Alpha );
 			
 			voice_y -= font_ascent + 4;
 		}
 	}
+	
+	if( voice_y < Rect.h )
+		glPopMatrix();
 }
 
 
@@ -4158,12 +4202,23 @@ bool RenderLayer::HandleEvent( SDL_Event *event )
 	
 	XWingGame *game = (XWingGame*) Raptor::Game;
 	uint8_t control = Raptor::Game->Input.EventBound( event );
-	if( (control == game->Controls[ XWing::Control::CHAT ]) && IsTop() )
+	if( ((control == game->Controls[ XWing::Control::CHAT ]) || (control == game->Controls[ XWing::Control::CHAT_TEAM ])) && IsTop() )
 	{
 		game->ReadKeyboard = false;
 		
 		Selected = MessageInput;
 		MessageInput->Visible = true;
+		
+		if( control == game->Controls[ XWing::Control::CHAT_TEAM ] )
+		{
+			MessageInput->SelectedBlue = 0.f;
+			MessageInput->SelectedGreen = 0.5f;
+		}
+		else
+		{
+			MessageInput->SelectedBlue = 1.f;
+			MessageInput->SelectedGreen = 0.f;
+		}
 		
 		return true;
 	}
@@ -4207,8 +4262,8 @@ bool RenderLayer::KeyDown( SDLKey key )
 				Player *player = Raptor::Game->Data.GetPlayer( Raptor::Game->PlayerID );
 				
 				Packet message = Packet( Raptor::Packet::MESSAGE );
-				message.AddString( ((player ? player->Name : std::string("Anonymous")) + std::string(":  ") + msg).c_str() );
-				message.AddUInt( TextConsole::MSG_CHAT );
+				message.AddString( ((player ? player->Name : std::string("Anonymous")) + Raptor::Game->ChatSeparator + msg).c_str() );
+				message.AddUInt( (MessageInput->SelectedGreen > MessageInput->SelectedBlue) ? TextConsole::MSG_TEAM : TextConsole::MSG_CHAT );  // FIXME: This feels dirty.
 				Raptor::Game->Net.Send( &message );
 			}
 			

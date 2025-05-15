@@ -34,6 +34,8 @@ LobbyMenu::LobbyMenu( void )
 	bool tiny = (Rect.h < 720) || (Rect.w < 800);
 	TitleFont = Raptor::Game->Res.GetFont( "Verdana.ttf", tiny ? 24 : 30 );
 	
+	AddElement( ShipView = new LobbyMenuShipView() );
+	AddElement( PrefsButton = new LobbyMenuPrefsButton( tiny ? "Prefs" : "Preferences" ) );
 	AddElement( LeaveButton = new LobbyMenuLeaveButton() );
 	AddElement( FlyButton = new LobbyMenuFlyButton() );
 	
@@ -128,8 +130,9 @@ LobbyMenu::LobbyMenu( void )
 	ConfigOrder.push_back( new LobbyMenuConfiguration( "yavin_turrets", "Surface Turrets", label_size, value_size ) );
 	ConfigOrder.push_back( new LobbyMenuConfiguration( "asteroids", "Asteroids", label_size, value_size ) );
 	ConfigOrder.push_back( new LobbyMenuConfiguration( "bg", "Environment", label_size, value_size ) );
-	ConfigOrder.push_back( new LobbyMenuConfiguration( "respawn", "Respawn", label_size, value_size ) );
 	ConfigOrder.push_back( new LobbyMenuConfiguration( "allow_team_change", "Allow Team Change", label_size, value_size ) );
+	ConfigOrder.push_back( new LobbyMenuConfiguration( "respawn", "Respawn", label_size, value_size ) );
+	ConfigOrder.push_back( new LobbyMenuConfiguration( "respawn_time", "Respawn Time", label_size, value_size ) );
 	ConfigOrder.push_back( NULL );
 	ConfigOrder.push_back( new LobbyMenuConfiguration( "defaults", "", label_size, value_size ) );
 	ConfigOrder.push_back( NULL );
@@ -169,20 +172,21 @@ void LobbyMenu::UpdateRects( void )
 	bool tiny = (Rect.h < 720) || (Rect.w < 800);
 	
 	LeaveButton->Rect.h = LeaveButton->LabelFont->GetHeight() + 4;
-	FlyButton->Rect.h = LeaveButton->Rect.h;
+	FlyButton->Rect.h = PrefsButton->Rect.h = LeaveButton->Rect.h;
 	
 	LeaveButton->Rect.x = 32;
 	
 	if( Rect.w >= 1024 )
 		LeaveButton->Rect.w = 384;
 	else
-		LeaveButton->Rect.w = Rect.w / 2 - LeaveButton->Rect.x * 2;
-	FlyButton->Rect.w = LeaveButton->Rect.w;
+		LeaveButton->Rect.w = Rect.w / 3 - LeaveButton->Rect.x * 2;
+	FlyButton->Rect.w = PrefsButton->Rect.w = LeaveButton->Rect.w;
 	
 	LeaveButton->Rect.y = Rect.h - LeaveButton->Rect.h - 32;
-	FlyButton->Rect.y = LeaveButton->Rect.y;
+	FlyButton->Rect.y = PrefsButton->Rect.y = LeaveButton->Rect.y;
 	
 	FlyButton->Rect.x = Rect.w - FlyButton->Rect.w - LeaveButton->Rect.x;
+	PrefsButton->Rect.x = (Rect.w - PrefsButton->Rect.w) / 2;
 	
 	PlayerName->Rect.x = LeaveButton->Rect.x;
 	PlayerName->Rect.w = (FlyButton->Rect.x + FlyButton->Rect.w - PlayerList->Rect.x) / 2 - 5;
@@ -274,6 +278,23 @@ void LobbyMenu::UpdateRects( void )
 		;
 	else
 		Selected = MessageInput;
+	
+	if( Raptor::Game->Cfg.SettingAsInt("ui_ship_preview") == 2 )
+	{
+		ShipView->Rect.x = ShipView->Rect.y = 0;
+		ShipView->Rect.w = Raptor::Game->Gfx.W;
+		ShipView->Rect.h = Raptor::Game->Gfx.H;
+	}
+	else
+	{
+		memcpy( &(ShipView->Rect), &(PlayerList->Rect), sizeof(ShipView->Rect) );
+		ShipView->Rect.w -= PlayerList->ScrollBarSize;
+		if( ShipView->Rect.h > ShipView->Rect.w )
+		{
+			ShipView->Rect.y += ShipView->Rect.h - ShipView->Rect.w;
+			ShipView->Rect.h = ShipView->Rect.w;
+		}
+	}
 	
 	UpdateCalcRects();
 }
@@ -478,8 +499,12 @@ void LobbyMenu::UpdateInfoBoxes( void )
 		Configs["gametype"]->Value->LabelText = "Team Kessel Run";
 	else if( gametype == "ffa_race" )
 		Configs["gametype"]->Value->LabelText = "FFA Kessel Run";
+	else if( gametype == "ctf" )
+		Configs["gametype"]->Value->LabelText = "Capture the Flag";
 	else if( gametype == "yavin" )
 		Configs["gametype"]->Value->LabelText = "Battle of Yavin";
+	else if( gametype == "endor" )
+		Configs["gametype"]->Value->LabelText = "Battle of Endor";
 	else if( gametype == "hunt" )
 		Configs["gametype"]->Value->LabelText = "Flagship Hunt";
 	else if( gametype == "fleet" )
@@ -718,6 +743,9 @@ void LobbyMenu::UpdateInfoBoxes( void )
 		}
 		else
 			Configs["respawn"]->Value->LabelText = respawn;
+		
+		int respawn_time = Raptor::Game->Data.PropertyAsInt("respawn_time");
+		Configs["respawn_time"]->Value->LabelText = respawn_time ? (Num::ToString(respawn_time) + std::string(" Seconds")) : std::string("Default");
 	}
 	
 	Configs["allow_team_change"]->Value->LabelText = Raptor::Game->Data.PropertyAsBool("allow_team_change") ? "Yes" : "No";
@@ -778,7 +806,9 @@ void LobbyMenu::UpdateInfoBoxes( void )
 	if( bg == "stars" )
 		Configs["bg"]->Value->LabelText = "Deep Space";
 	else if( bg == "nebula" )
-		Configs["bg"]->Value->LabelText = "Nebula";
+		Configs["bg"]->Value->LabelText = "Red Nebula";
+	else if( bg == "nebula2" )
+		Configs["bg"]->Value->LabelText = "Blue Nebula";
 	else
 		Configs["bg"]->Value->LabelText = bg;
 	
@@ -1013,6 +1043,25 @@ void LobbyMenu::UpdateInfoBoxes( void )
 		Configs["race_time_limit"]->Enabled = false;
 	}
 	
+	if( (gametype == "team_dm") || (gametype == "ffa_dm") )
+	{
+		Configs["respawn_time"]->ShowButton = true;
+		Configs["respawn_time"]->Visible = true;
+		Configs["respawn_time"]->Enabled = true;
+	}
+	else if( (gametype == "team_elim") || (gametype == "ffa_elim") || (respawn == "false") )
+	{
+		Configs["respawn_time"]->ShowButton = false;
+		Configs["respawn_time"]->Visible = false;
+		Configs["respawn_time"]->Enabled = false;
+	}
+	else
+	{
+		Configs["respawn_time"]->ShowButton = Configs["respawn"]->ShowButton;
+		Configs["respawn_time"]->Visible = Configs["respawn"]->Visible;
+		Configs["respawn_time"]->Enabled = Configs["respawn"]->Enabled;
+	}
+	
 	// Missions hide most settings by default.
 	if( gametype == "mission" )
 	{
@@ -1029,6 +1078,9 @@ void LobbyMenu::UpdateInfoBoxes( void )
 		Configs["respawn"]->ShowButton = false;
 		Configs["respawn"]->Visible = false;
 		Configs["respawn"]->Enabled = false;
+		Configs["respawn_time"]->ShowButton = false;
+		Configs["respawn_time"]->Visible = false;
+		Configs["respawn_time"]->Enabled = false;
 		Configs["allow_team_change"]->ShowButton = false;
 		Configs["allow_team_change"]->Visible = false;
 		Configs["allow_team_change"]->Enabled = false;
@@ -1223,8 +1275,8 @@ bool LobbyMenu::KeyDown( SDLKey key )
 				const Player *player = Raptor::Game->Data.GetPlayer( Raptor::Game->PlayerID );
 				
 				Packet message = Packet( Raptor::Packet::MESSAGE );
-				message.AddString( ((player ? player->Name : std::string("Anonymous")) + std::string(":  ") + msg).c_str() );
-				message.AddUInt( TextConsole::MSG_CHAT );
+				message.AddString( ((player ? player->Name : std::string("Anonymous")) + Raptor::Game->ChatSeparator + msg).c_str() );
+				message.AddUInt( TextConsole::MSG_CHAT );  // FIXME: MSG_TEAM ?
 				Raptor::Game->Net.Send( &message );
 			}
 			
@@ -1349,6 +1401,37 @@ void LobbyMenuLeaveButton::Clicked( Uint8 button )
 		return;
 	
 	Raptor::Game->Net.DisconnectNice();
+}
+
+
+// ---------------------------------------------------------------------------
+
+
+LobbyMenuPrefsButton::LobbyMenuPrefsButton( std::string title )
+: LabelledButton( NULL, Raptor::Game->Res.GetFont( "Verdana.ttf", 32 ), title, Font::ALIGN_MIDDLE_CENTER, Raptor::Game->Res.GetAnimation("button.ani"), Raptor::Game->Res.GetAnimation("button_mdown.ani") )
+{
+	Red = 1.f;
+	Green = 1.f;
+	Blue = 1.f;
+	Alpha = 0.75f;
+}
+
+
+LobbyMenuPrefsButton::~LobbyMenuPrefsButton()
+{
+}
+
+
+void LobbyMenuPrefsButton::Clicked( Uint8 button )
+{
+	if( button != SDL_BUTTON_LEFT )
+		return;
+	
+	PrefsMenu *prefs = (PrefsMenu*) Raptor::Game->Layers.Find("PrefsMenu");
+	if( prefs )
+		prefs->Remove();
+	else
+		Raptor::Game->Layers.Add( new PrefsMenu() );
 }
 
 
@@ -1491,6 +1574,165 @@ void LobbyMenuShipDropDown::Clicked( Uint8 button )
 		Update();
 	
 	LobbyMenuPlayerDropDown::Clicked( button );
+}
+
+
+// ---------------------------------------------------------------------------
+
+
+LobbyMenuShipView::LobbyMenuShipView( SDL_Rect *rect ) : Layer( rect )
+{
+	CurrentGroup = 0;
+	Rotation = 0.;
+}
+
+
+LobbyMenuShipView::~LobbyMenuShipView()
+{
+}
+
+
+void LobbyMenuShipView::Update( void )
+{
+	XWingGame *game = (XWingGame*) Raptor::Game;
+	const Player *player = game->Data.GetPlayer( Raptor::Game->PlayerID );
+	
+	std::string ship = player ? player->PropertyAsString("ship") : "";
+	uint8_t group = Raptor::Game->Cfg.SettingAsBool("g_group_skins",true) ? Str::AsInt( player->PropertyAsString("group") ) : 0;
+	
+	if( (ship == "Rebel Gunner") && (Raptor::Game->Data.PropertyAsString("gametype") == "mission") )
+		ship = "YT1300";
+	
+	if( ship.empty() && (Raptor::Game->Data.PropertyAsString("gametype") == "mission") )
+	{
+		std::string player_ships = Raptor::Game->Data.PropertyAsString("player_ships");
+		if( player_ships.empty() )
+			player_ships = Raptor::Game->Data.PropertyAsString("player_ship");
+		if( ! player_ships.empty() )
+		{
+			ship = Str::SplitToVector( player_ships, " " ).front();
+			if( ship == "rebel_gunner" )
+				ship = "YT1300";
+		}
+	}
+	
+	if( (ship != CurrentShip) || (group != CurrentGroup) )
+	{
+		CurrentShip = ship;
+		CurrentGroup = group;
+		
+		Shape.Clear();
+		
+		const ShipClass *sc = game->GetShipClass( ship );
+		if( sc && sc->ExternalModel.length() )
+		{
+			Model *model = NULL;
+			
+			uint8_t group = Raptor::Game->Cfg.SettingAsBool("g_group_skins",true) ? Str::AsInt( player->PropertyAsString("group") ) : 0;
+			if( group )
+			{
+				std::map<uint8_t,std::string>::const_iterator skin_iter = sc->GroupSkins.find( group );
+				if( (skin_iter != sc->GroupSkins.end()) && skin_iter->second.length() )
+					model = Raptor::Game->Res.GetModel( skin_iter->second );
+			}
+			
+			if( !( model && model->VertexCount() ) )
+				model = Raptor::Game->Res.GetModel( sc->ExternalModel );
+			
+			if( model )
+			{
+				Shape.BecomeInstance( model );
+				Shape.ScaleBy( sc->ModelScale );
+			}
+		}
+		else if( ship == "Rebel Gunner" )
+			Shape.BecomeInstance( Raptor::Game->Res.GetModel("logo_rebel.obj") );
+		else if( ship == "Imperial Gunner" )
+			Shape.BecomeInstance( Raptor::Game->Res.GetModel("logo_empire.obj") );
+	}
+}
+
+
+void LobbyMenuShipView::Draw( void )
+{
+	Update();
+	
+	if( Shape.Objects.empty() || ! Raptor::Game->Cfg.SettingAsBool("ui_ship_preview",true) )
+	{
+		Rotation = -270.;
+		return;
+	}
+	
+	glPushMatrix();
+	glPushAttrib( GL_VIEWPORT_BIT );
+	Raptor::Game->Gfx.SetViewport( CalcRect.x, CalcRect.y, CalcRect.w, CalcRect.h );
+	
+	Camera cam;
+	cam.FOV = 20.;
+	if( CalcRect.w > CalcRect.h )
+		cam.FOV *= CalcRect.w / (double) CalcRect.h;
+	Pos3D pos = cam + cam.Fwd * std::max<double>( Shape.GetHeight() * 3.5, Shape.GetTriagonal() * 2.2 );
+	if( Raptor::Game->Gfx.DrawTo )
+	{
+		if( Raptor::Game->Gfx.DrawTo == Raptor::Game->Head.EyeL )
+			pos.MoveAlong( &(cam.Right), Raptor::Game->Cfg.SettingAsDouble("vr_ship_sep",0.01) );
+		else if( Raptor::Game->Gfx.DrawTo == Raptor::Game->Head.EyeR )
+			pos.MoveAlong( &(cam.Right), Raptor::Game->Cfg.SettingAsDouble("vr_ship_sep",0.01) * -1. );
+	}
+	pos.RotateAround( &(pos.Up), Rotation );
+	if( Str::BeginsWith( CurrentShip, "B/W" ) )
+		pos.MoveAlong( &(pos.Up), 2. );
+	if( ! Str::ContainsInsensitive( CurrentShip, "Gunner" ) )
+		pos.Pitch( -4. );
+	Raptor::Game->Gfx.Setup3D( &cam, CalcRect.h ? (CalcRect.w / (double) CalcRect.h) : 1. );
+	
+	bool use_shaders = Raptor::Game->Cfg.SettingAsBool("g_shader_enable");
+	if( use_shaders )
+	{
+		Raptor::Game->ShaderMgr.ResumeShaders();
+		Raptor::Game->ShaderMgr.Set3f( "CamPos", cam.X, cam.Y, cam.Z );
+		Vec3D dir;
+		dir.Set( -0.1, 0.7, 0.3 ); // Right Fwd Up
+		dir.ScaleTo( 1. );
+		Raptor::Game->ShaderMgr.Set3f( "AmbientLight", 0.125, 0.125, 0.125 );
+		Raptor::Game->ShaderMgr.Set3f( "DirectionalLight0Dir", dir.X, dir.Y, dir.Z );
+		Raptor::Game->ShaderMgr.Set3f( "DirectionalLight0Color", 0.75, 0.75, 0.75 );
+		Raptor::Game->ShaderMgr.Set1f( "DirectionalLight0WrapAround", 0.125 );
+		dir.Set( 0., 0.8, -0.3 ); // Right Fwd Up
+		dir.ScaleTo( 1. );
+		Raptor::Game->ShaderMgr.Set3f( "DirectionalLight1Dir", dir.X, dir.Y, dir.Z );
+		Raptor::Game->ShaderMgr.Set3f( "DirectionalLight1Color", 0.5, 0.5, 0.5 );
+		Raptor::Game->ShaderMgr.Set1f( "DirectionalLight1WrapAround", 0.125 );
+		dir.Set( -0.2, -0.8, 0.2 ); // Right Fwd Up
+		dir.ScaleTo( 1. );
+		Raptor::Game->ShaderMgr.Set3f( "DirectionalLight2Dir", dir.X, dir.Y, dir.Z );
+		Raptor::Game->ShaderMgr.Set3f( "DirectionalLight2Color", 1., 1., 1. );
+		Raptor::Game->ShaderMgr.Set1f( "DirectionalLight2WrapAround", 0.125 );
+		dir.Set( -0.2, -0.7, 0.3 ); // Right Fwd Up
+		dir.ScaleTo( 1. );
+		Raptor::Game->ShaderMgr.Set3f( "DirectionalLight3Dir", dir.X, dir.Y, dir.Z );
+		Raptor::Game->ShaderMgr.Set3f( "DirectionalLight3Color", 0.75, 0.75, 0.75 );
+		Raptor::Game->ShaderMgr.Set1f( "DirectionalLight3WrapAround", 0.125 );
+	}
+	
+	Shape.DrawAt( &pos );
+	
+	if( use_shaders )
+		Raptor::Game->ShaderMgr.StopShaders();
+	
+	double rotation_speed = Raptor::Game->Cfg.SettingAsDouble("ui_ship_rotate");
+	if( rotation_speed )
+	{
+		double frame_time = std::min<double>( 0.125, Raptor::Game->FrameTime );
+		Rotation += frame_time * rotation_speed;
+		if( Rotation > 360. )
+			Rotation -= 360.;
+	}
+	else
+		Rotation = 180.;
+	
+	glPopAttrib();
+	glPopMatrix();
 }
 
 
@@ -1833,6 +2075,25 @@ void LobbyMenuConfigChangeButton::Clicked( Uint8 button )
 			value = "false";
 	}
 	
+	else if( (config->Property == "respawn_time") )
+	{
+		int respawn_time = Str::AsInt( value );
+		if( respawn_time < 5 )
+			value = go_prev ? "65" : "5";
+		else if( respawn_time == 5 )
+			value = go_prev ? "" : "7";
+		else if( respawn_time >= 65 )
+			value = go_prev ? "62" : "";
+		else
+		{
+			if( ! go_prev )
+				respawn_time += (respawn_time % 5) ? 3 : 2;
+			else
+				respawn_time -= (respawn_time % 5) ? 2 : 3;
+			value = Num::ToString( respawn_time );
+		}
+	}
+	
 	else if( config->Property == "asteroids" )
 	{
 		int new_asteroids = atoi( value.c_str() );
@@ -1910,9 +2171,11 @@ void LobbyMenuConfigChangeButton::Clicked( Uint8 button )
 	else if( config->Property == "bg" )
 	{
 		if( value == "stars" )
-			value = "nebula";
+			value = go_prev ? "nebula" : "nebula2";
+		else if( value == "nebula2" )
+			value = go_prev ? "stars" : "nebula";
 		else
-			value = "stars";
+			value = go_prev ? "nebula2" : "stars";
 	}
 	
 	Packet info = Packet( Raptor::Packet::INFO );

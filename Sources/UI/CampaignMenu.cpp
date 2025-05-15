@@ -114,7 +114,7 @@ CampaignMenuTeamButton::~CampaignMenuTeamButton()
 void CampaignMenuTeamButton::Draw( void )
 {
 	glPushAttrib( GL_VIEWPORT_BIT );
-	Raptor::Game->Gfx.SetViewport( CalcRect.x, CalcRect.y, Rect.w, Rect.h );
+	Raptor::Game->Gfx.SetViewport( CalcRect.x, CalcRect.y, CalcRect.w, CalcRect.h );
 	
 	bool hovering = MouseIsWithin && Enabled;
 	Camera cam;
@@ -128,7 +128,7 @@ void CampaignMenuTeamButton::Draw( void )
 			pos.MoveAlong( &(cam.Right), Raptor::Game->Cfg.SettingAsDouble("vr_logo_sep",0.01) * -1. );
 	}
 	pos.RotateAround( &(pos.Up), Rotation * -1. );
-	Raptor::Game->Gfx.Setup3D( &cam, Rect.h ? (Rect.w / (double) Rect.h) : 1. );
+	Raptor::Game->Gfx.Setup3D( &cam, CalcRect.h ? (CalcRect.w / (double) CalcRect.h) : 1. );
 	
 	bool use_shaders = Raptor::Game->Cfg.SettingAsBool("g_shader_enable");
 	if( use_shaders )

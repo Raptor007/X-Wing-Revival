@@ -609,18 +609,37 @@ void PrefsMenu::UpdateContents( void )
 		rect.x = 10;
 		rect.y += rect.h + 8;
 		rect.w = 170;
-		group->AddElement( new PrefsMenuCheckBox( &rect, LabelFont, "Classic Target Box", "ui_box_style", "0", "1" ) );
+		rect.w = 50;
+		group->AddElement( new Label( &rect, "Style:", LabelFont, Font::ALIGN_MIDDLE_LEFT ) );
+		rect.x += rect.w + 5;
+		rect.w = 115;
+		PrefsMenuDropDown *ui_box_style = new PrefsMenuDropDown( &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, 0, "ui_box_style" );
+		ui_box_style->InvertMouseWheel = false;
+		ui_box_style->AddItem( "0", "Classic Rect" );
+		ui_box_style->AddItem( "1", "Modern" );
+		ui_box_style->AddItem( "2", "Squared" );
+		ui_box_style->Update();
+		group->AddElement( ui_box_style );
 		
+		rect.x = 10;
 		rect.y += rect.h + 8;
 		rect.w = 175;
 		group->AddElement( new PrefsMenuCheckBox( &rect, LabelFont, "Classic Target Info", "ui_classic" ) );
 		
 		rect.y += rect.h + 8;
+		rect.w = 170;
+		PrefsMenuCheckBox *ui_ship_rotate = new PrefsMenuCheckBox( &rect, LabelFont, "Rotate Lobby Ship", "ui_ship_rotate", "20", "0" );
+		group->AddElement( ui_ship_rotate );
+		if( Raptor::Game->Cfg.SettingAsDouble("ui_ship_rotate") )
+		{
+			ui_ship_rotate->Checked = true;
+			ui_ship_rotate->Image.BecomeInstance( ui_ship_rotate->ImageNormalChecked );  // FIXME: This should probably be moved to RaptorEngine.
+		}
+		
 		rect.y += rect.h + 8;
 		rect.w = 155;
 		group->AddElement( new PrefsMenuCheckBox( &rect, LabelFont, "Show Framerate", "showfps" ) );
 		
-		rect.x = 10;
 		rect.y += rect.h + 8;
 		rect.w = 150;
 		group->AddElement( new PrefsMenuCheckBox( &rect, LabelFont, "Cinematic Mode", "cinematic" ) );
@@ -1413,6 +1432,8 @@ void PrefsMenu::UpdateContents( void )
 		
 		rect.y += rect.h + 10;
 		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::CHAT ], ControlFont, BindFont ) );
+		rect.y += rect.h + 3;
+		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::CHAT_TEAM ], ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
 		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::VOICE_TEAM ], ControlFont, BindFont ) );
 		rect.y += rect.h + 3;

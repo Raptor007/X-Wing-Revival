@@ -6,9 +6,11 @@
 class LobbyMenu;
 class LobbyMenuFlyButton;
 class LobbyMenuLeaveButton;
+class LobbyMenuPrefsButton;
 class LobbyMenuPlayerTextBox;
 class LobbyMenuPlayerDropDown;
 class LobbyMenuShipDropDown;
+class LobbyMenuShipView;
 class LobbyMenuConfiguration;
 class LobbyMenuConfigChangeButton;
 
@@ -24,6 +26,7 @@ class LobbyMenuConfigChangeButton;
 #include "ListBox.h"
 #include "TextBox.h"
 #include "DropDown.h"
+#include "Model.h"
 
 
 class LobbyMenu : public Layer
@@ -33,11 +36,13 @@ public:
 	Font *TitleFont;
 	LobbyMenuFlyButton *FlyButton;
 	LobbyMenuLeaveButton *LeaveButton;
+	LobbyMenuPrefsButton *PrefsButton;
 	LobbyMenuPlayerTextBox *PlayerName;
 	LobbyMenuPlayerDropDown *ShipDropDown;
 	LobbyMenuPlayerDropDown *GroupDropDown;
 	ListBox *PlayerList, *MessageList;
 	TextBox *MessageInput;
+	LobbyMenuShipView *ShipView;
 	std::map<std::string,LobbyMenuConfiguration*> Configs;
 	std::vector<LobbyMenuConfiguration*> ConfigOrder;
 	
@@ -73,6 +78,15 @@ public:
 };
 
 
+class LobbyMenuPrefsButton : public LabelledButton
+{
+public:
+	LobbyMenuPrefsButton( std::string title = "Preferences" );
+	virtual ~LobbyMenuPrefsButton();
+	void Clicked( Uint8 button = SDL_BUTTON_LEFT );
+};
+
+
 class LobbyMenuPlayerTextBox : public TextBox
 {
 public:
@@ -102,6 +116,21 @@ public:
 	virtual ~LobbyMenuShipDropDown();
 	void Update( void );
 	void Clicked( Uint8 button = SDL_BUTTON_LEFT );
+};
+
+
+class LobbyMenuShipView : public Layer
+{
+public:
+	Model Shape;
+	double Rotation;
+	std::string CurrentShip;
+	uint8_t CurrentGroup;
+	
+	LobbyMenuShipView( SDL_Rect *rect = NULL );
+	virtual ~LobbyMenuShipView();
+	void Update( void );
+	void Draw( void );
 };
 
 

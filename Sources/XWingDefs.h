@@ -90,6 +90,7 @@ namespace XWing
 			TEAM_RACE = 'Kesl',
 			FFA_RACE = 'Race',
 			BATTLE_OF_YAVIN = 'Yavn',
+			BATTLE_OF_ENDOR = 'Endr',
 			CAPITAL_SHIP_HUNT = 'Hunt',
 			FLEET_BATTLE = 'Flet'
 		};
@@ -195,8 +196,9 @@ namespace XWing
 			VIEW_CYCLE,
 			VIEW_INSTRUMENTS,
 			CHAT,
-			VOICE_TEAM,
+			CHAT_TEAM,
 			VOICE_ALL,
+			VOICE_TEAM,
 			MENU,
 			PREFS,
 			PAUSE,

@@ -17,6 +17,7 @@ rebel_wave_dist 7000
 empire_wave_dist 5000
 player_spawn 4000 0 -300 -1 0 0
 asteroids 8
+bg nebula2
 
 at 0:03
 alert r6_fun.wav Here's where the fun begins...
