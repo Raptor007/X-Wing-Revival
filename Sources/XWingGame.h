@@ -56,6 +56,7 @@ public:
 	
 	void Update( double dt );
 	bool HandleEvent( SDL_Event *event );
+	bool ControlPressed( uint8_t control );
 	bool HandleCommand( std::string cmd, std::vector<std::string> *params = NULL );
 	bool ProcessPacket( Packet *packet );
 	void MessageReceived( std::string text, uint32_t type = TextConsole::MSG_NORMAL );

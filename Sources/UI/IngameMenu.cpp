@@ -61,11 +61,22 @@ IngameMenu::IngameMenu( void )
 	AddElement( new IngameMenuLeaveButton( &button_rect, ButtonFont ));
 	
 	UpdateRects();
+	
+	XWingGame *game = (XWingGame*) Raptor::Game;
+	Paused = (game->State >= XWing::State::FLYING)
+		&& (game->Data.TimeScale == 1.)
+		&& (game->Data.Players.size() == 1)
+		&& game->Cfg.SettingAsBool("ui_pause",true)
+		&& Raptor::Server->IsRunning()
+		&& game->ControlPressed( game->Controls[ XWing::Control::PAUSE ] );
 }
 
 
 IngameMenu::~IngameMenu()
 {
+	XWingGame *game = (XWingGame*) Raptor::Game;
+	if( Paused && (game->State >= XWing::State::FLYING) && (game->Data.TimeScale < 0.0000011) )
+		game->ControlPressed( game->Controls[ XWing::Control::PAUSE ] );  // Unpause
 }
 
 
@@ -192,10 +203,14 @@ void IngameMenuPrefsButton::Clicked( Uint8 button )
 		return;
 	
 	// Close the ingame menu.
-	Container->Remove();
+	IngameMenu *ingame_menu = (IngameMenu*) Container;
+	ingame_menu->Remove();
 	
-	// Open the prefs.
-	Raptor::Game->Layers.Add( new PrefsMenu() );
+	// Open the prefs and give it control of automatic unpause.
+	PrefsMenu *prefs_menu = new PrefsMenu();
+	Raptor::Game->Layers.Add( prefs_menu );
+	prefs_menu->Paused = ingame_menu->Paused;
+	ingame_menu->Paused = false;
 }
 
 

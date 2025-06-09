@@ -5,6 +5,10 @@ precision highp float;
 
 // Shader variables.
 
+#ifndef VERSION
+#define VERSION 110
+#endif
+
 #ifndef LIGHT_QUALITY
 #define LIGHT_QUALITY 4
 #endif
@@ -166,13 +170,20 @@ float point_light_specular( vec3 normal, vec3 light_vec, vec3 vec_to_cam, float 
 
 #if BLASTPOINTS > 0
 
+uniform vec3 BlastPoint[ BLASTPOINTS ];
+
 #if (BLASTPOINT_QUALITY >= 1) && (LIGHT_QUALITY < 2)
 // Provide the fragment shader with the data it needs to operate per-pixel.
 varying vec3 WorldPos;
 #endif
 
-#if BLASTPOINT_QUALITY <= 0
-uniform vec3 BlastPoint[ BLASTPOINTS ];
+#if BLASTPOINT_QUALITY >= 1
+#if VERSION >= 130
+flat out vec3 WorldBlastPoint[ BLASTPOINTS ];
+#else
+varying vec3 WorldBlastPoint[ BLASTPOINTS ];
+#endif
+#else
 uniform float BlastRadius[ BLASTPOINTS ];
 varying float BlastDarken;
 #endif
@@ -195,6 +206,8 @@ void main( void )
 				// Get the position of each vertex to interpolate in the fragment shader.
 				WorldPos = world_vertex.xyz;
 			#endif
+			for( int i = 0; i < BLASTPOINTS; i ++ )
+				WorldBlastPoint[ i ] = vec3( Pos.x + dot(BlastPoint[ i ],XVec), Pos.y + dot(BlastPoint[ i ],YVec), Pos.z + dot(BlastPoint[ i ],ZVec) );
 		#else
 			// Low quality blastpoint is done per vertex.
 			BlastDarken = 1.0;
@@ -202,7 +215,8 @@ void main( void )
 			float blast_radius = 0.0;
 			for( int i = 0; i < BLASTPOINTS; i ++ )
 			{
-				float dist = length( BlastPoint[ i ] - world_vertex.xyz );
+				vec3 world_blast_point = vec3( Pos.x + dot(BlastPoint[ i ],XVec), Pos.y + dot(BlastPoint[ i ],YVec), Pos.z + dot(BlastPoint[ i ],ZVec) );
+				float dist = length( world_blast_point - world_vertex.xyz );
 				float dark = dist / max( BlastRadius[ i ], dist );
 				#if BLASTPOINT_QUALITY >= 0
 					BlastDarken = min( BlastDarken * pow( dark, 0.375 ), dark );

@@ -88,7 +88,7 @@ wait 2
 alert e1_goodwork.wav Good work.
 
 on victory if impressive true
-wait 3
+wait 4
 alert impressive.wav Impressive.
 
 on defeat

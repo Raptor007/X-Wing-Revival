@@ -352,10 +352,7 @@ void RenderLayer::SetBlastPoints( const Pos3D *pos, const Pos3D *offset, int bla
 		std::string index = std::string("[") + Num::ToString( i ) + std::string("]");
 		if( i < (int) bp_vec->size() )
 		{
-			Pos3D bp_pos = bp_vec->at( i ).Worldspace( pos );
-			if( offset )
-				bp_pos -= *offset;
-			bp_vec->at( i ).Lifetime.SetTimeScale( time_scale );
+			Vec3D bp_pos = bp_vec->at( i );  // NOTE: In v0.5.2+ the vertex shader translates these to worldspace.
 			double radius = bp_vec->at( i ).Radius * std::min<double>( 1., bp_vec->at( i ).Lifetime.Progress() );
 			Raptor::Game->ShaderMgr.Set3f( (std::string("BlastPoint")  + index).c_str(), bp_pos.X, bp_pos.Y, bp_pos.Z );
 			Raptor::Game->ShaderMgr.Set1f( (std::string("BlastRadius") + index).c_str(), radius );
@@ -603,6 +600,7 @@ void RenderLayer::Draw( void )
 		
 		uint8_t best_score = 0x00;
 		double best_dist = FLT_MAX;
+		bool early_game = (game->Data.GameTime.ElapsedSeconds() < 10.);
 		
 		for( std::list<Ship*>::iterator ship_iter = ships.begin(); ship_iter != ships.end(); ship_iter ++ )
 		{
@@ -630,13 +628,20 @@ void RenderLayer::Draw( void )
 			if( (*ship_iter)->Owner() && ((*ship_iter)->Health > 0.) )
 				ship_score |= 0x40;
 			
-			// Prefer non-capital ship.
+			// Prefer non-capital ships, especially fighters at game start.
 			if( ((*ship_iter)->Category() != ShipClass::CATEGORY_CAPITAL) && ((*ship_iter)->Category() != ShipClass::CATEGORY_TRANSPORT) )
-				ship_score |= 0x20;
+			{
+				if( early_game && ((*ship_iter)->Category() == ShipClass::CATEGORY_FIGHTER) )
+					ship_score |= 0x30;
+				else if( early_game && ((*ship_iter)->Category() == ShipClass::CATEGORY_GUNBOAT) )
+					ship_score |= 0x20;
+				else
+					ship_score |= 0x10;
+			}
 			
 			// Prefer live ships.
 			if( (*ship_iter)->Health > 0. )
-				ship_score |= 0x10;
+				ship_score |= 0x08;
 			
 			// Prefer ships in our flight group.
 			if( (*ship_iter)->Team == player_team )
@@ -2499,9 +2504,10 @@ void RenderLayer::Draw( void )
 					camera_pos.FixVectors();
 				}
 			}
+			
+			camera_pos.Yaw( game->LookYaw );
+			camera_pos.Pitch( game->LookPitch );
 			game->Cam.Copy( &camera_pos );
-			game->Cam.Yaw( game->LookYaw );
-			game->Cam.Pitch( game->LookPitch );
 			game->Gfx.Setup3D( &(game->Cam) );
 			if( use_shaders )
 				game->ShaderMgr.Set3f( "CamPos", game->Cam.X, game->Cam.Y, game->Cam.Z );
@@ -2552,6 +2558,8 @@ void RenderLayer::Draw( void )
 		double blast_fighter = game->Cfg.SettingAsDouble( "g_blast_fighter", 10000. );
 		double blast_turret = game->Cfg.SettingAsDouble( "g_blast_turret", 10000. );
 		double blast_asteroid = game->Cfg.SettingAsDouble( "g_blast_asteroid", 4000. );
+		bool engine_glow = game->Cfg.SettingAsBool( "g_engine_glow", true );
+		float engine_glow_cockpit = game->Cfg.SettingAsDouble( "g_engine_glow_cockpit", 0.5 );
 		
 		std::multimap<double,Renderable> sorted_renderables;
 		std::map< Shader*, std::set<Asteroid*> > asteroid_shaders;
@@ -2597,11 +2605,11 @@ void RenderLayer::Draw( void )
 				{
 					if( view_str != "crosshair" )
 					{
-						// But do draw our engine glow.
+						// But do draw our engine glow (later).
 						double ship_throttle = (ship->JumpProgress < 1.) ? 0. : ship->GetThrottle();
-						if( (ship_throttle >= 0.75) && ship->Engines.size() && game->Cfg.SettingAsBool("g_engine_glow",true) )
+						if( (ship_throttle >= 0.75) && ship->Engines.size() && engine_glow )
 						{
-							float engine_alpha = (ship_throttle - 0.75f) * 4.f * ship->EngineFlicker * (float) game->Cfg.SettingAsDouble("g_engine_glow_cockpit",0.5);
+							float engine_alpha = (ship_throttle - 0.75f) * 4.f * ship->EngineFlicker * engine_glow_cockpit;
 							std::map<ShipEngine*,Pos3D> engines = ship->EnginePositions();
 							for( std::map<ShipEngine*,Pos3D>::const_iterator engine_iter = engines.begin(); engine_iter != engines.end(); engine_iter ++ )
 							{
@@ -2628,7 +2636,7 @@ void RenderLayer::Draw( void )
 				if( ship->Health > 0. )
 				{
 					double ship_throttle = ship->GetThrottle();
-					if( (ship_throttle >= 0.75) && ship->Engines.size() && game->Cfg.SettingAsBool("g_engine_glow",true) )
+					if( (ship_throttle >= 0.75) && ship->Engines.size() && engine_glow )
 					{
 						float engine_alpha = (ship_throttle - 0.75f) * 4.f * ship->EngineFlicker;
 						double engine_scale = std::min<double>( 2., ship_throttle );
@@ -2867,6 +2875,33 @@ void RenderLayer::Draw( void )
 			Vec3D up    = game->Cam.Up    * h / 2.;  // FIXME: These names are confusing in the context of ui_box_style 1.
 			Vec3D right = game->Cam.Right * w / 2.;  //
 			
+			std::deque<Pos3D> positions;
+			Pos3D target_center = target_obj;
+			if( target )
+			{
+				// Adjust position of targeting box to better fit nearby capital ships.
+				Vec3D vec_from_target = game->Cam - *target;
+				std::map<std::string,ModelObject*>::const_iterator object_iter = target->Shape.Objects.find("Hull");
+				if( (object_iter != target->Shape.Objects.end()) && (object_iter->second->Points.size()) )
+				{
+					Vec3D point = object_iter->second->Points.front();
+					vec_from_target -= target->Fwd   * point.X;
+					vec_from_target -= target->Up    * point.Y;
+					vec_from_target -= target->Right * point.Z;
+				}
+				double target_length = target->Shape.GetLength();
+				double lengths_away = std::max<double>( 0.125, vec_from_target.Length() ) / target_length;
+				double fwd_move = target->Fwd.Dot( vec_from_target.Unit() ) * std::min<double>( 0.5, game->Cfg.SettingAsDouble( "ui_box_shift", style ? 0.25 : 0. ) / (lengths_away * lengths_away) );
+				if( lengths_away < 0.75 )
+				{
+					// Adjust if we're close to a capital ship to keep the box ahead of us.
+					double close_factor = std::min<double>( 1., (0.75 - lengths_away) * 4. );
+					fwd_move = fwd_move * (1. - close_factor) + (0.5 * game->Cam.Fwd.Dot(&(target->Fwd))) * close_factor;
+				}
+				target_center += target->Fwd * fwd_move * target_length;
+			}
+			positions.push_back( target_center );
+			
 			if( target )
 			{
 				max_dist = target->Shape.GetTriagonal() * 50.;
@@ -2875,7 +2910,7 @@ void RenderLayer::Draw( void )
 					l = target->Shape.GetLength();
 					h = target->Shape.GetHeight();
 					w = target->Shape.GetWidth();
-					Vec3D plane_normal = (style < 0) ? game->Cam.Fwd : (*target - game->Cam).Unit();
+					Vec3D plane_normal = (style < 0) ? game->Cam.Fwd : (positions.front() - game->Cam).Unit();
 					style = abs( style );
 					double fwd_out   = fabs(target->Fwd.DotPlane(   plane_normal )) * l * 0.6;
 					double up_out    = fabs(target->Up.DotPlane(    plane_normal )) * h * 0.6;
@@ -2943,20 +2978,6 @@ void RenderLayer::Draw( void )
 				red = blue = 0.f;
 			
 			float thickness = game->Cfg.SettingAsDouble( "ui_box_line", 1.5f, 1.5f );
-			
-			std::deque<Pos3D> positions;
-			Pos3D target_center = target_obj;
-			if( target && style )
-			{
-				// Adjust position of Modern and Squared targeting box to better fit nearby capital ships.
-				// FIXME: Needs a special case for players near the target center to put the box ahead of them (far end of target).
-				Vec3D vec_from_target = game->Cam - *target;
-				double target_length = target->Shape.GetLength();
-				double lengths_away = std::max<double>( 0.125, vec_from_target.Length() ) / target_length;
-				double fwd_move = target->Fwd.Dot( vec_from_target.Unit() ) * target_length * std::min<double>( 0.5, game->Cfg.SettingAsDouble( "ui_box_shift", 0.25 ) / (lengths_away * lengths_away) );
-				target_center += target->Fwd * fwd_move;
-			}
-			positions.push_back( target_center );
 			
 			// Draw target box around selected subsystem.
 			if( target && observed_ship && observed_ship->TargetSubsystem )
@@ -4226,7 +4247,9 @@ bool RenderLayer::HandleEvent( SDL_Event *event )
 	{
 		Raptor::Game->Mouse.ShowCursor = true;
 		game->ReadMouse = false;
-		Raptor::Game->Layers.Add( new IngameMenu() );
+		IngameMenu *ingame_menu = new IngameMenu();
+		Raptor::Game->Layers.Add( ingame_menu );
+		ingame_menu->Paused = (Raptor::Game->Data.TimeScale < 0.0000011) && Raptor::Server->IsRunning() && Raptor::Game->Cfg.SettingAsBool("ui_pause",true);
 		
 		return true;
 	}

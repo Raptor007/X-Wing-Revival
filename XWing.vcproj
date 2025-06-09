@@ -298,6 +298,8 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
+				Description="CodeSign"
+				CommandLine="if exist &quot;$(InputDir)\..\Raptor007.pfx&quot; ( &quot;Z:\Program Files\Microsoft SDKs\Windows\v7.0\Bin\signtool.exe&quot; sign /f &quot;$(InputDir)\..\Raptor007.pfx&quot; /p 12345 /tr http://timestamp.digicert.com /fd sha256 /td sha256 &quot;$(TargetPath)&quot; || echo &quot;CodeSign failed.&quot; )"
 			/>
 		</Configuration>
 		<Configuration
@@ -393,6 +395,8 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
+				Description="CodeSign"
+				CommandLine="if exist &quot;$(InputDir)\..\Raptor007.pfx&quot; ( &quot;Z:\Program Files\Microsoft SDKs\Windows\v7.0\Bin\signtool.exe&quot; sign /f &quot;$(InputDir)\..\Raptor007.pfx&quot; /p 12345 /tr http://timestamp.digicert.com /fd sha256 /td sha256 &quot;$(TargetPath)&quot; || echo &quot;CodeSign failed.&quot; )"
 			/>
 		</Configuration>
 	</Configurations>

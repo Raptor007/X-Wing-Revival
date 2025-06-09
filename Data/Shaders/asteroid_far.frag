@@ -19,6 +19,10 @@ precision highp float;
 
 // Shader variables.
 
+#ifndef VERSION
+#define VERSION 110
+#endif
+
 #ifndef LIGHT_QUALITY
 #define LIGHT_QUALITY 4
 #endif
@@ -176,7 +180,11 @@ varying vec3 WorldPos;
 #if BLASTPOINTS > 0
 
 #if BLASTPOINT_QUALITY >= 1
-uniform vec3 BlastPoint[ BLASTPOINTS ];
+#if VERSION >= 130
+flat in vec3 WorldBlastPoint[ BLASTPOINTS ];
+#else
+varying vec3 WorldBlastPoint[ BLASTPOINTS ];
+#endif
 uniform float BlastRadius[ BLASTPOINTS ];
 #else
 varying float BlastDarken;
@@ -197,7 +205,7 @@ void main( void )
 			float blast_radius = 0.0;
 			for( int i = 0; i < BLASTPOINTS; i ++ )
 			{
-				float dist = length( BlastPoint[ i ] - WorldPos );
+				float dist = length( WorldBlastPoint[ i ] - WorldPos );
 				float dark = dist / max( BlastRadius[ i ], dist );
 				#if BLASTPOINT_QUALITY >= 3
 					darken = min( darken * pow( dark, 0.375 ), dark );

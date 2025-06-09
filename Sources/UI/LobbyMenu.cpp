@@ -15,6 +15,8 @@
 
 LobbyMenu::LobbyMenu( void )
 {
+	Name = "LobbyMenu";
+	
 	Rect.x = 0;
 	Rect.y = 0;
 	Rect.w = Raptor::Game->Gfx.W;
@@ -461,11 +463,12 @@ void LobbyMenu::UpdateMessageList( void )
 		MessageList->Clear();
 		
 		Color chat_color( 1.f, 1.f, 0.f, 1.f );
+		Color team_color( 0.f, 1.f, 0.f, 1.f );
 		
 		for( size_t i = 0; i < msg_count; i ++ )
 		{
 			uint32_t msg_type = Raptor::Game->Msg.Messages.at(i)->Type;
-			MessageList->AddItem( Num::ToString((int)i), Raptor::Game->Msg.Messages.at(i)->Text, (msg_type == TextConsole::MSG_CHAT) ? &chat_color : NULL );
+			MessageList->AddItem( Num::ToString((int)i), Raptor::Game->Msg.Messages.at(i)->Text, (msg_type == TextConsole::MSG_CHAT) ? &chat_color : ((msg_type == TextConsole::MSG_TEAM) ? &team_color : NULL) );
 		}
 		
 		if( ! prev_selected.empty() )
@@ -1713,6 +1716,14 @@ void LobbyMenuShipView::Draw( void )
 		Raptor::Game->ShaderMgr.Set3f( "DirectionalLight3Dir", dir.X, dir.Y, dir.Z );
 		Raptor::Game->ShaderMgr.Set3f( "DirectionalLight3Color", 0.75, 0.75, 0.75 );
 		Raptor::Game->ShaderMgr.Set1f( "DirectionalLight3WrapAround", 0.125 );
+		
+		int blastpoints = ((XWingGame*)( Raptor::Game ))->BlastPoints;
+		for( int i = 0; i < blastpoints; i ++ )
+		{
+			std::string index = std::string("[") + Num::ToString( i ) + std::string("]");
+			Raptor::Game->ShaderMgr.Set3f( (std::string("BlastPoint")  + index).c_str(), 0., 0., 0. );
+			Raptor::Game->ShaderMgr.Set1f( (std::string("BlastRadius") + index).c_str(), 0. );
+		}
 	}
 	
 	Shape.DrawAt( &pos );

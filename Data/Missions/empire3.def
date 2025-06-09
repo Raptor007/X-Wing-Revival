@@ -98,7 +98,7 @@ wait 1
 alert e3_whooey.wav Whoooee!
 
 on victory
-next_mission empire1
+next_mission empire4
 
 on victory if ( int_lost false ) and ( impressive true )
 wait 3

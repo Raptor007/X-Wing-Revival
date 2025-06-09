@@ -98,6 +98,7 @@ std::map<std::string,std::string> XWingServer::DefaultProperties( void ) const
 	defaults["bg"] = "stars";
 	defaults["allow_ship_change"] = "true";
 	defaults["allow_team_change"] = "false";
+	defaults["allow_pause"] = "false";
 	defaults["permissions"] = "all";
 	defaults["skip_countdown"] = "false";
 	defaults["time_scale"] = "1";
@@ -6308,6 +6309,11 @@ void XWingServer::BeginFlying( uint16_t player_id, bool respawn )
 		std::string rebel_frigate_squadron  = (rebel_frigate_class  && rebel_frigate_class->Squadron.length())  ? rebel_frigate_class->Squadron  : "Rebel";
 		std::string empire_frigate_squadron = (empire_frigate_class && empire_frigate_class->Squadron.length()) ? empire_frigate_class->Squadron : "Imperial";
 		
+		std::vector<std::string> rebel_cruiser_names = Str::SplitToVector( Data.PropertyAsString("rebel_cruiser_names"),   "," );
+		std::vector<std::string> empire_cruiser_names = Str::SplitToVector( Data.PropertyAsString("empire_cruiser_names"), "," );
+		std::vector<std::string> rebel_frigate_names = Str::SplitToVector( Data.PropertyAsString("rebel_frigate_names"),   "," );
+		std::vector<std::string> empire_frigate_names = Str::SplitToVector( Data.PropertyAsString("empire_frigate_names"), "," );
+		
 		int ai_frigates = std::max<int>( rebel_frigates, empire_frigates );
 		for( int frigate = 0; frigate < ai_frigates; frigate ++ )
 		{
@@ -6320,12 +6326,14 @@ void XWingServer::BeginFlying( uint16_t player_id, bool respawn )
 					continue;
 				const ShipClass *ship_class = rebel ? rebel_frigate_class : empire_frigate_class;
 				std::string squadron = rebel ? rebel_frigate_squadron : empire_frigate_squadron;
+				std::vector<std::string> &names = rebel ? rebel_frigate_names : empire_frigate_names;
+				bool named = (frigate < (int) names.size()) && ! names.at( frigate ).empty();
 				uint8_t team = (rebel ? XWing::Team::REBEL : XWing::Team::EMPIRE);
 				Ship *ship = SpawnShip( ship_class, team );
 				ship->Group = 255;
 				ship->PlayerID = 0;
 				ship->CanRespawn = Data.PropertyAsBool( "ai_respawn", Respawn );
-				ship->Name = squadron + std::string(" ") + Num::ToString( (int) Squadrons[ squadron ].size() + 1 );
+				ship->Name = named ? names.at( frigate ) : squadron + std::string(" ") + Num::ToString( (int) Squadrons[ squadron ].size() + 1 );
 				ship->SetFwdVec( (rebel ? -1. : 1.), 0., 0. );
 				ship->SetUpVec( 0., 0., 1. );
 				for( int retry = 0; retry < 10; retry ++ )
@@ -6366,7 +6374,8 @@ void XWingServer::BeginFlying( uint16_t player_id, bool respawn )
 					}
 				}
 				ship->ResetTurrets();
-				Squadrons[ squadron ].insert( ship->ID );
+				if( ! named )
+					Squadrons[ squadron ].insert( ship->ID );
 			}
 		}
 		
@@ -6383,11 +6392,13 @@ void XWingServer::BeginFlying( uint16_t player_id, bool respawn )
 				const ShipClass *ship_class = rebel ? rebel_cruiser_class : empire_cruiser_class;
 				std::string squadron = rebel ? rebel_cruiser_squadron : empire_cruiser_squadron;
 				uint8_t team = (rebel ? XWing::Team::REBEL : XWing::Team::EMPIRE);
+				std::vector<std::string> &names = rebel ? rebel_cruiser_names : empire_cruiser_names;
+				bool named = (cruiser < (int) names.size()) && ! names.at( cruiser ).empty();
 				Ship *ship = SpawnShip( ship_class, team );
 				ship->Group = 255;
 				ship->PlayerID = 0;
 				ship->CanRespawn = Data.PropertyAsBool( "ai_respawn", Respawn );
-				ship->Name = squadron + std::string(" ") + Num::ToString( (int) Squadrons[ squadron ].size() + 1 );
+				ship->Name = named ? names.at( cruiser ) : squadron + std::string(" ") + Num::ToString( (int) Squadrons[ squadron ].size() + 1 );
 				ship->SetFwdVec( (rebel ? -1. : 1.), 0., 0. );
 				ship->SetUpVec( 0., 0., 1. );
 				for( int retry = 0; retry < 10; retry ++ )
@@ -6428,7 +6439,8 @@ void XWingServer::BeginFlying( uint16_t player_id, bool respawn )
 					}
 				}
 				ship->ResetTurrets();
-				Squadrons[ squadron ].insert( ship->ID );
+				if( ! named )
+					Squadrons[ squadron ].insert( ship->ID );
 			}
 		}
 		

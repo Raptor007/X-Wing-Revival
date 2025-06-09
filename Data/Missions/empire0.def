@@ -26,8 +26,6 @@ on victory
 next_mission empire1
 wait 2
 alert e0_goodwork.wav Good work.
-wait 3.5
-alert e0_work.wav We've got work to do.
 
 on defeat
 wait 3

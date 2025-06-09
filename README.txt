@@ -1,32 +1,35 @@
-----------------------------------------
-|            X-Wing Revival            |
-|       0.5.1 Alpha (2025-05-15)       |
-|     by Raptor007 (Blair Sherman)     |
-| http://raptor007.com/x-wing-revival/ |
-----------------------------------------
+-------------------------------------------
+|              X-Wing Revival             |
+|         0.5.2 Alpha (2025-06-09)        |
+|  https://raptor007.com/x-wing-revival/  |
+|    Code by Raptor007 (Blair Sherman)    |
+|       Ship models by XWA Upgrade:       |
+|         https://xwaupgrade.com/         |
+-------------------------------------------
 
 
 Welcome to X-Wing Revival!  I started making this because I wanted to have an X-Wing LAN
-party in 2011, and found that X-Wing Alliance (released in 2002) didn't run correctly on
-modern PCs.  We've come a long way since then!  The goal is still to recreate the feeling
-of a classic LucasArts X-Wing game, but X-Wing Revival has developed into its own unique
-take on the genre, with a focus on fast dogfighting, epic battles, multiplayer balance,
-and staying true to classic Star Wars ship designs.  (TIE Fighters don't have missiles!)
+party in 2011, and found that X-Wing Alliance (released in 1999) didn't run correctly on
+modern PCs.  We've come a long way since then!  The goal is still to evoke the feeling of
+classic LucasArts X-Wing games, but X-Wing Revival has developed into its own unique take
+on the genre, treading the line between simulation and arcade.  Fighter speeds and weapon
+damage are a bit higher, energy weapons never run out, hovering in a docking bay repairs
+and rearms, and there's no power transfer system (yet) so shields recharge fast without
+sacrificing engine power.  Other than that, XWR tries to feel similar to classic X-Wing.
 
 Basically: a 90's combat flight sim with early 2000's graphics and modern internet play.
-
-If you're looking for the official X-Wing title of 2020, check out Star Wars Squadrons:
-  https://store.steampowered.com/app/1222730/STAR_WARS_Squadrons/
 
 
 == CREDITS AND THANKS ==
 
-Ship models were shamelessly pilfered from X-Wing Alliance asset files, including some
-beautiful high-res models from the X-Wing Alliance Upgrade Project.
+Most of these ship models are from the X-Wing Alliance Upgrade Craft Pack circa 2012.
+XWAU has continued to improve upon X-Wing Alliance models, effects, and even patches
+to the original game code for bug fixes and new features.  If what you're after is a
+proper clone of X-Wing Alliance with modern graphics and VR support, check them out!
   https://xwaupgrade.com/
 
 The campaign uses voice clips from the Star Wars trilogy, Dark Forces, Indiana Jones,
-Rainbow Six, Rogue Spear, Halo, and the CollegeHumor sketch "Stormtroopers' 9/11".
+Rainbow Six, Rogue Spear, Halo, Starcraft, and CollegeHumor "Stormtroopers' 9/11".
 
 Special thanks to NoJoe, Peter, and Sawyer for all the test flights, and to The Rebel
 Alliance for helping me bring balance to the forces.
@@ -89,6 +92,10 @@ My OS warns about or won't allow a downloaded or unsigned application to run.
   Apple and Microsoft have made it disappointingly onerous to distribute software for
   their platforms without paying them for code-signing.  Fortunately for those of us
   who still value running whatever we want on our own computers, there are workarounds.
+
+  In the CodeSign folder, double-click Raptor007.cer, and click "Install Certificate..."
+  to allow your system to trust my self-signed code.  It should work whether you install
+  it for the user or machine, your choice.  If that doesn't allow it to run, try these:
 
   Windows: In the SmartScreen popup, click "More Info" at bottom, then "Run Anyway".
     The permanent fix is in Windows Security, "App & Browser Control", "Reputation-based
@@ -201,7 +208,7 @@ MacOS says the application "X-Wing Revival.app" cannot be opened.
 
   Classic Target Info: Vague target health instead of hull and shield percent.
 
-  Rotate Lobby Ship: Controls if the ship model spins or just faces forward.
+  Menu Auto-Pause: Automatically pause single-player games when using menus.
 
   Show Framerate: Show graphics FPS (and physics if hosting) in bottom right.
 
@@ -228,6 +235,8 @@ MacOS says the application "X-Wing Revival.app" cannot be opened.
   Rate: Send updates to the server at this rate.  Default: 30
 
   Predict: Shots fire immediately instead of waiting for server.  Default: All My Shots
+
+  Screensaver Connect: Allow screensaver mode to discover and spectate LAN games.
 
 
 == AUDIO PREFERENCES ==
@@ -557,6 +566,16 @@ console commands to execute, such as "sv gametype yavin" or "sv rebel_fighter A/
 
 
 == VERSION HISTORY ==
+
+Alpha 0.5.2 (2025-06-09):
+ * Improved attribution of XWA Upgrade for their ship models.
+ * When there are no other players connected, menus pause the game.
+ * Fixed target box out of view when flying near targeted capital ship.
+ * Fixed VR eye positions when using look/glance controls.
+ * Fixed blastpoints not following the pieces of exploding ships.
+ * Fixed color of team chat text in lobby.
+ * Screensaver can now be configured to automatically spectate LAN games.
+ * Code-signed Windows and MacOS binaries with a self-signed certificate.
 
 Alpha 0.5.1 (2025-05-15):
  * Fixed crash when pressing throttle up/down while not flying a ship.

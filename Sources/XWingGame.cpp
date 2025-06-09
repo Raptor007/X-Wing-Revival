@@ -523,6 +523,7 @@ void XWingGame::SetDefaults( void )
 	Cfg.Settings[ "ui_classic" ] = "false";
 	Cfg.Settings[ "ui_ship_preview" ] = "true";
 	Cfg.Settings[ "ui_ship_rotate" ] = "20";
+	Cfg.Settings[ "ui_pause" ] = "true";
 	
 	Cfg.Settings[ "s_volume" ] = "0.2";
 	Cfg.Settings[ "s_effect_volume" ] = "0.5";
@@ -554,6 +555,10 @@ void XWingGame::SetDefaults( void )
 	Cfg.Settings[ "empire_mission" ] = empire_mission;
 	Cfg.Settings[ "rebel_difficulty"  ] = rebel_difficulty;
 	Cfg.Settings[ "empire_difficulty" ] = empire_difficulty;
+	
+	#ifndef __APPLE__
+		Cfg.Settings[ "g_shader_version" ] = "130";  // Allow slightly more efficient worldspace blastpoint translation (flat in/out vs varying).
+	#endif
 	
 	#ifdef APPLE_POWERPC
 		Cfg.Settings[ "g_dynamic_lights" ] = "1";
@@ -2162,11 +2167,20 @@ void XWingGame::Update( double dt )
 
 bool XWingGame::HandleEvent( SDL_Event *event )
 {
-	if( State < XWing::State::FLYING )
-		return RaptorGame::HandleEvent( event );
+	if( State >= XWing::State::FLYING )
+	{
+		uint8_t control = Input.EventBound( event );
+		
+		if( ControlPressed( control ) )
+			return true;
+	}
 	
-	uint8_t control = Input.EventBound( event );
-	
+	return RaptorGame::HandleEvent( event );
+}
+
+
+bool XWingGame::ControlPressed( uint8_t control )
+{
 	bool weapon_next = false;
 	bool firing_mode_next = false;
 	bool shield_shunt = false;
@@ -2267,7 +2281,7 @@ bool XWingGame::HandleEvent( SDL_Event *event )
 	else if( control == Controls[ XWing::Control::PAUSE ] )
 		pause = true;
 	else
-		return RaptorGame::HandleEvent( event );
+		return false;
 	
 	
 	if( change_seat )
@@ -2300,14 +2314,16 @@ bool XWingGame::HandleEvent( SDL_Event *event )
 			info.AddString( "time_scale" );
 			info.AddString( "1" );
 			Raptor::Game->Net.Send( &info );
+			Data.TimeScale = 1.;  // Resume immediately.  This is necessary for ui_pause hand-off between menus.
 		}
-		else if( Raptor::Server->IsRunning() )
+		else if( Raptor::Server->IsRunning() || Data.PropertyAsBool("allow_pause") )
 		{
 			Packet info = Packet( Raptor::Packet::INFO );
 			info.AddUShort( 1 );
 			info.AddString( "time_scale" );
 			info.AddString( "0.000001" );
 			Raptor::Game->Net.Send( &info );
+			Data.TimeScale = 0.000001;  // Pause immediately.  This is necessary for ui_pause hand-off between menus.
 		}
 		return true;
 	}
@@ -2752,6 +2768,10 @@ bool XWingGame::HandleCommand( std::string cmd, std::vector<std::string> *params
 					Console.Print( "group: None" );
 			}
 		}
+	}
+	else if( cmd == "pause" )
+	{
+		ControlPressed( Controls[ XWing::Control::PAUSE ] );
 	}
 	else if( cmd == "music" )
 	{
@@ -3635,7 +3655,7 @@ void XWingGame::ShowLobby( void )
 			Raptor::Server->Data.Properties["ai_grouped"]            = Cfg.SettingAsString( "screensaver_ai_grouped",      "false"      );
 			Raptor::Server->Data.Properties["spawn"]                 = Cfg.SettingAsString( "screensaver_spawn",           "T/A,YT1300" );
 			Raptor::Server->Data.Properties["rebel_fighter"]         = Cfg.SettingAsString( "screensaver_rebel_fighter",   "X/W"        );
-			Raptor::Server->Data.Properties["rebel_bomber"]          = Cfg.SettingAsString( "screensaver_rebel_bomber",    "Y/W"        );
+			Raptor::Server->Data.Properties["rebel_bomber"]          = Cfg.SettingAsString( "screensaver_rebel_bomber",    "A/W"        );
 			Raptor::Server->Data.Properties["rebel_cruiser"]         = Cfg.SettingAsString( "screensaver_rebel_cruiser",   "CRV"        );
 			Raptor::Server->Data.Properties["rebel_cruisers"]        = Cfg.SettingAsString( "screensaver_rebel_cruisers",  "3"          );
 			Raptor::Server->Data.Properties["rebel_frigate"]         = Cfg.SettingAsString( "screensaver_rebel_frigate",   "FRG"        );
@@ -3652,7 +3672,7 @@ void XWingGame::ShowLobby( void )
 			Raptor::Server->Data.Properties["yavin_rebel_bomber"]    = Cfg.SettingAsString( "screensaver_rebel_bomber",    "Y/W"        );
 			Raptor::Server->Data.Properties["yavin_empire_fighter"]  = Cfg.SettingAsString( "screensaver_empire_fighter",  "T/F"        );
 			Raptor::Server->Data.Properties["defending_team"]        = Cfg.SettingAsString( "screensaver_defending_team",  "rebel"      );
-			Raptor::Server->Data.Properties["asteroids"]             = Cfg.SettingAsString( "screensaver_asteroids",       "32"         );
+			Raptor::Server->Data.Properties["asteroids"]             = Cfg.SettingAsString( "screensaver_asteroids",       "64"         );
 			Raptor::Server->Data.Properties["bg"]                    = Cfg.SettingAsString( "screensaver_bg",              "nebula2"    );
 			Raptor::Server->Data.Properties["time_scale"]            = Cfg.SettingAsString( "screensaver_time_scale",      "1"          );
 			Raptor::Server->Data.Properties["allow_ship_change"]     = "true";
@@ -3663,7 +3683,11 @@ void XWingGame::ShowLobby( void )
 		}
 		
 		SetPlayerProperty( "ship", "Spectator" );
-		SetPlayerProperty( "name", "Screensaver" );
+		
+		std::string player_name = Cfg.SettingAsString( "name", "Screensaver", "Screensaver" );
+		if( ! Str::ContainsInsensitive( player_name, "Screensaver" ) )
+			player_name += std::string(" Screensaver");
+		SetPlayerProperty( "name", player_name );
 		
 		if( Raptor::Server->IsRunning() )
 		{

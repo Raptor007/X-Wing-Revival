@@ -27,6 +27,7 @@ public:
 	Font *TitleFont, *TitleFontBig, *TitleFontSmall;
 	Font *VersionFont;
 	Font *ButtonFont;
+	bool Paused;
 	
 	IngameMenu( void );
 	virtual ~IngameMenu();

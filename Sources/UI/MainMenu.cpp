@@ -9,6 +9,7 @@
 #include "PrefsMenu.h"
 #include "CampaignMenu.h"
 #include "TextFileViewer.h"
+#include "File.h"
 #include <algorithm>
 
 
@@ -42,6 +43,8 @@ MainMenu::MainMenu( void )
 	AddElement( XButton = new MainMenuOnlineButton( &button_rect, ButtonFont ));
 	AddElement( AButton = new MainMenuCustomButton( &button_rect, ButtonFont ));
 	AddElement( new MainMenuPrefsButton( &button_rect, ButtonFont ));
+	if( File::Exists("README.txt") )
+		AddElement( new MainMenuHelpButton( &button_rect, ButtonFont ));
 	AddElement( new MainMenuQuitButton( &button_rect, ButtonFont ));
 	YButton = NULL;
 	
@@ -70,18 +73,22 @@ void MainMenu::UpdateRects( void )
 		Rect.h = 480;
 	}
 	
+	int spacing = 22;
 	SDL_Rect title_size = {0,0,0,0};
 	TitleFontBig->TextSize( Raptor::Game->Game, &title_size );
 	if( (title_size.w <= Rect.w) && (title_size.h <= (Rect.h / 2)) )
 		TitleFont = TitleFontBig;
 	else
+	{
 		TitleFont = TitleFontSmall;
+		spacing = 10;
+	}
 	
 	int top = TitleFont->GetHeight() * 3 / 2;
 	int bottom = Rect.h - (VersionFont->GetHeight() + 10);
 	int mid = ((bottom - top) / 2) + top;
 	
-	int height = 22 * (Elements.size() - 1);
+	int height = spacing * (Elements.size() - 1);
 	for( std::list<Layer*>::const_iterator element = Elements.begin(); element != Elements.end(); element ++ )
 		height += (*element)->Rect.h;
 	
@@ -89,7 +96,7 @@ void MainMenu::UpdateRects( void )
 	for( std::list<Layer*>::iterator element = Elements.begin(); element != Elements.end(); element ++ )
 	{
 		(*element)->Rect.y = y;
-		y += (*element)->Rect.h + 22;
+		y += (*element)->Rect.h + spacing;
 	}
 	
 	UpdateCalcRects();
@@ -443,7 +450,7 @@ void MainMenuPrefsButton::Clicked( Uint8 button )
 
 
 MainMenuHelpButton::MainMenuHelpButton( SDL_Rect *rect, Font *button_font, uint8_t align )
-: LabelledButton( rect, button_font, "    Help", align, Raptor::Game->Res.GetAnimation("fade.ani") )
+: LabelledButton( rect, button_font, "    View ReadMe", align, Raptor::Game->Res.GetAnimation("fade.ani") )
 {
 	Red = 0.f;
 	Green = 0.f;
@@ -462,7 +469,7 @@ void MainMenuHelpButton::Clicked( Uint8 button )
 	if( button != SDL_BUTTON_LEFT )
 		return;
 	
-	Raptor::Game->Layers.Add( new TextFileViewer( NULL, "README.txt", Raptor::Game->Res.GetFont( "ProFont.ttf", 12 ), "Help and Info" ) );
+	Raptor::Game->Layers.Add( new TextFileViewer( NULL, "README.txt", Raptor::Game->Res.GetFont( "ProFont.ttf", 12 ), "X-Wing Revival ReadMe" ) );
 }
 
 

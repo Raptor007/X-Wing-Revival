@@ -66,11 +66,22 @@ PrefsMenu::PrefsMenu( void )
 	WatchSetting( "s_mic_device" );
 	if( ! Raptor::Game->Mic.Device )
 		WatchSetting( "s_mic_init" );
+	
+	XWingGame *game = (XWingGame*) Raptor::Game;
+	Paused = (game->State >= XWing::State::FLYING)
+		&& (game->Data.TimeScale == 1.)
+		&& (game->Data.Players.size() == 1)
+		&& game->Cfg.SettingAsBool("ui_pause",true)
+		&& Raptor::Server->IsRunning()
+		&& game->ControlPressed( game->Controls[ XWing::Control::PAUSE ] );
 }
 
 
 PrefsMenu::~PrefsMenu()
 {
+	XWingGame *game = (XWingGame*) Raptor::Game;
+	if( Paused && (game->State >= XWing::State::FLYING) && (game->Data.TimeScale < 0.0000011) )
+		game->ControlPressed( game->Controls[ XWing::Control::PAUSE ] );  // Unpause
 }
 
 
@@ -410,6 +421,9 @@ void PrefsMenu::UpdateContents( void )
 		rect.x = group_rect.w - rect.w - 10;
 		rect.y = effects_dropdown->Rect.y;
 		PrefsMenuCheckBox *g_debris_checkbox = new PrefsMenuCheckBox( &rect, LabelFont, "Debris", "g_debris", "500", "0" );
+		#ifdef APPLE_POWERPC
+			g_debris_checkbox->TrueStr = "200";
+		#endif
 		if( Raptor::Game->Cfg.SettingAsInt("g_debris") )
 		{
 			g_debris_checkbox->Checked = true;
@@ -438,11 +452,19 @@ void PrefsMenu::UpdateContents( void )
 		rect.x = 10;
 		rect.y = 10 + group->TitleFont->GetAscent();
 		rect.w = 90;
-		group->AddElement( new PrefsMenuVRCheckBox( &rect, LabelFont, "VR Mode" ) );
+		PrefsMenuVRCheckBox *vr_enable_checkbox = new PrefsMenuVRCheckBox( &rect, LabelFont, "VR Mode" );
+		group->AddElement( vr_enable_checkbox );
+		#ifdef NO_VR
+			vr_enable_checkbox->Enabled = false;
+		#endif
 		
 		rect.x += rect.w + 5;
 		rect.w = 110;
-		group->AddElement( new PrefsMenuCheckBox( &rect, LabelFont, "Start in VR", "vr_always" ) );
+		PrefsMenuCheckBox *vr_always_checkbox = new PrefsMenuCheckBox( &rect, LabelFont, "Start in VR", "vr_always" );
+		group->AddElement( vr_always_checkbox );
+		#ifdef NO_VR
+			vr_always_checkbox->Enabled = false;
+		#endif
 		
 		rect.x += rect.w + 5;
 		rect.w = 65;
@@ -524,17 +546,26 @@ void PrefsMenu::UpdateContents( void )
 		zerolag_dropdown->Update();
 		group->AddElement( zerolag_dropdown );
 		
+		rect.x = 10;
+		rect.y += rect.h + 8;
+		rect.w = 195;
+		group->AddElement( new PrefsMenuCheckBox( &rect, LabelFont, "Screensaver Connect", "screensaver_connect" ) );
+		
+		rect.x += rect.w + 5;
+		group->AddElement( new PrefsMenuSecretCheckBox( &rect, LabelFont, "Dark Side" ) );
+		
 		group->Rect.h = rect.y + rect.h + 10;
 		
 		// --------------------------------------------------------------------------------------------------------------------
 		// Dark Side
-		
+		/*
 		rect.x = group->Rect.x;
 		rect.y = group->Rect.y + group->Rect.h + 10;
 		rect.w = 100;
 		rect.h = ItemFont ? ItemFont->GetHeight() : 18;
 		PrefsMenuSecretCheckBox *darkside_checkbox = new PrefsMenuSecretCheckBox( &rect, LabelFont, "Dark Side" );
 		AddElement( darkside_checkbox );
+		*/
 		
 		// --------------------------------------------------------------------------------------------------------------------
 		// UI
@@ -626,6 +657,7 @@ void PrefsMenu::UpdateContents( void )
 		rect.w = 175;
 		group->AddElement( new PrefsMenuCheckBox( &rect, LabelFont, "Classic Target Info", "ui_classic" ) );
 		
+		/*
 		rect.y += rect.h + 8;
 		rect.w = 170;
 		PrefsMenuCheckBox *ui_ship_rotate = new PrefsMenuCheckBox( &rect, LabelFont, "Rotate Lobby Ship", "ui_ship_rotate", "20", "0" );
@@ -635,6 +667,11 @@ void PrefsMenu::UpdateContents( void )
 			ui_ship_rotate->Checked = true;
 			ui_ship_rotate->Image.BecomeInstance( ui_ship_rotate->ImageNormalChecked );  // FIXME: This should probably be moved to RaptorEngine.
 		}
+		*/
+		
+		rect.y += rect.h + 8;
+		rect.w = 160;
+		group->AddElement( new PrefsMenuCheckBox( &rect, LabelFont, "Menu Auto-Pause", "ui_pause" ) );  // FIXME: Make new class that pauses/unpauses when clicked.
 		
 		rect.y += rect.h + 8;
 		rect.w = 155;
@@ -1533,7 +1570,13 @@ bool PrefsMenu::KeyUp( SDLKey key )
 		if( Selected )
 			Selected = NULL;
 		else
+		{
 			Remove();
+			
+			XWingGame *game = (XWingGame*) Raptor::Game;
+			if( Paused && (game->Cfg.KeyBind( SDLK_ESCAPE ) == game->Controls[ XWing::Control::MENU ]) )  // FIXME: Dirty hack to keep it paused for the IngameMenu.
+				Paused = false;
+		}
 		return true;
 	}
 	
@@ -1903,7 +1946,7 @@ void PrefsMenuDoneButton::Clicked( Uint8 button )
 		if( s_menu_music != Raptor::Game->Snd.PlayMusic )
 		{
 			if( s_menu_music )
-				Raptor::Game->Snd.PlayMusicSubdir( "Menu" );
+				Raptor::Game->Snd.PlayMusicSubdir( Raptor::Game->Layers.Find("LobbyMenu") ? "Lobby" : "Menu" );
 			else
 				Raptor::Game->Snd.StopMusic();
 		}
@@ -1954,6 +1997,7 @@ void PrefsMenuDefaultsButton::Clicked( Uint8 button )
 			if( (setting->first == "name")
 			||  (setting->first == "host_address")
 			||  (setting->first == "vr_enable")
+			||  (setting->first == "vr_always")
 			||  (setting->first == "swap_yaw_roll")
 			||  (setting->first == "turret_invert")
 			||  Str::BeginsWith( setting->first, "s_" )
@@ -1972,11 +2016,8 @@ void PrefsMenuDefaultsButton::Clicked( Uint8 button )
 			Raptor::Game->Cfg.Settings[ "g_vsync" ] = "false";
 			Raptor::Game->Cfg.Settings[ "g_asteroid_lod" ] = "0.5";
 			Raptor::Game->Cfg.Settings[ "g_deathstar_trench" ] = "3";
-			Raptor::Game->Cfg.Settings[ "g_deathstar_surface" ] = "2";
-			
-			int fsaa = Raptor::Game->Cfg.SettingAsInt( "g_fsaa", 3 );
-			if( fsaa > 2 )
-				Raptor::Game->Cfg.Settings[ "g_fsaa" ] = "2";
+			Raptor::Game->Cfg.Settings[ "g_deathstar_surface" ] = "0";
+			Raptor::Game->Cfg.Settings[ "g_fsaa" ] = "0";
 			
 			int blastpoint_quality = Raptor::Game->Cfg.SettingAsInt( "g_shader_blastpoint_quality", 2 );
 			if( blastpoint_quality > 2 )

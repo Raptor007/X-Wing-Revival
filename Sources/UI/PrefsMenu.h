@@ -43,6 +43,7 @@ public:
 	Font *LabelFont, *TitleFont, *ItemFont, *ButtonFont, *ControlFont, *BindFont;
 	std::map<std::string,std::string> PrevGfx, PrevSnd;
 	int Page;
+	bool Paused;
 	
 	PrefsMenu( void );
 	virtual ~PrefsMenu();
