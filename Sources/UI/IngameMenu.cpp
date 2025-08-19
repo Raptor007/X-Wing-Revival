@@ -19,20 +19,12 @@ IngameMenu::IngameMenu( void )
 	TitleFontBig = Raptor::Game->Res.GetFont( "Candara.ttf", 128 );
 	TitleFontSmall = Raptor::Game->Res.GetFont( "Candara.ttf", 64 );
 	TitleFont = TitleFontBig;
-	ButtonFont = Raptor::Game->Res.GetFont( "Verdana.ttf", 40 );
 	VersionFont = Raptor::Game->Res.GetFont( "Verdana.ttf", 15 );
-	
-	SDL_Rect button_rect;
-	button_rect.w = 700;
-	button_rect.h = ButtonFont->GetHeight() + 2;
-	button_rect.x = 0;
-	button_rect.y = 0;
 	
 	Player *player = Raptor::Game->Data.GetPlayer( Raptor::Game->PlayerID );
 	std::string player_team = player ? player->PropertyAsString("team") : "Spectator";
 	
-	AddElement( new IngameMenuResumeButton( &button_rect, ButtonFont ));
-	
+	uint32_t gametype = ((const XWingGame*)( Raptor::Game ))->GameType;
 	bool respawn = Raptor::Game->Data.PropertyAsBool("respawn");
 	bool campaign = false;
 	if( Raptor::Game->Data.PropertyAsString("gametype") == "mission" )
@@ -47,25 +39,42 @@ IngameMenu::IngameMenu( void )
 		}
 	}
 	
-	if( respawn
+	int dropdowns = 0;
+	if( respawn && (gametype != XWing::GameType::FFA_ELIMINATION) && (gametype != XWing::GameType::TEAM_ELIMINATION)
 	&&  Raptor::Game->Data.PropertyAsBool("allow_ship_change",true)
 	&& (Raptor::Game->Data.PropertyAsString("player_ship").empty()  || Str::Count(Raptor::Game->Data.PropertyAsString("player_ship"), " "))
 	&& (Raptor::Game->Data.PropertyAsString("player_ships").empty() || Str::Count(Raptor::Game->Data.PropertyAsString("player_ships")," ")) )
-	{
-		AddElement( new IngameMenuShipDropDown( &button_rect, ButtonFont ));
-		AddElement( new IngameMenuGroupDropDown( &button_rect, ButtonFont ));
-	}
+		dropdowns = 2;
 	else if( (player_team != "Spectator") && ! campaign )
-		AddElement( new IngameMenuGroupDropDown( &button_rect, ButtonFont ));
-	AddElement( new IngameMenuPrefsButton( &button_rect, ButtonFont ));
-	AddElement( new IngameMenuLeaveButton( &button_rect, ButtonFont ));
+		dropdowns = 1;
 	
+	Font *button_font = Raptor::Game->Res.GetFont( "Verdana.ttf", 40 );
+	Font *dropdown_font = Raptor::Game->Res.GetFont( "Verdana.ttf", 30 );
+	
+	SDL_Rect button_rect;
+	button_rect.w = 700;
+	button_rect.h = button_font->GetHeight() + 2;
+	button_rect.x = 0;
+	button_rect.y = 0;
+	
+	AddElement( new IngameMenuResumeButton( &button_rect, button_font ));
+	if( dropdowns >= 2 )
+	{
+		AddElement( new IngameMenuShipDropDown( &button_rect, dropdown_font ));
+		AddElement( new IngameMenuGroupDropDown( &button_rect, dropdown_font ));
+	}
+	else if( dropdowns )
+		AddElement( new IngameMenuGroupDropDown( &button_rect, dropdown_font ));
+	AddElement( new IngameMenuPrefsButton( &button_rect, button_font ));
+	AddElement( new IngameMenuLeaveButton( &button_rect, button_font ));
+	
+	UIScaleMode = Raptor::ScaleMode::IN_PLACE;
 	UpdateRects();
 	
 	XWingGame *game = (XWingGame*) Raptor::Game;
 	Paused = (game->State >= XWing::State::FLYING)
 		&& (game->Data.TimeScale == 1.)
-		&& (game->Data.Players.size() == 1)
+		&& (game->Data.RealPlayers() <= 1)
 		&& game->Cfg.SettingAsBool("ui_pause",true)
 		&& Raptor::Server->IsRunning()
 		&& game->ControlPressed( game->Controls[ XWing::Control::PAUSE ] );
@@ -96,18 +105,25 @@ void IngameMenu::UpdateRects( void )
 		Rect.h = 480;
 	}
 	
+	int spacing = 22;
 	SDL_Rect title_size = {0,0,0,0};
 	TitleFontBig->TextSize( Raptor::Game->Game, &title_size );
 	if( (title_size.w <= Rect.w) && (title_size.h <= (Rect.h / 2)) )
 		TitleFont = TitleFontBig;
 	else
+	{
 		TitleFont = TitleFontSmall;
+		spacing = 10;
+	}
 	
+	float ui_scale = Raptor::Game->UIScale;
+	if( (ui_scale * 480.f + 0.5f) >= Rect.h )
+		spacing = 10;
 	int top = TitleFont->GetHeight() * 3 / 2;
-	int bottom = Rect.h - (VersionFont->GetHeight() + 10);
+	int bottom = Rect.h / ui_scale - (VersionFont->GetHeight() + 10) + 0.5f;
 	int mid = ((bottom - top) / 2) + top;
 	
-	int height = 22 * (Elements.size() - 1);
+	int height = spacing * (Elements.size() - 1);
 	for( std::list<Layer*>::const_iterator element = Elements.begin(); element != Elements.end(); element ++ )
 		height += (*element)->Rect.h;
 	
@@ -115,7 +131,7 @@ void IngameMenu::UpdateRects( void )
 	for( std::list<Layer*>::iterator element = Elements.begin(); element != Elements.end(); element ++ )
 	{
 		(*element)->Rect.y = y;
-		y += (*element)->Rect.h + 22;
+		y += (*element)->Rect.h + spacing;
 	}
 	
 	UpdateCalcRects();
@@ -129,10 +145,9 @@ void IngameMenu::Draw( void )
 	bool vr = Raptor::Game->Head.VR && Raptor::Game->Gfx.DrawTo;
 	if( ! vr )
 	{
-		if( IsTop() )
-			TitleFont->DrawText( Raptor::Game->Game, Rect.w / 2, TitleFont->GetHeight() / 2, Font::ALIGN_TOP_CENTER );
-		
-		VersionFont->DrawText( "Version " + Raptor::Game->Version, Rect.w - 10, Rect.h - 10, Font::ALIGN_BOTTOM_RIGHT );
+		float ui_scale = Raptor::Game->UIScale;
+		TitleFont->DrawText( Raptor::Game->Game, Rect.w / 2, TitleFont->GetHeight() / 2, Font::ALIGN_TOP_CENTER, 1.f,1.f,1.f,IsTop()?1.f:0.5f, ui_scale );
+		VersionFont->DrawText( "Version " + Raptor::Game->Version, Rect.w - 10, Rect.h - 10, Font::ALIGN_BOTTOM_RIGHT, ui_scale );
 	}
 }
 
@@ -154,12 +169,14 @@ bool IngameMenu::KeyDown( SDLKey key )
 
 
 IngameMenuResumeButton::IngameMenuResumeButton( SDL_Rect *rect, Font *button_font, uint8_t align )
-: LabelledButton( rect, button_font, "    Resume", align, Raptor::Game->Res.GetAnimation("fade.ani") )
+: LabelledButton( rect, button_font, "Resume", align, Raptor::Game->Res.GetAnimation("fade.ani") )
 {
 	Red = 0.f;
 	Green = 0.f;
 	Blue = 0.f;
 	Alpha = 0.75f;
+	
+	PadX = 50;
 }
 
 
@@ -183,12 +200,14 @@ void IngameMenuResumeButton::Clicked( Uint8 button )
 
 
 IngameMenuPrefsButton::IngameMenuPrefsButton( SDL_Rect *rect, Font *button_font, uint8_t align )
-: LabelledButton( rect, button_font, "    Preferences", align, Raptor::Game->Res.GetAnimation("fade.ani") )
+: LabelledButton( rect, button_font, "Preferences", align, Raptor::Game->Res.GetAnimation("fade.ani") )
 {
 	Red = 0.f;
 	Green = 0.f;
 	Blue = 0.f;
 	Alpha = 0.75f;
+	
+	PadX = 50;
 }
 
 
@@ -218,12 +237,14 @@ void IngameMenuPrefsButton::Clicked( Uint8 button )
 
 
 IngameMenuHelpButton::IngameMenuHelpButton( SDL_Rect *rect, Font *button_font, uint8_t align )
-: LabelledButton( rect, button_font, "    Help", align, Raptor::Game->Res.GetAnimation("fade.ani") )
+: LabelledButton( rect, button_font, "Help", align, Raptor::Game->Res.GetAnimation("fade.ani") )
 {
 	Red = 0.f;
 	Green = 0.f;
 	Blue = 0.f;
 	Alpha = 0.75f;
+	
+	PadX = 50;
 }
 
 
@@ -249,7 +270,7 @@ void IngameMenuHelpButton::Clicked( Uint8 button )
 
 
 IngameMenuLeaveButton::IngameMenuLeaveButton( SDL_Rect *rect, Font *button_font, uint8_t align )
-: LabelledButton( rect, button_font, "    Return to Lobby", align, Raptor::Game->Res.GetAnimation("fade.ani") )
+: LabelledButton( rect, button_font, "Return to Lobby", align, Raptor::Game->Res.GetAnimation("fade.ani") )
 {
 	Red = 0.f;
 	Green = 0.f;
@@ -257,6 +278,8 @@ IngameMenuLeaveButton::IngameMenuLeaveButton( SDL_Rect *rect, Font *button_font,
 	Alpha = 0.75f;
 	
 	LobbyAttempted = false;
+	
+	PadX = 50;
 }
 
 
@@ -296,7 +319,10 @@ IngameMenuShipDropDown::IngameMenuShipDropDown( SDL_Rect *rect, Font *font, uint
 	Blue = 0.f;
 	Alpha = 0.75f;
 	
+	PadX = 55;
+	
 	uint32_t gametype = ((const XWingGame*)( Raptor::Game ))->GameType;
+	bool allow_ship_change = (gametype != XWing::GameType::FFA_ELIMINATION) && (gametype != XWing::GameType::TEAM_ELIMINATION) && Raptor::Game->Data.PropertyAsBool("allow_ship_change",true) && Raptor::Game->Data.PropertyAsBool("respawn");
 	bool allow_team_change = (gametype == XWing::GameType::FFA_ELIMINATION) || (gametype == XWing::GameType::FFA_DEATHMATCH) || Raptor::Game->Data.PropertyAsBool("allow_team_change");
 	bool darkside = (Raptor::Game->Cfg.SettingAsBool("darkside",false) || Raptor::Game->Data.PropertyAsBool("darkside",false)) && ! Raptor::Game->Data.PropertyAsBool("lightside",false);
 	
@@ -332,12 +358,16 @@ IngameMenuShipDropDown::IngameMenuShipDropDown( SDL_Rect *rect, Font *font, uint
 			if( player_ship.empty() )
 				player_ship = Raptor::Game->Data.PropertyAsString(prefix+std::string("empire_fighter"),"T/F");
 		}
-		else if( player_ship.empty() )
+		else if( player_ship.empty() || (team == "Spectator") )
+		{
 			player_ship = "Spectator";
+			if( ! allow_team_change )
+				allow_team_change = allow_ship_change;
+		}
 	}
 	
 	if( player_ship == "Spectator" )
-		AddItem( "Spectator", "    Select Ship" );
+		AddItem( "Spectator", allow_ship_change ? "Select Ship" : "Spectating" );
 	
 	if( allowed_ships.size() && ! darkside )
 	{
@@ -345,18 +375,18 @@ IngameMenuShipDropDown::IngameMenuShipDropDown( SDL_Rect *rect, Font *font, uint
 		{
 			const ShipClass *sc = ((const XWingGame*)( Raptor::Game ))->GetShipClass( *allowed_iter );
 			if( sc )
-				AddItem( sc->ShortName, std::string("    Ship: ") + sc->LongName );
+				AddItem( sc->ShortName, std::string("Ship: ") + sc->LongName );
 			else if( *allowed_iter == "rebel_gunner" )
-				AddItem( "Rebel Gunner", "    Role: Rebel Gunner" );
+				AddItem( "Rebel Gunner", "Role: Rebel Gunner" );
 			else if( *allowed_iter == "empire_gunner" )
-				AddItem( "Imperial Gunner", "    Role: Imperial Gunner" );
+				AddItem( "Imperial Gunner", "Role: Imperial Gunner" );
 			else if( *allowed_iter == "spectator" )
 			{
 				if( player_ship != "Spectator" )
-					AddItem( "Spectator", "    Spectate" );
+					AddItem( "Spectator", "Spectate" );
 			}
 			else
-				AddItem( *allowed_iter, std::string("    Ship: ") + *allowed_iter );
+				AddItem( *allowed_iter, std::string("Ship: ") + *allowed_iter );
 		}
 	}
 	else
@@ -382,19 +412,22 @@ IngameMenuShipDropDown::IngameMenuShipDropDown( SDL_Rect *rect, Font *font, uint
 				}
 				
 				if( allowed )
-					AddItem( sc->ShortName, std::string("    Ship: ") + sc->LongName );
+					AddItem( sc->ShortName, std::string("Ship: ") + sc->LongName );
 			}
 		}
 		
 		if( (player_team != XWing::Team::EMPIRE) || allow_team_change )
-			AddItem( "Rebel Gunner",    "    Role: Rebel Gunner" );
+			AddItem( "Rebel Gunner",    "Role: Rebel Gunner" );
 		
 		if( (player_team != XWing::Team::REBEL) || allow_team_change )
-			AddItem( "Imperial Gunner", "    Role: Imperial Gunner" );
+			AddItem( "Imperial Gunner", "Role: Imperial Gunner" );
 		
 		if( player_ship != "Spectator" )
-			AddItem( "Spectator", "    Spectate" );
+			AddItem( "Spectator", "Spectate" );
 	}
+	
+	if( ! allow_ship_change )
+		Enabled = false;
 	
 	Value = player_ship;
 	Update();
@@ -449,23 +482,25 @@ IngameMenuGroupDropDown::IngameMenuGroupDropDown( SDL_Rect *rect, Font *font, ui
 	Blue = 0.f;
 	Alpha = 0.75f;
 	
+	PadX = 55;
+	
 	std::string player_group = "0";
 	Player *player = Raptor::Game->Data.GetPlayer( Raptor::Game->PlayerID );
 	if( player )
 		player_group = Num::ToString( player->PropertyAsInt("group") );
 	
 	if( player_group == "0" )
-		AddItem( "0", "    Select Squadron" );
+		AddItem( "0", "Select Squadron" );
 	else
-		AddItem( "0", "    Squadron: None" );
+		AddItem( "0", "Squadron: None" );
 	
-	AddItem( "1", "    Squadron: Red" );
-	AddItem( "2", "    Squadron: Gold" );
-	AddItem( "3", "    Squadron: Green" );
-	AddItem( "4", "    Squadron: Blue" );
+	AddItem( "1", "Squadron: Red" );
+	AddItem( "2", "Squadron: Gold" );
+	AddItem( "3", "Squadron: Green" );
+	AddItem( "4", "Squadron: Blue" );
 	
 	if( atoi( player_group.c_str() ) > 4 )
-		AddItem( player_group, std::string("    Squadron: ") + player_group );
+		AddItem( player_group, std::string("Squadron: ") + player_group );
 	
 	Value = player_group;
 	Update();
@@ -511,24 +546,26 @@ IngameMenuViewDropDown::IngameMenuViewDropDown( SDL_Rect *rect, Font *font, uint
 	Blue = 0.f;
 	Alpha = 0.75f;
 	
+	PadX = 50;
+	
 	std::string view = Raptor::Game->Cfg.SettingAsString("spectator_view");
 	
 	if( view == "auto" )
-		AddItem( "auto",    "    Change View" );
+		AddItem( "auto",    "Change View" );
 	else
-		AddItem( "auto",    "    View: Auto" );
+		AddItem( "auto",    "View: Auto" );
 	
-	AddItem( "cycle",       "    View: Cycle" );
-	AddItem( "cinema",      "    View: Cinema" );
-	AddItem( "fixed",       "    View: Fixed" );
-	AddItem( "chase",       "    View: Chase" );
-	AddItem( "cockpit",     "    View: Cockpit" );
-	AddItem( "crosshair",   "    View: Crosshair" );
-	AddItem( "padlock",     "    View: Padlock" );
-	AddItem( "gunner",      "    View: Gunner" );
-	AddItem( "selfie",      "    View: Selfie" );
-	AddItem( "stationary",  "    View: Stationary" );
-	AddItem( "instruments", "    View: Instruments" );
+	AddItem( "cycle",       "View: Cycle" );
+	AddItem( "cinema",      "View: Cinema" );
+	AddItem( "fixed",       "View: Fixed" );
+	AddItem( "chase",       "View: Chase" );
+	AddItem( "cockpit",     "View: Cockpit" );
+	AddItem( "crosshair",   "View: Crosshair" );
+	AddItem( "padlock",     "View: Padlock" );
+	AddItem( "gunner",      "View: Gunner" );
+	AddItem( "selfie",      "View: Selfie" );
+	AddItem( "stationary",  "View: Stationary" );
+	AddItem( "instruments", "View: Instruments" );
 	
 	Value = view;
 	Update();

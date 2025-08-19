@@ -44,6 +44,7 @@ public:
 	
 	bool WillCollide( const GameObject *other, double dt, std::string *this_object = NULL, std::string *other_object = NULL, Pos3D *loc = NULL, double *when = NULL ) const;
 	
+	void SetBlastPoint( double x, double y, double z, double radius, double time = 0. );
 	void Draw( void );
 	Shader *WantShader( void ) const;
 };

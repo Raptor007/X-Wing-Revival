@@ -37,9 +37,6 @@ LobbyMenu::LobbyMenu( void )
 	TitleFont = Raptor::Game->Res.GetFont( "Verdana.ttf", tiny ? 24 : 30 );
 	
 	AddElement( ShipView = new LobbyMenuShipView() );
-	AddElement( PrefsButton = new LobbyMenuPrefsButton( tiny ? "Prefs" : "Preferences" ) );
-	AddElement( LeaveButton = new LobbyMenuLeaveButton() );
-	AddElement( FlyButton = new LobbyMenuFlyButton() );
 	
 	ShipDropDown = new LobbyMenuShipDropDown( NULL, Raptor::Game->Res.GetFont( "Verdana.ttf", tiny ? 13 : 19 ), Font::ALIGN_TOP_LEFT, 0, "ship" );
 	AddElement( ShipDropDown );
@@ -148,6 +145,14 @@ LobbyMenu::LobbyMenu( void )
 			Configs[ (*config_iter)->Property ] = *config_iter;
 		}
 	}
+	
+	AddElement( PrefsButton = new LobbyMenuPrefsButton( tiny ? "Prefs" : "Preferences" ) );
+	AddElement( LeaveButton = new LobbyMenuLeaveButton() );
+	AddElement( FlyButton = new LobbyMenuFlyButton() );
+	
+	UIScaleMode = Raptor::ScaleMode::NONE;
+	SetElementScaling( Raptor::ScaleMode::IN_PLACE );
+	UpdateRects();
 }
 
 
@@ -171,17 +176,15 @@ void LobbyMenu::UpdateRects( void )
 		Rect.h = 480;
 	}
 	
-	bool tiny = (Rect.h < 720) || (Rect.w < 800);
+	float ui_scale = Raptor::Game->UIScale;
+	bool tiny = (Rect.h < 720 * ui_scale) || (Rect.w < 800 * ui_scale);
 	
-	LeaveButton->Rect.h = LeaveButton->LabelFont->GetHeight() + 4;
+	LeaveButton->Rect.h = LeaveButton->LabelFont->GetHeight() * ui_scale + 4;
 	FlyButton->Rect.h = PrefsButton->Rect.h = LeaveButton->Rect.h;
 	
 	LeaveButton->Rect.x = 32;
 	
-	if( Rect.w >= 1024 )
-		LeaveButton->Rect.w = 384;
-	else
-		LeaveButton->Rect.w = Rect.w / 3 - LeaveButton->Rect.x * 2;
+	LeaveButton->Rect.w = std::min<int>( 384 * ui_scale, Rect.w / 3 - LeaveButton->Rect.x * 2 );
 	FlyButton->Rect.w = PrefsButton->Rect.w = LeaveButton->Rect.w;
 	
 	LeaveButton->Rect.y = Rect.h - LeaveButton->Rect.h - 32;
@@ -192,17 +195,25 @@ void LobbyMenu::UpdateRects( void )
 	
 	PlayerName->Rect.x = LeaveButton->Rect.x;
 	PlayerName->Rect.w = (FlyButton->Rect.x + FlyButton->Rect.w - PlayerList->Rect.x) / 2 - 5;
-	PlayerName->Rect.y = TitleFont->GetHeight() + 20;
+	PlayerName->Rect.y = TitleFont->GetHeight() * ui_scale + 20;
+	PlayerName->Rect.h = PlayerName->TextFont->GetHeight() * ui_scale + 6;
 	
 	ShipDropDown->Rect.x = LeaveButton->Rect.x;
 	ShipDropDown->Rect.y = PlayerName->Rect.y + PlayerName->Rect.h + 10;
-	ShipDropDown->Rect.w = tiny ? 200 : 300;
-	ShipDropDown->Rect.h = ShipDropDown->LabelFont->GetHeight() + 6;
+	ShipDropDown->Rect.w = (tiny ? 200 : 300) * ui_scale + 0.5f;
+	ShipDropDown->Rect.h = ShipDropDown->LabelFont->GetHeight() * ui_scale + 6;
 	
 	GroupDropDown->Rect.x = ShipDropDown->Rect.x + ShipDropDown->Rect.w + 10;
 	GroupDropDown->Rect.y = ShipDropDown->Rect.y;
-	GroupDropDown->Rect.w = tiny ? 80 : 100;
-	GroupDropDown->Rect.h = GroupDropDown->LabelFont->GetHeight() + 6;
+	GroupDropDown->Rect.w = (tiny ? 80 : 100) * ui_scale + 0.5f;
+	GroupDropDown->Rect.h = ShipDropDown->Rect.h;
+	
+	if( GroupDropDown->Rect.x + GroupDropDown->Rect.w > PlayerName->Rect.x + PlayerName->Rect.w )
+	{
+		ShipDropDown->Rect.w  = (PlayerName->Rect.w - 10) * 3 / 4;
+		GroupDropDown->Rect.w = (PlayerName->Rect.w - 10) / 4;
+		GroupDropDown->Rect.x = ShipDropDown->Rect.x + ShipDropDown->Rect.w + 10;
+	}
 	
 	if( ShipDropDown->Value.length() && (ShipDropDown->Value != "Spectator") && (Raptor::Game->Data.PropertyAsString("gametype").find("ffa_") != 0) )
 	{
@@ -244,7 +255,7 @@ void LobbyMenu::UpdateRects( void )
 	
 	Layer *prev = NULL;
 	double x = PlayerList->Rect.x + PlayerList->Rect.w + 10;
-	double y = PlayerName->Rect.y + TitleFont->PointSize;
+	double y = PlayerName->Rect.y + TitleFont->PointSize * ui_scale;
 	double w = PlayerList->Rect.w;
 	
 	for( std::vector<LobbyMenuConfiguration*>::iterator config_iter = ConfigOrder.begin(); config_iter != ConfigOrder.end(); config_iter ++ )
@@ -1221,11 +1232,13 @@ void LobbyMenu::Draw( void )
 	}
 	std::string title = flying ? "Game-In-Progress Lobby" : "Pre-Game Lobby";
 	
-	TitleFont->DrawText( title, Rect.w/2 + 2, 12, Font::ALIGN_TOP_CENTER, 0.f,0.f,0.f,0.8f );
-	TitleFont->DrawText( title, Rect.w/2, 10, Font::ALIGN_TOP_CENTER );
+	float ui_scale = Raptor::Game->UIScale;
 	
-	TitleFont->DrawText( "Game Settings", PlayerList->Rect.x + PlayerList->Rect.w*1.4 + 12, PlayerName->Rect.y + 2, Font::ALIGN_TOP_CENTER, 0.f,0.f,0.f,0.8f );
-	TitleFont->DrawText( "Game Settings", PlayerList->Rect.x + PlayerList->Rect.w*1.4 + 10, PlayerName->Rect.y, Font::ALIGN_TOP_CENTER );
+	TitleFont->DrawText( title, CalcRect.w/2 + 2, 12, Font::ALIGN_TOP_CENTER, 0.f,0.f,0.f,0.8f, ui_scale );
+	TitleFont->DrawText( title, CalcRect.w/2,     10, Font::ALIGN_TOP_CENTER,                   ui_scale );
+	
+	TitleFont->DrawText( "Game Settings", PlayerList->CalcRect.x + PlayerList->CalcRect.w*1.4 + 12, PlayerName->CalcRect.y + 2, Font::ALIGN_TOP_CENTER, 0.f,0.f,0.f,0.8f, ui_scale );
+	TitleFont->DrawText( "Game Settings", PlayerList->CalcRect.x + PlayerList->CalcRect.w*1.4 + 10, PlayerName->CalcRect.y,     Font::ALIGN_TOP_CENTER,                   ui_scale );
 }
 
 
@@ -1434,7 +1447,11 @@ void LobbyMenuPrefsButton::Clicked( Uint8 button )
 	if( prefs )
 		prefs->Remove();
 	else
-		Raptor::Game->Layers.Add( new PrefsMenu() );
+	{
+		PrefsMenu *prefs = new PrefsMenu();
+		prefs->Draggable = ! Raptor::Game->Head.VR;
+		Raptor::Game->Layers.Add( prefs );
+	}
 }
 
 
@@ -1586,7 +1603,7 @@ void LobbyMenuShipDropDown::Clicked( Uint8 button )
 LobbyMenuShipView::LobbyMenuShipView( SDL_Rect *rect ) : Layer( rect )
 {
 	CurrentGroup = 0;
-	Rotation = 0.;
+	Rotation = -270.;
 }
 
 
@@ -1600,26 +1617,33 @@ void LobbyMenuShipView::Update( void )
 	XWingGame *game = (XWingGame*) Raptor::Game;
 	const Player *player = game->Data.GetPlayer( Raptor::Game->PlayerID );
 	
-	std::string ship = player ? player->PropertyAsString("ship") : "";
-	uint8_t group = Raptor::Game->Cfg.SettingAsBool("g_group_skins",true) ? Str::AsInt( player->PropertyAsString("group") ) : 0;
+	std::string ship;
+	uint8_t group = 0;
 	
-	if( (ship == "Rebel Gunner") && (Raptor::Game->Data.PropertyAsString("gametype") == "mission") )
-		ship = "YT1300";
-	
-	if( ship.empty() && (Raptor::Game->Data.PropertyAsString("gametype") == "mission") )
+	if( player && Raptor::Game->Cfg.SettingAsBool("ui_ship_preview",true) )
 	{
-		std::string player_ships = Raptor::Game->Data.PropertyAsString("player_ships");
-		if( player_ships.empty() )
-			player_ships = Raptor::Game->Data.PropertyAsString("player_ship");
-		if( ! player_ships.empty() )
+		ship = player->PropertyAsString("ship");
+		if( Raptor::Game->Cfg.SettingAsBool("g_group_skins",true) )
+			group = player->PropertyAsInt("group");
+		
+		if( (ship == "Rebel Gunner") && (Raptor::Game->Data.PropertyAsString("gametype") == "mission") )
+			ship = "YT1300";
+		
+		if( ship.empty() && (Raptor::Game->Data.PropertyAsString("gametype") == "mission") )
 		{
-			ship = Str::SplitToVector( player_ships, " " ).front();
-			if( ship == "rebel_gunner" )
-				ship = "YT1300";
+			std::string player_ships = Raptor::Game->Data.PropertyAsString("player_ships");
+			if( player_ships.empty() )
+				player_ships = Raptor::Game->Data.PropertyAsString("player_ship");
+			if( ! player_ships.empty() )
+			{
+				ship = Str::SplitToVector( player_ships, " " ).front();
+				if( ship == "rebel_gunner" )
+					ship = "YT1300";
+			}
 		}
 	}
 	
-	if( (ship != CurrentShip) || (group != CurrentGroup) )
+	if( (ship != CurrentShip) || (group != CurrentGroup) || (Shape.Objects.empty() && (ship != "Spectator") && ! ship.empty()) )
 	{
 		CurrentShip = ship;
 		CurrentGroup = group;
@@ -1660,7 +1684,7 @@ void LobbyMenuShipView::Draw( void )
 {
 	Update();
 	
-	if( Shape.Objects.empty() || ! Raptor::Game->Cfg.SettingAsBool("ui_ship_preview",true) )
+	if( Shape.Objects.empty() )
 	{
 		Rotation = -270.;
 		return;
@@ -1788,6 +1812,7 @@ LobbyMenuConfiguration::LobbyMenuConfiguration( std::string property, std::strin
 	AddElement( ChangeButton = new LobbyMenuConfigChangeButton( Value->LabelFont, Value->LabelAlign ) );
 	ShowButton = false;
 	
+	SetElementScaling( Raptor::ScaleMode::IN_PLACE );
 	Update();
 }
 
@@ -1802,7 +1827,7 @@ void LobbyMenuConfiguration::Update( void )
 	if( Title && TitleShadow )
 	{
 		Title->Rect.w = Rect.w * 0.4 - 5;
-		Title->Rect.h = Value->LabelFont->GetHeight();
+		Title->Rect.h = Value->LabelFont->GetHeight() * Raptor::Game->UIScale + 0.5f;
 		Title->Rect.x = 0;
 		Title->Rect.y = 0;
 		
@@ -1820,7 +1845,7 @@ void LobbyMenuConfiguration::Update( void )
 	else
 	{
 		Value->Rect.w = Rect.w * 0.8;
-		Value->Rect.h = Value->LabelFont->GetHeight();
+		Value->Rect.h = Value->LabelFont->GetHeight() * Raptor::Game->UIScale + 0.5f;
 		Value->Rect.x = 0;
 		Value->Rect.y = 0;
 	}

@@ -69,8 +69,9 @@ void CampaignMenu::Draw( void )
 	Rect.y = Raptor::Game->Gfx.H/2 - Rect.h/2;
 	
 	Window::Draw();
-	TitleFont->DrawText( "Select Faction", Rect.w/2 + 2, 12, Font::ALIGN_TOP_CENTER, 0,0,0,0.8f );
-	TitleFont->DrawText( "Select Faction", Rect.w/2, 10, Font::ALIGN_TOP_CENTER );
+	float ui_scale = UIScaleMode ? Raptor::Game->UIScale : 1.f;
+	TitleFont->DrawText( "Select Faction", CalcRect.w/2 + 2, 12, Font::ALIGN_TOP_CENTER, 0,0,0,0.8f, ui_scale );
+	TitleFont->DrawText( "Select Faction", CalcRect.w/2,     10, Font::ALIGN_TOP_CENTER,             ui_scale );
 }
 
 

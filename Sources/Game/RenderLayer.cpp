@@ -339,9 +339,9 @@ void RenderLayer::SetDynamicLights( Pos3D *pos, Pos3D *offset, int dynamic_light
 }
 
 
-void RenderLayer::SetBlastPoints( const Pos3D *pos, const Pos3D *offset, int blastpoints, std::vector<BlastPoint> *bp_vec, double time_scale )
+void RenderLayer::SetBlastPoints( int blastpoints, std::vector<BlastPoint> *bp_vec )
 {
-	if( !( pos && bp_vec ) )
+	if( ! bp_vec )
 	{
 		ClearBlastPoints( blastpoints );
 		return;
@@ -682,7 +682,12 @@ void RenderLayer::Draw( void )
 		uint8_t ship_category = observed_ship ? observed_ship->Category() : (uint8_t) ShipClass::CATEGORY_UNKNOWN;
 		bool ship_turret = observed_ship && observed_ship->AttachedTurret();
 		
-		double cam_picker = observed_ship ? fmod( observed_ship->Lifetime.ElapsedSeconds(), cycle_time * 5. ) : fmod( PlayTime.ElapsedSeconds(), cycle_time * 7. );
+		#define CYCLE_VIEWS 5
+		double time_elapsed = observed_ship ? observed_ship->Lifetime.ElapsedSeconds() : PlayTime.ElapsedSeconds();
+		if( ! game->Cfg.SettingAsBool("spectator_sync") )
+			time_elapsed -= ((game->PlayerID - 1) % CYCLE_VIEWS) * cycle_time;  // Add variety if there are multiple spectators.
+		double cam_picker = fmod( time_elapsed, cycle_time * CYCLE_VIEWS );
+		
 		if( cam_picker < cycle_time )
 			game->View = XWing::View::CINEMA;
 		else if( cam_picker < cycle_time * 2. )
@@ -1511,8 +1516,16 @@ void RenderLayer::Draw( void )
 								disabled_depth = true;
 							}
 							
+							Pos3D pos( target_ship );
+							if( target_alive && target_ship->RecentBlastPoint )
+							{
+								pos.MoveAlong( &(pos.Fwd),   target_ship->RecentBlastPoint->X );
+								pos.MoveAlong( &(pos.Up),    target_ship->RecentBlastPoint->Y );
+								pos.MoveAlong( &(pos.Right), target_ship->RecentBlastPoint->Z );
+							}
+							
 							float alpha = 1. - (target_alive ? (hit_time * 3.) : hit_time);
-							game->Gfx.DrawSphere3D( target_ship->X, target_ship->Y, target_ship->Z, sqrt(target_ship->Radius()) * hit_time * (target_alive ? 10. : 20.), 8, 0, alpha,alpha,alpha,1.f );
+							game->Gfx.DrawSphere3D( pos.X, pos.Y, pos.Z, sqrt(target_ship->Radius()) * hit_time * (target_alive ? 10. : 20.), 8, 0, alpha,alpha,alpha,1.f );
 						}
 						
 						if( disabled_depth )
@@ -2459,7 +2472,7 @@ void RenderLayer::Draw( void )
 					SetDynamicLights( observed_ship, observed_ship, dynamic_lights, &shots, &effects );
 				
 				if( blastpoints )
-					SetBlastPoints( observed_ship, observed_ship, blastpoints, &(observed_ship->BlastPoints), game->Data.TimeScale );
+					SetBlastPoints( blastpoints, &(observed_ship->BlastPoints) );
 			}
 			
 			// Technically the correct scale is 0.022, but we may need to make it higher to avoid near-plane clipping.
@@ -2586,7 +2599,6 @@ void RenderLayer::Draw( void )
 				continue;
 			}
 			
-			Pos3D *bp_pos = NULL;
 			std::vector<BlastPoint> *bp_vec = NULL;
 			
 			if( obj_iter->second->Type() == XWing::Object::SHIP )
@@ -2655,10 +2667,7 @@ void RenderLayer::Draw( void )
 				
 				// Show ship blastpoints if enabled and close enough.
 				if( dist <= ((ship->Category() == ShipClass::CATEGORY_CAPITAL) ? blast_capital : blast_fighter) )
-				{
-					bp_pos = ship;
 					bp_vec = &(ship->BlastPoints);
-				}
 			}
 			else if( obj_iter->second->Type() == XWing::Object::ASTEROID )
 			{
@@ -2674,17 +2683,14 @@ void RenderLayer::Draw( void )
 					Shader *shader = asteroid->WantShader();
 					if( shader )
 					{
-						// If this asteroid wants to use a different shader, delay rendering it to reduce shader changes.
+						// If this asteroid wants to use a different shader (far away / no blastpoints) delay rendering it to reduce shader changes.
 						asteroid_shaders[ shader ].insert( asteroid );
 						continue;
 					}
 					
 					// Show asteroid blastpoints if enabled and close enough.
 					if( dist <= blast_asteroid )
-					{
-						bp_pos = asteroid;
 						bp_vec = &(asteroid->BlastPoints);
-					}
 				}
 			}
 			else if( obj_iter->second->Type() == XWing::Object::TURRET )
@@ -2702,10 +2708,7 @@ void RenderLayer::Draw( void )
 				
 				// Show turret blastpoints if enabled and close enough.
 				if( dist <= blast_turret )
-				{
-					bp_pos = turret;
 					bp_vec = &(turret->BlastPoints);
-				}
 			}
 			else if( obj_iter->second->Type() == XWing::Object::DEATH_STAR_BOX )
 			{
@@ -2726,8 +2729,8 @@ void RenderLayer::Draw( void )
 				SetDynamicLights( pos, NULL, dynamic_lights, &shots, &effects );
 			}
 			
-			if( blastpoints && game->ShaderMgr.Active() )
-				SetBlastPoints( bp_pos, NULL, blastpoints, bp_vec, game->Data.TimeScale );
+			if( blastpoints && bp_vec && game->ShaderMgr.Active() )
+				SetBlastPoints( blastpoints, bp_vec );
 			
 			glPushMatrix();
 			obj_iter->second->Draw();
@@ -2746,13 +2749,18 @@ void RenderLayer::Draw( void )
 				
 				for( std::set<Asteroid*>::iterator asteroid_iter = shader_iter->second.begin(); asteroid_iter != shader_iter->second.end(); asteroid_iter ++ )
 				{
+					Asteroid *asteroid = *asteroid_iter;
+					
 					if( dynamic_lights )
-						SetDynamicLights( *asteroid_iter, NULL, dynamic_lights, &shots, &effects );
+						SetDynamicLights( asteroid, NULL, dynamic_lights, &shots, &effects );
+					/*
+					// NOTE: Commented-out because asteroid_shaders is only used when blastpoints are not being drawn.
 					if( blastpoints )
-						SetBlastPoints( *asteroid_iter, NULL, blastpoints, &((*asteroid_iter)->BlastPoints), game->Data.TimeScale );
+						SetBlastPoints( blastpoints, &(asteroid->BlastPoints) );
+					*/
 					
 					glPushMatrix();
-					(*asteroid_iter)->Draw();
+					asteroid->Draw();
 					glPopMatrix();
 				}
 			}
@@ -2763,6 +2771,7 @@ void RenderLayer::Draw( void )
 			// Remove dynamic lights and material properties so other things will render correctly.
 			ClearMaterial();
 			ClearDynamicLights();
+			ClearBlastPoints( std::max<int>( blastpoints, prev_blastpoints ) );
 		}
 		
 		if( use_shaders )
@@ -2794,7 +2803,7 @@ void RenderLayer::Draw( void )
 					if( dynamic_lights )
 						SetDynamicLights( renderable->second.ShipPtr, NULL, dynamic_lights, &shots, &effects );
 					if( blastpoints )
-						SetBlastPoints( renderable->second.ShipPtr, NULL, blastpoints, &(renderable->second.ShipPtr->BlastPoints), game->Data.TimeScale );
+						SetBlastPoints( blastpoints, &(renderable->second.ShipPtr->BlastPoints) );
 				}
 				glDepthMask( GL_TRUE );
 				
@@ -2891,7 +2900,8 @@ void RenderLayer::Draw( void )
 				}
 				double target_length = target->Shape.GetLength();
 				double lengths_away = std::max<double>( 0.125, vec_from_target.Length() ) / target_length;
-				double fwd_move = target->Fwd.Dot( vec_from_target.Unit() ) * std::min<double>( 0.5, game->Cfg.SettingAsDouble( "ui_box_shift", style ? 0.25 : 0. ) / (lengths_away * lengths_away) );
+				//double fwd_move = target->Fwd.Dot( vec_from_target.Unit() ) * std::min<double>( 0.5, game->Cfg.SettingAsDouble( "ui_box_shift", style ? 0.25 : 0. ) / (lengths_away * lengths_away) );
+				double fwd_move = style ? (target->Fwd.Dot( vec_from_target.Unit() ) * std::min<double>( 0.5, 0.25 / (lengths_away * lengths_away) ) ) : 0.;
 				if( lengths_away < 0.75 )
 				{
 					// Adjust if we're close to a capital ship to keep the box ahead of us.
@@ -2980,7 +2990,8 @@ void RenderLayer::Draw( void )
 			float thickness = game->Cfg.SettingAsDouble( "ui_box_line", 1.5f, 1.5f );
 			
 			// Draw target box around selected subsystem.
-			if( target && observed_ship && observed_ship->TargetSubsystem )
+			// FIXME: For turrets, this assumes the turret and parent ship have the same ship/subsystem targeted!
+			if( target && observed_ship && observed_ship->TargetSubsystem && (observed_ship->TargetSubsystem <= target->Subsystems.size()) )
 				positions.push_back( target->TargetCenter( observed_ship->TargetSubsystem ) );
 			
 			// Turret gunners get another target box for the intercept point.
@@ -3264,7 +3275,14 @@ void RenderLayer::Draw( void )
 						r = sqrtf(alpha);
 						g = sqrtf(r);
 					}
-					game->Gfx.DrawSphere3D( holo_pos.X, holo_pos.Y, holo_pos.Z, holo_scale * sqrt(observed_target->Radius()) * hit_time * (target ? (vr ? 10. : 7.) : 15.), 8, 0, r,g,1.f,alpha );
+					Pos3D pos( &holo_pos );
+					if( (observed_target->Health > 0.) && observed_target->RecentBlastPoint )
+					{
+						pos.MoveAlong( &(pos.Fwd),   observed_target->RecentBlastPoint->X * holo_scale );
+						pos.MoveAlong( &(pos.Up),    observed_target->RecentBlastPoint->Y * holo_scale );
+						pos.MoveAlong( &(pos.Right), observed_target->RecentBlastPoint->Z * holo_scale );
+					}
+					game->Gfx.DrawSphere3D( pos.X, pos.Y, pos.Z, holo_scale * sqrt(observed_target->Radius()) * hit_time * (target ? (vr ? 10. : 7.) : 15.), 8, 0, r,g,1.f,alpha );
 				}
 				
 				glLineWidth( 2.f );
@@ -3387,8 +3405,8 @@ void RenderLayer::Draw( void )
 				
 				game->Gfx.Setup2D( game->Gfx.H / -2, game->Gfx.H / 2 );
 				double h = game->Gfx.H / 2.;
-				RadarDirectionFont->DrawText( "F", -1.304 * h, -0.829 * h, Font::ALIGN_TOP_RIGHT, 0.f, 0.f, 1.f, 0.75f );
-				RadarDirectionFont->DrawText( "R", 1.304 * h, -0.829 * h, Font::ALIGN_TOP_LEFT, 0.f, 0.f, 1.f, 0.75f );
+				RadarDirectionFont->DrawText( "F", -1.304 * h, -0.829 * h, Font::ALIGN_TOP_RIGHT, 0.f, 0.f, 1.f, 0.75f, Raptor::Game->UIScale );
+				RadarDirectionFont->DrawText( "R",  1.304 * h, -0.829 * h, Font::ALIGN_TOP_LEFT,  0.f, 0.f, 1.f, 0.75f, Raptor::Game->UIScale );
 				
 				game->Gfx.Setup2D( -1., 1. );
 				game->Gfx.DrawCircle2D( -1.233, -0.9, 0.1, 32, 0, 0.f, 0.f, 0.f, 0.75f );
@@ -3561,6 +3579,10 @@ void RenderLayer::Draw( void )
 	}
 	
 	
+	float ui_scale = Raptor::Game->UIScale;
+	int text_x = Rect.x + Rect.w/2;
+	
+	
 	// If we're spectating, show who we're watching.
 	
 	if( (observed_player && (observed_player->ID == game->PlayerID)) || cinematic || vr )
@@ -3568,14 +3590,14 @@ void RenderLayer::Draw( void )
 	else if( observed_player )
 	{
 		game->Gfx.Setup2D();
-		BigFont->DrawText( "Watching: " + observed_player->Name, Rect.x + Rect.w/2 + 2, Rect.y + 12, Font::ALIGN_TOP_CENTER, 0.f,0.f,0.f,0.8f );
-		BigFont->DrawText( "Watching: " + observed_player->Name, Rect.x + Rect.w/2, Rect.y + 10, Font::ALIGN_TOP_CENTER );
+		BigFont->DrawText( "Watching: " + observed_player->Name, text_x + 2, Rect.y + 12 * ui_scale, Font::ALIGN_TOP_CENTER, 0.f,0.f,0.f,0.8f, ui_scale );
+		BigFont->DrawText( "Watching: " + observed_player->Name, text_x,     Rect.y + 10 * ui_scale, Font::ALIGN_TOP_CENTER,                   ui_scale );
 	}
 	else if( observed_ship )
 	{
 		game->Gfx.Setup2D();
-		BigFont->DrawText( "Watching: " + observed_ship->Name, Rect.x + Rect.w/2 + 2, Rect.y + 12, Font::ALIGN_TOP_CENTER, 0.f,0.f,0.f,0.8f );
-		BigFont->DrawText( "Watching: " + observed_ship->Name, Rect.x + Rect.w/2, Rect.y + 10, Font::ALIGN_TOP_CENTER );
+		BigFont->DrawText( "Watching: " + observed_ship->Name, text_x + 2, Rect.y + 12 * ui_scale, Font::ALIGN_TOP_CENTER, 0.f,0.f,0.f,0.8f, ui_scale );
+		BigFont->DrawText( "Watching: " + observed_ship->Name, text_x,     Rect.y + 10 * ui_scale, Font::ALIGN_TOP_CENTER,                   ui_scale );
 	}
 	
 	
@@ -3592,7 +3614,7 @@ void RenderLayer::Draw( void )
 	
 	// If we're waiting to spawn, show the respawn clock and beep.
 	
-	double respawn_in = draw_scores ? 0. : game->RespawnTimer.CountUpToSecs;
+	double respawn_in = game->RespawnTimer.CountUpToSecs;
 	if( respawn_in > 0. )
 	{
 		float respawn_time = game->RespawnTimer.RemainingSeconds();
@@ -3601,7 +3623,7 @@ void RenderLayer::Draw( void )
 			static int prev_respawn_seconds = 0;
 			int respawn_seconds = ceilf( respawn_time );
 			
-			if( ! cinematic )
+			if( !( cinematic || draw_scores ) )
 			{
 				std::string respawn_str = Num::ToString( respawn_seconds );
 				Player *player = game->Data.GetPlayer( game->PlayerID );
@@ -3612,7 +3634,7 @@ void RenderLayer::Draw( void )
 				else if( player_team == "Empire" )
 					r = g = a*a*a;
 				game->Gfx.Setup2D();
-				BigFont->DrawText( respawn_str, Rect.x + Rect.w/2, Rect.y + 60, Font::ALIGN_MIDDLE_CENTER, r,g,b,a );
+				BigFont->DrawText( respawn_str, text_x, Rect.y + 68 * ui_scale, Font::ALIGN_MIDDLE_CENTER, r,g,b,a, ui_scale );
 			}
 			
 			if( (respawn_seconds != prev_respawn_seconds) && (respawn_seconds <= 3) )
@@ -3625,7 +3647,7 @@ void RenderLayer::Draw( void )
 	{
 		float g = fabsf( cos( PlayTime.ElapsedSeconds() * M_PI ) ) * 0.5f;
 		game->Gfx.Setup2D();
-		BigFont->DrawText( "Flagship Lost", Rect.x + Rect.w/2, Rect.y + 60, Font::ALIGN_MIDDLE_CENTER, 1.f,g,0.f,1.f );
+		BigFont->DrawText( "Flagship Lost", text_x, Rect.y + 68 * ui_scale, Font::ALIGN_MIDDLE_CENTER, 1.f,g,  0.f,1.f, ui_scale );
 	}
 	
 	
@@ -3639,13 +3661,13 @@ void RenderLayer::Draw( void )
 		game->Gfx.Setup2D();
 		if( game->Data.TimeScale < 0.0000011 )
 		{
-			BigFont->DrawText( "PAUSED", Rect.x + Rect.w/2 + 2, Rect.y + Rect.h * 0.47 + 2, Font::ALIGN_MIDDLE_CENTER, 0.f,0.f,0.f,0.8f );
-			BigFont->DrawText( "PAUSED", Rect.x + Rect.w/2,     Rect.y + Rect.h * 0.47,     Font::ALIGN_MIDDLE_CENTER, r,  g,  b,  1.f );
+			BigFont->DrawText( "PAUSED", text_x + 2 * ui_scale, Rect.y + Rect.h * 0.47 + 2 * ui_scale, Font::ALIGN_MIDDLE_CENTER, 0.f,0.f,0.f,0.8f, ui_scale );
+			BigFont->DrawText( "PAUSED", text_x,                Rect.y + Rect.h * 0.47,                Font::ALIGN_MIDDLE_CENTER, r,  g,  b,  1.f,  ui_scale );
 		}
 		else
 		{
-			BigFont->DrawText( Num::ToString(game->Data.TimeScale) + std::string(" X"), Rect.x + Rect.w/2 + 2, Rect.y + 66, Font::ALIGN_MIDDLE_CENTER, 0.f,0.f,0.f,0.8f );
-			BigFont->DrawText( Num::ToString(game->Data.TimeScale) + std::string(" X"), Rect.x + Rect.w/2,     Rect.y + 64, Font::ALIGN_MIDDLE_CENTER, r,  g,  b,  1.f );
+			BigFont->DrawText( Num::ToString(game->Data.TimeScale) + std::string(" X"), text_x + 2 * ui_scale, Rect.y + 48 * ui_scale, Font::ALIGN_MIDDLE_CENTER, 0.f,0.f,0.f,0.8f, ui_scale );
+			BigFont->DrawText( Num::ToString(game->Data.TimeScale) + std::string(" X"), text_x,                Rect.y + 46 * ui_scale, Font::ALIGN_MIDDLE_CENTER, r,  g,  b,  1.f,  ui_scale );
 		}
 	}
 	
@@ -3802,6 +3824,7 @@ public:
 void RenderLayer::DrawScores( void )
 {
 	glPushMatrix();
+	float ui_scale = Raptor::Game->UIScale;
 	Raptor::Game->Gfx.Setup2D();
 	
 	std::set<PlayerScore> scores;
@@ -3821,11 +3844,12 @@ void RenderLayer::DrawScores( void )
 		char time_string[ 32 ] = "";
 		snprintf( time_string, 32, "%i:%02i", minutes, seconds );
 		
-		BigFont->DrawText( std::string(time_string), Rect.x + Rect.w/2 + 2, Rect.y + 62, Font::ALIGN_MIDDLE_CENTER, 0.f, 0.f, 0.f, 0.8f );
-		BigFont->DrawText( std::string(time_string), Rect.x + Rect.w/2,     Rect.y + 60, Font::ALIGN_MIDDLE_CENTER, 1.f, 1.f, 1.f, 1.f );
+		BigFont->DrawText( std::string(time_string), Rect.x + Rect.w/2 + 2, Rect.y + 70 * ui_scale, Font::ALIGN_MIDDLE_CENTER, 0.f, 0.f, 0.f, 0.8f, ui_scale );
+		BigFont->DrawText( std::string(time_string), Rect.x + Rect.w/2,     Rect.y + 68 * ui_scale, Font::ALIGN_MIDDLE_CENTER, 1.f, 1.f, 1.f, 1.f,  ui_scale );
 	}
 	
-	int y = Rect.y + 100;
+	int x = Rect.x + Rect.w/2;
+	int y = Rect.y + 100 * ui_scale;
 	
 	XWingGame *game = (XWingGame*) Raptor::Game;
 	uint32_t gametype = game->GameType;
@@ -3837,12 +3861,12 @@ void RenderLayer::DrawScores( void )
 		float rebel_g  = (game->Victor == XWing::Team::REBEL)  ? fabsf(cos( PlayTime.ElapsedSeconds() * M_PI * 2. )) : 0.12f;
 		float empire_g = (game->Victor == XWing::Team::EMPIRE) ? fabsf(cos( PlayTime.ElapsedSeconds() * M_PI * 2. )) : 0.37f;
 		
-		BigFont->DrawText( "Rebels", Rect.x + Rect.w/2 - 318, y + 2, Font::ALIGN_MIDDLE_LEFT, 0.f, 0.f, 0.f, 0.8f );
-		BigFont->DrawText( "Rebels", Rect.x + Rect.w/2 - 320, y, Font::ALIGN_MIDDLE_LEFT, 1.f, rebel_g, 0.12f, 1.f );
-		BigFont->DrawText( "vs", Rect.x + Rect.w/2 + 2, y + 2, Font::ALIGN_MIDDLE_CENTER, 0.f, 0.f, 0.f, 0.8f );
-		BigFont->DrawText( "vs", Rect.x + Rect.w/2, y, Font::ALIGN_MIDDLE_CENTER, 0.75f, 0.75f, 0.75f, 1.f );
-		BigFont->DrawText( "Empire", Rect.x + Rect.w/2 + 322, y + 2, Font::ALIGN_MIDDLE_RIGHT, 0.f, 0.f, 0.f, 0.8f );
-		BigFont->DrawText( "Empire", Rect.x + Rect.w/2 + 320, y, Font::ALIGN_MIDDLE_RIGHT, 0.25f, empire_g, 1.f, 1.f );
+		BigFont->DrawText( "Rebels", x - 318 * ui_scale, y + 2 * ui_scale, Font::ALIGN_MIDDLE_LEFT,   0.f,   0.f,      0.f,   0.8f, ui_scale );
+		BigFont->DrawText( "Rebels", x - 320 * ui_scale, y,                Font::ALIGN_MIDDLE_LEFT,   1.f,   rebel_g,  0.12f, 1.f,  ui_scale );
+		BigFont->DrawText( "vs",     x +   2 * ui_scale, y + 2 * ui_scale, Font::ALIGN_MIDDLE_CENTER, 0.f,   0.f,      0.f,   0.8f, ui_scale );
+		BigFont->DrawText( "vs",     x,                  y,                Font::ALIGN_MIDDLE_CENTER, 0.75f, 0.75f,    0.75f, 1.f,  ui_scale );
+		BigFont->DrawText( "Empire", x + 322 * ui_scale, y + 2 * ui_scale, Font::ALIGN_MIDDLE_RIGHT,  0.f,   0.f,      0.f,   0.8f, ui_scale );
+		BigFont->DrawText( "Empire", x + 320 * ui_scale, y,                Font::ALIGN_MIDDLE_RIGHT,  0.25f, empire_g, 1.f,   1.f,  ui_scale );
 		
 		if( (! objective) && (game->Data.PropertyAsString("gametype") != "mission") )
 		{
@@ -3853,47 +3877,48 @@ void RenderLayer::DrawScores( void )
 			if( empire_score >= rebel_score )
 				rebel_g = 0.12f;
 			
-			BigFont->DrawText( Raptor::Game->Data.PropertyAsString("team_score_rebel"),  Rect.x + Rect.w/2 - 14, y + 2, Font::ALIGN_MIDDLE_RIGHT, 0.f,   0.f,      0.f,   0.8f );
-			BigFont->DrawText( Raptor::Game->Data.PropertyAsString("team_score_rebel"),  Rect.x + Rect.w/2 - 16, y,     Font::ALIGN_MIDDLE_RIGHT, 1.f,   rebel_g,  0.12f, 1.f );
-			BigFont->DrawText( Raptor::Game->Data.PropertyAsString("team_score_empire"), Rect.x + Rect.w/2 + 18, y + 2, Font::ALIGN_MIDDLE_LEFT,  0.f,   0.f,      0.f,   0.8f );
-			BigFont->DrawText( Raptor::Game->Data.PropertyAsString("team_score_empire"), Rect.x + Rect.w/2 + 16, y,     Font::ALIGN_MIDDLE_LEFT,  0.25f, empire_g, 1.f,   1.f );
+			BigFont->DrawText( Raptor::Game->Data.PropertyAsString("team_score_rebel"),  x - 14 * ui_scale, y + 2 * ui_scale, Font::ALIGN_MIDDLE_RIGHT, 0.f,   0.f,      0.f,   0.8f, ui_scale );
+			BigFont->DrawText( Raptor::Game->Data.PropertyAsString("team_score_rebel"),  x - 16 * ui_scale, y,                Font::ALIGN_MIDDLE_RIGHT, 1.f,   rebel_g,  0.12f, 1.f,  ui_scale );
+			BigFont->DrawText( Raptor::Game->Data.PropertyAsString("team_score_empire"), x + 18 * ui_scale, y + 2 * ui_scale, Font::ALIGN_MIDDLE_LEFT,  0.f,   0.f,      0.f,   0.8f, ui_scale );
+			BigFont->DrawText( Raptor::Game->Data.PropertyAsString("team_score_empire"), x + 16 * ui_scale, y,                Font::ALIGN_MIDDLE_LEFT,  0.25f, empire_g, 1.f,   1.f,  ui_scale );
 		}
 		
-		y += BigFont->GetHeight() - 8;
-		Raptor::Game->Gfx.DrawLine2D( Raptor::Game->Gfx.W / 2 - 318, y + 2, Rect.x + Rect.w/2 + 322, y + 2, 1.f, 0.f, 0.f, 0.f, 0.8f );
-		Raptor::Game->Gfx.DrawLine2D( Raptor::Game->Gfx.W / 2 - 320, y, Rect.x + Rect.w/2 + 320, y, 1.f, 1.f, 1.f, 1.f, 1.f );
-		y += 16;
+		y += (BigFont->GetHeight() - 8) * ui_scale;
+		float thickness = std::max<float>( 1.f, ui_scale );
+		Raptor::Game->Gfx.DrawLine2D( Raptor::Game->Gfx.W/2 - 318 * ui_scale, y + 2 * ui_scale, Raptor::Game->Gfx.W/2 + 322 * ui_scale, y + 2 * ui_scale, thickness, 0.f, 0.f, 0.f, 0.8f );
+		Raptor::Game->Gfx.DrawLine2D( Raptor::Game->Gfx.W/2 - 320 * ui_scale, y,                Raptor::Game->Gfx.W/2 + 320 * ui_scale, y,                thickness, 1.f, 1.f, 1.f, 1.f );
+		y += 16 * ui_scale;
 	}
 	
-	SmallFont->DrawText( "Player", Rect.x + Rect.w/2 - 318, y + 2, Font::ALIGN_MIDDLE_LEFT, 0.f, 0.f, 0.f, 0.8f );
-	SmallFont->DrawText( "Player", Rect.x + Rect.w/2 - 320, y, Font::ALIGN_MIDDLE_LEFT, 1.f, 1.f, 1.f, 1.f );
+	SmallFont->DrawText( "Player", x - 318 * ui_scale, y + 2 * ui_scale, Font::ALIGN_MIDDLE_LEFT, 0.f, 0.f, 0.f, 0.8f, ui_scale );
+	SmallFont->DrawText( "Player", x - 320 * ui_scale, y,                Font::ALIGN_MIDDLE_LEFT, 1.f, 1.f, 1.f, 1.f,  ui_scale );
 	if( objective )
 	{
-		SmallFont->DrawText( "Objective", Rect.x + Rect.w/2 + 82, y + 2, Font::ALIGN_MIDDLE_RIGHT, 0.f, 0.f, 0.f, 0.8f );
-		SmallFont->DrawText( "Objective", Rect.x + Rect.w/2 + 80, y, Font::ALIGN_MIDDLE_RIGHT, 1.f, 1.f, 1.f, 1.f );
-		SmallFont->DrawText( "Fighters", Rect.x + Rect.w/2 + 162, y + 2, Font::ALIGN_MIDDLE_RIGHT, 0.f, 0.f, 0.f, 0.8f );
-		SmallFont->DrawText( "Fighters", Rect.x + Rect.w/2 + 160, y, Font::ALIGN_MIDDLE_RIGHT, 1.f, 1.f, 1.f, 1.f );
-		SmallFont->DrawText( "Turrets", Rect.x + Rect.w/2 + 242, y + 2, Font::ALIGN_MIDDLE_RIGHT, 0.f, 0.f, 0.f, 0.8f );
-		SmallFont->DrawText( "Turrets", Rect.x + Rect.w/2 + 240, y, Font::ALIGN_MIDDLE_RIGHT, 1.f, 1.f, 1.f, 1.f );
+		SmallFont->DrawText( "Objective", x +  82 * ui_scale, y + 2 * ui_scale, Font::ALIGN_MIDDLE_RIGHT, 0.f, 0.f, 0.f, 0.8f, ui_scale );
+		SmallFont->DrawText( "Objective", x +  80 * ui_scale, y,                Font::ALIGN_MIDDLE_RIGHT, 1.f, 1.f, 1.f, 1.f,  ui_scale );
+		SmallFont->DrawText( "Fighters",  x + 162 * ui_scale, y + 2 * ui_scale, Font::ALIGN_MIDDLE_RIGHT, 0.f, 0.f, 0.f, 0.8f, ui_scale );
+		SmallFont->DrawText( "Fighters",  x + 160 * ui_scale, y,                Font::ALIGN_MIDDLE_RIGHT, 1.f, 1.f, 1.f, 1.f,  ui_scale );
+		SmallFont->DrawText( "Turrets",   x + 242 * ui_scale, y + 2 * ui_scale, Font::ALIGN_MIDDLE_RIGHT, 0.f, 0.f, 0.f, 0.8f, ui_scale );
+		SmallFont->DrawText( "Turrets",   x + 240 * ui_scale, y,                Font::ALIGN_MIDDLE_RIGHT, 1.f, 1.f, 1.f, 1.f,  ui_scale );
 	}
 	else
 	{
 		if( (gametype == XWing::GameType::TEAM_RACE) || (gametype == XWing::GameType::FFA_RACE) )
 		{
-			SmallFont->DrawText( "Checkpoints", Rect.x + Rect.w/2 + 162, y + 2, Font::ALIGN_MIDDLE_RIGHT, 0.f, 0.f, 0.f, 0.8f );
-			SmallFont->DrawText( "Checkpoints", Rect.x + Rect.w/2 + 160, y, Font::ALIGN_MIDDLE_RIGHT, 1.f, 1.f, 1.f, 1.f );
+			SmallFont->DrawText( "Checkpoints", x + 162 * ui_scale, y + 2 * ui_scale, Font::ALIGN_MIDDLE_RIGHT, 0.f, 0.f, 0.f, 0.8f, ui_scale );
+			SmallFont->DrawText( "Checkpoints", x + 160 * ui_scale, y,                Font::ALIGN_MIDDLE_RIGHT, 1.f, 1.f, 1.f, 1.f,  ui_scale );
 		}
 		else if( gametype == XWing::GameType::CTF )
 		{
-			SmallFont->DrawText( "Captures", Rect.x + Rect.w/2 + 162, y + 2, Font::ALIGN_MIDDLE_RIGHT, 0.f, 0.f, 0.f, 0.8f );
-			SmallFont->DrawText( "Captures", Rect.x + Rect.w/2 + 160, y, Font::ALIGN_MIDDLE_RIGHT, 1.f, 1.f, 1.f, 1.f );
+			SmallFont->DrawText( "Captures", x + 162 * ui_scale, y + 2 * ui_scale, Font::ALIGN_MIDDLE_RIGHT, 0.f, 0.f, 0.f, 0.8f, ui_scale );
+			SmallFont->DrawText( "Captures", x + 160 * ui_scale, y,                Font::ALIGN_MIDDLE_RIGHT, 1.f, 1.f, 1.f, 1.f,  ui_scale );
 		}
-		SmallFont->DrawText( "Kills", Rect.x + Rect.w/2 + 242, y + 2, Font::ALIGN_MIDDLE_RIGHT, 0.f, 0.f, 0.f, 0.8f );
-		SmallFont->DrawText( "Kills", Rect.x + Rect.w/2 + 240, y, Font::ALIGN_MIDDLE_RIGHT, 1.f, 1.f, 1.f, 1.f );
+		SmallFont->DrawText( "Kills", x + 242 * ui_scale, y + 2 * ui_scale, Font::ALIGN_MIDDLE_RIGHT, 0.f, 0.f, 0.f, 0.8f, ui_scale );
+		SmallFont->DrawText( "Kills", x + 240 * ui_scale, y,                Font::ALIGN_MIDDLE_RIGHT, 1.f, 1.f, 1.f, 1.f,  ui_scale );
 	}
-	SmallFont->DrawText( "Deaths", Rect.x + Rect.w/2 + 322, y + 2, Font::ALIGN_MIDDLE_RIGHT, 0.f, 0.f, 0.f, 0.8f );
-	SmallFont->DrawText( "Deaths", Rect.x + Rect.w/2 + 320, y, Font::ALIGN_MIDDLE_RIGHT, 1.f, 1.f, 1.f, 1.f );
-	y += SmallFont->GetHeight();
+	SmallFont->DrawText( "Deaths", x + 322 * ui_scale, y + 2 * ui_scale, Font::ALIGN_MIDDLE_RIGHT, 0.f, 0.f, 0.f, 0.8f, ui_scale );
+	SmallFont->DrawText( "Deaths", x + 320 * ui_scale, y,                Font::ALIGN_MIDDLE_RIGHT, 1.f, 1.f, 1.f, 1.f,  ui_scale );
+	y += SmallFont->GetHeight() * ui_scale;
 	
 	for( std::set<PlayerScore>::reverse_iterator score_iter = scores.rbegin(); score_iter != scores.rend(); score_iter ++ )
 	{
@@ -3935,47 +3960,47 @@ void RenderLayer::DrawScores( void )
 		else if( score_iter->PlayerData->ID == Raptor::Game->PlayerID )
 			blue = 0.f;
 		
-		BigFont->DrawText( score_iter->PlayerData->Name, Rect.x + Rect.w/2 - 318, y + 2, Font::ALIGN_MIDDLE_LEFT, 0.f, 0.f, 0.f, 0.8f );
-		BigFont->DrawText( score_iter->PlayerData->Name, Rect.x + Rect.w/2 - 320, y, Font::ALIGN_MIDDLE_LEFT, red, green, blue, 1.f );
+		BigFont->DrawText( score_iter->PlayerData->Name, x - 318 * ui_scale, y + 2, Font::ALIGN_MIDDLE_LEFT, 0.f, 0.f, 0.f, 0.8f,   ui_scale );
+		BigFont->DrawText( score_iter->PlayerData->Name, x - 320 * ui_scale, y,     Font::ALIGN_MIDDLE_LEFT, red, green, blue, 1.f, ui_scale );
 		if( objective )
 		{
-			BigFont->DrawText( Num::ToString(score_iter->CapitalKills), Rect.x + Rect.w/2 + 82, y + 2, Font::ALIGN_MIDDLE_RIGHT, 0.f, 0.f, 0.f, 0.8f );
-			BigFont->DrawText( Num::ToString(score_iter->CapitalKills), Rect.x + Rect.w/2 + 80, y, Font::ALIGN_MIDDLE_RIGHT, red, green, blue, 1.f );
-			BigFont->DrawText( Num::ToString(score_iter->Kills), Rect.x + Rect.w/2 + 162, y + 2, Font::ALIGN_MIDDLE_RIGHT, 0.f, 0.f, 0.f, 0.8f );
-			BigFont->DrawText( Num::ToString(score_iter->Kills), Rect.x + Rect.w/2 + 160, y, Font::ALIGN_MIDDLE_RIGHT, red, green, blue, 1.f );
-			BigFont->DrawText( Num::ToString(score_iter->TurretKills), Rect.x + Rect.w/2 + 242, y + 2, Font::ALIGN_MIDDLE_RIGHT, 0.f, 0.f, 0.f, 0.8f );
-			BigFont->DrawText( Num::ToString(score_iter->TurretKills), Rect.x + Rect.w/2 + 240, y, Font::ALIGN_MIDDLE_RIGHT, red, green, blue, 1.f );
+			BigFont->DrawText( Num::ToString(score_iter->CapitalKills), x +  82 * ui_scale, y + 2 * ui_scale, Font::ALIGN_MIDDLE_RIGHT, 0.f, 0.f,   0.f,  0.8f, ui_scale );
+			BigFont->DrawText( Num::ToString(score_iter->CapitalKills), x +  80 * ui_scale, y,                Font::ALIGN_MIDDLE_RIGHT, red, green, blue, 1.f,  ui_scale );
+			BigFont->DrawText( Num::ToString(score_iter->Kills),        x + 162 * ui_scale, y + 2 * ui_scale, Font::ALIGN_MIDDLE_RIGHT, 0.f, 0.f,   0.f,  0.8f, ui_scale );
+			BigFont->DrawText( Num::ToString(score_iter->Kills),        x + 160 * ui_scale, y,                Font::ALIGN_MIDDLE_RIGHT, red, green, blue, 1.f,  ui_scale );
+			BigFont->DrawText( Num::ToString(score_iter->TurretKills),  x + 242 * ui_scale, y + 2 * ui_scale, Font::ALIGN_MIDDLE_RIGHT, 0.f, 0.f,   0.f,  0.8f, ui_scale );
+			BigFont->DrawText( Num::ToString(score_iter->TurretKills),  x + 240 * ui_scale, y,                Font::ALIGN_MIDDLE_RIGHT, red, green, blue, 1.f,  ui_scale );
 		}
 		else
 		{
 			if( (gametype == XWing::GameType::TEAM_RACE) || (gametype == XWing::GameType::FFA_RACE) || (gametype == XWing::GameType::CTF) )
 			{
-				BigFont->DrawText( Num::ToString(score_iter->Score), Rect.x + Rect.w/2 + 162, y + 2, Font::ALIGN_MIDDLE_RIGHT, 0.f, 0.f, 0.f, 0.8f );
-				BigFont->DrawText( Num::ToString(score_iter->Score), Rect.x + Rect.w/2 + 160, y, Font::ALIGN_MIDDLE_RIGHT, red, green, blue, 1.f );
+				BigFont->DrawText( Num::ToString(score_iter->Score), x + 162 * ui_scale, y + 2 * ui_scale, Font::ALIGN_MIDDLE_RIGHT, 0.f, 0.f,   0.f,  0.8f, ui_scale );
+				BigFont->DrawText( Num::ToString(score_iter->Score), x + 160 * ui_scale, y,                Font::ALIGN_MIDDLE_RIGHT, red, green, blue, 1.f,  ui_scale );
 			}
-			BigFont->DrawText( Num::ToString(score_iter->Kills), Rect.x + Rect.w/2 + 242, y + 2, Font::ALIGN_MIDDLE_RIGHT, 0.f, 0.f, 0.f, 0.8f );
-			BigFont->DrawText( Num::ToString(score_iter->Kills), Rect.x + Rect.w/2 + 240, y, Font::ALIGN_MIDDLE_RIGHT, red, green, blue, 1.f );
+			BigFont->DrawText( Num::ToString(score_iter->Kills), x + 242 * ui_scale, y + 2 * ui_scale, Font::ALIGN_MIDDLE_RIGHT, 0.f, 0.f,   0.f,  0.8f, ui_scale );
+			BigFont->DrawText( Num::ToString(score_iter->Kills), x + 240 * ui_scale, y,                Font::ALIGN_MIDDLE_RIGHT, red, green, blue, 1.f,  ui_scale );
 		}
-		BigFont->DrawText( Num::ToString(score_iter->Deaths), Rect.x + Rect.w/2 + 322, y + 2, Font::ALIGN_MIDDLE_RIGHT, 0.f, 0.f, 0.f, 0.8f );
-		BigFont->DrawText( Num::ToString(score_iter->Deaths), Rect.x + Rect.w/2 + 320, y, Font::ALIGN_MIDDLE_RIGHT, red, green, blue, 1.f );
+		BigFont->DrawText( Num::ToString(score_iter->Deaths), x + 322 * ui_scale, y + 2 * ui_scale, Font::ALIGN_MIDDLE_RIGHT, 0.f, 0.f,   0.f,  0.8f, ui_scale );
+		BigFont->DrawText( Num::ToString(score_iter->Deaths), x + 320 * ui_scale, y,                Font::ALIGN_MIDDLE_RIGHT, red, green, blue, 1.f,  ui_scale );
 		
-		y += BigFont->GetLineSkip();
+		y += BigFont->GetLineSkip() * ui_scale;
 	}
 	
 	if( Raptor::Game->Data.PropertyAsString("ai_score_kills").length() )
 	{
 		// FIXME: Should this appear in sorted order with the player scores?
-		BigFont->DrawText( Raptor::Game->Data.PropertyAsString("ai_score_name"),  Rect.x + Rect.w/2 - 318, y + 2, Font::ALIGN_MIDDLE_LEFT,  0.f,  0.f,  0.f,  0.8f );
-		BigFont->DrawText( Raptor::Game->Data.PropertyAsString("ai_score_name"),  Rect.x + Rect.w/2 - 320, y,     Font::ALIGN_MIDDLE_LEFT,  0.8f, 0.8f, 0.8f, 1.f );
+		BigFont->DrawText( Raptor::Game->Data.PropertyAsString("ai_score_name"), x - 318 * ui_scale, y + 2 * ui_scale, Font::ALIGN_MIDDLE_LEFT, 0.f,  0.f,  0.f,  0.8f, ui_scale );
+		BigFont->DrawText( Raptor::Game->Data.PropertyAsString("ai_score_name"), x - 320 * ui_scale, y,                Font::ALIGN_MIDDLE_LEFT, 0.8f, 0.8f, 0.8f, 1.f,  ui_scale );
 		if( (gametype == XWing::GameType::TEAM_RACE) || (gametype == XWing::GameType::FFA_RACE) )
 		{
-			BigFont->DrawText( Raptor::Game->Data.PropertyAsString("ai_score_kills"), Rect.x + Rect.w/2 + 162, y + 2, Font::ALIGN_MIDDLE_RIGHT, 0.f,  0.f,  0.f,  0.8f );
-			BigFont->DrawText( Raptor::Game->Data.PropertyAsString("ai_score_kills"), Rect.x + Rect.w/2 + 160, y,     Font::ALIGN_MIDDLE_RIGHT, 0.8f, 0.8f, 0.8f, 1.f );
+			BigFont->DrawText( Raptor::Game->Data.PropertyAsString("ai_score_kills"), x + 162 * ui_scale, y + 2 * ui_scale, Font::ALIGN_MIDDLE_RIGHT, 0.f,  0.f,  0.f,  0.8f, ui_scale );
+			BigFont->DrawText( Raptor::Game->Data.PropertyAsString("ai_score_kills"), x + 160 * ui_scale, y,                Font::ALIGN_MIDDLE_RIGHT, 0.8f, 0.8f, 0.8f, 1.f,  ui_scale );
 		}
 		else
 		{
-			BigFont->DrawText( Raptor::Game->Data.PropertyAsString("ai_score_kills"), Rect.x + Rect.w/2 + 242, y + 2, Font::ALIGN_MIDDLE_RIGHT, 0.f,  0.f,  0.f,  0.8f );
-			BigFont->DrawText( Raptor::Game->Data.PropertyAsString("ai_score_kills"), Rect.x + Rect.w/2 + 240, y,     Font::ALIGN_MIDDLE_RIGHT, 0.8f, 0.8f, 0.8f, 1.f );
+			BigFont->DrawText( Raptor::Game->Data.PropertyAsString("ai_score_kills"), x + 242 * ui_scale, y + 2 * ui_scale, Font::ALIGN_MIDDLE_RIGHT, 0.f,  0.f,  0.f,  0.8f, ui_scale );
+			BigFont->DrawText( Raptor::Game->Data.PropertyAsString("ai_score_kills"), x + 240 * ui_scale, y,                Font::ALIGN_MIDDLE_RIGHT, 0.8f, 0.8f, 0.8f, 1.f,  ui_scale );
 		}
 	}
 	
@@ -4050,20 +4075,21 @@ void RenderLayer::DrawVoice( void )
 				game->Gfx.Setup2D();
 			}
 			
-			int font_ascent = BigFont->GetAscent();
+			float ui_scale = Raptor::Game->UIScale;
+			int font_ascent = BigFont->GetAscent() * ui_scale;
 			GLuint mic_texture = Mic.CurrentFrame();
 			
 			game->Gfx.DrawRect2D( Rect.x + Rect.w - 1 - font_ascent, Rect.y + voice_y - 1 - font_ascent, Rect.x + Rect.w - 1, Rect.y + voice_y - 1, mic_texture, 0.f,0.f,0.f,0.8f );
 			game->Gfx.DrawRect2D( Rect.x + Rect.w - 3 - font_ascent, Rect.y + voice_y - 3 - font_ascent, Rect.x + Rect.w - 3, Rect.y + voice_y - 3, mic_texture, display_color.Red,display_color.Green,display_color.Blue,display_color.Alpha );
 			
-			BigFont->DrawText( display_name, Rect.x + Rect.w - 3 - font_ascent, Rect.y + voice_y - 1, Font::ALIGN_BOTTOM_RIGHT, 0.f,0.f,0.f,0.8f );
-			BigFont->DrawText( display_name, Rect.x + Rect.w - 5 - font_ascent, Rect.y + voice_y - 3, Font::ALIGN_BOTTOM_RIGHT, display_color.Red,display_color.Green,display_color.Blue,display_color.Alpha );
+			BigFont->DrawText( display_name, Rect.x + Rect.w - 3 - font_ascent, Rect.y + voice_y - 1, Font::ALIGN_BOTTOM_RIGHT, 0.f,0.f,0.f,0.8f,                                                             ui_scale );
+			BigFont->DrawText( display_name, Rect.x + Rect.w - 5 - font_ascent, Rect.y + voice_y - 3, Font::ALIGN_BOTTOM_RIGHT, display_color.Red,display_color.Green,display_color.Blue,display_color.Alpha, ui_scale );
 			
-			voice_y -= font_ascent + 4;
+			voice_y -= font_ascent + 4 * ui_scale;
 		}
 	}
 	
-	if( voice_y < Rect.h )
+	if( voice_y < Rect.h )  // If anyone is talking we called glPushMatrix.
 		glPopMatrix();
 }
 

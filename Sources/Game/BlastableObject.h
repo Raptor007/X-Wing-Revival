@@ -16,12 +16,14 @@ class BlastableObject : public GameObject
 {
 public:
 	std::vector<BlastPoint> BlastPoints;
+	BlastPoint *RecentBlastPoint;
 	
 	BlastableObject( uint32_t id = 0, uint32_t type_code = '    ', uint16_t player_id = 0 );
 	BlastableObject( const BlastableObject &other );
 	virtual ~BlastableObject();
 	
-	virtual void SetBlastPoint( double x, double y, double z, double radius, double time = 0., const ModelObject *object = NULL );
+	virtual void SetBlastPoint( double x, double y, double z, double radius, double time = 0. );
+	virtual void SetBlastPointRelative( double fwd, double up, double right, double radius, double time = 0. );
 	virtual BlastPoint *LeastImportantBlastPoint( void );
 };
 
@@ -31,13 +33,11 @@ class BlastPoint : public Vec3D
 public:
 	double Radius;
 	Clock Lifetime;
-	const ModelObject *Object;
 	
-	BlastPoint( double fwd, double up, double right, double radius, double time = 0., const ModelObject *object = NULL );
+	BlastPoint( double fwd, double up, double right, double radius, double time = 0. );
 	virtual ~BlastPoint();
 	
-	void Reset( double fwd, double up, double right, double radius, double time = 0., const ModelObject *object = NULL );
+	void Reset( double fwd, double up, double right, double radius, double time = 0. );
 	double Importance( void ) const;
-	Pos3D Worldspace( const Pos3D *pos ) const;
 	void AddArea( double da );
 };

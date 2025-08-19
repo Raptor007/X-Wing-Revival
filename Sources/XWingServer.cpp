@@ -259,7 +259,7 @@ bool XWingServer::ProcessPacket( Packet *packet, ConnectedClient *from_client )
 			for( std::map<uint16_t,Player*>::const_iterator player_iter = Data.Players.begin(); player_iter != Data.Players.end(); player_iter ++ )
 			{
 				std::string assigned_team = player_iter->second->PropertyAsString("team");
-				if( ! assigned_team.empty() )
+				if( (assigned_team != "Spectator") && ! assigned_team.empty() )
 					players_still_flying ++;
 			}
 			
@@ -2691,7 +2691,7 @@ void XWingServer::Update( double dt )
 						if( (ship->Category() == ShipClass::CATEGORY_CAPITAL) && (target_ship->Category() != ShipClass::CATEGORY_CAPITAL) )
 							dodge_dist = 0.;
 					}
-					double run_dist = (ship->Category() == ShipClass::CATEGORY_CAPITAL) ? 0. : (dodge_dist * 4.);
+					double run_dist = (ship->Category() == ShipClass::CATEGORY_CAPITAL) ? 0. : std::min<double>( dodge_dist * 4., dodge_dist + 2000. );
 					double firing_dist = ((target->Type() == XWing::Object::TURRET) && ! target->MotionVector.Length()) ? 2000. : (900. + dodge_dist);
 					ship->Firing = (i_dot_fwd > 0.9) && (dist_to_intercept < firing_dist);
 					
@@ -2918,9 +2918,9 @@ void XWingServer::Update( double dt )
 								dodging_for_shot = false;
 							}
 						}
-						else
+						else if( would_hit->Type() != XWing::Object::CHECKPOINT )
 						{
-							// If we're about to hit something that's not a shot or ship, always try to dodge it.
+							// If we're about to hit something that's not a shot/ship/checkpoint, always try to dodge it.
 							dodging = would_hit;
 							dodging_for_shot = false;
 						}
@@ -3195,7 +3195,7 @@ void XWingServer::Update( double dt )
 					waypoint = Data.GetObject( ship->NextCheckpoint );
 					
 					// Allow AI to go off-course to kill players.
-					if( target && target->Owner() )
+					if( target && target->Owner() && (ship->Lifetime.ElapsedSeconds() >= (target->ID % 4 + 2)) )
 						waypoint = NULL;
 				}
 				

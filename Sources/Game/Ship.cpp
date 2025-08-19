@@ -228,11 +228,9 @@ void Ship::Reset( void )
 		}
 		else if( game->State >= XWing::State::FLYING )
 		{
-			Mix_Chunk *sound = game->Res.GetSound("jump_in.wav");
 			double loudness = ((ID == game->ObservedShipID) || (Category() == ShipClass::CATEGORY_CAPITAL) || (Category() == ShipClass::CATEGORY_TRANSPORT)) ? 30. : 1.;
-			
-			game->Snd.PlayFromObject( sound, this, loudness );
-			game->Snd.PlayFromObject( sound, this, loudness / 2. );
+			game->Snd.PlayFromObject( game->Res.GetSound("jump_in.wav"),   this, loudness );
+			game->Snd.PlayFromObject( game->Res.GetSound("jump_in_2.wav"), this, pow( log(Radius()), 2. ) / 3. );
 		}
 	}
 	else if( PlayerID && ! ClientSide() )
@@ -430,12 +428,8 @@ void Ship::KnockCockpit( const Vec3D *dir, double force )
 }
 
 
-void Ship::SetBlastPoint( double x, double y, double z, double radius, double time, const ModelObject *object )
+void Ship::SetBlastPoint( double x, double y, double z, double radius, double time )
 {
-	size_t blastpoints = ((XWingGame*)( Raptor::Game ))->BlastPoints;
-	if( blastpoints <= 0 )
-		return;
-	
 	Pos3D shot( x, y, z );
 	double fwd   = shot.DistAlong( &Fwd,   this );
 	double up    = shot.DistAlong( &Up,    this );
@@ -457,10 +451,7 @@ void Ship::SetBlastPoint( double x, double y, double z, double radius, double ti
 			right = side * Num::Sign(right);
 	}
 	
-	if( BlastPoints.size() < blastpoints )
-		BlastPoints.push_back( BlastPoint( fwd, up, right, radius, time, object ) );
-	else
-		LeastImportantBlastPoint()->Reset( fwd, up, right, radius, time, object );
+	SetBlastPointRelative( fwd, up, right, radius, time );
 }
 
 

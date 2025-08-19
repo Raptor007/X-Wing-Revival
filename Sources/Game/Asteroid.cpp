@@ -182,6 +182,19 @@ bool Asteroid::WillCollide( const GameObject *other, double dt, std::string *thi
 }
 
 
+void Asteroid::SetBlastPoint( double x, double y, double z, double radius, double time )
+{
+	double draw_radius = Shape ? (Radius * 3.45 / Shape->GetTriagonal()) : 1.;
+	
+	Pos3D shot( x, y, z );
+	double fwd   = shot.DistAlong( &Fwd,   this ) / draw_radius;
+	double up    = shot.DistAlong( &Up,    this ) / draw_radius;
+	double right = shot.DistAlong( &Right, this ) / draw_radius;
+	
+	SetBlastPointRelative( fwd, up, right, radius, time );
+}
+
+
 void Asteroid::Draw( void )
 {
 	XWingGame *game = (XWingGame*) Raptor::Game;

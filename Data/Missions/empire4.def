@@ -16,7 +16,18 @@ rebel_flagship_name Resurgence
 empire_flagship_name Assiduous
 rebel_cruisers 1
 empire_waves 3
-rebel_waves 3
+rebel_waves 5
+player_spawn -2500 0 -500
+clean_work true
+
+at 0:02
+alert e4_ship.wav The group that's holding the ship is a smorgasbord of the terrorist underground.
+wait 5
+alert e4_strike.wav This is our window to strike.
+
+on damaged empire objective
+wait 1.5
+alert e4_careful.wav Careful!  We don't have much time!
 
 on destroyed rebel by player #5
 impressive true
@@ -24,12 +35,19 @@ impressive true
 on destroyed rebel objective by player
 impressive true
 
+on destroyed empire by player
+clean_work false
+
 on victory
 next_mission empire1
 
 on victory if impressive true
 wait 2
 alert impressive.wav Impressive.
+
+on victory if clean_work true
+wait 3.5
+alert e4_clean.wav Very clean work.
 
 on defeat
 wait 3

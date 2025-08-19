@@ -70,7 +70,7 @@ PrefsMenu::PrefsMenu( void )
 	XWingGame *game = (XWingGame*) Raptor::Game;
 	Paused = (game->State >= XWing::State::FLYING)
 		&& (game->Data.TimeScale == 1.)
-		&& (game->Data.Players.size() == 1)
+		&& (game->Data.RealPlayers() <= 1)
 		&& game->Cfg.SettingAsBool("ui_pause",true)
 		&& Raptor::Server->IsRunning()
 		&& game->ControlPressed( game->Controls[ XWing::Control::PAUSE ] );
@@ -652,12 +652,12 @@ void PrefsMenu::UpdateContents( void )
 		ui_box_style->Update();
 		group->AddElement( ui_box_style );
 		
+		/*
 		rect.x = 10;
 		rect.y += rect.h + 8;
 		rect.w = 175;
 		group->AddElement( new PrefsMenuCheckBox( &rect, LabelFont, "Classic Target Info", "ui_classic" ) );
 		
-		/*
 		rect.y += rect.h + 8;
 		rect.w = 170;
 		PrefsMenuCheckBox *ui_ship_rotate = new PrefsMenuCheckBox( &rect, LabelFont, "Rotate Lobby Ship", "ui_ship_rotate", "20", "0" );
@@ -669,6 +669,7 @@ void PrefsMenu::UpdateContents( void )
 		}
 		*/
 		
+		rect.x = 10;
 		rect.y += rect.h + 8;
 		rect.w = 160;
 		group->AddElement( new PrefsMenuCheckBox( &rect, LabelFont, "Menu Auto-Pause", "ui_pause" ) );  // FIXME: Make new class that pauses/unpauses when clicked.
@@ -680,6 +681,31 @@ void PrefsMenu::UpdateContents( void )
 		rect.y += rect.h + 8;
 		rect.w = 150;
 		group->AddElement( new PrefsMenuCheckBox( &rect, LabelFont, "Cinematic Mode", "cinematic" ) );
+		
+		rect.x = 10;
+		rect.y += rect.h + 8;
+		rect.w = 90;
+		group->AddElement( new Label( &rect, "GUI Scale:", LabelFont, Font::ALIGN_MIDDLE_LEFT ) );
+		rect.x += rect.w + 5;
+		rect.w = 75;
+		PrefsMenuDropDown *scale_dropdown = new PrefsMenuDropDown( &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, 0, "ui_scale" );
+		scale_dropdown->AddItem( "0.8",   "80%" );
+		scale_dropdown->AddItem( "0.9",   "90%" );
+		scale_dropdown->AddItem( "1",    "100%" );
+		scale_dropdown->AddItem( "1.25", "125%" );
+		scale_dropdown->AddItem( "1.5",  "150%" );
+		scale_dropdown->AddItem( "1.75", "175%" );
+		scale_dropdown->AddItem( "2",    "200%" );
+		if( Raptor::Game->Gfx.DesktopH >= 1440 )
+			scale_dropdown->AddItem( "2.5", "250%" );
+		if( Raptor::Game->Gfx.DesktopH >= 1500 )
+			scale_dropdown->AddItem( "3",   "300%" );
+		if( Raptor::Game->Gfx.DesktopH >= 1920 )
+			scale_dropdown->AddItem( "3.5", "350%" );
+		if( Raptor::Game->Gfx.DesktopH >= 2000 )
+			scale_dropdown->AddItem( "4",   "400%" );
+		scale_dropdown->Update();
+		group->AddElement( scale_dropdown );
 	}
 	else if( Page == PrefsMenu::PAGE_AUDIO )
 	{
@@ -2145,7 +2171,7 @@ void PrefsMenuSillyButton::Draw( void )
 	if( Raptor::Game->Res.SearchPath.front() == "Sounds/Silly" )
 	{
 		Button::Draw();
-		PewFont->DrawText( "PEW PEW", Rect.w/2, Rect.h/2, Font::ALIGN_MIDDLE_CENTER, 0.f,0.f,1.f,1.f );
+		PewFont->DrawText( "PEW PEW", CalcRect.w/2, CalcRect.h/2, Font::ALIGN_MIDDLE_CENTER, 0.f,0.f,1.f,1.f, UIScaleMode ? Raptor::Game->UIScale : 1.f );
 	}
 }
 
@@ -2307,8 +2333,9 @@ void PrefsMenuBind::Draw( void )
 	}
 	
 	Button::Draw();
-	NameFont->DrawText( control_name + std::string(":"), 10, Rect.h/2, Font::ALIGN_MIDDLE_LEFT );
-	BindFont->DrawText( bound_string, 120, Rect.h/2, Font::ALIGN_MIDDLE_LEFT );
+	float ui_scale = Raptor::Game->UIScale;
+	NameFont->DrawText( control_name + std::string(":"), 10 * ui_scale,  CalcRect.h/2, Font::ALIGN_MIDDLE_LEFT, ui_scale );
+	BindFont->DrawText( bound_string,                    120 * ui_scale, CalcRect.h/2, Font::ALIGN_MIDDLE_LEFT, ui_scale );
 }
 
 
@@ -2504,7 +2531,7 @@ void PrefsMenuCalibrator::TrackEvent( SDL_Event *event )
 void PrefsMenuCalibrator::Draw( void )
 {
 	Sint32 joy_id = (RecentJoyID.find(DeviceType) == RecentJoyID.end()) ? -1 : RecentJoyID[ DeviceType ];
-	double w = std::min<double>( Rect.h, (Rect.w - 10.) / 2. );
+	double w = std::min<double>( CalcRect.h, (CalcRect.w - 10.) / 2. );
 	
 	bool range_x = AxisMin.find( 0 ) != AxisMin.end();
 	bool range_y = AxisMin.find( 1 ) != AxisMin.end();
@@ -2581,9 +2608,12 @@ void PrefsMenuCalibrator::Draw( void )
 			axes.push_back( axis );
 	}
 	
-	double x = Rect.w - w;
+	if( axes.empty() )
+		return;
+	
+	double x = CalcRect.w - w;
 	double y = 0.;
-	double h = std::max<double>( 10., std::min<double>( (w - 30.) / 7., (Rect.h - (axes.size() - 1) * 5.) / axes.size() ) );
+	double h = std::max<double>( 10., std::min<double>( (w - 30.) / 7., (CalcRect.h - (axes.size() - 1) * 5.) / axes.size() ) );
 	
 	for( std::vector<Uint8>::const_iterator axis_iter = axes.begin(); axis_iter != axes.end(); axis_iter ++ )
 	{

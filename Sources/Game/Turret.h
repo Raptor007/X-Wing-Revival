@@ -62,7 +62,7 @@ public:
 	void Reset( void );
 	void SetHealth( double health );
 	void AddDamage( double damage );
-	void SetBlastPoint( double x, double y, double z, double radius, double time = 0., const ModelObject *object = NULL );
+	void SetBlastPoint( double x, double y, double z, double radius, double time = 0. );
 	
 	void PitchGun( double degrees );
 	void SetPitch( double pitch );

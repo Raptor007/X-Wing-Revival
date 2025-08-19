@@ -5,6 +5,7 @@ player_team rebel
 player_ship A/W X/W Y/W B/W YT1300
 player_group 4
 race_lap 5
+race_circuit true
 team_race_checkpoints 20
 ai_waves 0
 asteroids 32

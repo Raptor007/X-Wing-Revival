@@ -158,26 +158,21 @@ void Turret::AddDamage( double damage )
 }
 
 
-void Turret::SetBlastPoint( double x, double y, double z, double radius, double time, const ModelObject *object )
+void Turret::SetBlastPoint( double x, double y, double z, double radius, double time )
 {
-	size_t blastpoints = ((XWingGame*)( Raptor::Game ))->BlastPoints;
-	if( ! blastpoints )
+	if( ! Visible )
 		return;
 	
 	Pos3D shot( x, y, z );
-	double fwd   = shot.DistAlong( &Fwd,   this );
-	double up    = shot.DistAlong( &Up,    this );
-	double right = shot.DistAlong( &Right, this );
+	/*
+	if( BodyShape )
+		shot = Math3D::NearestPointOnSphere( &shot, this, (BodyShape->MaxFwd + BodyShape->MaxRight) * 0.6 * 0.022 );
+	*/
+	double fwd   = shot.DistAlong( &Fwd,   this ) / 0.022;
+	double up    = shot.DistAlong( &Up,    this ) / 0.022;
+	double right = shot.DistAlong( &Right, this ) / 0.022;
 	
-	// FIXME: Why does this have to be scaled here?  (Is it related to cockpit-view blastpoints not always showing up?)
-	fwd   *= std::min<double>( 1., BodyShape->GetLength() * 0.001 );
-	up    *= std::min<double>( 1., BodyShape->GetHeight() * 0.001 );
-	right *= std::min<double>( 1., BodyShape->GetWidth()  * 0.001 );
-	
-	if( BlastPoints.size() < blastpoints )
-		BlastPoints.push_back( BlastPoint( fwd, up, right, radius, time, object ) );
-	else
-		LeastImportantBlastPoint()->Reset( fwd, up, right, radius, time, object );
+	SetBlastPointRelative( fwd, up, right, radius, time );
 }
 
 

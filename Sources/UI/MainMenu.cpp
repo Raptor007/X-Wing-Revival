@@ -10,6 +10,7 @@
 #include "CampaignMenu.h"
 #include "TextFileViewer.h"
 #include "File.h"
+#include "Num.h"
 #include <algorithm>
 
 
@@ -29,25 +30,27 @@ MainMenu::MainMenu( void )
 	TitleFontBig   = Raptor::Game->Res.GetFont( "Candara.ttf", 128 );
 	TitleFontSmall = Raptor::Game->Res.GetFont( "Candara.ttf",  64 );
 	TitleFont      = TitleFontBig;
-	ButtonFont     = Raptor::Game->Res.GetFont( "Verdana.ttf",  40 );
 	VersionFont    = Raptor::Game->Res.GetFont( "Verdana.ttf",  16 );
 	
-	SDL_Rect button_rect;
+	Font *button_font = Raptor::Game->Res.GetFont( "Verdana.ttf", 40 );
 	
+	SDL_Rect button_rect;
 	button_rect.w = 384;
-	button_rect.h = ButtonFont->GetHeight() + 2;
+	button_rect.h = button_font->GetHeight() + 2;
 	button_rect.x = 0;
 	button_rect.y = 0;
-	AddElement( StartButton = new MainMenuCampaignButton( &button_rect, ButtonFont ));
+	
+	AddElement( StartButton = new MainMenuCampaignButton( &button_rect, button_font ));
 	StartButton->Enabled = Raptor::Game->Res.Find("Missions/rebel1.def").length() || Raptor::Game->Res.Find("Missions/empirel1.def").length();
-	AddElement( XButton = new MainMenuOnlineButton( &button_rect, ButtonFont ));
-	AddElement( AButton = new MainMenuCustomButton( &button_rect, ButtonFont ));
-	AddElement( new MainMenuPrefsButton( &button_rect, ButtonFont ));
+	AddElement( XButton = new MainMenuOnlineButton( &button_rect, button_font ));
+	AddElement( AButton = new MainMenuCustomButton( &button_rect, button_font ));
+	AddElement( new MainMenuPrefsButton( &button_rect, button_font ));
 	if( File::Exists("README.txt") )
-		AddElement( new MainMenuHelpButton( &button_rect, ButtonFont ));
-	AddElement( new MainMenuQuitButton( &button_rect, ButtonFont ));
+		AddElement( new MainMenuHelpButton( &button_rect, button_font ));
+	AddElement( new MainMenuQuitButton( &button_rect, button_font ));
 	YButton = NULL;
 	
+	UIScaleMode = Raptor::ScaleMode::IN_PLACE;
 	UpdateRects();
 }
 
@@ -84,8 +87,11 @@ void MainMenu::UpdateRects( void )
 		spacing = 10;
 	}
 	
+	float ui_scale = Raptor::Game->UIScale;
+	if( (ui_scale * 480.f + 0.5f) >= Rect.h )
+		spacing = 10;
 	int top = TitleFont->GetHeight() * 3 / 2;
-	int bottom = Rect.h - (VersionFont->GetHeight() + 10);
+	int bottom = Rect.h / ui_scale - (VersionFont->GetHeight() + 10) + 0.5f;
 	int mid = ((bottom - top) / 2) + top;
 	
 	int height = spacing * (Elements.size() - 1);
@@ -109,6 +115,7 @@ void MainMenu::Draw( void )
 	
 	UpdateRects();
 	
+	float ui_scale = Raptor::Game->UIScale;
 	int title_x   = Rect.w / 2;
 	int title_y   = TitleFont->GetHeight() / 2;
 	int version_x = Rect.w - 10;
@@ -199,10 +206,9 @@ void MainMenu::Draw( void )
 	}
 	
 	bool is_top = IsTop();
-	if( is_top )
-		TitleFont->DrawText( Raptor::Game->Game, title_x, title_y, title_align );
+	TitleFont->DrawText( Raptor::Game->Game, title_x, title_y, title_align, 1.f,1.f,1.f,is_top?1.f:0.5f, ui_scale );
 	if( is_top || ! vr )
-		VersionFont->DrawText( std::string("Version ") + Raptor::Game->Version, version_x, version_y, version_align );
+		VersionFont->DrawText( std::string("Version ") + Raptor::Game->Version, version_x, version_y, version_align, ui_scale );
 	
 	Raptor::Game->Res.Lock.Unlock();
 	
@@ -231,7 +237,7 @@ void MainMenu::Draw( void )
 		Raptor::Game->Host();
 	}
 	
-	double frame_time = std::min<double>( 0.125, Raptor::Game->FrameTime );
+	const double frame_time = std::max<double>( 0., std::min<double>( 0.125, Raptor::Game->FrameTime ) );
 	FogTime += frame_time;
 	
 	if( is_top )
@@ -254,8 +260,9 @@ void MainMenu::DrawElements( void )
 		
 		Raptor::Game->Res.Lock.Lock();
 		
-		LoadingFont->DrawText( "Loading...", Rect.w / 2 + 2, Rect.h / 2 + 2, Font::ALIGN_MIDDLE_CENTER, 0.f,0.f,0.f,0.8f );
-		LoadingFont->DrawText( "Loading...", Rect.w / 2,     Rect.h / 2,     Font::ALIGN_MIDDLE_CENTER );
+		float ui_scale = Raptor::Game->UIScale;
+		LoadingFont->DrawText( "Loading...", Rect.w / 2 + 2, Rect.h / 2 + 2, Font::ALIGN_MIDDLE_CENTER, 0.f,0.f,0.f,0.8f, ui_scale );
+		LoadingFont->DrawText( "Loading...", Rect.w / 2,     Rect.h / 2,     Font::ALIGN_MIDDLE_CENTER,                   ui_scale );
 		
 		Raptor::Game->Res.Lock.Unlock();
 	}
@@ -266,7 +273,8 @@ void MainMenu::DrawElements( void )
 
 bool MainMenu::HandleEvent( SDL_Event *event )
 {
-	IdleTime = 0.;
+	if( (event->type >= SDL_KEYDOWN) && (event->type < SDL_JOYAXISMOTION) )
+		IdleTime = 0.;
 	
 	if( Loading || NeedPrecache )
 		return false;
@@ -340,12 +348,14 @@ bool MainMenu::KeyDown( SDLKey key )
 
 
 MainMenuCampaignButton::MainMenuCampaignButton( SDL_Rect *rect, Font *button_font, uint8_t align )
-: LabelledButton( rect, button_font, "    Campaign", align, Raptor::Game->Res.GetAnimation("fade.ani") )
+: LabelledButton( rect, button_font, "Campaign", align, Raptor::Game->Res.GetAnimation("fade.ani") )
 {
 	Red = 0.f;
 	Green = 0.f;
 	Blue = 0.f;
 	Alpha = 0.75f;
+	
+	PadX = 50;
 }
 
 
@@ -373,12 +383,14 @@ void MainMenuCampaignButton::Clicked( Uint8 button )
 
 
 MainMenuOnlineButton::MainMenuOnlineButton( SDL_Rect *rect, Font *button_font, uint8_t align )
-: LabelledButton( rect, button_font, "    Fly Online", align, Raptor::Game->Res.GetAnimation("fade.ani") )
+: LabelledButton( rect, button_font, "Fly Online", align, Raptor::Game->Res.GetAnimation("fade.ani") )
 {
 	Red = 0.f;
 	Green = 0.f;
 	Blue = 0.f;
 	Alpha = 0.75f;
+	
+	PadX = 50;
 }
 
 
@@ -398,12 +410,14 @@ void MainMenuOnlineButton::Clicked( Uint8 button )
 
 
 MainMenuCustomButton::MainMenuCustomButton( SDL_Rect *rect, Font *button_font, uint8_t align )
-: LabelledButton( rect, button_font, "    Custom / LAN", align, Raptor::Game->Res.GetAnimation("fade.ani") )
+: LabelledButton( rect, button_font, "Custom / LAN", align, Raptor::Game->Res.GetAnimation("fade.ani") )
 {
 	Red = 0.f;
 	Green = 0.f;
 	Blue = 0.f;
 	Alpha = 0.75f;
+	
+	PadX = 50;
 }
 
 
@@ -423,12 +437,14 @@ void MainMenuCustomButton::Clicked( Uint8 button )
 
 
 MainMenuPrefsButton::MainMenuPrefsButton( SDL_Rect *rect, Font *button_font, uint8_t align )
-: LabelledButton( rect, button_font, "    Preferences", align, Raptor::Game->Res.GetAnimation("fade.ani") )
+: LabelledButton( rect, button_font, "Preferences", align, Raptor::Game->Res.GetAnimation("fade.ani") )
 {
 	Red = 0.f;
 	Green = 0.f;
 	Blue = 0.f;
 	Alpha = 0.75f;
+	
+	PadX = 50;
 }
 
 
@@ -450,12 +466,14 @@ void MainMenuPrefsButton::Clicked( Uint8 button )
 
 
 MainMenuHelpButton::MainMenuHelpButton( SDL_Rect *rect, Font *button_font, uint8_t align )
-: LabelledButton( rect, button_font, "    View ReadMe", align, Raptor::Game->Res.GetAnimation("fade.ani") )
+: LabelledButton( rect, button_font, "View ReadMe", align, Raptor::Game->Res.GetAnimation("fade.ani") )
 {
 	Red = 0.f;
 	Green = 0.f;
 	Blue = 0.f;
 	Alpha = 0.75f;
+	
+	PadX = 50;
 }
 
 
@@ -477,12 +495,14 @@ void MainMenuHelpButton::Clicked( Uint8 button )
 
 
 MainMenuQuitButton::MainMenuQuitButton( SDL_Rect *rect, Font *button_font, uint8_t align )
-: LabelledButton( rect, button_font, "    Quit", align, Raptor::Game->Res.GetAnimation("fade.ani") )
+: LabelledButton( rect, button_font, "Quit", align, Raptor::Game->Res.GetAnimation("fade.ani") )
 {
 	Red = 0.f;
 	Green = 0.f;
 	Blue = 0.f;
 	Alpha = 0.75f;
+	
+	PadX = 50;
 }
 
 

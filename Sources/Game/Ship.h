@@ -81,7 +81,7 @@ public:
 	bool Repair( double heal );
 	bool Rearm( int count );
 	void KnockCockpit( const Vec3D *dir, double force );
-	void SetBlastPoint( double x, double y, double z, double radius, double time = 0., const ModelObject *object = NULL );
+	void SetBlastPoint( double x, double y, double z, double radius, double time = 0. );
 	
 	void SetRoll( double roll, double dt );
 	void SetPitch( double pitch, double dt );

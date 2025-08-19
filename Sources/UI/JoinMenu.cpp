@@ -203,8 +203,14 @@ void JoinMenu::Draw( void )
 				// Look for the server in the list.
 				int list_index = ServerList->FindItem( host_str );
 				if( list_index >= 0 )
+				{
 					// If the server is already in the list, update the name.
 					ServerList->Items[ list_index ].Text = text;
+					
+					// If the server announced going offline, remove it from the list.
+					if( (properties.find("state") != properties.end()) && (properties["state"] == "0") )
+						ServerList->RemoveItem( list_index );
+				}
 				else
 					// If we've never seen this server before, add it to the list.
 					ServerList->AddItem( host_str, text );
@@ -216,8 +222,9 @@ void JoinMenu::Draw( void )
 	}
 	
 	Window::Draw();
-	TitleFont->DrawText( "Game Browser", Rect.w/2 + 2, 12, Font::ALIGN_TOP_CENTER, 0,0,0,0.8f );
-	TitleFont->DrawText( "Game Browser", Rect.w/2, 10, Font::ALIGN_TOP_CENTER );
+	float ui_scale = UIScaleMode ? Raptor::Game->UIScale : 1.f;
+	TitleFont->DrawText( "Game Browser", CalcRect.w/2 + 2, 12, Font::ALIGN_TOP_CENTER, 0,0,0,0.8f, ui_scale );
+	TitleFont->DrawText( "Game Browser", CalcRect.w/2,     10, Font::ALIGN_TOP_CENTER,             ui_scale );
 }
 
 

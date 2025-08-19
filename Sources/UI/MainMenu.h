@@ -29,7 +29,6 @@ public:
 	
 	Font *TitleFont, *TitleFontBig, *TitleFontSmall;
 	Font *VersionFont;
-	Font *ButtonFont;
 	LabelledButton *StartButton, *AButton, *XButton, *YButton;
 	
 	MainMenu( void );

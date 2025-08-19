@@ -210,9 +210,9 @@ void FleetMenu::Draw( void )
 	DefaultsButton->AlphaOver = enabled ? 1.f : DefaultsButton->AlphaNormal;
 	
 	Window::Draw();
-	
-	TitleFont->DrawText( "Fleet Configuration", Rect.w/2 + 2, 3, Font::ALIGN_TOP_CENTER, 0,0,0,0.8f );
-	TitleFont->DrawText( "Fleet Configuration", Rect.w/2,     1, Font::ALIGN_TOP_CENTER );
+	float ui_scale = UIScaleMode ? Raptor::Game->UIScale : 1.f;
+	TitleFont->DrawText( "Fleet Configuration", CalcRect.w/2 + 2, 3, Font::ALIGN_TOP_CENTER, 0,0,0,0.8f, ui_scale );
+	TitleFont->DrawText( "Fleet Configuration", CalcRect.w/2,     1, Font::ALIGN_TOP_CENTER,             ui_scale );
 }
 
 

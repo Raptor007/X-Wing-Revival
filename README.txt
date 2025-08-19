@@ -1,6 +1,6 @@
 -------------------------------------------
 |              X-Wing Revival             |
-|         0.5.2 Alpha (2025-06-09)        |
+|         0.5.3 Alpha (2025-08-19)        |
 |  https://raptor007.com/x-wing-revival/  |
 |    Code by Raptor007 (Blair Sherman)    |
 |       Ship models by XWA Upgrade:       |
@@ -206,13 +206,13 @@ MacOS says the application "X-Wing Revival.app" cannot be opened.
     Modern fits a close rect matching the taret's angles.  Squared is similar
     but makes a diamond shape with equal length sides.  Default: Modern
 
-  Classic Target Info: Vague target health instead of hull and shield percent.
-
   Menu Auto-Pause: Automatically pause single-player games when using menus.
 
   Show Framerate: Show graphics FPS (and physics if hosting) in bottom right.
 
   Cinematic Mode: Hide UI elements that look bad in recordings.
+
+  GUI Scale: Adjust size of UI elements for visibility on high-DPI monitors.
 
 --Virtual Reality--
 
@@ -566,6 +566,16 @@ console commands to execute, such as "sv gametype yavin" or "sv rebel_fighter A/
 
 
 == VERSION HISTORY ==
+
+Alpha 0.5.3 (2025-08-19):
+ * GUI Scale can be used to increase text size for high DPI monitors.
+ * Shield double-rear is now before double-front to match LucasArts games.
+ * Fixed blastpoints on asteroids and turrets.
+ * Fixed screensaver connection drops and getting stuck at main menu.
+ * Improved handling of simultaneous roll/pitch/yaw input across devices.
+ * Improved sounds for taking hull damage and other ships jumping in.
+ * Targeting Computer hit indicators now show approximate hit location.
+ * Minor campaign tweaks.  Added dialogue to Empire mission 4.
 
 Alpha 0.5.2 (2025-06-09):
  * Improved attribution of XWA Upgrade for their ship models.
