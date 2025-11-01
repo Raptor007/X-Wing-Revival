@@ -17,6 +17,7 @@
 MainMenu::MainMenu( void )
 {
 	Name = "MainMenu";
+	ReadControls = true;
 	
 	Background.BecomeInstance( Raptor::Game->Res.GetAnimation("bg_menu.ani") );
 	Fog.BecomeInstance( Raptor::Game->Res.GetAnimation("fog.ani") );
@@ -328,9 +329,9 @@ bool MainMenu::HandleEvent( SDL_Event *event )
 }
 
 
-bool MainMenu::KeyDown( SDLKey key )
+bool MainMenu::ControlDown( uint8_t control )
 {
-	if( key == SDLK_F10 ) // FIXME: Check for XWing::Controls::PREFS instead?
+	if( control == XWing::Control::PREFS )
 	{
 		Layer *prefs_menu = Raptor::Game->Layers.Find("PrefsMenu");
 		if( prefs_menu )

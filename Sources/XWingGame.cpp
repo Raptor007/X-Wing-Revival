@@ -46,110 +46,109 @@ XWingGame::XWingGame( std::string version ) : RaptorGame( "X-Wing Revival", vers
 	OverlayScroll = 0.;
 	BlastPoints = 0;
 	Victor = XWing::Team::NONE;
-	memset( Controls, 0, sizeof(Controls) );
 	
 	// Analog Axes
-	Controls[ XWing::Control::ROLL              ] = Input.AddControl( "Roll",      "Pedal",   -1.,  1. );
-	Controls[ XWing::Control::ROLL_INVERTED     ] = Input.AddControl( "Roll-",     "Pedal",    1., -1. );
-	Controls[ XWing::Control::PITCH             ] = Input.AddControl( "Pitch",     "",        -1.,  1. );
-	Controls[ XWing::Control::PITCH_INVERTED    ] = Input.AddControl( "Pitch-",    "",         1., -1. );
-	Controls[ XWing::Control::YAW               ] = Input.AddControl( "Yaw",       "Pedal",   -1.,  1. );
-	Controls[ XWing::Control::YAW_INVERTED      ] = Input.AddControl( "Yaw-",      "Pedal",    1., -1. );
-	Controls[ XWing::Control::THROTTLE          ] = Input.AddControl( "Throttle",  "Throttle", 1.,  0. );
-	Controls[ XWing::Control::THROTTLE_INVERTED ] = Input.AddControl( "Throttle-", "Throttle" );
-	Controls[ XWing::Control::LOOK_X            ] = Input.AddControl( "LookX",     "",        -1.,  1. );
-	Controls[ XWing::Control::LOOK_X_INVERTED   ] = Input.AddControl( "LookX-",    "",         1., -1. );
-	Controls[ XWing::Control::LOOK_Y            ] = Input.AddControl( "LookY",     "",        -1.,  1. );
-	Controls[ XWing::Control::LOOK_Y_INVERTED   ] = Input.AddControl( "LookY-",    "",         1., -1. );
+	Input.DefineControl( XWing::Control::ROLL,                    "Roll",      "Pedal",   -1.,  1. );
+	Input.DefineControl( XWing::Control::ROLL_INVERTED,           "Roll-",     "Pedal",    1., -1. );
+	Input.DefineControl( XWing::Control::PITCH,                   "Pitch",     "",        -1.,  1. );
+	Input.DefineControl( XWing::Control::PITCH_INVERTED,          "Pitch-",    "",         1., -1. );
+	Input.DefineControl( XWing::Control::YAW,                     "Yaw",       "Pedal",   -1.,  1. );
+	Input.DefineControl( XWing::Control::YAW_INVERTED,            "Yaw-",      "Pedal",    1., -1. );
+	Input.DefineControl( XWing::Control::THROTTLE,                "Throttle",  "Throttle", 1.,  0. );
+	Input.DefineControl( XWing::Control::THROTTLE_INVERTED,       "Throttle-", "Throttle" );
+	Input.DefineControl( XWing::Control::LOOK_X,                  "LookX",     "",        -1.,  1. );
+	Input.DefineControl( XWing::Control::LOOK_X_INVERTED,         "LookX-",    "",         1., -1. );
+	Input.DefineControl( XWing::Control::LOOK_Y,                  "LookY",     "",        -1.,  1. );
+	Input.DefineControl( XWing::Control::LOOK_Y_INVERTED,         "LookY-",    "",         1., -1. );
 	
 	// Analog or Digital Controls
-	Controls[ XWing::Control::ROLL_LEFT               ] = Input.AddControl( "RollLeft",  "Pedal" );
-	Controls[ XWing::Control::ROLL_RIGHT              ] = Input.AddControl( "RollRight", "Pedal" );
-	Controls[ XWing::Control::PITCH_UP                ] = Input.AddControl( "PitchUp" );
-	Controls[ XWing::Control::PITCH_DOWN              ] = Input.AddControl( "PitchDown" );
-	Controls[ XWing::Control::YAW_LEFT                ] = Input.AddControl( "YawLeft",   "Pedal" );
-	Controls[ XWing::Control::YAW_RIGHT               ] = Input.AddControl( "YawRight",  "Pedal" );
+	Input.DefineControl( XWing::Control::ROLL_LEFT,               "RollLeft",  "Pedal" );
+	Input.DefineControl( XWing::Control::ROLL_RIGHT,              "RollRight", "Pedal" );
+	Input.DefineControl( XWing::Control::PITCH_UP,                "PitchUp" );
+	Input.DefineControl( XWing::Control::PITCH_DOWN,              "PitchDown" );
+	Input.DefineControl( XWing::Control::YAW_LEFT,                "YawLeft",   "Pedal" );
+	Input.DefineControl( XWing::Control::YAW_RIGHT,               "YawRight",  "Pedal" );
 	
 	// Held Digital Buttons
-	Controls[ XWing::Control::THROTTLE_UP             ] = Input.AddControl( "ThrottleUp" );
-	Controls[ XWing::Control::THROTTLE_DOWN           ] = Input.AddControl( "ThrottleDown" );
-	Controls[ XWing::Control::THROTTLE_0              ] = Input.AddControl( "Throttle0" );
-	Controls[ XWing::Control::THROTTLE_33             ] = Input.AddControl( "Throttle33" );
-	Controls[ XWing::Control::THROTTLE_66             ] = Input.AddControl( "Throttle66" );
-	Controls[ XWing::Control::THROTTLE_100            ] = Input.AddControl( "Throttle100" );
-	Controls[ XWing::Control::FIRE                    ] = Input.AddControl( "Fire" );
-	Controls[ XWing::Control::TARGET_STORE            ] = Input.AddControl( "TargetStore" );
-	Controls[ XWing::Control::TARGET_NOTHING          ] = Input.AddControl( "TargetClear" );
-	Controls[ XWing::Control::TARGET_CROSSHAIR        ] = Input.AddControl( "TargetCrosshair" );
-	Controls[ XWing::Control::TARGET_NEAREST_ENEMY    ] = Input.AddControl( "TargetEnemy" );
-	Controls[ XWing::Control::TARGET_NEAREST_ATTACKER ] = Input.AddControl( "TargetAttacker" );
-	Controls[ XWing::Control::TARGET_NEWEST_INCOMING  ] = Input.AddControl( "TargetIncoming" );
-	Controls[ XWing::Control::TARGET_TARGET_ATTACKER  ] = Input.AddControl( "TargetTheirAttacker" );
-	Controls[ XWing::Control::TARGET_OBJECTIVE        ] = Input.AddControl( "TargetObjective" );
-	Controls[ XWing::Control::TARGET_DOCKABLE         ] = Input.AddControl( "TargetDockable" );
-	Controls[ XWing::Control::TARGET_NEWEST           ] = Input.AddControl( "TargetNewest" );
-	Controls[ XWing::Control::TARGET_GROUPMATE        ] = Input.AddControl( "TargetGroupmate" );
-	Controls[ XWing::Control::TARGET_SYNC             ] = Input.AddControl( "TargetDataLink" );
-	Controls[ XWing::Control::EJECT                   ] = Input.AddControl( "Eject" );
-	Controls[ XWing::Control::LOOK_CENTER             ] = Input.AddControl( "LookCenter" );
-	Controls[ XWing::Control::LOOK_UP                 ] = Input.AddControl( "LookUp" );
-	Controls[ XWing::Control::LOOK_DOWN               ] = Input.AddControl( "LookDown" );
-	Controls[ XWing::Control::LOOK_LEFT               ] = Input.AddControl( "LookLeft" );
-	Controls[ XWing::Control::LOOK_RIGHT              ] = Input.AddControl( "LookRight" );
-	Controls[ XWing::Control::LOOK_UP_LEFT            ] = Input.AddControl( "LookUpLeft" );
-	Controls[ XWing::Control::LOOK_UP_RIGHT           ] = Input.AddControl( "LookUpRight" );
-	Controls[ XWing::Control::LOOK_DOWN_LEFT          ] = Input.AddControl( "LookDownLeft" );
-	Controls[ XWing::Control::LOOK_DOWN_RIGHT         ] = Input.AddControl( "LookDownRight" );
-	Controls[ XWing::Control::GLANCE_UP               ] = Input.AddControl( "GlanceUp" );
-	Controls[ XWing::Control::GLANCE_BACK             ] = Input.AddControl( "GlanceBack" );
-	Controls[ XWing::Control::GLANCE_LEFT             ] = Input.AddControl( "GlanceLeft" );
-	Controls[ XWing::Control::GLANCE_RIGHT            ] = Input.AddControl( "GlanceRight" );
-	Controls[ XWing::Control::GLANCE_UP_LEFT          ] = Input.AddControl( "GlanceUpLeft" );
-	Controls[ XWing::Control::GLANCE_UP_RIGHT         ] = Input.AddControl( "GlanceUpRight" );
-	Controls[ XWing::Control::GLANCE_BACK_LEFT        ] = Input.AddControl( "GlanceBackLeft" );
-	Controls[ XWing::Control::GLANCE_BACK_RIGHT       ] = Input.AddControl( "GlanceBackRight" );
-	Controls[ XWing::Control::SCORES                  ] = Input.AddControl( "Scores" );
+	Input.DefineControl( XWing::Control::THROTTLE_UP,             "ThrottleUp" );
+	Input.DefineControl( XWing::Control::THROTTLE_DOWN,           "ThrottleDown" );
+	Input.DefineControl( XWing::Control::THROTTLE_0,              "Throttle0" );
+	Input.DefineControl( XWing::Control::THROTTLE_33,             "Throttle33" );
+	Input.DefineControl( XWing::Control::THROTTLE_66,             "Throttle66" );
+	Input.DefineControl( XWing::Control::THROTTLE_100,            "Throttle100" );
+	Input.DefineControl( XWing::Control::FIRE,                    "Fire" );
+	Input.DefineControl( XWing::Control::TARGET_STORE,            "TargetStore" );
+	Input.DefineControl( XWing::Control::TARGET_NOTHING,          "TargetClear" );
+	Input.DefineControl( XWing::Control::TARGET_CROSSHAIR,        "TargetCrosshair" );
+	Input.DefineControl( XWing::Control::TARGET_NEAREST_ENEMY,    "TargetEnemy" );
+	Input.DefineControl( XWing::Control::TARGET_NEAREST_ATTACKER, "TargetAttacker" );
+	Input.DefineControl( XWing::Control::TARGET_NEWEST_INCOMING,  "TargetIncoming" );
+	Input.DefineControl( XWing::Control::TARGET_TARGET_ATTACKER,  "TargetTheirAttacker" );
+	Input.DefineControl( XWing::Control::TARGET_OBJECTIVE,        "TargetObjective" );
+	Input.DefineControl( XWing::Control::TARGET_DOCKABLE,         "TargetDockable" );
+	Input.DefineControl( XWing::Control::TARGET_NEWEST,           "TargetNewest" );
+	Input.DefineControl( XWing::Control::TARGET_GROUPMATE,        "TargetGroupmate" );
+	Input.DefineControl( XWing::Control::TARGET_SYNC,             "TargetDataLink" );
+	Input.DefineControl( XWing::Control::EJECT,                   "Eject" );
+	Input.DefineControl( XWing::Control::LOOK_CENTER,             "LookCenter" );
+	Input.DefineControl( XWing::Control::LOOK_UP,                 "LookUp" );
+	Input.DefineControl( XWing::Control::LOOK_DOWN,               "LookDown" );
+	Input.DefineControl( XWing::Control::LOOK_LEFT,               "LookLeft" );
+	Input.DefineControl( XWing::Control::LOOK_RIGHT,              "LookRight" );
+	Input.DefineControl( XWing::Control::LOOK_UP_LEFT,            "LookUpLeft" );
+	Input.DefineControl( XWing::Control::LOOK_UP_RIGHT,           "LookUpRight" );
+	Input.DefineControl( XWing::Control::LOOK_DOWN_LEFT,          "LookDownLeft" );
+	Input.DefineControl( XWing::Control::LOOK_DOWN_RIGHT,         "LookDownRight" );
+	Input.DefineControl( XWing::Control::GLANCE_UP,               "GlanceUp" );
+	Input.DefineControl( XWing::Control::GLANCE_BACK,             "GlanceBack" );
+	Input.DefineControl( XWing::Control::GLANCE_LEFT,             "GlanceLeft" );
+	Input.DefineControl( XWing::Control::GLANCE_RIGHT,            "GlanceRight" );
+	Input.DefineControl( XWing::Control::GLANCE_UP_LEFT,          "GlanceUpLeft" );
+	Input.DefineControl( XWing::Control::GLANCE_UP_RIGHT,         "GlanceUpRight" );
+	Input.DefineControl( XWing::Control::GLANCE_BACK_LEFT,        "GlanceBackLeft" );
+	Input.DefineControl( XWing::Control::GLANCE_BACK_RIGHT,       "GlanceBackRight" );
+	Input.DefineControl( XWing::Control::SCORES,                  "Scores" );
 	
 	// Pressed Digital Buttons
-	Controls[ XWing::Control::WEAPON                  ] = Input.AddControl( "WeaponNext" );
-	Controls[ XWing::Control::MODE                    ] = Input.AddControl( "WeaponMode" );
-	Controls[ XWing::Control::SHIELD_DIR              ] = Input.AddControl( "AngleDeflector" );
-	Controls[ XWing::Control::TARGET1                 ] = Input.AddControl( "Target1" );
-	Controls[ XWing::Control::TARGET2                 ] = Input.AddControl( "Target2" );
-	Controls[ XWing::Control::TARGET3                 ] = Input.AddControl( "Target3" );
-	Controls[ XWing::Control::TARGET4                 ] = Input.AddControl( "Target4" );
-	Controls[ XWing::Control::TARGET_PREV             ] = Input.AddControl( "TargetPrev" );
-	Controls[ XWing::Control::TARGET_NEXT             ] = Input.AddControl( "TargetNext" );
-	Controls[ XWing::Control::TARGET_PREV_ENEMY       ] = Input.AddControl( "TargetPrevEnemy" );
-	Controls[ XWing::Control::TARGET_NEXT_ENEMY       ] = Input.AddControl( "TargetNextEnemy" );
-	Controls[ XWing::Control::TARGET_PREV_FRIENDLY    ] = Input.AddControl( "TargetPrevFriendly" );
-	Controls[ XWing::Control::TARGET_NEXT_FRIENDLY    ] = Input.AddControl( "TargetNextFriendly" );
-	Controls[ XWing::Control::TARGET_PREV_PLAYER      ] = Input.AddControl( "TargetPrevPlayer" );
-	Controls[ XWing::Control::TARGET_NEXT_PLAYER      ] = Input.AddControl( "TargetNextPlayer" );
-	Controls[ XWing::Control::TARGET_PREV_SUBSYSTEM   ] = Input.AddControl( "TargetPrevSystem" );
-	Controls[ XWing::Control::TARGET_NEXT_SUBSYSTEM   ] = Input.AddControl( "TargetNextSystem" );
-	Controls[ XWing::Control::SEAT_COCKPIT            ] = Input.AddControl( "Cockpit" );
-	Controls[ XWing::Control::SEAT_GUNNER1            ] = Input.AddControl( "Gunner1" );
-	Controls[ XWing::Control::SEAT_GUNNER2            ] = Input.AddControl( "Gunner2" );
-	Controls[ XWing::Control::CHEWIE_TAKE_THE_WHEEL   ] = Input.AddControl( "Chewie" );
-	Controls[ XWing::Control::VIEW_COCKPIT            ] = Input.AddControl( "ViewCockpit" );
-	Controls[ XWing::Control::VIEW_CROSSHAIR          ] = Input.AddControl( "ViewCrosshair" );
-	Controls[ XWing::Control::VIEW_CHASE              ] = Input.AddControl( "ViewChase" );
-	Controls[ XWing::Control::VIEW_PADLOCK            ] = Input.AddControl( "ViewPadlock" );
-	Controls[ XWing::Control::VIEW_STATIONARY         ] = Input.AddControl( "ViewDropCam" );
-	Controls[ XWing::Control::VIEW_CINEMA             ] = Input.AddControl( "ViewCinema" );
-	Controls[ XWing::Control::VIEW_FIXED              ] = Input.AddControl( "ViewFixed" );
-	Controls[ XWing::Control::VIEW_SELFIE             ] = Input.AddControl( "ViewPilot" );
-	Controls[ XWing::Control::VIEW_GUNNER             ] = Input.AddControl( "ViewGunner" );
-	Controls[ XWing::Control::VIEW_CYCLE              ] = Input.AddControl( "ViewCycle" );
-	Controls[ XWing::Control::VIEW_INSTRUMENTS        ] = Input.AddControl( "ViewInstruments" );
-	Controls[ XWing::Control::CHAT                    ] = Input.AddControl( "Chat" );
-	Controls[ XWing::Control::CHAT_TEAM               ] = Input.AddControl( "ChatTeam" );
-	Controls[ XWing::Control::VOICE_TEAM              ] = Input.AddControl( "VoiceTeam" );
-	Controls[ XWing::Control::VOICE_ALL               ] = Input.AddControl( "VoiceAll" );
-	Controls[ XWing::Control::MENU                    ] = Input.AddControl( "MainMenu" );
-	Controls[ XWing::Control::PREFS                   ] = Input.AddControl( "PrefsMenu" );
-	Controls[ XWing::Control::PAUSE                   ] = Input.AddControl( "Pause" );
+	Input.DefineControl( XWing::Control::WEAPON,                  "WeaponNext" );
+	Input.DefineControl( XWing::Control::MODE,                    "WeaponMode" );
+	Input.DefineControl( XWing::Control::SHIELD_DIR,              "AngleDeflector" );
+	Input.DefineControl( XWing::Control::TARGET1,                 "Target1" );
+	Input.DefineControl( XWing::Control::TARGET2,                 "Target2" );
+	Input.DefineControl( XWing::Control::TARGET3,                 "Target3" );
+	Input.DefineControl( XWing::Control::TARGET4,                 "Target4" );
+	Input.DefineControl( XWing::Control::TARGET_PREV,             "TargetPrev" );
+	Input.DefineControl( XWing::Control::TARGET_NEXT,             "TargetNext" );
+	Input.DefineControl( XWing::Control::TARGET_PREV_ENEMY,       "TargetPrevEnemy" );
+	Input.DefineControl( XWing::Control::TARGET_NEXT_ENEMY,       "TargetNextEnemy" );
+	Input.DefineControl( XWing::Control::TARGET_PREV_FRIENDLY,    "TargetPrevFriendly" );
+	Input.DefineControl( XWing::Control::TARGET_NEXT_FRIENDLY,    "TargetNextFriendly" );
+	Input.DefineControl( XWing::Control::TARGET_PREV_PLAYER,      "TargetPrevPlayer" );
+	Input.DefineControl( XWing::Control::TARGET_NEXT_PLAYER,      "TargetNextPlayer" );
+	Input.DefineControl( XWing::Control::TARGET_PREV_SUBSYSTEM,   "TargetPrevSystem" );
+	Input.DefineControl( XWing::Control::TARGET_NEXT_SUBSYSTEM,   "TargetNextSystem" );
+	Input.DefineControl( XWing::Control::SEAT_COCKPIT,            "Cockpit" );
+	Input.DefineControl( XWing::Control::SEAT_GUNNER1,            "Gunner1" );
+	Input.DefineControl( XWing::Control::SEAT_GUNNER2,            "Gunner2" );
+	Input.DefineControl( XWing::Control::CHEWIE_TAKE_THE_WHEEL,   "Chewie" );
+	Input.DefineControl( XWing::Control::VIEW_COCKPIT,            "ViewCockpit" );
+	Input.DefineControl( XWing::Control::VIEW_CROSSHAIR,          "ViewCrosshair" );
+	Input.DefineControl( XWing::Control::VIEW_CHASE,              "ViewChase" );
+	Input.DefineControl( XWing::Control::VIEW_PADLOCK,            "ViewPadlock" );
+	Input.DefineControl( XWing::Control::VIEW_STATIONARY,         "ViewDropCam" );
+	Input.DefineControl( XWing::Control::VIEW_CINEMA,             "ViewCinema" );
+	Input.DefineControl( XWing::Control::VIEW_FIXED,              "ViewFixed" );
+	Input.DefineControl( XWing::Control::VIEW_SELFIE,             "ViewPilot" );
+	Input.DefineControl( XWing::Control::VIEW_GUNNER,             "ViewGunner" );
+	Input.DefineControl( XWing::Control::VIEW_CYCLE,              "ViewCycle" );
+	Input.DefineControl( XWing::Control::VIEW_INSTRUMENTS,        "ViewInstruments" );
+	Input.DefineControl( XWing::Control::CHAT,                    "Chat" );
+	Input.DefineControl( XWing::Control::CHAT_TEAM,               "ChatTeam" );
+	Input.DefineControl( XWing::Control::VOICE_TEAM,              "VoiceTeam" );
+	Input.DefineControl( XWing::Control::VOICE_ALL,               "VoiceAll" );
+	Input.DefineControl( XWing::Control::MENU,                    "MainMenu" );
+	Input.DefineControl( XWing::Control::PREFS,                   "PrefsMenu" );
+	Input.DefineControl( XWing::Control::PAUSE,                   "Pause" );
 }
 
 
@@ -177,136 +176,136 @@ void XWingGame::SetDefaultControls( void )
 {
 	RaptorGame::SetDefaultControls();
 	
-	Cfg.KeyBinds[ SDLK_UP           ] = Controls[ XWing::Control::PITCH_DOWN              ];
-	Cfg.KeyBinds[ SDLK_DOWN         ] = Controls[ XWing::Control::PITCH_UP                ];
-	Cfg.KeyBinds[ SDLK_LEFT         ] = Controls[ XWing::Control::YAW_LEFT                ];
-	Cfg.KeyBinds[ SDLK_RIGHT        ] = Controls[ XWing::Control::YAW_RIGHT               ];
-	Cfg.KeyBinds[ SDLK_BACKSLASH    ] = Controls[ XWing::Control::THROTTLE_0              ];
-	Cfg.KeyBinds[ SDLK_LEFTBRACKET  ] = Controls[ XWing::Control::THROTTLE_33             ];
-	Cfg.KeyBinds[ SDLK_RIGHTBRACKET ] = Controls[ XWing::Control::THROTTLE_66             ];
-	Cfg.KeyBinds[ SDLK_BACKSPACE    ] = Controls[ XWing::Control::THROTTLE_100            ];
-	Cfg.KeyBinds[ SDLK_EQUALS       ] = Controls[ XWing::Control::THROTTLE_UP             ];
-	Cfg.KeyBinds[ SDLK_MINUS        ] = Controls[ XWing::Control::THROTTLE_DOWN           ];
-	Cfg.KeyBinds[ SDLK_SPACE        ] = Controls[ XWing::Control::FIRE                    ];
-	Cfg.KeyBinds[ SDLK_LSHIFT       ] = Controls[ XWing::Control::TARGET_STORE            ];
-	Cfg.KeyBinds[ SDLK_RSHIFT       ] = Controls[ XWing::Control::TARGET_STORE            ];
-	Cfg.KeyBinds[ SDLK_LCTRL        ] = Controls[ XWing::Control::TARGET_CROSSHAIR        ];
-	Cfg.KeyBinds[ SDLK_q            ] = Controls[ XWing::Control::TARGET_NOTHING          ];
-	Cfg.KeyBinds[ SDLK_w            ] = Controls[ XWing::Control::WEAPON                  ];
-	Cfg.KeyBinds[ SDLK_e            ] = Controls[ XWing::Control::TARGET_NEAREST_ATTACKER ];
-	Cfg.KeyBinds[ SDLK_r            ] = Controls[ XWing::Control::TARGET_NEAREST_ENEMY    ];
-	Cfg.KeyBinds[ SDLK_t            ] = Controls[ XWing::Control::TARGET_NEXT             ];
-	Cfg.KeyBinds[ SDLK_y            ] = Controls[ XWing::Control::TARGET_PREV             ];
-	Cfg.KeyBinds[ SDLK_u            ] = Controls[ XWing::Control::TARGET_NEWEST           ];
-	Cfg.KeyBinds[ SDLK_i            ] = Controls[ XWing::Control::TARGET_NEWEST_INCOMING  ];
-	Cfg.KeyBinds[ SDLK_o            ] = Controls[ XWing::Control::TARGET_OBJECTIVE        ];
-	Cfg.KeyBinds[ SDLK_p            ] = Controls[ XWing::Control::TARGET_NEXT_PLAYER      ];
-	Cfg.KeyBinds[ SDLK_a            ] = Controls[ XWing::Control::TARGET_TARGET_ATTACKER  ];
-	Cfg.KeyBinds[ SDLK_s            ] = Controls[ XWing::Control::SHIELD_DIR              ];
-	Cfg.KeyBinds[ SDLK_d            ] = Controls[ XWing::Control::ROLL_LEFT               ];
-	Cfg.KeyBinds[ SDLK_f            ] = Controls[ XWing::Control::ROLL_RIGHT              ];
-	Cfg.KeyBinds[ SDLK_g            ] = Controls[ XWing::Control::TARGET_GROUPMATE        ];
-	Cfg.KeyBinds[ SDLK_h            ] = Controls[ XWing::Control::TARGET_DOCKABLE         ];
-	Cfg.KeyBinds[ SDLK_k            ] = Controls[ XWing::Control::EJECT                   ];
-	Cfg.KeyBinds[ SDLK_x            ] = Controls[ XWing::Control::MODE                    ];
-	Cfg.KeyBinds[ SDLK_v            ] = Controls[ XWing::Control::TARGET_SYNC             ];
-	Cfg.KeyBinds[ SDLK_CAPSLOCK     ] = Controls[ XWing::Control::TARGET_SYNC             ];
-	Cfg.KeyBinds[ SDLK_COMMA        ] = Controls[ XWing::Control::TARGET_PREV_SUBSYSTEM   ];
-	Cfg.KeyBinds[ SDLK_PERIOD       ] = Controls[ XWing::Control::TARGET_NEXT_SUBSYSTEM   ];
-	Cfg.KeyBinds[ SDLK_SLASH        ] = Controls[ XWing::Control::VIEW_SELFIE             ];
-	Cfg.KeyBinds[ SDLK_KP7          ] = Controls[ XWing::Control::LOOK_UP_LEFT            ];
-	Cfg.KeyBinds[ SDLK_KP8          ] = Controls[ XWing::Control::LOOK_UP                 ];
-	Cfg.KeyBinds[ SDLK_KP9          ] = Controls[ XWing::Control::LOOK_UP_RIGHT           ];
-	Cfg.KeyBinds[ SDLK_KP4          ] = Controls[ XWing::Control::LOOK_LEFT               ];
-	Cfg.KeyBinds[ SDLK_KP5          ] = Controls[ XWing::Control::LOOK_CENTER             ];
-	Cfg.KeyBinds[ SDLK_KP6          ] = Controls[ XWing::Control::LOOK_RIGHT              ];
-	Cfg.KeyBinds[ SDLK_KP1          ] = Controls[ XWing::Control::LOOK_DOWN_LEFT          ];
-	Cfg.KeyBinds[ SDLK_KP2          ] = Controls[ XWing::Control::LOOK_DOWN               ];
-	Cfg.KeyBinds[ SDLK_KP3          ] = Controls[ XWing::Control::LOOK_DOWN_RIGHT         ];
-	Cfg.KeyBinds[ SDLK_INSERT       ] = Controls[ XWing::Control::GLANCE_UP_LEFT          ];
-	Cfg.KeyBinds[ SDLK_HOME         ] = Controls[ XWing::Control::GLANCE_UP               ];
-	Cfg.KeyBinds[ SDLK_PAGEUP       ] = Controls[ XWing::Control::GLANCE_UP_RIGHT         ];
-	Cfg.KeyBinds[ SDLK_DELETE       ] = Controls[ XWing::Control::GLANCE_LEFT             ];
-	Cfg.KeyBinds[ SDLK_END          ] = Controls[ XWing::Control::GLANCE_BACK             ];
-	Cfg.KeyBinds[ SDLK_PAGEDOWN     ] = Controls[ XWing::Control::GLANCE_RIGHT            ];
-	Cfg.KeyBinds[ SDLK_TAB          ] = Controls[ XWing::Control::SCORES                  ];
-	Cfg.KeyBinds[ SDLK_F1           ] = Controls[ XWing::Control::SEAT_COCKPIT            ];
-	Cfg.KeyBinds[ SDLK_F2           ] = Controls[ XWing::Control::SEAT_GUNNER1            ];
-	Cfg.KeyBinds[ SDLK_F3           ] = Controls[ XWing::Control::SEAT_GUNNER2            ];
-	Cfg.KeyBinds[ SDLK_F4           ] = Controls[ XWing::Control::CHEWIE_TAKE_THE_WHEEL   ];
-	Cfg.KeyBinds[ SDLK_F5           ] = Controls[ XWing::Control::TARGET1                 ];
-	Cfg.KeyBinds[ SDLK_F6           ] = Controls[ XWing::Control::TARGET2                 ];
-	Cfg.KeyBinds[ SDLK_F7           ] = Controls[ XWing::Control::TARGET3                 ];
-	Cfg.KeyBinds[ SDLK_F8           ] = Controls[ XWing::Control::TARGET4                 ];
-	Cfg.KeyBinds[ SDLK_F15          ] = Controls[ XWing::Control::PAUSE                   ];
-	Cfg.KeyBinds[ SDLK_1            ] = Controls[ XWing::Control::VIEW_COCKPIT            ];
-	Cfg.KeyBinds[ SDLK_2            ] = Controls[ XWing::Control::VIEW_CROSSHAIR          ];
-	Cfg.KeyBinds[ SDLK_3            ] = Controls[ XWing::Control::VIEW_CHASE              ];
-	Cfg.KeyBinds[ SDLK_4            ] = Controls[ XWing::Control::VIEW_PADLOCK            ];
-	Cfg.KeyBinds[ SDLK_5            ] = Controls[ XWing::Control::VIEW_STATIONARY         ];
-	Cfg.KeyBinds[ SDLK_6            ] = Controls[ XWing::Control::VIEW_CINEMA             ];
-	Cfg.KeyBinds[ SDLK_7            ] = Controls[ XWing::Control::VIEW_FIXED              ];
-	Cfg.KeyBinds[ SDLK_8            ] = Controls[ XWing::Control::VIEW_GUNNER             ];
-	Cfg.KeyBinds[ SDLK_9            ] = Controls[ XWing::Control::VIEW_CYCLE              ];
-	Cfg.KeyBinds[ SDLK_0            ] = Controls[ XWing::Control::VIEW_INSTRUMENTS        ];
-	Cfg.KeyBinds[ SDLK_RETURN       ] = Controls[ XWing::Control::CHAT                    ];
-	Cfg.KeyBinds[ SDLK_KP_ENTER     ] = Controls[ XWing::Control::CHAT_TEAM               ];
-	Cfg.KeyBinds[ SDLK_RALT         ] = Controls[ XWing::Control::VOICE_ALL               ];
-	Cfg.KeyBinds[ SDLK_RCTRL        ] = Controls[ XWing::Control::VOICE_TEAM              ];
-	Cfg.KeyBinds[ SDLK_ESCAPE       ] = Controls[ XWing::Control::MENU                    ];
-	Cfg.KeyBinds[ SDLK_F9           ] = Controls[ XWing::Control::MENU                    ];
-	Cfg.KeyBinds[ SDLK_F10          ] = Controls[ XWing::Control::PREFS                   ];
-	Cfg.KeyBinds[ SDLK_PAUSE        ] = Controls[ XWing::Control::PAUSE                   ];
+	Cfg.KeyBinds[ SDLK_UP           ] = XWing::Control::PITCH_DOWN;
+	Cfg.KeyBinds[ SDLK_DOWN         ] = XWing::Control::PITCH_UP;
+	Cfg.KeyBinds[ SDLK_LEFT         ] = XWing::Control::YAW_LEFT;
+	Cfg.KeyBinds[ SDLK_RIGHT        ] = XWing::Control::YAW_RIGHT;
+	Cfg.KeyBinds[ SDLK_BACKSLASH    ] = XWing::Control::THROTTLE_0;
+	Cfg.KeyBinds[ SDLK_LEFTBRACKET  ] = XWing::Control::THROTTLE_33;
+	Cfg.KeyBinds[ SDLK_RIGHTBRACKET ] = XWing::Control::THROTTLE_66;
+	Cfg.KeyBinds[ SDLK_BACKSPACE    ] = XWing::Control::THROTTLE_100;
+	Cfg.KeyBinds[ SDLK_EQUALS       ] = XWing::Control::THROTTLE_UP;
+	Cfg.KeyBinds[ SDLK_MINUS        ] = XWing::Control::THROTTLE_DOWN;
+	Cfg.KeyBinds[ SDLK_SPACE        ] = XWing::Control::FIRE;
+	Cfg.KeyBinds[ SDLK_LSHIFT       ] = XWing::Control::TARGET_STORE;
+	Cfg.KeyBinds[ SDLK_RSHIFT       ] = XWing::Control::TARGET_STORE;
+	Cfg.KeyBinds[ SDLK_LCTRL        ] = XWing::Control::TARGET_CROSSHAIR;
+	Cfg.KeyBinds[ SDLK_q            ] = XWing::Control::TARGET_NOTHING;
+	Cfg.KeyBinds[ SDLK_w            ] = XWing::Control::WEAPON;
+	Cfg.KeyBinds[ SDLK_e            ] = XWing::Control::TARGET_NEAREST_ATTACKER;
+	Cfg.KeyBinds[ SDLK_r            ] = XWing::Control::TARGET_NEAREST_ENEMY;
+	Cfg.KeyBinds[ SDLK_t            ] = XWing::Control::TARGET_NEXT;
+	Cfg.KeyBinds[ SDLK_y            ] = XWing::Control::TARGET_PREV;
+	Cfg.KeyBinds[ SDLK_u            ] = XWing::Control::TARGET_NEWEST;
+	Cfg.KeyBinds[ SDLK_i            ] = XWing::Control::TARGET_NEWEST_INCOMING;
+	Cfg.KeyBinds[ SDLK_o            ] = XWing::Control::TARGET_OBJECTIVE;
+	Cfg.KeyBinds[ SDLK_p            ] = XWing::Control::TARGET_NEXT_PLAYER;
+	Cfg.KeyBinds[ SDLK_a            ] = XWing::Control::TARGET_TARGET_ATTACKER;
+	Cfg.KeyBinds[ SDLK_s            ] = XWing::Control::SHIELD_DIR;
+	Cfg.KeyBinds[ SDLK_d            ] = XWing::Control::ROLL_LEFT;
+	Cfg.KeyBinds[ SDLK_f            ] = XWing::Control::ROLL_RIGHT;
+	Cfg.KeyBinds[ SDLK_g            ] = XWing::Control::TARGET_GROUPMATE;
+	Cfg.KeyBinds[ SDLK_h            ] = XWing::Control::TARGET_DOCKABLE;
+	Cfg.KeyBinds[ SDLK_k            ] = XWing::Control::EJECT;
+	Cfg.KeyBinds[ SDLK_x            ] = XWing::Control::MODE;
+	Cfg.KeyBinds[ SDLK_v            ] = XWing::Control::TARGET_SYNC;
+	Cfg.KeyBinds[ SDLK_CAPSLOCK     ] = XWing::Control::TARGET_SYNC;
+	Cfg.KeyBinds[ SDLK_COMMA        ] = XWing::Control::TARGET_PREV_SUBSYSTEM;
+	Cfg.KeyBinds[ SDLK_PERIOD       ] = XWing::Control::TARGET_NEXT_SUBSYSTEM;
+	Cfg.KeyBinds[ SDLK_SLASH        ] = XWing::Control::VIEW_SELFIE;
+	Cfg.KeyBinds[ SDLK_KP7          ] = XWing::Control::LOOK_UP_LEFT;
+	Cfg.KeyBinds[ SDLK_KP8          ] = XWing::Control::LOOK_UP;
+	Cfg.KeyBinds[ SDLK_KP9          ] = XWing::Control::LOOK_UP_RIGHT;
+	Cfg.KeyBinds[ SDLK_KP4          ] = XWing::Control::LOOK_LEFT;
+	Cfg.KeyBinds[ SDLK_KP5          ] = XWing::Control::LOOK_CENTER;
+	Cfg.KeyBinds[ SDLK_KP6          ] = XWing::Control::LOOK_RIGHT;
+	Cfg.KeyBinds[ SDLK_KP1          ] = XWing::Control::LOOK_DOWN_LEFT;
+	Cfg.KeyBinds[ SDLK_KP2          ] = XWing::Control::LOOK_DOWN;
+	Cfg.KeyBinds[ SDLK_KP3          ] = XWing::Control::LOOK_DOWN_RIGHT;
+	Cfg.KeyBinds[ SDLK_INSERT       ] = XWing::Control::GLANCE_UP_LEFT;
+	Cfg.KeyBinds[ SDLK_HOME         ] = XWing::Control::GLANCE_UP;
+	Cfg.KeyBinds[ SDLK_PAGEUP       ] = XWing::Control::GLANCE_UP_RIGHT;
+	Cfg.KeyBinds[ SDLK_DELETE       ] = XWing::Control::GLANCE_LEFT;
+	Cfg.KeyBinds[ SDLK_END          ] = XWing::Control::GLANCE_BACK;
+	Cfg.KeyBinds[ SDLK_PAGEDOWN     ] = XWing::Control::GLANCE_RIGHT;
+	Cfg.KeyBinds[ SDLK_TAB          ] = XWing::Control::SCORES;
+	Cfg.KeyBinds[ SDLK_F1           ] = XWing::Control::SEAT_COCKPIT;
+	Cfg.KeyBinds[ SDLK_F2           ] = XWing::Control::SEAT_GUNNER1;
+	Cfg.KeyBinds[ SDLK_F3           ] = XWing::Control::SEAT_GUNNER2;
+	Cfg.KeyBinds[ SDLK_F4           ] = XWing::Control::CHEWIE_TAKE_THE_WHEEL;
+	Cfg.KeyBinds[ SDLK_F5           ] = XWing::Control::TARGET1;
+	Cfg.KeyBinds[ SDLK_F6           ] = XWing::Control::TARGET2;
+	Cfg.KeyBinds[ SDLK_F7           ] = XWing::Control::TARGET3;
+	Cfg.KeyBinds[ SDLK_F8           ] = XWing::Control::TARGET4;
+	Cfg.KeyBinds[ SDLK_F15          ] = XWing::Control::PAUSE;
+	Cfg.KeyBinds[ SDLK_1            ] = XWing::Control::VIEW_COCKPIT;
+	Cfg.KeyBinds[ SDLK_2            ] = XWing::Control::VIEW_CROSSHAIR;
+	Cfg.KeyBinds[ SDLK_3            ] = XWing::Control::VIEW_CHASE;
+	Cfg.KeyBinds[ SDLK_4            ] = XWing::Control::VIEW_PADLOCK;
+	Cfg.KeyBinds[ SDLK_5            ] = XWing::Control::VIEW_STATIONARY;
+	Cfg.KeyBinds[ SDLK_6            ] = XWing::Control::VIEW_CINEMA;
+	Cfg.KeyBinds[ SDLK_7            ] = XWing::Control::VIEW_FIXED;
+	Cfg.KeyBinds[ SDLK_8            ] = XWing::Control::VIEW_GUNNER;
+	Cfg.KeyBinds[ SDLK_9            ] = XWing::Control::VIEW_CYCLE;
+	Cfg.KeyBinds[ SDLK_0            ] = XWing::Control::VIEW_INSTRUMENTS;
+	Cfg.KeyBinds[ SDLK_RETURN       ] = XWing::Control::CHAT;
+	Cfg.KeyBinds[ SDLK_KP_ENTER     ] = XWing::Control::CHAT_TEAM;
+	Cfg.KeyBinds[ SDLK_RALT         ] = XWing::Control::VOICE_ALL;
+	Cfg.KeyBinds[ SDLK_RCTRL        ] = XWing::Control::VOICE_TEAM;
+	Cfg.KeyBinds[ SDLK_ESCAPE       ] = XWing::Control::MENU;
+	Cfg.KeyBinds[ SDLK_F9           ] = XWing::Control::MENU;
+	Cfg.KeyBinds[ SDLK_F10          ] = XWing::Control::PREFS;
+	Cfg.KeyBinds[ SDLK_PAUSE        ] = XWing::Control::PAUSE;
 	
-	Cfg.MouseBinds[ SDL_BUTTON_LEFT      ] = Controls[ XWing::Control::FIRE             ];
-	Cfg.MouseBinds[ SDL_BUTTON_RIGHT     ] = Controls[ XWing::Control::TARGET_CROSSHAIR ];
-	Cfg.MouseBinds[ SDL_BUTTON_MIDDLE    ] = Controls[ XWing::Control::WEAPON           ];
-	Cfg.MouseBinds[ SDL_BUTTON_X1        ] = Controls[ XWing::Control::VOICE_TEAM       ];
-	Cfg.MouseBinds[ SDL_BUTTON_X2        ] = Controls[ XWing::Control::VOICE_ALL        ];
-	Cfg.MouseBinds[ SDL_BUTTON_WHEELUP   ] = Controls[ XWing::Control::TARGET_PREV      ];
-	Cfg.MouseBinds[ SDL_BUTTON_WHEELDOWN ] = Controls[ XWing::Control::TARGET_NEXT      ];
+	Cfg.MouseBinds[ SDL_BUTTON_LEFT      ] = XWing::Control::FIRE;
+	Cfg.MouseBinds[ SDL_BUTTON_RIGHT     ] = XWing::Control::TARGET_CROSSHAIR;
+	Cfg.MouseBinds[ SDL_BUTTON_MIDDLE    ] = XWing::Control::WEAPON;
+	Cfg.MouseBinds[ SDL_BUTTON_X1        ] = XWing::Control::VOICE_TEAM;
+	Cfg.MouseBinds[ SDL_BUTTON_X2        ] = XWing::Control::VOICE_ALL;
+	Cfg.MouseBinds[ SDL_BUTTON_WHEELUP   ] = XWing::Control::TARGET_PREV;
+	Cfg.MouseBinds[ SDL_BUTTON_WHEELDOWN ] = XWing::Control::TARGET_NEXT;
 	
-	Cfg.JoyAxisBinds[ "Joy" ][ 0 ] = Controls[ XWing::Control::ROLL     ];  // Stick X
-	Cfg.JoyAxisBinds[ "Joy" ][ 1 ] = Controls[ XWing::Control::PITCH    ];  // Stick Y
-	Cfg.JoyAxisBinds[ "Joy" ][ 2 ] = Controls[ XWing::Control::THROTTLE ];  // Throttle
-	Cfg.JoyAxisBinds[ "Joy" ][ 3 ] = Controls[ XWing::Control::YAW      ];  // Twist
+	Cfg.JoyAxisBinds[ "Joy" ][ 0 ] = XWing::Control::ROLL;      // Stick X
+	Cfg.JoyAxisBinds[ "Joy" ][ 1 ] = XWing::Control::PITCH;     // Stick Y
+	Cfg.JoyAxisBinds[ "Joy" ][ 2 ] = XWing::Control::THROTTLE;  // Throttle
+	Cfg.JoyAxisBinds[ "Joy" ][ 3 ] = XWing::Control::YAW;       // Twist
 	
-	Cfg.JoyButtonBinds[ "Joy" ][  0 ] = Controls[ XWing::Control::FIRE                    ];  // Trigger
-	Cfg.JoyButtonBinds[ "Joy" ][  1 ] = Controls[ XWing::Control::WEAPON                  ];  // Fire
-	Cfg.JoyButtonBinds[ "Joy" ][  2 ] = Controls[ XWing::Control::TARGET_CROSSHAIR        ];  // A
-	Cfg.JoyButtonBinds[ "Joy" ][  3 ] = Controls[ XWing::Control::TARGET_NEAREST_ENEMY    ];  // B
-	Cfg.JoyButtonBinds[ "Joy" ][  4 ] = Controls[ XWing::Control::MODE                    ];  // C
-	Cfg.JoyButtonBinds[ "Joy" ][  5 ] = Controls[ XWing::Control::LOOK_CENTER             ];  // Pinkie
-	Cfg.JoyButtonBinds[ "Joy" ][  6 ] = Controls[ XWing::Control::SHIELD_DIR              ];  // D
-	Cfg.JoyButtonBinds[ "Joy" ][  7 ] = Controls[ XWing::Control::TARGET_NEAREST_ATTACKER ];  // E
-	Cfg.JoyButtonBinds[ "Joy" ][  8 ] = Controls[ XWing::Control::TARGET_NEWEST_INCOMING  ];  // T1
-	Cfg.JoyButtonBinds[ "Joy" ][  9 ] = Controls[ XWing::Control::TARGET_SYNC             ];  // T2
-	Cfg.JoyButtonBinds[ "Joy" ][ 10 ] = Controls[ XWing::Control::SEAT_COCKPIT            ];  // T3
-	Cfg.JoyButtonBinds[ "Joy" ][ 11 ] = Controls[ XWing::Control::CHEWIE_TAKE_THE_WHEEL   ];  // T4
-	Cfg.JoyButtonBinds[ "Joy" ][ 12 ] = Controls[ XWing::Control::SEAT_GUNNER1            ];  // T5
-	Cfg.JoyButtonBinds[ "Joy" ][ 13 ] = Controls[ XWing::Control::SEAT_GUNNER2            ];  // T6
-	Cfg.JoyButtonBinds[ "Joy" ][ 19 ] = Controls[ XWing::Control::TARGET_OBJECTIVE        ];  // Hat 2 Up
-	Cfg.JoyButtonBinds[ "Joy" ][ 20 ] = Controls[ XWing::Control::TARGET3                 ];  // Hat 2 Right
-	Cfg.JoyButtonBinds[ "Joy" ][ 21 ] = Controls[ XWing::Control::TARGET2                 ];  // Hat 2 Down
-	Cfg.JoyButtonBinds[ "Joy" ][ 22 ] = Controls[ XWing::Control::TARGET1                 ];  // Hat 2 Left
-	Cfg.JoyButtonBinds[ "Joy" ][ 23 ] = Controls[ XWing::Control::TARGET_STORE            ];  // Hat 3 Up
-	Cfg.JoyButtonBinds[ "Joy" ][ 24 ] = Controls[ XWing::Control::TARGET_NEXT             ];  // Hat 3 Right
-	Cfg.JoyButtonBinds[ "Joy" ][ 25 ] = Controls[ XWing::Control::SCORES                  ];  // Hat 3 Down
-	Cfg.JoyButtonBinds[ "Joy" ][ 26 ] = Controls[ XWing::Control::TARGET_PREV             ];  // Hat 3 Left
-	Cfg.JoyButtonBinds[ "Joy" ][ 30 ] = Controls[ XWing::Control::TARGET_NEWEST_INCOMING  ];  // Clutch
+	Cfg.JoyButtonBinds[ "Joy" ][  0 ] = XWing::Control::FIRE;                     // Trigger
+	Cfg.JoyButtonBinds[ "Joy" ][  1 ] = XWing::Control::WEAPON;                   // Fire
+	Cfg.JoyButtonBinds[ "Joy" ][  2 ] = XWing::Control::TARGET_CROSSHAIR;         // A
+	Cfg.JoyButtonBinds[ "Joy" ][  3 ] = XWing::Control::TARGET_NEAREST_ENEMY;     // B
+	Cfg.JoyButtonBinds[ "Joy" ][  4 ] = XWing::Control::MODE;                     // C
+	Cfg.JoyButtonBinds[ "Joy" ][  5 ] = XWing::Control::LOOK_CENTER;              // Pinkie
+	Cfg.JoyButtonBinds[ "Joy" ][  6 ] = XWing::Control::SHIELD_DIR;               // D
+	Cfg.JoyButtonBinds[ "Joy" ][  7 ] = XWing::Control::TARGET_NEAREST_ATTACKER;  // E
+	Cfg.JoyButtonBinds[ "Joy" ][  8 ] = XWing::Control::TARGET_NEWEST_INCOMING;   // T1
+	Cfg.JoyButtonBinds[ "Joy" ][  9 ] = XWing::Control::TARGET_SYNC;              // T2
+	Cfg.JoyButtonBinds[ "Joy" ][ 10 ] = XWing::Control::SEAT_COCKPIT;             // T3
+	Cfg.JoyButtonBinds[ "Joy" ][ 11 ] = XWing::Control::CHEWIE_TAKE_THE_WHEEL;    // T4
+	Cfg.JoyButtonBinds[ "Joy" ][ 12 ] = XWing::Control::SEAT_GUNNER1;             // T5
+	Cfg.JoyButtonBinds[ "Joy" ][ 13 ] = XWing::Control::SEAT_GUNNER2;             // T6
+	Cfg.JoyButtonBinds[ "Joy" ][ 19 ] = XWing::Control::TARGET_OBJECTIVE;         // Hat 2 Up
+	Cfg.JoyButtonBinds[ "Joy" ][ 20 ] = XWing::Control::TARGET3;                  // Hat 2 Right
+	Cfg.JoyButtonBinds[ "Joy" ][ 21 ] = XWing::Control::TARGET2;                  // Hat 2 Down
+	Cfg.JoyButtonBinds[ "Joy" ][ 22 ] = XWing::Control::TARGET1;                  // Hat 2 Left
+	Cfg.JoyButtonBinds[ "Joy" ][ 23 ] = XWing::Control::TARGET_STORE;             // Hat 3 Up
+	Cfg.JoyButtonBinds[ "Joy" ][ 24 ] = XWing::Control::TARGET_NEXT;              // Hat 3 Right
+	Cfg.JoyButtonBinds[ "Joy" ][ 25 ] = XWing::Control::SCORES;                   // Hat 3 Down
+	Cfg.JoyButtonBinds[ "Joy" ][ 26 ] = XWing::Control::TARGET_PREV;              // Hat 3 Left
+	Cfg.JoyButtonBinds[ "Joy" ][ 30 ] = XWing::Control::TARGET_NEWEST_INCOMING;   // Clutch
 	
-	Cfg.JoyHatBinds[ "Joy" ][ 0 ][ SDL_HAT_UP    ] = Controls[ XWing::Control::GLANCE_UP    ];  // Hat 1 Up
-	Cfg.JoyHatBinds[ "Joy" ][ 0 ][ SDL_HAT_RIGHT ] = Controls[ XWing::Control::GLANCE_RIGHT ];  // Hat 1 Right
-	Cfg.JoyHatBinds[ "Joy" ][ 0 ][ SDL_HAT_DOWN  ] = Controls[ XWing::Control::GLANCE_BACK  ];  // Hat 1 Down
-	Cfg.JoyHatBinds[ "Joy" ][ 0 ][ SDL_HAT_LEFT  ] = Controls[ XWing::Control::GLANCE_LEFT  ];  // Hat 1 Left
+	Cfg.JoyHatBinds[ "Joy" ][ 0 ][ SDL_HAT_UP    ] = XWing::Control::GLANCE_UP;     // Hat 1 Up
+	Cfg.JoyHatBinds[ "Joy" ][ 0 ][ SDL_HAT_RIGHT ] = XWing::Control::GLANCE_RIGHT;  // Hat 1 Right
+	Cfg.JoyHatBinds[ "Joy" ][ 0 ][ SDL_HAT_DOWN  ] = XWing::Control::GLANCE_BACK;   // Hat 1 Down
+	Cfg.JoyHatBinds[ "Joy" ][ 0 ][ SDL_HAT_LEFT  ] = XWing::Control::GLANCE_LEFT;   // Hat 1 Left
 	
 	if( Input.DeviceTypes.find("X52") != Input.DeviceTypes.end() )
 	{
 		#if SDL_VERSION_ATLEAST(2,0,0)
-			Cfg.JoyAxisBinds[ "X52" ][ 0 ] = Controls[ XWing::Control::ROLL     ];  // Stick X
-			Cfg.JoyAxisBinds[ "X52" ][ 1 ] = Controls[ XWing::Control::PITCH    ];  // Stick Y
-			Cfg.JoyAxisBinds[ "X52" ][ 2 ] = Controls[ XWing::Control::THROTTLE ];  // Throttle
-			Cfg.JoyAxisBinds[ "X52" ][ 5 ] = Controls[ XWing::Control::YAW      ];  // Twist
+			Cfg.JoyAxisBinds[ "X52" ][ 0 ] = XWing::Control::ROLL;      // Stick X
+			Cfg.JoyAxisBinds[ "X52" ][ 1 ] = XWing::Control::PITCH;     // Stick Y
+			Cfg.JoyAxisBinds[ "X52" ][ 2 ] = XWing::Control::THROTTLE;  // Throttle
+			Cfg.JoyAxisBinds[ "X52" ][ 5 ] = XWing::Control::YAW;       // Twist
 		#else
 			Cfg.JoyAxisBinds[ "X52" ] = Cfg.JoyAxisBinds[ "Joy" ];
 		#endif
@@ -316,83 +315,83 @@ void XWingGame::SetDefaultControls( void )
 		
 		// If X52 has its own binds, other joysticks default to good settings for Cyborg Evo instead.
 		Cfg.JoyButtonBinds[ "Joy" ].clear();
-		Cfg.JoyButtonBinds[ "Joy" ][  0 ] = Controls[ XWing::Control::FIRE                    ];  // Trigger
-		Cfg.JoyButtonBinds[ "Joy" ][  1 ] = Controls[ XWing::Control::WEAPON                  ];  // 2
-		Cfg.JoyButtonBinds[ "Joy" ][  2 ] = Controls[ XWing::Control::MODE                    ];  // 3
-		Cfg.JoyButtonBinds[ "Joy" ][  3 ] = Controls[ XWing::Control::TARGET_NEAREST_ENEMY    ];  // 4
-		Cfg.JoyButtonBinds[ "Joy" ][  4 ] = Controls[ XWing::Control::LOOK_CENTER             ];  // 5
-		Cfg.JoyButtonBinds[ "Joy" ][  5 ] = Controls[ XWing::Control::TARGET_CROSSHAIR        ];  // 6
-		Cfg.JoyButtonBinds[ "Joy" ][  6 ] = Controls[ XWing::Control::TARGET_NEAREST_ATTACKER ];  // F1
-		Cfg.JoyButtonBinds[ "Joy" ][  7 ] = Controls[ XWing::Control::TARGET_NEWEST_INCOMING  ];  // F2
-		Cfg.JoyButtonBinds[ "Joy" ][  8 ] = Controls[ XWing::Control::TARGET1                 ];  // F3
-		Cfg.JoyButtonBinds[ "Joy" ][  9 ] = Controls[ XWing::Control::TARGET_OBJECTIVE        ];  // F4
-		Cfg.JoyButtonBinds[ "Joy" ][ 10 ] = Controls[ XWing::Control::SHIELD_DIR              ];  // >
-		Cfg.JoyButtonBinds[ "Joy" ][ 11 ] = Controls[ XWing::Control::SCORES                  ];  // <
+		Cfg.JoyButtonBinds[ "Joy" ][  0 ] = XWing::Control::FIRE;                     // Trigger
+		Cfg.JoyButtonBinds[ "Joy" ][  1 ] = XWing::Control::WEAPON;                   // 2
+		Cfg.JoyButtonBinds[ "Joy" ][  2 ] = XWing::Control::MODE;                     // 3
+		Cfg.JoyButtonBinds[ "Joy" ][  3 ] = XWing::Control::TARGET_NEAREST_ENEMY;     // 4
+		Cfg.JoyButtonBinds[ "Joy" ][  4 ] = XWing::Control::LOOK_CENTER;              // 5
+		Cfg.JoyButtonBinds[ "Joy" ][  5 ] = XWing::Control::TARGET_CROSSHAIR;         // 6
+		Cfg.JoyButtonBinds[ "Joy" ][  6 ] = XWing::Control::TARGET_NEAREST_ATTACKER;  // F1
+		Cfg.JoyButtonBinds[ "Joy" ][  7 ] = XWing::Control::TARGET_NEWEST_INCOMING;   // F2
+		Cfg.JoyButtonBinds[ "Joy" ][  8 ] = XWing::Control::TARGET1;                  // F3
+		Cfg.JoyButtonBinds[ "Joy" ][  9 ] = XWing::Control::TARGET_OBJECTIVE;         // F4
+		Cfg.JoyButtonBinds[ "Joy" ][ 10 ] = XWing::Control::SHIELD_DIR;               // >
+		Cfg.JoyButtonBinds[ "Joy" ][ 11 ] = XWing::Control::SCORES;                   // <
 	}
 	
 	if( Input.DeviceTypes.find("SideWinder") != Input.DeviceTypes.end() )
 	{
 		#if SDL_VERSION_ATLEAST(2,0,0)
-			Cfg.JoyAxisBinds[ "SideWinder" ][ 0 ] = Controls[ XWing::Control::ROLL     ];  // Stick X
-			Cfg.JoyAxisBinds[ "SideWinder" ][ 1 ] = Controls[ XWing::Control::PITCH    ];  // Stick Y
-			Cfg.JoyAxisBinds[ "SideWinder" ][ 2 ] = Controls[ XWing::Control::YAW      ];  // Twist
-			Cfg.JoyAxisBinds[ "SideWinder" ][ 3 ] = Controls[ XWing::Control::THROTTLE ];  // Throttle
+			Cfg.JoyAxisBinds[ "SideWinder" ][ 0 ] = XWing::Control::ROLL;      // Stick X
+			Cfg.JoyAxisBinds[ "SideWinder" ][ 1 ] = XWing::Control::PITCH;     // Stick Y
+			Cfg.JoyAxisBinds[ "SideWinder" ][ 2 ] = XWing::Control::YAW;       // Twist
+			Cfg.JoyAxisBinds[ "SideWinder" ][ 3 ] = XWing::Control::THROTTLE;  // Throttle
 		#else
 			Cfg.JoyAxisBinds[ "SideWinder" ] = Cfg.JoyAxisBinds[ "Joy" ];
 		#endif
 		
-		Cfg.JoyButtonBinds[ "SideWinder" ][ 0 ] = Controls[ XWing::Control::FIRE                    ];  // Trigger
-		Cfg.JoyButtonBinds[ "SideWinder" ][ 1 ] = Controls[ XWing::Control::MODE                    ];  // Stick Big Button
-		Cfg.JoyButtonBinds[ "SideWinder" ][ 2 ] = Controls[ XWing::Control::TARGET_CROSSHAIR        ];  // Stick Top Button
-		Cfg.JoyButtonBinds[ "SideWinder" ][ 3 ] = Controls[ XWing::Control::WEAPON                  ];  // Stick Bottom Button
-		Cfg.JoyButtonBinds[ "SideWinder" ][ 4 ] = Controls[ XWing::Control::TARGET_NEAREST_ENEMY    ];  // A
-		Cfg.JoyButtonBinds[ "SideWinder" ][ 5 ] = Controls[ XWing::Control::TARGET_NEAREST_ATTACKER ];  // B
-		Cfg.JoyButtonBinds[ "SideWinder" ][ 6 ] = Controls[ XWing::Control::TARGET_NEWEST_INCOMING  ];  // C
-		Cfg.JoyButtonBinds[ "SideWinder" ][ 7 ] = Controls[ XWing::Control::SHIELD_DIR              ];  // D
-		Cfg.JoyButtonBinds[ "SideWinder" ][ 8 ] = Controls[ XWing::Control::LOOK_CENTER             ];  // Shift
+		Cfg.JoyButtonBinds[ "SideWinder" ][ 0 ] = XWing::Control::FIRE;                     // Trigger
+		Cfg.JoyButtonBinds[ "SideWinder" ][ 1 ] = XWing::Control::MODE;                     // Stick Big Button
+		Cfg.JoyButtonBinds[ "SideWinder" ][ 2 ] = XWing::Control::TARGET_CROSSHAIR;         // Stick Top Button
+		Cfg.JoyButtonBinds[ "SideWinder" ][ 3 ] = XWing::Control::WEAPON;                   // Stick Bottom Button
+		Cfg.JoyButtonBinds[ "SideWinder" ][ 4 ] = XWing::Control::TARGET_NEAREST_ENEMY;     // A
+		Cfg.JoyButtonBinds[ "SideWinder" ][ 5 ] = XWing::Control::TARGET_NEAREST_ATTACKER;  // B
+		Cfg.JoyButtonBinds[ "SideWinder" ][ 6 ] = XWing::Control::TARGET_NEWEST_INCOMING;   // C
+		Cfg.JoyButtonBinds[ "SideWinder" ][ 7 ] = XWing::Control::SHIELD_DIR;               // D
+		Cfg.JoyButtonBinds[ "SideWinder" ][ 8 ] = XWing::Control::LOOK_CENTER;              // Shift
 		
 		Cfg.JoyHatBinds[ "SideWinder" ] = Cfg.JoyHatBinds[ "Joy" ];
 	}
 	
-	Cfg.JoyAxisBinds[ "Pedal" ][ 0 ] = Controls[ XWing::Control::YAW_LEFT     ];  // Left Pedal
-	Cfg.JoyAxisBinds[ "Pedal" ][ 1 ] = Controls[ XWing::Control::YAW_RIGHT    ];  // Right Pedal
-	Cfg.JoyAxisBinds[ "Pedal" ][ 2 ] = Controls[ XWing::Control::YAW          ];  // Combined Slider
+	Cfg.JoyAxisBinds[ "Pedal" ][ 0 ] = XWing::Control::YAW_LEFT;      // Left Pedal
+	Cfg.JoyAxisBinds[ "Pedal" ][ 1 ] = XWing::Control::YAW_RIGHT;     // Right Pedal
+	Cfg.JoyAxisBinds[ "Pedal" ][ 2 ] = XWing::Control::YAW;           // Combined Slider
 	
-	Cfg.JoyAxisBinds[ "Throttle" ][ 0 ] = Controls[ XWing::Control::THROTTLE ];
+	Cfg.JoyAxisBinds[ "Throttle" ][ 0 ] = XWing::Control::THROTTLE;
 	
-	Cfg.JoyAxisBinds[ "Xbox" ][ 0 ] = Controls[ XWing::Control::YAW           ];  // Left Thumbstick X
-	Cfg.JoyAxisBinds[ "Xbox" ][ 1 ] = Controls[ XWing::Control::PITCH         ];  // Left Thumbstick Y
+	Cfg.JoyAxisBinds[ "Xbox" ][ 0 ] = XWing::Control::YAW;            // Left Thumbstick X
+	Cfg.JoyAxisBinds[ "Xbox" ][ 1 ] = XWing::Control::PITCH;          // Left Thumbstick Y
 #ifndef WIN32
-	Cfg.JoyAxisBinds[ "Xbox" ][ 2 ] = Controls[ XWing::Control::ROLL_LEFT     ];  // Left Trigger
-	Cfg.JoyAxisBinds[ "Xbox" ][ 3 ] = Controls[ XWing::Control::LOOK_X        ];  // Right Thumbstick X
-	Cfg.JoyAxisBinds[ "Xbox" ][ 4 ] = Controls[ XWing::Control::LOOK_Y        ];  // Right Thumbstick Y
-	Cfg.JoyAxisBinds[ "Xbox" ][ 5 ] = Controls[ XWing::Control::ROLL_RIGHT    ];  // Right Trigger
+	Cfg.JoyAxisBinds[ "Xbox" ][ 2 ] = XWing::Control::ROLL_LEFT;      // Left Trigger
+	Cfg.JoyAxisBinds[ "Xbox" ][ 3 ] = XWing::Control::LOOK_X;         // Right Thumbstick X
+	Cfg.JoyAxisBinds[ "Xbox" ][ 4 ] = XWing::Control::LOOK_Y;         // Right Thumbstick Y
+	Cfg.JoyAxisBinds[ "Xbox" ][ 5 ] = XWing::Control::ROLL_RIGHT;     // Right Trigger
 #elif SDL_VERSION_ATLEAST(2,0,0)
-	Cfg.JoyAxisBinds[ "Xbox" ][ 2 ] = Controls[ XWing::Control::LOOK_X        ];  // Right Thumbstick X
-	Cfg.JoyAxisBinds[ "Xbox" ][ 3 ] = Controls[ XWing::Control::LOOK_Y        ];  // Right Thumbstick Y
-	Cfg.JoyAxisBinds[ "Xbox" ][ 4 ] = Controls[ XWing::Control::ROLL_LEFT     ];  // Left Trigger
-	Cfg.JoyAxisBinds[ "Xbox" ][ 5 ] = Controls[ XWing::Control::ROLL_RIGHT    ];  // Right Trigger
+	Cfg.JoyAxisBinds[ "Xbox" ][ 2 ] = XWing::Control::LOOK_X;         // Right Thumbstick X
+	Cfg.JoyAxisBinds[ "Xbox" ][ 3 ] = XWing::Control::LOOK_Y;         // Right Thumbstick Y
+	Cfg.JoyAxisBinds[ "Xbox" ][ 4 ] = XWing::Control::ROLL_LEFT;      // Left Trigger
+	Cfg.JoyAxisBinds[ "Xbox" ][ 5 ] = XWing::Control::ROLL_RIGHT;     // Right Trigger
 #else
-	Cfg.JoyAxisBinds[ "Xbox" ][ 2 ] = Controls[ XWing::Control::ROLL_INVERTED ];  // Triggers
-	Cfg.JoyAxisBinds[ "Xbox" ][ 3 ] = Controls[ XWing::Control::LOOK_Y        ];  // Right Thumbstick Y
-	Cfg.JoyAxisBinds[ "Xbox" ][ 4 ] = Controls[ XWing::Control::LOOK_X        ];  // Right Thumbstick X
+	Cfg.JoyAxisBinds[ "Xbox" ][ 2 ] = XWing::Control::ROLL_INVERTED;  // Triggers
+	Cfg.JoyAxisBinds[ "Xbox" ][ 3 ] = XWing::Control::LOOK_Y;         // Right Thumbstick Y
+	Cfg.JoyAxisBinds[ "Xbox" ][ 4 ] = XWing::Control::LOOK_X;         // Right Thumbstick X
 #endif
 	
-	Cfg.JoyButtonBinds[ "Xbox" ][ 0 ] = Controls[ XWing::Control::THROTTLE_DOWN    ];  // A
-	Cfg.JoyButtonBinds[ "Xbox" ][ 1 ] = Controls[ XWing::Control::MODE             ];  // B
-	Cfg.JoyButtonBinds[ "Xbox" ][ 2 ] = Controls[ XWing::Control::THROTTLE_UP      ];  // X
-	Cfg.JoyButtonBinds[ "Xbox" ][ 3 ] = Controls[ XWing::Control::WEAPON           ];  // Y
-	Cfg.JoyButtonBinds[ "Xbox" ][ 4 ] = Controls[ XWing::Control::TARGET_CROSSHAIR ];  // LB
-	Cfg.JoyButtonBinds[ "Xbox" ][ 5 ] = Controls[ XWing::Control::FIRE             ];  // RB
-	Cfg.JoyButtonBinds[ "Xbox" ][ 6 ] = Controls[ XWing::Control::SCORES           ];  // Back
-	Cfg.JoyButtonBinds[ "Xbox" ][ 7 ] = Controls[ XWing::Control::SHIELD_DIR       ];  // Start
-	Cfg.JoyButtonBinds[ "Xbox" ][ 8 ] = Controls[ XWing::Control::VOICE_TEAM       ];  // Left Thumbstick Click
-	Cfg.JoyButtonBinds[ "Xbox" ][ 9 ] = Controls[ XWing::Control::LOOK_CENTER      ];  // Right Thumbstick Click
+	Cfg.JoyButtonBinds[ "Xbox" ][ 0 ] = XWing::Control::THROTTLE_DOWN;     // A
+	Cfg.JoyButtonBinds[ "Xbox" ][ 1 ] = XWing::Control::MODE;              // B
+	Cfg.JoyButtonBinds[ "Xbox" ][ 2 ] = XWing::Control::THROTTLE_UP;       // X
+	Cfg.JoyButtonBinds[ "Xbox" ][ 3 ] = XWing::Control::WEAPON;            // Y
+	Cfg.JoyButtonBinds[ "Xbox" ][ 4 ] = XWing::Control::TARGET_CROSSHAIR;  // LB
+	Cfg.JoyButtonBinds[ "Xbox" ][ 5 ] = XWing::Control::FIRE;              // RB
+	Cfg.JoyButtonBinds[ "Xbox" ][ 6 ] = XWing::Control::SCORES;            // Back
+	Cfg.JoyButtonBinds[ "Xbox" ][ 7 ] = XWing::Control::SHIELD_DIR;        // Start
+	Cfg.JoyButtonBinds[ "Xbox" ][ 8 ] = XWing::Control::VOICE_TEAM;        // Left Thumbstick Click
+	Cfg.JoyButtonBinds[ "Xbox" ][ 9 ] = XWing::Control::LOOK_CENTER;       // Right Thumbstick Click
 	
-	Cfg.JoyHatBinds[ "Xbox" ][ 0 ][ SDL_HAT_UP    ] = Controls[ XWing::Control::TARGET_NEAREST_ENEMY    ];  // D-Pad Up
-	Cfg.JoyHatBinds[ "Xbox" ][ 0 ][ SDL_HAT_DOWN  ] = Controls[ XWing::Control::TARGET_NEAREST_ATTACKER ];  // D-Pad Down
-	Cfg.JoyHatBinds[ "Xbox" ][ 0 ][ SDL_HAT_LEFT  ] = Controls[ XWing::Control::TARGET_PREV_ENEMY       ];  // D-Pad Left
-	Cfg.JoyHatBinds[ "Xbox" ][ 0 ][ SDL_HAT_RIGHT ] = Controls[ XWing::Control::TARGET_NEXT_ENEMY       ];  // D-Pad Right
+	Cfg.JoyHatBinds[ "Xbox" ][ 0 ][ SDL_HAT_UP    ] = XWing::Control::TARGET_NEAREST_ENEMY;     // D-Pad Up
+	Cfg.JoyHatBinds[ "Xbox" ][ 0 ][ SDL_HAT_DOWN  ] = XWing::Control::TARGET_NEAREST_ATTACKER;  // D-Pad Down
+	Cfg.JoyHatBinds[ "Xbox" ][ 0 ][ SDL_HAT_LEFT  ] = XWing::Control::TARGET_PREV_ENEMY;        // D-Pad Left
+	Cfg.JoyHatBinds[ "Xbox" ][ 0 ][ SDL_HAT_RIGHT ] = XWing::Control::TARGET_NEXT_ENEMY;        // D-Pad Right
 	
 	if( Input.DeviceTypes.find("Pad") != Input.DeviceTypes.end() )
 	{
@@ -415,71 +414,71 @@ void XWingGame::SetDefaultControls( void )
 #else
 		Cfg.JoyAxisBinds[ "ProEX" ][ 3 ] = 0;  // Right Thumbstick Y
 #endif
-		Cfg.JoyButtonBinds[ "ProEX" ][ 9 ] = Controls[ XWing::Control::GLANCE_BACK ];  // Right Thumbstick Click
+		Cfg.JoyButtonBinds[ "ProEX" ][ 9 ] = XWing::Control::GLANCE_BACK;  // Right Thumbstick Click
 	}
 	
 	if( Input.DeviceTypes.find("MFD") != Input.DeviceTypes.end() )
 	{
-		Cfg.JoyButtonBinds[ "MFD" ][  0 ] = Controls[ XWing::Control::TARGET_SYNC             ];  // Top #1
-		Cfg.JoyButtonBinds[ "MFD" ][  1 ] = Controls[ XWing::Control::TARGET_GROUPMATE        ];  // Top #2
-		Cfg.JoyButtonBinds[ "MFD" ][  2 ] = Controls[ XWing::Control::LOOK_CENTER             ];  // Top #3
-		Cfg.JoyButtonBinds[ "MFD" ][  3 ] = Controls[ XWing::Control::TARGET_PREV             ];  // Top #4
-		Cfg.JoyButtonBinds[ "MFD" ][  4 ] = Controls[ XWing::Control::TARGET_NEXT             ];  // Top #5
-		Cfg.JoyButtonBinds[ "MFD" ][  5 ] = Controls[ XWing::Control::TARGET_NEWEST           ];  // Right #1
-		Cfg.JoyButtonBinds[ "MFD" ][  6 ] = Controls[ XWing::Control::TARGET_PREV_FRIENDLY    ];  // Right #2
-		Cfg.JoyButtonBinds[ "MFD" ][  7 ] = Controls[ XWing::Control::TARGET_NEXT_FRIENDLY    ];  // Right #3
-		Cfg.JoyButtonBinds[ "MFD" ][  8 ] = Controls[ XWing::Control::TARGET_PREV_ENEMY       ];  // Right #4
-		Cfg.JoyButtonBinds[ "MFD" ][  9 ] = Controls[ XWing::Control::TARGET_NEXT_ENEMY       ];  // Right #5
-		Cfg.JoyButtonBinds[ "MFD" ][ 10 ] = Controls[ XWing::Control::TARGET_NEWEST_INCOMING  ];  // Bottom #5
-		Cfg.JoyButtonBinds[ "MFD" ][ 11 ] = Controls[ XWing::Control::TARGET_NEAREST_ENEMY    ];  // Bottom #4
-		Cfg.JoyButtonBinds[ "MFD" ][ 12 ] = Controls[ XWing::Control::TARGET_NEAREST_ATTACKER ];  // Bottom #3
-		Cfg.JoyButtonBinds[ "MFD" ][ 13 ] = Controls[ XWing::Control::TARGET_NEWEST_INCOMING  ];  // Bottom #2
-		Cfg.JoyButtonBinds[ "MFD" ][ 14 ] = Controls[ XWing::Control::SHIELD_DIR              ];  // Bottom #1
-		Cfg.JoyButtonBinds[ "MFD" ][ 15 ] = Controls[ XWing::Control::TARGET_NOTHING          ];  // Left #5
-		Cfg.JoyButtonBinds[ "MFD" ][ 16 ] = Controls[ XWing::Control::WEAPON                  ];  // Left #4
-		Cfg.JoyButtonBinds[ "MFD" ][ 17 ] = Controls[ XWing::Control::MODE                    ];  // Left #3
-		Cfg.JoyButtonBinds[ "MFD" ][ 18 ] = Controls[ XWing::Control::TARGET_OBJECTIVE        ];  // Left #2
-		Cfg.JoyButtonBinds[ "MFD" ][ 19 ] = Controls[ XWing::Control::SCORES                  ];  // Left #1
+		Cfg.JoyButtonBinds[ "MFD" ][  0 ] = XWing::Control::TARGET_SYNC;              // Top #1
+		Cfg.JoyButtonBinds[ "MFD" ][  1 ] = XWing::Control::TARGET_GROUPMATE;         // Top #2
+		Cfg.JoyButtonBinds[ "MFD" ][  2 ] = XWing::Control::LOOK_CENTER;              // Top #3
+		Cfg.JoyButtonBinds[ "MFD" ][  3 ] = XWing::Control::TARGET_PREV;              // Top #4
+		Cfg.JoyButtonBinds[ "MFD" ][  4 ] = XWing::Control::TARGET_NEXT;              // Top #5
+		Cfg.JoyButtonBinds[ "MFD" ][  5 ] = XWing::Control::TARGET_NEWEST;            // Right #1
+		Cfg.JoyButtonBinds[ "MFD" ][  6 ] = XWing::Control::TARGET_PREV_FRIENDLY;     // Right #2
+		Cfg.JoyButtonBinds[ "MFD" ][  7 ] = XWing::Control::TARGET_NEXT_FRIENDLY;     // Right #3
+		Cfg.JoyButtonBinds[ "MFD" ][  8 ] = XWing::Control::TARGET_PREV_ENEMY;        // Right #4
+		Cfg.JoyButtonBinds[ "MFD" ][  9 ] = XWing::Control::TARGET_NEXT_ENEMY;        // Right #5
+		Cfg.JoyButtonBinds[ "MFD" ][ 10 ] = XWing::Control::TARGET_NEWEST_INCOMING;   // Bottom #5
+		Cfg.JoyButtonBinds[ "MFD" ][ 11 ] = XWing::Control::TARGET_NEAREST_ENEMY;     // Bottom #4
+		Cfg.JoyButtonBinds[ "MFD" ][ 12 ] = XWing::Control::TARGET_NEAREST_ATTACKER;  // Bottom #3
+		Cfg.JoyButtonBinds[ "MFD" ][ 13 ] = XWing::Control::TARGET_NEWEST_INCOMING;   // Bottom #2
+		Cfg.JoyButtonBinds[ "MFD" ][ 14 ] = XWing::Control::SHIELD_DIR;               // Bottom #1
+		Cfg.JoyButtonBinds[ "MFD" ][ 15 ] = XWing::Control::TARGET_NOTHING;           // Left #5
+		Cfg.JoyButtonBinds[ "MFD" ][ 16 ] = XWing::Control::WEAPON;                   // Left #4
+		Cfg.JoyButtonBinds[ "MFD" ][ 17 ] = XWing::Control::MODE;                     // Left #3
+		Cfg.JoyButtonBinds[ "MFD" ][ 18 ] = XWing::Control::TARGET_OBJECTIVE;         // Left #2
+		Cfg.JoyButtonBinds[ "MFD" ][ 19 ] = XWing::Control::SCORES;                   // Left #1
 	}
 	
-	Cfg.JoyAxisBinds[ "Wheel" ][ 0 ] = Controls[ XWing::Control::ROLL           ];  // Steering Wheel
+	Cfg.JoyAxisBinds[ "Wheel" ][ 0 ] = XWing::Control::ROLL;            // Steering Wheel
 #if SDL_VERSION_ATLEAST(2,0,0)
-	Cfg.JoyAxisBinds[ "Wheel" ][ 1 ] = Controls[ XWing::Control::THROTTLE       ];  // Accelerator Pedal
-	Cfg.JoyAxisBinds[ "Wheel" ][ 2 ] = Controls[ XWing::Control::PITCH_UP       ];  // Brake Pedal
+	Cfg.JoyAxisBinds[ "Wheel" ][ 1 ] = XWing::Control::THROTTLE;        // Accelerator Pedal
+	Cfg.JoyAxisBinds[ "Wheel" ][ 2 ] = XWing::Control::PITCH_UP;        // Brake Pedal
 #else
-	Cfg.JoyAxisBinds[ "Wheel" ][ 2 ] = Controls[ XWing::Control::THROTTLE       ];  // Accelerator Pedal
-	Cfg.JoyAxisBinds[ "Wheel" ][ 3 ] = Controls[ XWing::Control::PITCH_UP       ];  // Brake Pedal
+	Cfg.JoyAxisBinds[ "Wheel" ][ 2 ] = XWing::Control::THROTTLE;        // Accelerator Pedal
+	Cfg.JoyAxisBinds[ "Wheel" ][ 3 ] = XWing::Control::PITCH_UP;        // Brake Pedal
 #endif
-	Cfg.JoyAxisBinds[ "Wheel" ][ 4 ] = Controls[ XWing::Control::PITCH_DOWN     ];  // Clutch Pedal
+	Cfg.JoyAxisBinds[ "Wheel" ][ 4 ] = XWing::Control::PITCH_DOWN;      // Clutch Pedal
 	
-	Cfg.JoyButtonBinds[ "Wheel" ][  0 ] = Controls[ XWing::Control::TARGET_NEAREST_ENEMY    ];  // Shift Red Button #1 (Left)
-	Cfg.JoyButtonBinds[ "Wheel" ][  1 ] = Controls[ XWing::Control::TARGET_NEAREST_ATTACKER ];  // Shift Red Button #2
-	Cfg.JoyButtonBinds[ "Wheel" ][  2 ] = Controls[ XWing::Control::TARGET_PREV             ];  // Shift Red Button #3
-	Cfg.JoyButtonBinds[ "Wheel" ][  3 ] = Controls[ XWing::Control::TARGET_NEXT             ];  // Shift Red Button #4 (Right)
-	Cfg.JoyButtonBinds[ "Wheel" ][  4 ] = Controls[ XWing::Control::YAW_RIGHT               ];  // Wheel Right Paddle
-	Cfg.JoyButtonBinds[ "Wheel" ][  5 ] = Controls[ XWing::Control::YAW_LEFT                ];  // Wheel Left Paddle
-	Cfg.JoyButtonBinds[ "Wheel" ][  6 ] = Controls[ XWing::Control::FIRE                    ];  // Wheel Top Right Button
-	Cfg.JoyButtonBinds[ "Wheel" ][  7 ] = Controls[ XWing::Control::TARGET_CROSSHAIR        ];  // Wheel Top Left Button
-	Cfg.JoyButtonBinds[ "Wheel" ][  8 ] = Controls[ XWing::Control::ROLL_RIGHT              ];  // 1st Gear
-	Cfg.JoyButtonBinds[ "Wheel" ][  9 ] = Controls[ XWing::Control::ROLL_LEFT               ];  // 2nd Gear
-	Cfg.JoyButtonBinds[ "Wheel" ][ 10 ] = Controls[ XWing::Control::PITCH_DOWN              ];  // 3rd Gear
-	Cfg.JoyButtonBinds[ "Wheel" ][ 11 ] = Controls[ XWing::Control::PITCH_UP                ];  // 4th Gear
-	Cfg.JoyButtonBinds[ "Wheel" ][ 12 ] = Controls[ XWing::Control::ROLL_LEFT               ];  // 5th Gear
-	Cfg.JoyButtonBinds[ "Wheel" ][ 13 ] = Controls[ XWing::Control::ROLL_RIGHT              ];  // 6th Gear
-	Cfg.JoyButtonBinds[ "Wheel" ][ 14 ] = Controls[ XWing::Control::TARGET_SYNC             ];  // Reverse Gear
-	Cfg.JoyButtonBinds[ "Wheel" ][ 15 ] = Controls[ XWing::Control::SEAT_COCKPIT            ];  // Shift Top Black Button
-	Cfg.JoyButtonBinds[ "Wheel" ][ 16 ] = Controls[ XWing::Control::SEAT_GUNNER1            ];  // Shift Left Black Button
-	Cfg.JoyButtonBinds[ "Wheel" ][ 17 ] = Controls[ XWing::Control::LOOK_CENTER             ];  // Shift Bottom Black Button
-	Cfg.JoyButtonBinds[ "Wheel" ][ 18 ] = Controls[ XWing::Control::SEAT_GUNNER2            ];  // Shift Right Black Button
-	Cfg.JoyButtonBinds[ "Wheel" ][ 19 ] = Controls[ XWing::Control::MODE                    ];  // Wheel Middle Right Button
-	Cfg.JoyButtonBinds[ "Wheel" ][ 20 ] = Controls[ XWing::Control::SHIELD_DIR              ];  // Wheel Middle Left Button
-	Cfg.JoyButtonBinds[ "Wheel" ][ 21 ] = Controls[ XWing::Control::WEAPON                  ];  // Wheel Bottom Right Button
-	Cfg.JoyButtonBinds[ "Wheel" ][ 22 ] = Controls[ XWing::Control::LOOK_CENTER             ];  // Wheel Bottom Left Button
+	Cfg.JoyButtonBinds[ "Wheel" ][  0 ] = XWing::Control::TARGET_NEAREST_ENEMY;     // Shift Red Button #1 (Left)
+	Cfg.JoyButtonBinds[ "Wheel" ][  1 ] = XWing::Control::TARGET_NEAREST_ATTACKER;  // Shift Red Button #2
+	Cfg.JoyButtonBinds[ "Wheel" ][  2 ] = XWing::Control::TARGET_PREV;              // Shift Red Button #3
+	Cfg.JoyButtonBinds[ "Wheel" ][  3 ] = XWing::Control::TARGET_NEXT;              // Shift Red Button #4 (Right)
+	Cfg.JoyButtonBinds[ "Wheel" ][  4 ] = XWing::Control::YAW_RIGHT;                // Wheel Right Paddle
+	Cfg.JoyButtonBinds[ "Wheel" ][  5 ] = XWing::Control::YAW_LEFT;                 // Wheel Left Paddle
+	Cfg.JoyButtonBinds[ "Wheel" ][  6 ] = XWing::Control::FIRE;                     // Wheel Top Right Button
+	Cfg.JoyButtonBinds[ "Wheel" ][  7 ] = XWing::Control::TARGET_CROSSHAIR;         // Wheel Top Left Button
+	Cfg.JoyButtonBinds[ "Wheel" ][  8 ] = XWing::Control::ROLL_RIGHT;               // 1st Gear
+	Cfg.JoyButtonBinds[ "Wheel" ][  9 ] = XWing::Control::ROLL_LEFT;                // 2nd Gear
+	Cfg.JoyButtonBinds[ "Wheel" ][ 10 ] = XWing::Control::PITCH_DOWN;               // 3rd Gear
+	Cfg.JoyButtonBinds[ "Wheel" ][ 11 ] = XWing::Control::PITCH_UP;                 // 4th Gear
+	Cfg.JoyButtonBinds[ "Wheel" ][ 12 ] = XWing::Control::ROLL_LEFT;                // 5th Gear
+	Cfg.JoyButtonBinds[ "Wheel" ][ 13 ] = XWing::Control::ROLL_RIGHT;               // 6th Gear
+	Cfg.JoyButtonBinds[ "Wheel" ][ 14 ] = XWing::Control::TARGET_SYNC;              // Reverse Gear
+	Cfg.JoyButtonBinds[ "Wheel" ][ 15 ] = XWing::Control::SEAT_COCKPIT;             // Shift Top Black Button
+	Cfg.JoyButtonBinds[ "Wheel" ][ 16 ] = XWing::Control::SEAT_GUNNER1;             // Shift Left Black Button
+	Cfg.JoyButtonBinds[ "Wheel" ][ 17 ] = XWing::Control::LOOK_CENTER;              // Shift Bottom Black Button
+	Cfg.JoyButtonBinds[ "Wheel" ][ 18 ] = XWing::Control::SEAT_GUNNER2;             // Shift Right Black Button
+	Cfg.JoyButtonBinds[ "Wheel" ][ 19 ] = XWing::Control::MODE;                     // Wheel Middle Right Button
+	Cfg.JoyButtonBinds[ "Wheel" ][ 20 ] = XWing::Control::SHIELD_DIR;               // Wheel Middle Left Button
+	Cfg.JoyButtonBinds[ "Wheel" ][ 21 ] = XWing::Control::WEAPON;                   // Wheel Bottom Right Button
+	Cfg.JoyButtonBinds[ "Wheel" ][ 22 ] = XWing::Control::LOOK_CENTER;              // Wheel Bottom Left Button
 	
-	Cfg.JoyHatBinds[ "Wheel" ][ 0 ][ SDL_HAT_UP    ] = Controls[ XWing::Control::GLANCE_UP    ];  // Shift Hat Up
-	Cfg.JoyHatBinds[ "Wheel" ][ 0 ][ SDL_HAT_RIGHT ] = Controls[ XWing::Control::GLANCE_RIGHT ];  // Shift Hat Right
-	Cfg.JoyHatBinds[ "Wheel" ][ 0 ][ SDL_HAT_DOWN  ] = Controls[ XWing::Control::GLANCE_BACK  ];  // Shift Hat Down
-	Cfg.JoyHatBinds[ "Wheel" ][ 0 ][ SDL_HAT_LEFT  ] = Controls[ XWing::Control::GLANCE_LEFT  ];  // Shift Hat Left
+	Cfg.JoyHatBinds[ "Wheel" ][ 0 ][ SDL_HAT_UP    ] = XWing::Control::GLANCE_UP;     // Shift Hat Up
+	Cfg.JoyHatBinds[ "Wheel" ][ 0 ][ SDL_HAT_RIGHT ] = XWing::Control::GLANCE_RIGHT;  // Shift Hat Right
+	Cfg.JoyHatBinds[ "Wheel" ][ 0 ][ SDL_HAT_DOWN  ] = XWing::Control::GLANCE_BACK;   // Shift Hat Down
+	Cfg.JoyHatBinds[ "Wheel" ][ 0 ][ SDL_HAT_LEFT  ] = XWing::Control::GLANCE_LEFT;   // Shift Hat Left
 }
 
 
@@ -527,10 +526,7 @@ void XWingGame::SetDefaults( void )
 	Cfg.Settings[ "ui_ship_rotate" ] = "20";
 	Cfg.Settings[ "ui_pause" ] = "true";
 	
-	Cfg.Settings[ "s_volume" ] = "0.2";
-	Cfg.Settings[ "s_effect_volume" ] = "0.5";
 	Cfg.Settings[ "s_engine_volume" ] = "0.9";
-	Cfg.Settings[ "s_music_volume" ] = "0.8";
 	Cfg.Settings[ "s_shield_alarm_radius" ] = "1";
 	Cfg.Settings[ "s_menu_music" ] = "true";
 	Cfg.Settings[ "s_game_music" ] = "true";
@@ -900,29 +896,29 @@ void XWingGame::AddScreensaverLayer( void )
 	screensaver_layer->IgnoreKeys.insert( SDLK_PRINT );
 	for( std::map<SDLKey,uint8_t>::const_iterator bind_iter = Cfg.KeyBinds.begin(); bind_iter != Cfg.KeyBinds.end(); bind_iter ++ )
 	{
-		if( (bind_iter->second == Controls[ XWing::Control::THROTTLE_33        ]) // Spectate Prev
-		||  (bind_iter->second == Controls[ XWing::Control::THROTTLE_66        ]) // Spectate Next
-		||  (bind_iter->second == Controls[ XWing::Control::TARGET_NEXT_PLAYER ])
-		||  (bind_iter->second == Controls[ XWing::Control::TARGET_PREV_PLAYER ])
-		||  (bind_iter->second == Controls[ XWing::Control::LOOK_CENTER        ])
-		||  (bind_iter->second == Controls[ XWing::Control::LOOK_UP            ])
-		||  (bind_iter->second == Controls[ XWing::Control::LOOK_DOWN          ])
-		||  (bind_iter->second == Controls[ XWing::Control::LOOK_LEFT          ])
-		||  (bind_iter->second == Controls[ XWing::Control::LOOK_RIGHT         ])
-		||  (bind_iter->second == Controls[ XWing::Control::LOOK_UP_LEFT       ])
-		||  (bind_iter->second == Controls[ XWing::Control::LOOK_UP_RIGHT      ])
-		||  (bind_iter->second == Controls[ XWing::Control::LOOK_DOWN_LEFT     ])
-		||  (bind_iter->second == Controls[ XWing::Control::LOOK_DOWN_RIGHT    ])
-		||  (bind_iter->second == Controls[ XWing::Control::GLANCE_UP          ])
-		||  (bind_iter->second == Controls[ XWing::Control::GLANCE_BACK        ])
-		||  (bind_iter->second == Controls[ XWing::Control::GLANCE_LEFT        ])
-		||  (bind_iter->second == Controls[ XWing::Control::GLANCE_RIGHT       ])
-		||  (bind_iter->second == Controls[ XWing::Control::GLANCE_UP_LEFT     ])
-		||  (bind_iter->second == Controls[ XWing::Control::GLANCE_UP_RIGHT    ])
-		||  (bind_iter->second == Controls[ XWing::Control::GLANCE_BACK_LEFT   ])
-		||  (bind_iter->second == Controls[ XWing::Control::GLANCE_BACK_RIGHT  ])
-		||  (bind_iter->second == Controls[ XWing::Control::PAUSE              ])
-		|| ((bind_iter->second >= Controls[ XWing::Control::VIEW_COCKPIT ]) && (bind_iter->second <= Controls[ XWing::Control::VIEW_INSTRUMENTS ])) )
+		if( (bind_iter->second == XWing::Control::THROTTLE_33       ) // Spectate Prev
+		||  (bind_iter->second == XWing::Control::THROTTLE_66       ) // Spectate Next
+		||  (bind_iter->second == XWing::Control::TARGET_NEXT_PLAYER)
+		||  (bind_iter->second == XWing::Control::TARGET_PREV_PLAYER)
+		||  (bind_iter->second == XWing::Control::LOOK_CENTER       )
+		||  (bind_iter->second == XWing::Control::LOOK_UP           )
+		||  (bind_iter->second == XWing::Control::LOOK_DOWN         )
+		||  (bind_iter->second == XWing::Control::LOOK_LEFT         )
+		||  (bind_iter->second == XWing::Control::LOOK_RIGHT        )
+		||  (bind_iter->second == XWing::Control::LOOK_UP_LEFT      )
+		||  (bind_iter->second == XWing::Control::LOOK_UP_RIGHT     )
+		||  (bind_iter->second == XWing::Control::LOOK_DOWN_LEFT    )
+		||  (bind_iter->second == XWing::Control::LOOK_DOWN_RIGHT   )
+		||  (bind_iter->second == XWing::Control::GLANCE_UP         )
+		||  (bind_iter->second == XWing::Control::GLANCE_BACK       )
+		||  (bind_iter->second == XWing::Control::GLANCE_LEFT       )
+		||  (bind_iter->second == XWing::Control::GLANCE_RIGHT      )
+		||  (bind_iter->second == XWing::Control::GLANCE_UP_LEFT    )
+		||  (bind_iter->second == XWing::Control::GLANCE_UP_RIGHT   )
+		||  (bind_iter->second == XWing::Control::GLANCE_BACK_LEFT  )
+		||  (bind_iter->second == XWing::Control::GLANCE_BACK_RIGHT )
+		||  (bind_iter->second == XWing::Control::PAUSE             )
+		|| ((bind_iter->second >= XWing::Control::VIEW_COCKPIT) && (bind_iter->second <= XWing::Control::VIEW_INSTRUMENTS)) )
 			screensaver_layer->IgnoreKeys.insert( bind_iter->first );
 	}
 	Layers.Add( screensaver_layer );
@@ -1062,14 +1058,14 @@ void XWingGame::Update( double dt )
 	}
 	
 	// Analog Axes
-	roll  = Num::Clamp( roll  + Input.ControlTotal(Controls[ XWing::Control::ROLL  ]) + Input.ControlTotal(Controls[ XWing::Control::ROLL_INVERTED  ]) + Input.ControlTotal(Controls[ XWing::Control::ROLL_RIGHT ]) - Input.ControlTotal(Controls[ XWing::Control::ROLL_LEFT  ]), -1., 1. );
-	pitch = Num::Clamp( pitch + Input.ControlTotal(Controls[ XWing::Control::PITCH ]) + Input.ControlTotal(Controls[ XWing::Control::PITCH_INVERTED ]) + Input.ControlTotal(Controls[ XWing::Control::PITCH_UP   ]) - Input.ControlTotal(Controls[ XWing::Control::PITCH_DOWN ]), -1., 1. );
-	yaw   = Num::Clamp( yaw   + Input.ControlTotal(Controls[ XWing::Control::YAW   ]) + Input.ControlTotal(Controls[ XWing::Control::YAW_INVERTED   ]) + Input.ControlTotal(Controls[ XWing::Control::YAW_RIGHT  ]) - Input.ControlTotal(Controls[ XWing::Control::YAW_LEFT   ]), -1., 1. );
+	roll  = Num::Clamp( roll  + Input.ControlTotal( XWing::Control::ROLL  ) + Input.ControlTotal( XWing::Control::ROLL_INVERTED  ) + Input.ControlTotal( XWing::Control::ROLL_RIGHT ) - Input.ControlTotal( XWing::Control::ROLL_LEFT  ), -1., 1. );
+	pitch = Num::Clamp( pitch + Input.ControlTotal( XWing::Control::PITCH ) + Input.ControlTotal( XWing::Control::PITCH_INVERTED ) + Input.ControlTotal( XWing::Control::PITCH_UP   ) - Input.ControlTotal( XWing::Control::PITCH_DOWN ), -1., 1. );
+	yaw   = Num::Clamp( yaw   + Input.ControlTotal( XWing::Control::YAW   ) + Input.ControlTotal( XWing::Control::YAW_INVERTED   ) + Input.ControlTotal( XWing::Control::YAW_RIGHT  ) - Input.ControlTotal( XWing::Control::YAW_LEFT   ), -1., 1. );
 	double analog_throttle = throttle;
-	if( Input.HasControlAxis(Controls[ XWing::Control::THROTTLE ]) || Input.HasControlAxis(Controls[ XWing::Control::THROTTLE_INVERTED ]) )
-		analog_throttle = Num::Clamp( Input.ControlTotal(Controls[ XWing::Control::THROTTLE ]) + Input.ControlTotal(Controls[ XWing::Control::THROTTLE_INVERTED ]), 0., 1. );
-	double look_x = Num::Clamp( Input.ControlValue(Controls[ XWing::Control::LOOK_X ]) + Input.ControlValue(Controls[ XWing::Control::LOOK_X_INVERTED ]), -1., 1. );
-	double look_y = Num::Clamp( Input.ControlValue(Controls[ XWing::Control::LOOK_Y ]) + Input.ControlValue(Controls[ XWing::Control::LOOK_Y_INVERTED ]), -1., 1. );
+	if( Input.HasControlAxis( XWing::Control::THROTTLE ) || Input.HasControlAxis( XWing::Control::THROTTLE_INVERTED ) )
+		analog_throttle = Num::Clamp( Input.ControlTotal( XWing::Control::THROTTLE ) + Input.ControlTotal( XWing::Control::THROTTLE_INVERTED ), 0., 1. );
+	double look_x = Num::Clamp( Input.ControlValue( XWing::Control::LOOK_X ) + Input.ControlValue( XWing::Control::LOOK_X_INVERTED ), -1., 1. );
+	double look_y = Num::Clamp( Input.ControlValue( XWing::Control::LOOK_Y ) + Input.ControlValue( XWing::Control::LOOK_Y_INVERTED ), -1., 1. );
 	if( look_x || look_y )
 		ThumbstickLook = true;
 	if( ThumbstickLook )
@@ -1087,8 +1083,8 @@ void XWingGame::Update( double dt )
 	}
 	
 	// Held Digital Buttons
-	double glance_x = Num::Clamp( Input.ControlTotal(Controls[ XWing::Control::GLANCE_RIGHT ]) + Input.ControlTotal(Controls[ XWing::Control::GLANCE_UP_RIGHT  ]) + Input.ControlTotal(Controls[ XWing::Control::GLANCE_BACK_RIGHT ]) - Input.ControlTotal(Controls[ XWing::Control::GLANCE_LEFT ]) - Input.ControlTotal(Controls[ XWing::Control::GLANCE_UP_LEFT ]) - Input.ControlTotal(Controls[ XWing::Control::GLANCE_BACK_LEFT ]), -1., 1. );
-	double glance_y = Num::Clamp( Input.ControlTotal(Controls[ XWing::Control::GLANCE_BACK  ]) + Input.ControlTotal(Controls[ XWing::Control::GLANCE_BACK_LEFT ]) + Input.ControlTotal(Controls[ XWing::Control::GLANCE_BACK_RIGHT ]) - Input.ControlTotal(Controls[ XWing::Control::GLANCE_UP   ]) - Input.ControlTotal(Controls[ XWing::Control::GLANCE_UP_LEFT ]) - Input.ControlTotal(Controls[ XWing::Control::GLANCE_UP_RIGHT  ]), -1., 1. );
+	double glance_x = Num::Clamp( Input.ControlTotal( XWing::Control::GLANCE_RIGHT ) + Input.ControlTotal( XWing::Control::GLANCE_UP_RIGHT  ) + Input.ControlTotal( XWing::Control::GLANCE_BACK_RIGHT ) - Input.ControlTotal( XWing::Control::GLANCE_LEFT ) - Input.ControlTotal( XWing::Control::GLANCE_UP_LEFT ) - Input.ControlTotal( XWing::Control::GLANCE_BACK_LEFT ), -1., 1. );
+	double glance_y = Num::Clamp( Input.ControlTotal( XWing::Control::GLANCE_BACK  ) + Input.ControlTotal( XWing::Control::GLANCE_BACK_LEFT ) + Input.ControlTotal( XWing::Control::GLANCE_BACK_RIGHT ) - Input.ControlTotal( XWing::Control::GLANCE_UP   ) - Input.ControlTotal( XWing::Control::GLANCE_UP_LEFT ) - Input.ControlTotal( XWing::Control::GLANCE_UP_RIGHT  ), -1., 1. );
 	if( glance_x || glance_y )
 	{
 		if( ! ThumbstickLook )
@@ -1113,35 +1109,35 @@ void XWingGame::Update( double dt )
 			}
 		}
 	}
-	if( Input.ControlPressed(Controls[ XWing::Control::ROLL_RIGHT ]) || Input.ControlPressed(Controls[ XWing::Control::ROLL_LEFT ]) )
+	if( Input.ControlPressed( XWing::Control::ROLL_RIGHT ) || Input.ControlPressed( XWing::Control::ROLL_LEFT ) )
 	{
-		double digital_roll = Num::Clamp( Input.ControlTotal(Controls[ XWing::Control::ROLL_RIGHT ]) - Input.ControlTotal(Controls[ XWing::Control::ROLL_LEFT ]), -1., 1. );
+		double digital_roll = Num::Clamp( Input.ControlTotal( XWing::Control::ROLL_RIGHT ) - Input.ControlTotal( XWing::Control::ROLL_LEFT ), -1., 1. );
 		if( digital_roll )
 			roll = digital_roll;
 	}
-	if( Input.ControlPressed(Controls[ XWing::Control::PITCH_UP ]) || Input.ControlPressed(Controls[ XWing::Control::PITCH_DOWN ]) )
+	if( Input.ControlPressed( XWing::Control::PITCH_UP ) || Input.ControlPressed( XWing::Control::PITCH_DOWN ) )
 	{
-		double digital_pitch = Num::Clamp( Input.ControlTotal(Controls[ XWing::Control::PITCH_UP ]) - Input.ControlTotal(Controls[ XWing::Control::PITCH_DOWN ]), -1., 1. );
+		double digital_pitch = Num::Clamp( Input.ControlTotal( XWing::Control::PITCH_UP ) - Input.ControlTotal( XWing::Control::PITCH_DOWN ), -1., 1. );
 		if( digital_pitch )
 			pitch = digital_pitch;
 	}
-	if( Input.ControlPressed(Controls[ XWing::Control::YAW_RIGHT ]) || Input.ControlPressed(Controls[ XWing::Control::YAW_LEFT ]) )
+	if( Input.ControlPressed( XWing::Control::YAW_RIGHT ) || Input.ControlPressed( XWing::Control::YAW_LEFT ) )
 	{
-		double digital_yaw = Num::Clamp( Input.ControlTotal(Controls[ XWing::Control::YAW_RIGHT ]) - Input.ControlTotal(Controls[ XWing::Control::YAW_LEFT ]), -1., 1. );
+		double digital_yaw = Num::Clamp( Input.ControlTotal( XWing::Control::YAW_RIGHT ) - Input.ControlTotal( XWing::Control::YAW_LEFT ), -1., 1. );
 		if( digital_yaw )
 			yaw = digital_yaw;
 	}
-	if( Input.ControlPressed(Controls[ XWing::Control::THROTTLE_100 ]) )
+	if( Input.ControlPressed( XWing::Control::THROTTLE_100 ) )
 		throttle = 1.;
-	else if( Input.ControlPressed(Controls[ XWing::Control::THROTTLE_66 ]) )
+	else if( Input.ControlPressed( XWing::Control::THROTTLE_66 ) )
 		throttle = 0.6667;
-	else if( Input.ControlPressed(Controls[ XWing::Control::THROTTLE_33 ]) )
+	else if( Input.ControlPressed( XWing::Control::THROTTLE_33 ) )
 		throttle = 0.3333;
-	else if( Input.ControlPressed(Controls[ XWing::Control::THROTTLE_0 ]) )
+	else if( Input.ControlPressed( XWing::Control::THROTTLE_0 ) )
 		throttle = 0.;
-	else if( Input.ControlPressed(Controls[ XWing::Control::THROTTLE_UP ]) || Input.ControlPressed(Controls[ XWing::Control::THROTTLE_DOWN ]) )
+	else if( Input.ControlPressed( XWing::Control::THROTTLE_UP ) || Input.ControlPressed( XWing::Control::THROTTLE_DOWN ) )
 	{
-		double throttle_change = Num::Clamp( Input.ControlTotal(Controls[ XWing::Control::THROTTLE_UP ]) - Input.ControlTotal(Controls[ XWing::Control::THROTTLE_DOWN ]), -1., 1. );
+		double throttle_change = Num::Clamp( Input.ControlTotal( XWing::Control::THROTTLE_UP ) - Input.ControlTotal( XWing::Control::THROTTLE_DOWN ), -1., 1. );
 		if( ! my_ship )
 			;
 		else if( throttle_change > 0. )
@@ -1152,51 +1148,51 @@ void XWingGame::Update( double dt )
 	}
 	else
 		throttle = analog_throttle;
-	if( Input.ControlPressed(Controls[ XWing::Control::FIRE ]) )
+	if( Input.ControlPressed( XWing::Control::FIRE ) )
 		firing = true;
-	if( Input.ControlPressed(Controls[ XWing::Control::TARGET_NOTHING ]) )
+	if( Input.ControlPressed( XWing::Control::TARGET_NOTHING ) )
 		target_nothing = true;
-	if( Input.ControlPressed(Controls[ XWing::Control::TARGET_CROSSHAIR ]) )
+	if( Input.ControlPressed( XWing::Control::TARGET_CROSSHAIR ) )
 		target_crosshair = true;
-	if( Input.ControlPressed(Controls[ XWing::Control::TARGET_NEAREST_ENEMY ]) )
+	if( Input.ControlPressed( XWing::Control::TARGET_NEAREST_ENEMY ) )
 		target_nearest_enemy = true;
-	if( Input.ControlPressed(Controls[ XWing::Control::TARGET_NEAREST_ATTACKER ]) )
+	if( Input.ControlPressed( XWing::Control::TARGET_NEAREST_ATTACKER ) )
 		target_nearest_attacker = true;
-	if( Input.ControlPressed(Controls[ XWing::Control::TARGET_TARGET_ATTACKER ]) )
+	if( Input.ControlPressed( XWing::Control::TARGET_TARGET_ATTACKER ) )
 		target_target_attacker = true;
-	if( Input.ControlPressed(Controls[ XWing::Control::TARGET_NEWEST_INCOMING ]) )
+	if( Input.ControlPressed( XWing::Control::TARGET_NEWEST_INCOMING ) )
 		target_newest_incoming = true;
-	if( Input.ControlPressed(Controls[ XWing::Control::TARGET_OBJECTIVE ]) )
+	if( Input.ControlPressed( XWing::Control::TARGET_OBJECTIVE ) )
 		target_objective = true;
-	if( Input.ControlPressed(Controls[ XWing::Control::TARGET_DOCKABLE ]) )
+	if( Input.ControlPressed( XWing::Control::TARGET_DOCKABLE ) )
 		target_dockable = true;
-	if( Input.ControlPressed(Controls[ XWing::Control::TARGET_NEWEST ]) )
+	if( Input.ControlPressed( XWing::Control::TARGET_NEWEST ) )
 		target_newest = true;
-	if( Input.ControlPressed(Controls[ XWing::Control::TARGET_GROUPMATE ]) )
+	if( Input.ControlPressed( XWing::Control::TARGET_GROUPMATE ) )
 		target_groupmate = true;
-	if( Input.ControlPressed(Controls[ XWing::Control::TARGET_SYNC ]) )
+	if( Input.ControlPressed( XWing::Control::TARGET_SYNC ) )
 		target_sync = true;
-	if( Input.ControlPressed(Controls[ XWing::Control::LOOK_UP ]) || Input.ControlPressed(Controls[ XWing::Control::LOOK_UP_LEFT ]) || Input.ControlPressed(Controls[ XWing::Control::LOOK_UP_RIGHT ]) )
+	if( Input.ControlPressed( XWing::Control::LOOK_UP ) || Input.ControlPressed( XWing::Control::LOOK_UP_LEFT ) || Input.ControlPressed( XWing::Control::LOOK_UP_RIGHT ) )
 	{
 		LookPitch += 90. * FrameTime;
 		ThumbstickLook = false;
 	}
-	if( Input.ControlPressed(Controls[ XWing::Control::LOOK_DOWN ]) || Input.ControlPressed(Controls[ XWing::Control::LOOK_DOWN_LEFT ]) || Input.ControlPressed(Controls[ XWing::Control::LOOK_DOWN_RIGHT ]) )
+	if( Input.ControlPressed( XWing::Control::LOOK_DOWN ) || Input.ControlPressed( XWing::Control::LOOK_DOWN_LEFT ) || Input.ControlPressed( XWing::Control::LOOK_DOWN_RIGHT ) )
 	{
 		LookPitch -= 90. * FrameTime;
 		ThumbstickLook = false;
 	}
-	if( Input.ControlPressed(Controls[ XWing::Control::LOOK_LEFT ]) || Input.ControlPressed(Controls[ XWing::Control::LOOK_UP_LEFT ]) || Input.ControlPressed(Controls[ XWing::Control::LOOK_DOWN_LEFT ]) )
+	if( Input.ControlPressed( XWing::Control::LOOK_LEFT ) || Input.ControlPressed( XWing::Control::LOOK_UP_LEFT ) || Input.ControlPressed( XWing::Control::LOOK_DOWN_LEFT ) )
 	{
 		LookYaw -= 90. * FrameTime;
 		ThumbstickLook = false;
 	}
-	if( Input.ControlPressed(Controls[ XWing::Control::LOOK_RIGHT ]) || Input.ControlPressed(Controls[ XWing::Control::LOOK_UP_RIGHT ]) || Input.ControlPressed(Controls[ XWing::Control::LOOK_DOWN_RIGHT ]) )
+	if( Input.ControlPressed( XWing::Control::LOOK_RIGHT ) || Input.ControlPressed( XWing::Control::LOOK_UP_RIGHT ) || Input.ControlPressed( XWing::Control::LOOK_DOWN_RIGHT ) )
 	{
 		LookYaw += 90. * FrameTime;
 		ThumbstickLook = false;
 	}
-	if( Input.ControlPressed(Controls[ XWing::Control::LOOK_CENTER ]) )
+	if( Input.ControlPressed( XWing::Control::LOOK_CENTER ) )
 	{
 		LookPitch = 0.;
 		LookYaw   = 0.;
@@ -1206,13 +1202,13 @@ void XWingGame::Update( double dt )
 	
 	static bool voice_transmit = false;
 	static uint8_t voice_channel = Raptor::VoiceChannel::TEAM;
-	if( Input.ControlPressed(Controls[ XWing::Control::VOICE_TEAM ]) )
+	if( Input.ControlPressed( XWing::Control::VOICE_TEAM ) )
 	{
 		if( (! voice_transmit) || (voice_channel != Raptor::VoiceChannel::TEAM) )
 			voice_transmit = Mic.Start( Raptor::VoiceChannel::TEAM );
 		voice_channel = Raptor::VoiceChannel::TEAM;
 	}
-	else if( Input.ControlPressed(Controls[ XWing::Control::VOICE_ALL ]) )
+	else if( Input.ControlPressed( XWing::Control::VOICE_ALL ) )
 	{
 		if( (! voice_transmit) || (voice_channel != Raptor::VoiceChannel::ALL) )
 			voice_transmit = Mic.Start( Raptor::VoiceChannel::ALL );
@@ -1343,7 +1339,7 @@ void XWingGame::Update( double dt )
 					}
 				}
 				
-				ejecting = Input.ControlPressed(Controls[ XWing::Control::EJECT ]);
+				ejecting = Input.ControlPressed( XWing::Control::EJECT );
 				if( ejecting )
 				{
 					double eject_held = EjectHeld.ElapsedSeconds();
@@ -2222,81 +2218,81 @@ bool XWingGame::ControlPressed( uint8_t control )
 	bool pause = false;
 	
 	// See if we can handle this.
-	if( control == Controls[ XWing::Control::THROTTLE_33 ] )       // SDLK_LEFTBRACKET
+	if( control ==  XWing::Control::THROTTLE_33  )       // SDLK_LEFTBRACKET
 		observe_prev = true;
-	else if( control == Controls[ XWing::Control::THROTTLE_66 ] )  // SDLK_RIGHTBRACKET
+	else if( control ==  XWing::Control::THROTTLE_66  )  // SDLK_RIGHTBRACKET
 		observe_next = true;
-	else if( control == Controls[ XWing::Control::WEAPON ] )
+	else if( control ==  XWing::Control::WEAPON  )
 		weapon_next = true;
-	else if( control == Controls[ XWing::Control::MODE ] )
+	else if( control ==  XWing::Control::MODE  )
 		firing_mode_next = true;
-	else if( control == Controls[ XWing::Control::SHIELD_DIR ] )
+	else if( control ==  XWing::Control::SHIELD_DIR  )
 		shield_shunt = true;
-	else if( control == Controls[ XWing::Control::TARGET_PREV ] )
+	else if( control ==  XWing::Control::TARGET_PREV  )
 		target_prev = true;
-	else if( control == Controls[ XWing::Control::TARGET_NEXT ] )
+	else if( control ==  XWing::Control::TARGET_NEXT  )
 		target_next = true;
-	else if( control == Controls[ XWing::Control::TARGET_PREV_ENEMY ] )
+	else if( control ==  XWing::Control::TARGET_PREV_ENEMY  )
 	{
 		target_prev_enemy = true;
 		if( Cfg.SettingAsString("spectator_view") != "instruments" )
 			observe_prev = true;
 	}
-	else if( control == Controls[ XWing::Control::TARGET_NEXT_ENEMY ] )
+	else if( control ==  XWing::Control::TARGET_NEXT_ENEMY  )
 	{
 		target_next_enemy = true;
 		if( Cfg.SettingAsString("spectator_view") != "instruments" )
 			observe_next = true;
 	}
-	else if( control == Controls[ XWing::Control::TARGET_PREV_FRIENDLY ] )
+	else if( control ==  XWing::Control::TARGET_PREV_FRIENDLY  )
 		target_prev_friendly = true;
-	else if( control == Controls[ XWing::Control::TARGET_NEXT_FRIENDLY ] )
+	else if( control ==  XWing::Control::TARGET_NEXT_FRIENDLY  )
 		target_next_friendly = true;
-	else if( control == Controls[ XWing::Control::TARGET_PREV_PLAYER ] )
+	else if( control ==  XWing::Control::TARGET_PREV_PLAYER  )
 		target_prev_player = true;
-	else if( control == Controls[ XWing::Control::TARGET_NEXT_PLAYER ] )
+	else if( control ==  XWing::Control::TARGET_NEXT_PLAYER  )
 		target_next_player = true;
-	else if( control == Controls[ XWing::Control::TARGET_PREV_SUBSYSTEM ] )
+	else if( control ==  XWing::Control::TARGET_PREV_SUBSYSTEM  )
 	{
 		target_prev_subsystem = true;
 		observe_prev = true;
 	}
-	else if( control == Controls[ XWing::Control::TARGET_NEXT_SUBSYSTEM ] )
+	else if( control ==  XWing::Control::TARGET_NEXT_SUBSYSTEM  )
 	{
 		target_next_subsystem = true;
 		observe_next = true;
 	}
-	else if( control == Controls[ XWing::Control::TARGET1 ] )
+	else if( control ==  XWing::Control::TARGET1  )
 	{
 		target_stored = &(StoredTargets[ 0 ]);
 		subsystem_stored = &(StoredSubsystems[ 0 ]);
 	}
-	else if( control == Controls[ XWing::Control::TARGET2 ] )
+	else if( control ==  XWing::Control::TARGET2  )
 	{
 		target_stored = &(StoredTargets[ 1 ]);
 		subsystem_stored = &(StoredSubsystems[ 1 ]);
 	}
-	else if( control == Controls[ XWing::Control::TARGET3 ] )
+	else if( control ==  XWing::Control::TARGET3  )
 	{
 		target_stored = &(StoredTargets[ 2 ]);
 		subsystem_stored = &(StoredSubsystems[ 2 ]);
 	}
-	else if( control == Controls[ XWing::Control::TARGET4 ] )
+	else if( control ==  XWing::Control::TARGET4  )
 	{
 		target_stored = &(StoredTargets[ 3 ]);
 		subsystem_stored = &(StoredSubsystems[ 3 ]);
 	}
-	else if( control == Controls[ XWing::Control::SEAT_COCKPIT ] )
+	else if( control ==  XWing::Control::SEAT_COCKPIT  )
 		change_seat = 1;
-	else if( control == Controls[ XWing::Control::SEAT_GUNNER1 ] )
+	else if( control ==  XWing::Control::SEAT_GUNNER1  )
 		change_seat = 2;
-	else if( control == Controls[ XWing::Control::SEAT_GUNNER2 ] )
+	else if( control ==  XWing::Control::SEAT_GUNNER2  )
 		change_seat = 3;
-	else if( control == Controls[ XWing::Control::CHEWIE_TAKE_THE_WHEEL ] )
+	else if( control ==  XWing::Control::CHEWIE_TAKE_THE_WHEEL  )
 		chewie_take_the_wheel = true;
-	else if( (control >= Controls[ XWing::Control::VIEW_COCKPIT ]) && (control <= Controls[ XWing::Control::VIEW_INSTRUMENTS ]) )
+	else if( (control >=  XWing::Control::VIEW_COCKPIT ) && (control <=  XWing::Control::VIEW_INSTRUMENTS ) )
 		change_view = true;
-	else if( control == Controls[ XWing::Control::PAUSE ] )
+	else if( control ==  XWing::Control::PAUSE  )
 		pause = true;
 	else
 		return false;
@@ -2377,27 +2373,27 @@ bool XWingGame::ControlPressed( uint8_t control )
 		std::string var = (alive || screensaver || (Cfg.SettingAsString("view") != "auto")) ? "view" : "spectator_view";
 		
 		std::string value = "auto";
-		if( control == Controls[ XWing::Control::VIEW_COCKPIT ] )
+		if( control ==  XWing::Control::VIEW_COCKPIT  )
 			value = alive ? "auto" : "cockpit";
-		else if( control == Controls[ XWing::Control::VIEW_CROSSHAIR ] )
+		else if( control ==  XWing::Control::VIEW_CROSSHAIR  )
 			value = "crosshair";
-		else if( control == Controls[ XWing::Control::VIEW_CHASE ] )
+		else if( control ==  XWing::Control::VIEW_CHASE  )
 			value = "chase";
-		else if( control == Controls[ XWing::Control::VIEW_PADLOCK ] )
+		else if( control ==  XWing::Control::VIEW_PADLOCK  )
 			value = "padlock";
-		else if( control == Controls[ XWing::Control::VIEW_STATIONARY ] )
+		else if( control ==  XWing::Control::VIEW_STATIONARY  )
 			value = "stationary";
-		else if( control == Controls[ XWing::Control::VIEW_CINEMA ] )
+		else if( control ==  XWing::Control::VIEW_CINEMA  )
 			value = "cinema";
-		else if( control == Controls[ XWing::Control::VIEW_FIXED ] )
+		else if( control ==  XWing::Control::VIEW_FIXED  )
 			value = "fixed";
-		else if( control == Controls[ XWing::Control::VIEW_SELFIE ] )
+		else if( control ==  XWing::Control::VIEW_SELFIE  )
 			value = "selfie";
-		else if( control == Controls[ XWing::Control::VIEW_GUNNER ] )
+		else if( control ==  XWing::Control::VIEW_GUNNER  )
 			value = "gunner";
-		else if( control == Controls[ XWing::Control::VIEW_CYCLE ] )
+		else if( control ==  XWing::Control::VIEW_CYCLE  )
 			value = "cycle";
-		else if( control == Controls[ XWing::Control::VIEW_INSTRUMENTS ] )
+		else if( control ==  XWing::Control::VIEW_INSTRUMENTS  )
 			value = "instruments";
 		
 		if( value == Cfg.SettingAsString(var) )  // View buttons toggle.
@@ -2646,7 +2642,7 @@ bool XWingGame::ControlPressed( uint8_t control )
 	}
 	else if( target_stored )
 	{
-		if( Input.ControlPressed( Controls[ XWing::Control::TARGET_STORE ] ) )
+		if( Input.ControlPressed(  XWing::Control::TARGET_STORE  ) )
 		{
 			*target_stored = target_id;
 			if( subsystem_stored )
@@ -2794,7 +2790,7 @@ bool XWingGame::HandleCommand( std::string cmd, std::vector<std::string> *params
 	}
 	else if( cmd == "pause" )
 	{
-		ControlPressed( Controls[ XWing::Control::PAUSE ] );
+		ControlPressed(  XWing::Control::PAUSE  );
 	}
 	else if( cmd == "music" )
 	{
@@ -3713,6 +3709,7 @@ void XWingGame::ShowLobby( void )
 			Raptor::Server->Data.Properties["time_scale"]            = Cfg.SettingAsString( "screensaver_time_scale",      "1"       );
 			Raptor::Server->Data.Properties["allow_ship_change"]     = "true";
 			Raptor::Server->Data.Properties["allow_team_change"]     = "true";
+			Raptor::Server->Data.Properties["allow_pause"]           = "true";
 			Data.Properties = Raptor::Server->Data.Properties;
 			Raptor::Server->Data.Lock.Unlock();
 			Cfg.Load( "screensaver.cfg" );

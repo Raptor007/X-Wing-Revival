@@ -635,7 +635,7 @@ bool Turret::WillCollide( const GameObject *other, double dt, std::string *this_
 		if( (! shot->FiredFrom) || (shot->FiredFrom == ID) || (shot->FiredFrom == ParentID) )
 			return false;
 		
-		double dist = Math3D::MinimumDistance( this, &(this->MotionVector), other, &(other->MotionVector), dt );
+		double dist = Math3D::MinimumDistance( this, &MotionVector, other, &(other->MotionVector), dt );
 		
 		if( dist <= Radius )
 			return true;
@@ -653,7 +653,7 @@ bool Turret::WillCollide( const GameObject *other, double dt, std::string *this_
 		if( (ship->Health <= 0.) && ((Health <= 0.) || (ship->DeathClock.ElapsedSeconds() > ship->PiecesDangerousTime())) )
 			return false;
 		
-		double dist = Math3D::MinimumDistance( this, &(this->MotionVector), other, &(other->MotionVector), dt );
+		double dist = Math3D::MinimumDistance( this, &MotionVector, other, &(other->MotionVector), dt );
 		if( dist <= (ship->Radius() + Radius) )
 		{
 			if( ship->ComplexCollisionDetection() && (ship->Health > 0.) )

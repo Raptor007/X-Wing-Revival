@@ -583,7 +583,7 @@ bool Shot::WillCollide( const GameObject *other, double dt, std::string *this_ob
 		Shot *shot = (Shot*) other;
 		if( (shot->FiredFrom != FiredFrom) && ((shot->ShotType == TYPE_TORPEDO) || (ShotType == TYPE_TORPEDO) || (shot->ShotType == TYPE_MISSILE) || (ShotType == TYPE_MISSILE)) )
 		{
-			double dist = Math3D::MinimumDistance( this, &(this->MotionVector), other, &(other->MotionVector), dt );
+			double dist = Math3D::MinimumDistance( this, &MotionVector, other, &(other->MotionVector), dt );
 			if( dist <= 1. )
 				return true;
 		}

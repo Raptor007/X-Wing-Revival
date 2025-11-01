@@ -114,9 +114,9 @@ when ( trench_run 1 ) and ( player alive within trench ) and ( player alive with
 stfu true
 alert r5_fighters2.wav Keep your eyes open for those fighters.
 wait 10
-spawn T/A "Black 1" empire at -1700 0 100 from player facing 1 0 0
-spawn T/F "Black 2" empire at -1730 50 100 from player facing 1 0 0
-spawn T/F "Black 3" empire at -1760 -50 100 from player facing 1 0 0
+spawn T/A "Black 1" empire at -1700 0 100 from player facing 1 0 0 silent
+spawn T/F "Black 2" empire at -1730 50 100 from player facing 1 0 0 silent
+spawn T/F "Black 3" empire at -1760 -50 100 from player facing 1 0 0 silent
 stfu false
 wait 15
 trench_run 2

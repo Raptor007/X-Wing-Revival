@@ -306,12 +306,10 @@ bool Mission::Parse( std::vector<std::string> &lines )
 						spawn_flags |= MissionEvent::SPAWNFLAG_EMPIRE;
 					else if( subvar == "objective" )
 						spawn_flags |= MissionEvent::SPAWNFLAG_OBJECTIVE;
+					else if( subvar == "silent" )
+						spawn_flags |= MissionEvent::SPAWNFLAG_SILENT;
 					else if( subvar == "respawn" )
 						spawn_flags |= MissionEvent::SPAWNFLAG_RESPAWN;
-					/*
-					else if( subvar == "hero" )
-						spawn_flags |= MissionEvent::SPAWNFLAG_HERO;
-					*/
 					else if( (subvar == "class") && args.size() )
 					{
 						spawn_class = args.at(0);
@@ -765,10 +763,9 @@ void MissionEvent::FireWhenReady( std::set<uint32_t> *add_object_ids )
 			
 			Ship *ship = server->SpawnShip( sc, team, add_object_ids );
 			ship->Group = SpawnGroup;
-			ship->IsMissionObjective = SpawnFlags & SPAWNFLAG_OBJECTIVE;
-			ship->CanRespawn         = SpawnFlags & SPAWNFLAG_RESPAWN;
-			// FIXME: SpawnFlags & SPAWNFLAG_HERO
-			ship->JumpProgress = (this->Time + this->Delay) ? 0. : 1.;
+			ship->IsMissionObjective =   SpawnFlags & SPAWNFLAG_OBJECTIVE;
+			ship->CanRespawn         =   SpawnFlags & SPAWNFLAG_RESPAWN;
+			ship->JumpProgress       = ((SpawnFlags & SPAWNFLAG_SILENT) || ((Trigger == TRIGGER_ALWAYS) && ! (Time || Delay || TriggerIf.size()))) ? 1. : 0.;  // Jump in unless spawning at mission start.
 			ship->SetThrottle( 1., 999. );
 			
 			if( SpawnName.length() )

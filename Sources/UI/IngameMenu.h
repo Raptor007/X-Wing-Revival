@@ -34,7 +34,7 @@ public:
 	void UpdateRects( void );
 	void Draw( void );
 	
-	bool KeyDown( SDLKey key );
+	bool ControlDown( uint8_t control );
 };
 
 

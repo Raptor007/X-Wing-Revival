@@ -32,7 +32,7 @@ class CampaignMenuTeamButton : public Button
 public:
 	uint8_t Team;
 	Model Shape;
-	double Rotation;
+	double Rotation, PopOut;
 	
 	CampaignMenuTeamButton( SDL_Rect *rect, uint8_t team );
 	virtual ~CampaignMenuTeamButton();

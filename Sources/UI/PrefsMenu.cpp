@@ -17,6 +17,7 @@
 PrefsMenu::PrefsMenu( void )
 {
 	Name = "PrefsMenu";
+	ReadControls = true;
 	
 	Rect.x = Raptor::Game->Gfx.W/2 - 640/2;
 	Rect.y = Raptor::Game->Gfx.H/2 - 480/2;
@@ -73,7 +74,7 @@ PrefsMenu::PrefsMenu( void )
 		&& (game->Data.RealPlayers() <= 1)
 		&& game->Cfg.SettingAsBool("ui_pause",true)
 		&& Raptor::Server->IsRunning()
-		&& game->ControlPressed( game->Controls[ XWing::Control::PAUSE ] );
+		&& game->ControlPressed( XWing::Control::PAUSE );
 }
 
 
@@ -81,7 +82,7 @@ PrefsMenu::~PrefsMenu()
 {
 	XWingGame *game = (XWingGame*) Raptor::Game;
 	if( Paused && (game->State >= XWing::State::FLYING) && (game->Data.TimeScale < 0.0000011) )
-		game->ControlPressed( game->Controls[ XWing::Control::PAUSE ] );  // Unpause
+		game->ControlPressed( XWing::Control::PAUSE );  // Unpause
 }
 
 
@@ -1324,191 +1325,191 @@ void PrefsMenu::UpdateContents( void )
 		rect.w = scroll_area->Rect.w - scroll_area->ScrollBarSize - 5;
 		rect.h = 15;
 		
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::ROLL ], ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::ROLL_INVERTED ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::ROLL, XWing::Control::ROLL_INVERTED, ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::PITCH ], ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::PITCH_INVERTED ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::PITCH, XWing::Control::PITCH_INVERTED, ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::YAW ], ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::YAW_INVERTED ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::YAW, XWing::Control::YAW_INVERTED, ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::THROTTLE ], ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::THROTTLE_INVERTED ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::THROTTLE, XWing::Control::THROTTLE_INVERTED, ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::LOOK_X ], ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::LOOK_X_INVERTED ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::LOOK_X, XWing::Control::LOOK_X_INVERTED, ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::LOOK_Y ], ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::LOOK_Y_INVERTED ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::LOOK_Y, XWing::Control::LOOK_Y_INVERTED, ControlFont, BindFont ) );
 		
 		rect.y += rect.h + 10;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::ROLL_LEFT ], ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::ROLL_LEFT ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::ROLL_LEFT, XWing::Control::ROLL_LEFT, ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::ROLL_RIGHT ], ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::ROLL_RIGHT ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::ROLL_RIGHT, XWing::Control::ROLL_RIGHT, ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::PITCH_UP ], ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::PITCH_UP ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::PITCH_UP, XWing::Control::PITCH_UP, ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::PITCH_DOWN ], ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::PITCH_DOWN ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::PITCH_DOWN, XWing::Control::PITCH_DOWN, ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::YAW_LEFT ], ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::YAW_LEFT ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::YAW_LEFT, XWing::Control::YAW_LEFT, ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::YAW_RIGHT ], ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::YAW_RIGHT ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::YAW_RIGHT, XWing::Control::YAW_RIGHT, ControlFont, BindFont ) );
 		
 		rect.y += rect.h + 10;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::THROTTLE_UP ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::THROTTLE_UP, ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::THROTTLE_DOWN ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::THROTTLE_DOWN, ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::THROTTLE_0 ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::THROTTLE_0, ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::THROTTLE_33 ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::THROTTLE_33, ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::THROTTLE_66 ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::THROTTLE_66, ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::THROTTLE_100 ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::THROTTLE_100, ControlFont, BindFont ) );
 		
 		rect.y += rect.h + 10;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::FIRE ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::FIRE, ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::WEAPON ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::WEAPON, ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::MODE ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::MODE, ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::SHIELD_DIR ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::SHIELD_DIR, ControlFont, BindFont ) );
 		
 		rect.y += rect.h + 10;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::TARGET_CROSSHAIR ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::TARGET_CROSSHAIR, ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::TARGET_NOTHING ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::TARGET_NOTHING, ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::TARGET_NEAREST_ENEMY ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::TARGET_NEAREST_ENEMY, ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::TARGET_NEAREST_ATTACKER ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::TARGET_NEAREST_ATTACKER, ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::TARGET_NEWEST_INCOMING ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::TARGET_NEWEST_INCOMING, ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::TARGET_OBJECTIVE ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::TARGET_OBJECTIVE, ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::TARGET_DOCKABLE ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::TARGET_DOCKABLE, ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::TARGET_TARGET_ATTACKER ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::TARGET_TARGET_ATTACKER, ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::TARGET_NEXT ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::TARGET_NEXT, ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::TARGET_PREV ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::TARGET_PREV, ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::TARGET_NEXT_ENEMY ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::TARGET_NEXT_ENEMY, ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::TARGET_PREV_ENEMY ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::TARGET_PREV_ENEMY, ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::TARGET_NEXT_FRIENDLY ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::TARGET_NEXT_FRIENDLY, ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::TARGET_PREV_FRIENDLY ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::TARGET_PREV_FRIENDLY, ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::TARGET_NEXT_PLAYER ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::TARGET_NEXT_PLAYER, ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::TARGET_PREV_PLAYER ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::TARGET_PREV_PLAYER, ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::TARGET_NEXT_SUBSYSTEM ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::TARGET_NEXT_SUBSYSTEM, ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::TARGET_PREV_SUBSYSTEM ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::TARGET_PREV_SUBSYSTEM, ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::TARGET_GROUPMATE ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::TARGET_GROUPMATE, ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::TARGET_SYNC ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::TARGET_SYNC, ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::TARGET_NEWEST ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::TARGET_NEWEST, ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::TARGET1 ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::TARGET1, ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::TARGET2 ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::TARGET2, ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::TARGET3 ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::TARGET3, ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::TARGET4 ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::TARGET4, ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::TARGET_STORE ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::TARGET_STORE, ControlFont, BindFont ) );
 		
 		rect.y += rect.h + 10;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::SEAT_COCKPIT ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::SEAT_COCKPIT, ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::SEAT_GUNNER1 ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::SEAT_GUNNER1, ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::SEAT_GUNNER2 ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::SEAT_GUNNER2, ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::CHEWIE_TAKE_THE_WHEEL ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::CHEWIE_TAKE_THE_WHEEL, ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::EJECT ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::EJECT, ControlFont, BindFont ) );
 		
 		rect.y += rect.h + 10;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::LOOK_CENTER ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::LOOK_CENTER, ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::LOOK_UP ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::LOOK_UP, ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::LOOK_DOWN ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::LOOK_DOWN, ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::LOOK_LEFT ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::LOOK_LEFT, ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::LOOK_RIGHT ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::LOOK_RIGHT, ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::LOOK_UP_LEFT ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::LOOK_UP_LEFT, ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::LOOK_UP_RIGHT ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::LOOK_UP_RIGHT, ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::LOOK_DOWN_LEFT ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::LOOK_DOWN_LEFT, ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::LOOK_DOWN_RIGHT ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::LOOK_DOWN_RIGHT, ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::GLANCE_UP ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::GLANCE_UP, ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::GLANCE_BACK ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::GLANCE_BACK, ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::GLANCE_LEFT ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::GLANCE_LEFT, ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::GLANCE_RIGHT ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::GLANCE_RIGHT, ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::GLANCE_UP_LEFT ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::GLANCE_UP_LEFT, ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::GLANCE_UP_RIGHT ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::GLANCE_UP_RIGHT, ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::GLANCE_BACK_LEFT ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::GLANCE_BACK_LEFT, ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::GLANCE_BACK_RIGHT ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::GLANCE_BACK_RIGHT, ControlFont, BindFont ) );
 		
 		rect.y += rect.h + 10;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::VIEW_COCKPIT ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::VIEW_COCKPIT, ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::VIEW_CROSSHAIR ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::VIEW_CROSSHAIR, ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::VIEW_CHASE ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::VIEW_CHASE, ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::VIEW_PADLOCK ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::VIEW_PADLOCK, ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::VIEW_STATIONARY ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::VIEW_STATIONARY, ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::VIEW_CINEMA ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::VIEW_CINEMA, ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::VIEW_FIXED ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::VIEW_FIXED, ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::VIEW_GUNNER ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::VIEW_GUNNER, ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::VIEW_CYCLE ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::VIEW_CYCLE, ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::VIEW_INSTRUMENTS ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::VIEW_INSTRUMENTS, ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::VIEW_SELFIE ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::VIEW_SELFIE, ControlFont, BindFont ) );
 		
 		rect.y += rect.h + 10;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::CHAT ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::CHAT, ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::CHAT_TEAM ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::CHAT_TEAM, ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::VOICE_TEAM ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::VOICE_TEAM, ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::VOICE_ALL ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::VOICE_ALL, ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::SCORES ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::SCORES, ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::PAUSE ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::PAUSE, ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::MENU ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::MENU, ControlFont, BindFont ) );
 		rect.y += rect.h + 3;
-		scroll_area->AddElement( new PrefsMenuBind( &rect, ((XWingGame*)( Raptor::Game ))->Controls[ XWing::Control::PREFS ], ControlFont, BindFont ) );
+		scroll_area->AddElement( new PrefsMenuBind( &rect, XWing::Control::PREFS, ControlFont, BindFont ) );
 	}
 	else if( Page == PrefsMenu::PAGE_CALIBRATION )
 	{
@@ -1577,9 +1578,9 @@ void PrefsMenu::Draw( void )
 }
 
 
-bool PrefsMenu::KeyDown( SDLKey key )
+bool PrefsMenu::ControlDown( uint8_t control )
 {
-	if( key == SDLK_F10 ) // FIXME: Check for XWing::Controls::PREFS instead?
+	if( control == XWing::Control::PREFS )
 	{
 		Remove();
 		return true;
@@ -1600,7 +1601,7 @@ bool PrefsMenu::KeyUp( SDLKey key )
 			Remove();
 			
 			XWingGame *game = (XWingGame*) Raptor::Game;
-			if( Paused && (game->Cfg.KeyBind( SDLK_ESCAPE ) == game->Controls[ XWing::Control::MENU ]) )  // FIXME: Dirty hack to keep it paused for the IngameMenu.
+			if( Paused && (game->Cfg.KeyBind( SDLK_ESCAPE ) == XWing::Control::MENU) )  // FIXME: Dirty hack to keep it paused for the IngameMenu.
 				Paused = false;
 		}
 		return true;

@@ -41,8 +41,6 @@ public:
 	std::queue<std::string> Achievements;
 	Clock AchievementClock;
 	
-	uint8_t Controls[ XWing::Control::COUNT ];
-	
 	
 	XWingGame( std::string version );
 	virtual ~XWingGame();

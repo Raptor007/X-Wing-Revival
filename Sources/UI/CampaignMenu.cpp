@@ -99,6 +99,7 @@ CampaignMenuTeamButton::CampaignMenuTeamButton( SDL_Rect *rect, uint8_t team ) :
 	
 	Team = team;
 	Rotation = 0.;
+	PopOut = 0.;
 	
 	if( team == XWing::Team::REBEL )
 		Shape.BecomeInstance( Raptor::Game->Res.GetModel("logo_rebel.obj") );
@@ -120,7 +121,7 @@ void CampaignMenuTeamButton::Draw( void )
 	bool hovering = MouseIsWithin && Enabled;
 	Camera cam;
 	cam.FOV = 30;
-	Pos3D pos = cam + cam.Fwd * (hovering ? 2. : 2.25);
+	Pos3D pos = cam + cam.Fwd * (2.25 - PopOut * 0.25);
 	if( Raptor::Game->Gfx.DrawTo )
 	{
 		if( Raptor::Game->Gfx.DrawTo == Raptor::Game->Head.EyeL )
@@ -187,20 +188,31 @@ void CampaignMenuTeamButton::Draw( void )
 		Rotation += frame_time * 90.;
 		if( Rotation > 360. )
 			Rotation -= 360.;
+		
+		PopOut += frame_time * 7.;
+		if( PopOut > 1. )
+			PopOut = 1.;
 	}
-	else if( Rotation && (Rotation != 180.) )
+	else
 	{
-		double old_rotation = Rotation;
+		if( Rotation && (Rotation != 180.) )
+		{
+			double old_rotation = Rotation;
+			
+			if( ((Rotation > 90.) && (Rotation < 180.)) || (Rotation > 270.) )
+				Rotation += frame_time * 120.;
+			else
+				Rotation -= frame_time * 120.;
+			
+			if( ((old_rotation > 0.) != (Rotation > 0.)) || (Rotation > 360.) )
+				Rotation = 0.;
+			else if( (old_rotation > 180.) != (Rotation > 180.) )
+				Rotation = 180.;
+		}
 		
-		if( ((Rotation > 90.) && (Rotation < 180.)) || (Rotation > 270.) )
-			Rotation += frame_time * 120.;
-		else
-			Rotation -= frame_time * 120.;
-		
-		if( ((old_rotation > 0.) != (Rotation > 0.)) || (Rotation > 360.) )
-			Rotation = 0.;
-		else if( (old_rotation > 180.) != (Rotation > 180.) )
-			Rotation = 180.;
+		PopOut -= frame_time * 3.;
+		if( PopOut < 0. )
+			PopOut = 0.;
 	}
 	
 	glPopAttrib();

@@ -86,13 +86,13 @@ void MissionUploader::Draw( void )
 	}
 	
 	Window::Draw();
-	
-	TitleFont->DrawText( "Upload Custom Mission", Rect.w/2 + 2, 3, Font::ALIGN_TOP_CENTER, 0,0,0,0.8f );
-	TitleFont->DrawText( "Upload Custom Mission", Rect.w/2,     1, Font::ALIGN_TOP_CENTER );
+	float ui_scale = UIScaleMode ? Raptor::Game->UIScale : 1.f;
+	TitleFont->DrawText( "Upload Custom Mission", CalcRect.w/2 + 2, 3, Font::ALIGN_TOP_CENTER, 0,0,0,0.8f, ui_scale );
+	TitleFont->DrawText( "Upload Custom Mission", CalcRect.w/2,     1, Font::ALIGN_TOP_CENTER,             ui_scale );
 }
 
 
-bool MissionUploader::KeyDown( SDLKey key )
+bool MissionUploader::KeyDown( SDLKey key )  // FIXME: Use ControlDown instead?
 {
 	if( key == SDLK_F8 )
 	{

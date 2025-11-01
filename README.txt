@@ -1,6 +1,6 @@
 -------------------------------------------
 |              X-Wing Revival             |
-|         0.5.3 Alpha (2025-08-19)        |
+|         0.5.4 Alpha (2025-11-01)        |
 |  https://raptor007.com/x-wing-revival/  |
 |    Code by Raptor007 (Blair Sherman)    |
 |       Ship models by XWA Upgrade:       |
@@ -263,7 +263,7 @@ MacOS says the application "X-Wing Revival.app" cannot be opened.
 
   Output Channels: Stereo, quadraphonic, or 5.1/7.1 surround.  Default: Stereo
 
-  Sample Depth: 16-bit/24-bit integer or 32-bit floating point.  Default: 16-Bit
+  Sample Depth: 16-bit/24-bit integer or 32-bit floating point.  Default: Float
 
   Rate: Samples per second.  Default: 44.1KHz
 
@@ -566,6 +566,13 @@ console commands to execute, such as "sv gametype yavin" or "sv rebel_fighter A/
 
 
 == VERSION HISTORY ==
+
+Alpha 0.5.4 (2025-11-01):
+ * Fixed a few bugs in campaign mission scripting.
+ * Improved normal averaging for smoother lighting on curved surfaces.
+ * AI fighters prioritize targets they are already chasing.
+ * Slightly reduced A-Wing shields for balance.
+ * Minor UI improvements and fixes.  F9/F10 is no longer hard-coded.
 
 Alpha 0.5.3 (2025-08-19):
  * GUI Scale can be used to increase text size for high DPI monitors.

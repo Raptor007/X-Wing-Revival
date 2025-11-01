@@ -30,6 +30,9 @@
 
 RenderLayer::RenderLayer( void )
 {
+	Name = "RenderLayer";
+	ReadControls = true;
+	
 	Rect.x = 0;
 	Rect.y = 0;
 	Rect.w = Raptor::Game->Gfx.W;
@@ -442,7 +445,7 @@ void RenderLayer::Draw( void )
 		Rect.h = 480;
 	}
 	
-	bool cinematic = (game->Cfg.SettingAsBool("cinematic") || game->Cfg.SettingAsBool("screensaver")) && ! game->Input.ControlPressed( game->Controls[ XWing::Control::SCORES ] );
+	bool cinematic = (game->Cfg.SettingAsBool("cinematic") || game->Cfg.SettingAsBool("screensaver")) && ! game->Input.ControlPressed( XWing::Control::SCORES );
 	
 	
 	// Update contained elements.
@@ -1423,7 +1426,7 @@ void RenderLayer::Draw( void )
 					need_target_holo = false;
 				game->Gfx.Clear();
 				
-				double eject_held = game->Input.ControlPressed(game->Controls[ XWing::Control::EJECT ]) ? game->EjectHeld.ElapsedSeconds() : 0.;
+				double eject_held = game->Input.ControlPressed( XWing::Control::EJECT ) ? game->EjectHeld.ElapsedSeconds() : 0.;
 				if( eject_held >= 0.5 )
 				{
 					double unused = 0.;
@@ -3605,7 +3608,7 @@ void RenderLayer::Draw( void )
 	
 	bool draw_scores = (game->State >= XWing::State::ROUND_ENDED) && ! cinematic;
 	if( ! draw_scores )
-		draw_scores = game->Input.ControlPressed( game->Controls[ XWing::Control::SCORES ] );
+		draw_scores = game->Input.ControlPressed( XWing::Control::SCORES );
 	if( ! draw_scores )
 		draw_scores = vr && observed_ship && (observed_ship->PlayerID == game->PlayerID) && (observed_ship->Health <= 0.) && ! cinematic;
 	if( draw_scores )
@@ -4240,23 +4243,21 @@ void RenderLayer::UpdateSaitek( const Ship *ship, bool is_player )
 #endif
 
 
-bool RenderLayer::HandleEvent( SDL_Event *event )
+bool RenderLayer::ControlDown( uint8_t control )
 {
-	if( Layer::HandleEvent( event ) )
-		return true;
 	if( MessageInput->IsSelected() )
 		return false;
 	
 	XWingGame *game = (XWingGame*) Raptor::Game;
-	uint8_t control = Raptor::Game->Input.EventBound( event );
-	if( ((control == game->Controls[ XWing::Control::CHAT ]) || (control == game->Controls[ XWing::Control::CHAT_TEAM ])) && IsTop() )
+	
+	if( ((control == XWing::Control::CHAT) || (control == XWing::Control::CHAT_TEAM)) && IsTop() )
 	{
 		game->ReadKeyboard = false;
 		
 		Selected = MessageInput;
 		MessageInput->Visible = true;
 		
-		if( control == game->Controls[ XWing::Control::CHAT_TEAM ] )
+		if( control == XWing::Control::CHAT_TEAM )
 		{
 			MessageInput->SelectedBlue = 0.f;
 			MessageInput->SelectedGreen = 0.5f;
@@ -4269,7 +4270,7 @@ bool RenderLayer::HandleEvent( SDL_Event *event )
 		
 		return true;
 	}
-	else if( control == game->Controls[ XWing::Control::MENU ] )
+	else if( control == XWing::Control::MENU )
 	{
 		Raptor::Game->Mouse.ShowCursor = true;
 		game->ReadMouse = false;
@@ -4279,7 +4280,7 @@ bool RenderLayer::HandleEvent( SDL_Event *event )
 		
 		return true;
 	}
-	else if( control == game->Controls[ XWing::Control::PREFS ] )
+	else if( control == XWing::Control::PREFS )
 	{
 		Raptor::Game->Mouse.ShowCursor = true;
 		game->ReadMouse = false;

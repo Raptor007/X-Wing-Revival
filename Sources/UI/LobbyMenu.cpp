@@ -16,6 +16,7 @@
 LobbyMenu::LobbyMenu( void )
 {
 	Name = "LobbyMenu";
+	ReadControls = true;
 	
 	Rect.x = 0;
 	Rect.y = 0;
@@ -1298,13 +1299,14 @@ bool LobbyMenu::KeyDown( SDLKey key )
 			
 			return true;
 		}
-		else if( key == SDLK_F8 )
+		else if( key == SDLK_F8 )  // FIXME: Remove after implementing XWing::Control::LOBBY_UPLOAD.
 		{
 			MissionUploader *mission_uploader = new MissionUploader();
 			mission_uploader->Draggable = ! Raptor::Game->Head.VR;
 			Raptor::Game->Layers.Add( mission_uploader );
 			return true;
 		}
+		/*
 		else if( key == SDLK_F10 )
 		{
 			PrefsMenu *prefs = new PrefsMenu();
@@ -1312,7 +1314,8 @@ bool LobbyMenu::KeyDown( SDLKey key )
 			Raptor::Game->Layers.Add( prefs );
 			return true;
 		}
-		else if( key == SDLK_F11 )
+		*/
+		else if( key == SDLK_F11 )  // FIXME: Remove after implementing XWing::Control::LOBBY_FLEET.
 		{
 			FleetMenu *fleet_menu = new FleetMenu();
 			fleet_menu->Draggable = ! Raptor::Game->Head.VR;
@@ -1335,13 +1338,14 @@ bool LobbyMenu::KeyDown( SDLKey key )
 			return true;
 		}
 	}
-	else if( key == SDLK_F8 )
+	else if( key == SDLK_F8 )  // FIXME: Remove after implementing XWing::Control::LOBBY_UPLOAD.
 	{
 		MissionUploader *mission_uploader = new MissionUploader();
 		mission_uploader->Draggable = ! Raptor::Game->Head.VR;
 		Raptor::Game->Layers.Add( mission_uploader );
 		return true;
 	}
+	/*
 	else if( key == SDLK_F10 )
 	{
 		PrefsMenu *prefs = new PrefsMenu();
@@ -1349,7 +1353,8 @@ bool LobbyMenu::KeyDown( SDLKey key )
 		Raptor::Game->Layers.Add( prefs );
 		return true;
 	}
-	else if( key == SDLK_F11 )
+	*/
+	else if( key == SDLK_F11 )  // FIXME: Remove after implementing XWing::Control::LOBBY_FLEET.
 	{
 		FleetMenu *fleet_menu = new FleetMenu();
 		fleet_menu->Draggable = ! Raptor::Game->Head.VR;
@@ -1358,6 +1363,36 @@ bool LobbyMenu::KeyDown( SDLKey key )
 	}
 	
 	// Return false if the event was not handled.
+	return false;
+}
+
+
+bool LobbyMenu::ControlDown( uint8_t control )
+{
+	if( control == XWing::Control::PREFS )
+	{
+		PrefsMenu *prefs = new PrefsMenu();
+		prefs->Draggable = ! Raptor::Game->Head.VR;
+		Raptor::Game->Layers.Add( prefs );
+		return true;
+	}
+	/*
+	else if( control == XWing::Control::LOBBY_UPLOAD )
+	{
+		MissionUploader *mission_uploader = new MissionUploader();
+		mission_uploader->Draggable = ! Raptor::Game->Head.VR;
+		Raptor::Game->Layers.Add( mission_uploader );
+		return true;
+	}
+	else if( control == XWing::Control::LOBBY_FLEET )
+	{
+		FleetMenu *fleet_menu = new FleetMenu();
+		fleet_menu->Draggable = ! Raptor::Game->Head.VR;
+		Raptor::Game->Layers.Add( fleet_menu );
+		return true;
+	}
+	*/
+	
 	return false;
 }
 
@@ -1615,25 +1650,29 @@ LobbyMenuShipView::~LobbyMenuShipView()
 void LobbyMenuShipView::Update( void )
 {
 	XWingGame *game = (XWingGame*) Raptor::Game;
-	const Player *player = game->Data.GetPlayer( Raptor::Game->PlayerID );
+	const Player *player = game->Data.GetPlayer( game->PlayerID );
 	
 	std::string ship;
 	uint8_t group = 0;
 	
-	if( player && Raptor::Game->Cfg.SettingAsBool("ui_ship_preview",true) )
+	if( player && game->Cfg.SettingAsBool("ui_ship_preview",true) )
 	{
 		ship = player->PropertyAsString("ship");
-		if( Raptor::Game->Cfg.SettingAsBool("g_group_skins",true) )
+		if( game->Cfg.SettingAsBool("g_group_skins",true) )
+		{
 			group = player->PropertyAsInt("group");
+			if( ! group )
+				group = game->Data.PropertyAsInt("player_group");
+		}
 		
-		if( (ship == "Rebel Gunner") && (Raptor::Game->Data.PropertyAsString("gametype") == "mission") )
+		if( (ship == "Rebel Gunner") && (game->Data.PropertyAsString("gametype") == "mission") )
 			ship = "YT1300";
 		
-		if( ship.empty() && (Raptor::Game->Data.PropertyAsString("gametype") == "mission") )
+		if( ship.empty() && (game->Data.PropertyAsString("gametype") == "mission") )
 		{
-			std::string player_ships = Raptor::Game->Data.PropertyAsString("player_ships");
+			std::string player_ships = game->Data.PropertyAsString("player_ships");
 			if( player_ships.empty() )
-				player_ships = Raptor::Game->Data.PropertyAsString("player_ship");
+				player_ships = game->Data.PropertyAsString("player_ship");
 			if( ! player_ships.empty() )
 			{
 				ship = Str::SplitToVector( player_ships, " " ).front();
@@ -1655,16 +1694,15 @@ void LobbyMenuShipView::Update( void )
 		{
 			Model *model = NULL;
 			
-			uint8_t group = Raptor::Game->Cfg.SettingAsBool("g_group_skins",true) ? Str::AsInt( player->PropertyAsString("group") ) : 0;
 			if( group )
 			{
 				std::map<uint8_t,std::string>::const_iterator skin_iter = sc->GroupSkins.find( group );
 				if( (skin_iter != sc->GroupSkins.end()) && skin_iter->second.length() )
-					model = Raptor::Game->Res.GetModel( skin_iter->second );
+					model = game->Res.GetModel( skin_iter->second );
 			}
 			
 			if( !( model && model->VertexCount() ) )
-				model = Raptor::Game->Res.GetModel( sc->ExternalModel );
+				model = game->Res.GetModel( sc->ExternalModel );
 			
 			if( model )
 			{
@@ -1673,9 +1711,9 @@ void LobbyMenuShipView::Update( void )
 			}
 		}
 		else if( ship == "Rebel Gunner" )
-			Shape.BecomeInstance( Raptor::Game->Res.GetModel("logo_rebel.obj") );
+			Shape.BecomeInstance( game->Res.GetModel("logo_rebel.obj") );
 		else if( ship == "Imperial Gunner" )
-			Shape.BecomeInstance( Raptor::Game->Res.GetModel("logo_empire.obj") );
+			Shape.BecomeInstance( game->Res.GetModel("logo_empire.obj") );
 	}
 }
 

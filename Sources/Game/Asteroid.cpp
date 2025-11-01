@@ -169,7 +169,7 @@ bool Asteroid::WillCollide( const GameObject *other, double dt, std::string *thi
 {
 	if( other->Type() == XWing::Object::SHOT )
 	{
-		double dist = Math3D::MinimumDistance( this, &(this->MotionVector), other, &(other->MotionVector), dt );
+		double dist = Math3D::MinimumDistance( this, &MotionVector, other, &(other->MotionVector), dt );
 		if( dist <= Radius )
 			return true;
 	}

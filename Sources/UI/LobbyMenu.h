@@ -56,6 +56,7 @@ public:
 	void UpdateInfoBoxes( void );
 	bool HandleEvent( SDL_Event *event );
 	bool KeyDown( SDLKey key );
+	bool ControlDown( uint8_t control );
 	void Draw( void );
 };
 

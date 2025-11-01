@@ -56,7 +56,7 @@ public:
 	bool ChangePage( int page );
 	
 	void Draw( void );
-	bool KeyDown( SDLKey key );
+	bool ControlDown( uint8_t control );
 	bool KeyUp( SDLKey key );
 	bool MouseDown( Uint8 button = SDL_BUTTON_LEFT );
 	bool MouseUp( Uint8 button = SDL_BUTTON_LEFT );

@@ -216,7 +216,7 @@ void FleetMenu::Draw( void )
 }
 
 
-bool FleetMenu::KeyDown( SDLKey key )
+bool FleetMenu::KeyDown( SDLKey key )  // FIXME: Use ControlDown instead?
 {
 	if( key == SDLK_F11 )
 	{

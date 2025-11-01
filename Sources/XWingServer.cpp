@@ -214,10 +214,6 @@ bool XWingServer::HandleCommand( std::string cmd, std::vector<std::string> *para
 					EventTriggers[ MissionEvent::TRIGGER_ALWAYS ].back().SpawnFlags |= MissionEvent::SPAWNFLAG_OBJECTIVE;
 				else if( Str::EqualsInsensitive( params->at(i), "respawn" ) )
 					EventTriggers[ MissionEvent::TRIGGER_ALWAYS ].back().SpawnFlags |= MissionEvent::SPAWNFLAG_RESPAWN;
-				/*
-				else if( Str::EqualsInsensitive( params->at(i), "hero" ) )
-					EventTriggers[ MissionEvent::TRIGGER_ALWAYS ].back().SpawnFlags |= MissionEvent::SPAWNFLAG_HERO;
-				*/
 			}
 		}
 		else
@@ -2478,6 +2474,31 @@ void XWingServer::Update( double dt )
 						}
 						if( attackers.size() )
 							potential_targets = attackers;
+					}
+					
+					// As a final consideration, fighters should prefer a chase they're in good position for.
+					if( ((ship->Category() == ShipClass::CATEGORY_FIGHTER) || (ship->Category() == ShipClass::CATEGORY_GUNBOAT)) && (ship->HitClock.ElapsedSeconds() > 2.) )
+					{
+						std::vector<GameObject*> targets_ahead;
+						for( std::vector<GameObject*>::iterator target_iter = potential_targets.begin(); target_iter != potential_targets.end(); target_iter ++ )
+						{
+							if( (*target_iter)->Type() == XWing::Object::SHIP )
+							{
+								const Ship *target_ship = (const Ship*) *target_iter;
+								if( target_ship->Type() == ShipClass::CATEGORY_CAPITAL )
+									continue;
+								if( target_ship->PlayerID && ! ai_hard )
+									continue;
+								Vec3D vec_to_target = *target_ship - *ship;
+								if( vec_to_target.Length() > 800. )
+									continue;
+								vec_to_target.ScaleTo( 1. );
+								if( (ship->Fwd.Dot(&vec_to_target) > 0.5) && (target_ship->Fwd.Dot(&vec_to_target) > 0.) )
+									targets_ahead.push_back( *target_iter );
+							}
+						}
+						if( targets_ahead.size() )
+							potential_targets = targets_ahead;
 					}
 					
 					// Pick a target.
@@ -5381,6 +5402,7 @@ bool XWingServer::SelectMission( std::string mission_id, bool load )
 	properties[ "mission_desc" ] = "";
 	properties[ "mission_opts" ] = "";
 	properties[ "mission_objs" ] = "";
+	properties[ "player_group" ] = "";
 	
 	if( mission )
 	{
@@ -6556,7 +6578,6 @@ void XWingServer::BeginFlying( uint16_t player_id, bool respawn )
 			if( ! ship_class )
 				ship_class = rebel ? GetShipClass(Data.PropertyAsString(prefix+std::string("rebel_fighter"))) : GetShipClass(Data.PropertyAsString(prefix+std::string("empire_fighter")));
 			
-			// FIXME: Make sure team is valid for ship_class->Team in non-FFA modes?
 			Ship *ship = SpawnShip( ship_class, team );
 			ship->PlayerID = (*pilot_iter)->ID;
 			ship->Group = group;
@@ -7838,7 +7859,11 @@ std::set<Ship*> XWingServer::MatchingShips( const std::vector<std::string> &term
 		else if( ship_class && ship_name.empty() && ((*condition)[0] >= 'A') && ((*condition)[0] <= 'Z') )
 			ship_name = *condition;
 		else if( ! ship_class )
+		{
 			ship_class = GetShipClass( *condition );
+			if( (! ship_class) && ship_name.empty() && ((*condition)[0] >= 'A') && ((*condition)[0] <= 'Z') )
+				ship_name = *condition;
+		}
 	}
 	
 	Data.Lock.Lock();

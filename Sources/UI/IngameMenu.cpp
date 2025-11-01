@@ -14,6 +14,8 @@
 
 IngameMenu::IngameMenu( void )
 {
+	ReadControls = true;
+	
 	Background.BecomeInstance( Raptor::Game->Res.GetAnimation("bg_menu.ani") );
 	
 	TitleFontBig = Raptor::Game->Res.GetFont( "Candara.ttf", 128 );
@@ -77,7 +79,7 @@ IngameMenu::IngameMenu( void )
 		&& (game->Data.RealPlayers() <= 1)
 		&& game->Cfg.SettingAsBool("ui_pause",true)
 		&& Raptor::Server->IsRunning()
-		&& game->ControlPressed( game->Controls[ XWing::Control::PAUSE ] );
+		&& game->ControlPressed( XWing::Control::PAUSE );
 }
 
 
@@ -85,7 +87,7 @@ IngameMenu::~IngameMenu()
 {
 	XWingGame *game = (XWingGame*) Raptor::Game;
 	if( Paused && (game->State >= XWing::State::FLYING) && (game->Data.TimeScale < 0.0000011) )
-		game->ControlPressed( game->Controls[ XWing::Control::PAUSE ] );  // Unpause
+		game->ControlPressed( XWing::Control::PAUSE );  // Unpause
 }
 
 
@@ -152,9 +154,9 @@ void IngameMenu::Draw( void )
 }
 
 
-bool IngameMenu::KeyDown( SDLKey key )
+bool IngameMenu::ControlDown( uint8_t control )
 {
-	if( (key == SDLK_ESCAPE) || (key == SDLK_F9) ) // FIXME: Check for XWing::Controls::MENU instead?
+	if( control == XWing::Control::MENU )
 	{
 		Remove();
 		Raptor::Game->Mouse.ShowCursor = false;

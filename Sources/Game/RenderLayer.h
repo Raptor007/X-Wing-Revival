@@ -63,7 +63,7 @@ public:
 	void UpdateSaitek( const Ship *player_ship, bool is_player );
 	#endif
 	
-	bool HandleEvent( SDL_Event *event );
+	bool ControlDown( uint8_t control );
 	bool KeyDown( SDLKey key );
 };
 

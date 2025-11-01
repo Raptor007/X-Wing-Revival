@@ -38,7 +38,7 @@ void Checkpoint::SetNext( Checkpoint *next )
 	if( next && (next != this) )
 	{
 		Next = next->ID;
-		next->Prev = this->ID;
+		next->Prev = ID;
 		
 		if( Dist(next) )
 		{

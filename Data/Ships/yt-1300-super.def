@@ -18,7 +18,7 @@ shield 400
 recover 5
 recharge 3
 ramming 900
-explode 0.9
+explode 0.8
 turret superlaser 0 2.13 -2.09 up 0 0.99 -0.06 pitch -1.5 90 dir 0 0 1 invincible manual independent firetime 5
 turret superlaser 0 -2.13 -2.09 up 0 -0.99 -0.03 pitch -3 90 dir 0 0 1 invincible manual linked firetime 5
 engine 0 0 -14.5 engine_blue.ani 7 1 1 1 0.2

@@ -20,6 +20,7 @@ player_spawn 4000 0 0
 rebel_spawn 3800 0 0
 empire_spawn -7000 0 -100
 phase 1
+warspite_alive true
 
 at 0:01
 spawn rebel SHU "Medevac 1" at 2900 250 50
@@ -40,6 +41,11 @@ on destroyed "Korolev"
 wait 3
 defeat
 
+on destroyed "Warspite"
+warspite_alive false
+wait 3.5
+alert r2_gotem.wav That got 'em!
+
 at 0:10
 spawn empire FRG "Warspite" at -4500 0 0 facing 0.1 0.9 0
 wait 2
@@ -50,7 +56,14 @@ spawn empire T/B "Eta 3" at -4000 -100 -100 facing 1 0 0
 at 0:40
 jump "Warspite"
 
-at 1:05
+at 0:45 if phase 1
+phase 2
+
+on destroyed empire by player #3
+wait 2
+alert r2_goodshot.wav Good shot!
+
+at 1:22
 jump "Medevac 1"
 wait 1.5
 jump "Medevac 2"
@@ -59,35 +72,44 @@ jump "Medevac 3"
 wait 0.9
 jump "Medevac 4"
 
-at 1:09 if player alive
+at 1:26 if player alive
 alert r2_transports.wav The transports are away!
 
-at 1:15 if phase 1
-phase 2
+when ( phase 2 ) and ( no rebel fighters within 3K of "Redemption" )
+wait 2
+phase 3
 
-when ( phase 1 ) and ( no empire here ) and ( no players within 2K of "Redemption" )
-phase 2
+at 1:40 if phase 2
+phase 3
 
-when phase 2
+when ( phase 3 ) and ( warspite_alive true )
 spawn empire FRG "Warspite" at 5500 0 0 facing -0.5 -0.8 0
 spawn empire T/F "Alpha 1" at 5100 0 0 facing -1 0 0
 spawn empire T/F "Alpha 2" at 5110 0 100 facing -1 0 0
 spawn empire T/B "Gamma 1" at 5000 -100 0 facing -1 0 0
 spawn empire T/B "Gamma 2" at 5020 -100 100 facing -1 0 0
 spawn empire T/B "Gamma 3" at 5030 -100 -100 facing -1 0 0
-wait 2
+wait 2.5
 alert r2_begin.wav They're heading for the medical frigate!
 
-on empire fighter destroyed if ( phase 2 ) and ( no empire fighters here ) and ( players alive )
-wait 3
+when ( phase 3 ) and ( warspite_alive false ) and ( no empire here )
+wait 7
+phase 4
+
+on empire destroyed if ( phase 3 ) and ( no empire fighters here ) and ( no player within 2K of "Warspite" )
+wait 5
 jump "Warspite"
 wait 2
+phase 4
+
+on destroyed "Warspite" if no empire fighters here
+wait 7
+phase 4
+
+when ( phase 4 ) and ( "Redemption" alive ) and ( "Korolev" alive ) and ( player alive )
 alert r2_secure.wav Alright, the area is secured!
 wait 1.5
 message Nice shooting.
-phase 3
-
-when ( phase 3 ) and ( "Redemption" alive ) and ( "Korolev" alive )
 wait 2
 victory
 

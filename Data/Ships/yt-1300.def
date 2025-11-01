@@ -17,7 +17,7 @@ shield 400
 recover 5
 recharge 3
 ramming 900
-explode 0.9
+explode 0.8
 weapon quad_laser 10.3 2.7 5.2
 firetime quad_laser 0.637
 turret quad_laser 0 2.13 -2.09 up 0 0.99 -0.06 pitch -1.5 90 dir 0 0 1 invincible manual independent firetime 0.182

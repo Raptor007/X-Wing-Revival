@@ -38,6 +38,8 @@ alert r0_attack.wav This is not a drill!  Take 'em out.
 gametype team_elim
 wait 2.5
 alert r0_shields.wav Set deflectors to double-front for the head-on pass.
+wait 3
+chat AngleDeflector (default S) twice sets deflector screens to double-front.
 
 on empire destroyed while player alive
 end_delay 5

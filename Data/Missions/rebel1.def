@@ -26,7 +26,7 @@ alert r1_begin.wav All groups assume attack coordinates.
 wait 4
 chat TargetObjective (default O) targets your current objectives.
 
-on player damaged while player alive
+on player damaged while ( player alive ) and ( empire fighters alive )
 wait 4
 alert r1_repair.wav You can come back to the docking bay if you need repairs.
 wait 3.5

@@ -2447,7 +2447,7 @@ void Ship::Draw( void )
 	
 	// Engine glow is based on throttle level.
 	float engine_power = ((Health > 0.) && MaxSpeed()) ? ((MotionVector.Length() + PrevMotionVector.Length()) / (MaxSpeed() * 2.)) : std::max<float>( 0.f, 1. - DeathClock.ElapsedSeconds() );
-	float r = std::min<float>( 1.f, powf( engine_power, 0.6f ) * 1.02f );
+	float r = std::min<float>( 1.f, powf( engine_power, 0.2f ) * 1.01f );
 	float g = std::min<float>( 1.f, powf( engine_power, 1.3f ) * 1.01f );
 	float b = std::min<float>( 1.f, powf( engine_power, 1.5f ) * 1.01f );
 	for( std::map<std::string,ModelMaterial*>::iterator mtl_iter = Shape.Materials.begin(); mtl_iter != Shape.Materials.end(); mtl_iter ++ )
