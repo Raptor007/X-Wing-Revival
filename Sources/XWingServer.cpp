@@ -6294,7 +6294,10 @@ void XWingServer::BeginFlying( uint16_t player_id, bool respawn )
 					{
 						double dist = (*asteroid_iter)->Dist( checkpoint );
 						if( dist < (checkpoint->Radius + 5.) )
+						{
 							Data.RemoveObject( (*asteroid_iter)->ID );
+							asteroid_iter = asteroids.erase(asteroid_iter);
+						}
 						else
 						{
 							if( dist < (checkpoint->Radius + (*asteroid_iter)->Radius) )
@@ -6303,7 +6306,10 @@ void XWingServer::BeginFlying( uint16_t player_id, bool respawn )
 							{
 								dist = Math3D::PointToLineSegDist( *asteroid_iter, checkpoint, next );
 								if( dist < (race_tunnel + 5.) )
+								{
 									Data.RemoveObject( (*asteroid_iter)->ID );
+									asteroid_iter = asteroids.erase(asteroid_iter);
+								}
 								else if( dist < ((*asteroid_iter)->Radius + race_tunnel) )
 									(*asteroid_iter)->SetRadius( dist - race_tunnel );
 							}
