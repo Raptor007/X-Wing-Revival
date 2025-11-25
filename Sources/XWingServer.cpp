@@ -6290,7 +6290,7 @@ void XWingServer::BeginFlying( uint16_t player_id, bool respawn )
 				{
 					Checkpoint *checkpoint = *checkpoint_iter;
 					GameObject *next = Data.GetObject( checkpoint->Next );
-					for( std::set<Asteroid*>::iterator asteroid_iter = asteroids.begin(); asteroid_iter != asteroids.end(); asteroid_iter ++ )
+					for( std::set<Asteroid*>::iterator asteroid_iter = asteroids.begin(); asteroid_iter != asteroids.end(); )
 					{
 						double dist = (*asteroid_iter)->Dist( checkpoint );
 						if( dist < (checkpoint->Radius + 5.) )
@@ -6310,9 +6310,13 @@ void XWingServer::BeginFlying( uint16_t player_id, bool respawn )
 									Data.RemoveObject( (*asteroid_iter)->ID );
 									asteroid_iter = asteroids.erase(asteroid_iter);
 								}
-								else if( dist < ((*asteroid_iter)->Radius + race_tunnel) )
-									(*asteroid_iter)->SetRadius( dist - race_tunnel );
+								else {
+									  if( dist < ((*asteroid_iter)->Radius + race_tunnel) )
+										(*asteroid_iter)->SetRadius( dist - race_tunnel );
+									  ++asteroid_iter;
+									 }
 							}
+							else ++asteroid_iter;
 						}
 					}
 				}
