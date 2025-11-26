@@ -6290,24 +6290,32 @@ void XWingServer::BeginFlying( uint16_t player_id, bool respawn )
 				{
 					Checkpoint *checkpoint = *checkpoint_iter;
 					GameObject *next = Data.GetObject( checkpoint->Next );
-					for( std::set<Asteroid*>::iterator asteroid_iter = asteroids.begin(); asteroid_iter != asteroids.end(); asteroid_iter ++ )
+					for( std::set<Asteroid*>::iterator asteroid_iter = asteroids.begin(); asteroid_iter != asteroids.end(); )
 					{
 						double dist = (*asteroid_iter)->Dist( checkpoint );
 						if( dist < (checkpoint->Radius + 5.) )
-							Data.RemoveObject( (*asteroid_iter)->ID );
-						else
 						{
-							if( dist < (checkpoint->Radius + (*asteroid_iter)->Radius) )
-								(*asteroid_iter)->SetRadius( dist - checkpoint->Radius );
-							if( next )
-							{
-								dist = Math3D::PointToLineSegDist( *asteroid_iter, checkpoint, next );
-								if( dist < (race_tunnel + 5.) )
-									Data.RemoveObject( (*asteroid_iter)->ID );
-								else if( dist < ((*asteroid_iter)->Radius + race_tunnel) )
-									(*asteroid_iter)->SetRadius( dist - race_tunnel );
-							}
+							Data.RemoveObject( (*asteroid_iter)->ID );
+							asteroid_iter = asteroids.erase( asteroid_iter );
+							continue;
 						}
+						else if( dist < (checkpoint->Radius + (*asteroid_iter)->Radius) )
+							(*asteroid_iter)->SetRadius( dist - checkpoint->Radius );
+						
+						if( next )
+						{
+							dist = Math3D::PointToLineSegDist( *asteroid_iter, checkpoint, next );
+							if( dist < (race_tunnel + 5.) )
+							{
+								Data.RemoveObject( (*asteroid_iter)->ID );
+								asteroid_iter = asteroids.erase( asteroid_iter );
+								continue;
+							}
+							else if( dist < ((*asteroid_iter)->Radius + race_tunnel) )
+								(*asteroid_iter)->SetRadius( dist - race_tunnel );
+						}
+						
+						asteroid_iter ++;
 					}
 				}
 			}
