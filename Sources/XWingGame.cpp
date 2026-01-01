@@ -164,6 +164,7 @@ void XWingGame::SetDefaultJoyTypes( void )
 	// Give these joysticks their own binds even if their axis mappings are the same.
 	Input.DeviceTypes.insert( "X52" );
 	Input.DeviceTypes.insert( "SideWinder" );
+	Input.DeviceTypes.insert( "Gunfighter" );
 	
 #ifndef WIN32
 	// Linux does not replace the device string for Xbox compatible controllers, and some do not contain "Xbox".
@@ -353,11 +354,76 @@ void XWingGame::SetDefaultControls( void )
 		Cfg.JoyHatBinds[ "SideWinder" ] = Cfg.JoyHatBinds[ "Joy" ];
 	}
 	
+	if( Input.DeviceTypes.find("Gunfighter") != Input.DeviceTypes.end() )
+	{
+		#if SDL_VERSION_ATLEAST(2,0,0)
+			Cfg.JoyAxisBinds[ "Gunfighter" ][ 0 ] = XWing::Control::ROLL;      // Stick X
+			Cfg.JoyAxisBinds[ "Gunfighter" ][ 1 ] = XWing::Control::PITCH;     // Stick Y
+			Cfg.JoyAxisBinds[ "Gunfighter" ][ 6 ] = XWing::Control::YAW;       // Twist
+		#else
+			Cfg.JoyAxisBinds[ "Gunfighter" ] = Cfg.JoyAxisBinds[ "Joy" ];
+		#endif
+		
+		Cfg.JoyButtonBinds[ "Gunfighter" ][  0 ] = XWing::Control::FIRE;                     // Trigger
+		Cfg.JoyButtonBinds[ "Gunfighter" ][  2 ] = XWing::Control::WEAPON;                   // Red Button
+		Cfg.JoyButtonBinds[ "Gunfighter" ][  3 ] = XWing::Control::MODE;                     // Grey Button
+		Cfg.JoyButtonBinds[ "Gunfighter" ][  4 ] = XWing::Control::LOOK_CENTER;              // Pinkie
+		Cfg.JoyButtonBinds[ "Gunfighter" ][  5 ] = XWing::Control::TARGET_CROSSHAIR;         // Hat 2 Up
+		Cfg.JoyButtonBinds[ "Gunfighter" ][  6 ] = XWing::Control::TARGET_NEAREST_ENEMY;     // Hat 2 Right
+		Cfg.JoyButtonBinds[ "Gunfighter" ][  7 ] = XWing::Control::TARGET_NEAREST_ATTACKER;  // Hat 2 Down
+		Cfg.JoyButtonBinds[ "Gunfighter" ][  8 ] = XWing::Control::TARGET_NEWEST_INCOMING;   // Hat 2 Left
+		Cfg.JoyButtonBinds[ "Gunfighter" ][ 10 ] = XWing::Control::TARGET_OBJECTIVE;         // Hat 3 Up
+		Cfg.JoyButtonBinds[ "Gunfighter" ][ 11 ] = XWing::Control::TARGET3;                  // Hat 3 Right
+		Cfg.JoyButtonBinds[ "Gunfighter" ][ 12 ] = XWing::Control::TARGET2;                  // Hat 3 Down
+		Cfg.JoyButtonBinds[ "Gunfighter" ][ 13 ] = XWing::Control::TARGET1;                  // Hat 3 Left
+		Cfg.JoyButtonBinds[ "Gunfighter" ][ 15 ] = XWing::Control::VOICE_ALL;                // Hat 4 Up
+		Cfg.JoyButtonBinds[ "Gunfighter" ][ 16 ] = XWing::Control::SHIELD_DIR;               // Hat 4 Right
+		Cfg.JoyButtonBinds[ "Gunfighter" ][ 17 ] = XWing::Control::VOICE_TEAM;               // Hat 4 Down
+		Cfg.JoyButtonBinds[ "Gunfighter" ][ 18 ] = XWing::Control::SCORES;                   // Hat 4 Left
+		Cfg.JoyButtonBinds[ "Gunfighter" ][ 20 ] = XWing::Control::TARGET_NEXT;              // Trigger 2 Back
+		Cfg.JoyButtonBinds[ "Gunfighter" ][ 21 ] = XWing::Control::TARGET_PREV;              // Trigger 2 Forward
+		
+		Cfg.JoyHatBinds[ "Gunfighter" ] = Cfg.JoyHatBinds[ "Joy" ];
+	}
+	
 	Cfg.JoyAxisBinds[ "Pedal" ][ 0 ] = XWing::Control::YAW_LEFT;      // Left Pedal
 	Cfg.JoyAxisBinds[ "Pedal" ][ 1 ] = XWing::Control::YAW_RIGHT;     // Right Pedal
 	Cfg.JoyAxisBinds[ "Pedal" ][ 2 ] = XWing::Control::YAW;           // Combined Slider
 	
 	Cfg.JoyAxisBinds[ "Throttle" ][ 0 ] = XWing::Control::THROTTLE;
+	
+	Cfg.JoyButtonBinds[ "Throttle" ][  0 ] = XWing::Control::SHIELD_DIR;               // E
+	Cfg.JoyButtonBinds[ "Throttle" ][  1 ] = XWing::Control::TARGET_NEAREST_ATTACKER;  // F
+	Cfg.JoyButtonBinds[ "Throttle" ][  2 ] = XWing::Control::TARGET_NEAREST_ENEMY;     // G
+	Cfg.JoyButtonBinds[ "Throttle" ][  3 ] = XWing::Control::TARGET_NEWEST_INCOMING;   // H
+	Cfg.JoyButtonBinds[ "Throttle" ][  4 ] = XWing::Control::TARGET_STORE;             // I
+	Cfg.JoyButtonBinds[ "Throttle" ][  5 ] = XWing::Control::TARGET_PREV_ENEMY;        // SW 1
+	Cfg.JoyButtonBinds[ "Throttle" ][  6 ] = XWing::Control::TARGET_NEXT_ENEMY;        // SW 2
+	Cfg.JoyButtonBinds[ "Throttle" ][  7 ] = XWing::Control::TARGET_PREV_FRIENDLY;     // SW 3
+	Cfg.JoyButtonBinds[ "Throttle" ][  8 ] = XWing::Control::TARGET_NEXT_FRIENDLY;     // SW 4
+	Cfg.JoyButtonBinds[ "Throttle" ][  9 ] = XWing::Control::TARGET_PREV_PLAYER;       // SW 5
+	Cfg.JoyButtonBinds[ "Throttle" ][ 10 ] = XWing::Control::TARGET_NEXT_PLAYER;       // SW 6
+	Cfg.JoyButtonBinds[ "Throttle" ][ 11 ] = XWing::Control::TARGET_SYNC;              // TGL 1 Up
+	Cfg.JoyButtonBinds[ "Throttle" ][ 12 ] = XWing::Control::TARGET_GROUPMATE;         // TGL 1 Down
+	Cfg.JoyButtonBinds[ "Throttle" ][ 13 ] = XWing::Control::TARGET_OBJECTIVE;         // TGL 2 Up
+	Cfg.JoyButtonBinds[ "Throttle" ][ 14 ] = XWing::Control::TARGET_DOCKABLE;          // TGL 2 Down
+	Cfg.JoyButtonBinds[ "Throttle" ][ 15 ] = XWing::Control::MODE;                     // TGL 3 Up
+	Cfg.JoyButtonBinds[ "Throttle" ][ 16 ] = XWing::Control::WEAPON;                   // TGL 3 Down
+	Cfg.JoyButtonBinds[ "Throttle" ][ 17 ] = XWing::Control::SCORES;                   // TGL 4 Up
+	Cfg.JoyButtonBinds[ "Throttle" ][ 18 ] = XWing::Control::LOOK_CENTER;              // TGL 4 Down
+	Cfg.JoyButtonBinds[ "Throttle" ][ 19 ] = XWing::Control::TARGET4;                  // H3 Up
+	Cfg.JoyButtonBinds[ "Throttle" ][ 20 ] = XWing::Control::TARGET3;                  // H3 Right
+	Cfg.JoyButtonBinds[ "Throttle" ][ 21 ] = XWing::Control::TARGET2;                  // H3 Down
+	Cfg.JoyButtonBinds[ "Throttle" ][ 22 ] = XWing::Control::TARGET1;                  // H3 Left
+	Cfg.JoyButtonBinds[ "Throttle" ][ 23 ] = XWing::Control::SEAT_GUNNER1;             // H4 Up
+	Cfg.JoyButtonBinds[ "Throttle" ][ 24 ] = XWing::Control::SEAT_COCKPIT;             // H4 Right
+	Cfg.JoyButtonBinds[ "Throttle" ][ 25 ] = XWing::Control::SEAT_GUNNER2;             // H4 Down
+	Cfg.JoyButtonBinds[ "Throttle" ][ 26 ] = XWing::Control::CHEWIE_TAKE_THE_WHEEL;    // H4 Left
+	Cfg.JoyButtonBinds[ "Throttle" ][ 27 ] = XWing::Control::VOICE_TEAM;               // K1 Up
+	Cfg.JoyButtonBinds[ "Throttle" ][ 28 ] = XWing::Control::VOICE_ALL;                // K1 Down
+	Cfg.JoyButtonBinds[ "Throttle" ][ 29 ] = XWing::Control::TARGET_NEXT;              // Knob Up
+	Cfg.JoyButtonBinds[ "Throttle" ][ 30 ] = XWing::Control::TARGET_PREV;              // Knob Down
+	Cfg.JoyButtonBinds[ "Throttle" ][ 31 ] = XWing::Control::TARGET_NEWEST_INCOMING;   // Clutch
 	
 	Cfg.JoyAxisBinds[ "Xbox" ][ 0 ] = XWing::Control::YAW;            // Left Thumbstick X
 	Cfg.JoyAxisBinds[ "Xbox" ][ 1 ] = XWing::Control::PITCH;          // Left Thumbstick Y
@@ -486,8 +552,8 @@ void XWingGame::SetDefaults( void )
 {
 	std::string rebel_mission     = Cfg.SettingAsString( "rebel_mission",  "rebel0"  );
 	std::string empire_mission    = Cfg.SettingAsString( "empire_mission", "empire0" );
-	std::string rebel_difficulty  = Cfg.SettingAsString( "rebel_difficulty",  "1" );
-	std::string empire_difficulty = Cfg.SettingAsString( "empire_difficulty", "1" );
+	std::string rebel_difficulty  = Cfg.SettingAsString( "rebel_difficulty"  );
+	std::string empire_difficulty = Cfg.SettingAsString( "empire_difficulty" );
 	
 	RaptorGame::SetDefaults();
 	
@@ -551,8 +617,10 @@ void XWingGame::SetDefaults( void )
 	
 	Cfg.Settings[ "rebel_mission"  ] = rebel_mission;
 	Cfg.Settings[ "empire_mission" ] = empire_mission;
-	Cfg.Settings[ "rebel_difficulty"  ] = rebel_difficulty;
-	Cfg.Settings[ "empire_difficulty" ] = empire_difficulty;
+	if( ! rebel_difficulty.empty() )
+		Cfg.Settings[ "rebel_difficulty"  ] = rebel_difficulty;
+	if( ! empire_difficulty.empty() )
+		Cfg.Settings[ "empire_difficulty" ] = empire_difficulty;
 	
 	#ifndef __APPLE__
 		Cfg.Settings[ "g_shader_version" ] = "130";  // Allow slightly more efficient worldspace blastpoint translation (flat in/out vs varying).
@@ -918,6 +986,7 @@ void XWingGame::AddScreensaverLayer( void )
 		||  (bind_iter->second == XWing::Control::GLANCE_BACK_LEFT  )
 		||  (bind_iter->second == XWing::Control::GLANCE_BACK_RIGHT )
 		||  (bind_iter->second == XWing::Control::PAUSE             )
+		||  (bind_iter->second == XWing::Control::SCORES            )
 		|| ((bind_iter->second >= XWing::Control::VIEW_COCKPIT) && (bind_iter->second <= XWing::Control::VIEW_INSTRUMENTS)) )
 			screensaver_layer->IgnoreKeys.insert( bind_iter->first );
 	}
@@ -972,7 +1041,8 @@ void XWingGame::Update( double dt )
 	bool target_sync = false;
 	
 	// Build a list of all ships because we'll refer to it often, and find the player's ship and/or turret.
-	std::list<Ship*> ships;
+	std::vector<Ship*> ships;
+	std::vector<Shot*> missiles;
 	Ship *my_ship = NULL;
 	Turret *my_turret = NULL;
 //#define DEATHSTAR_GRAVITY (1.625) // Approximate gravity of a small moon.
@@ -994,6 +1064,12 @@ void XWingGame::Update( double dt )
 			Turret *turret = (Turret*) obj_iter->second;
 			if( turret->PlayerID == PlayerID )
 				my_turret = turret;
+		}
+		else if( obj_iter->second->Type() == XWing::Object::SHOT )
+		{
+			Shot *shot = (Shot*) obj_iter->second;
+			if( shot->CollisionType() == XWing::Object::SHOT_MISSILE )
+				missiles.push_back( shot );
 		}
 #ifdef DEATHSTAR_GRAVITY
 		else if( obj_iter->second->Type() == XWing::Object::DEATH_STAR )
@@ -1049,7 +1125,7 @@ void XWingGame::Update( double dt )
 			yaw = fabs(pow( fabs(yaw), smooth + 1. )) * Num::Sign(yaw);
 			pitch = fabs(pow( fabs(pitch), smooth + 1. )) * Num::Sign(pitch);
 		}
-		else if( (Cfg.SettingAsString("mouse_mode") == "look") && (! Head.VR) )
+		else if( (Cfg.SettingAsString("mouse_mode") == "look") && (View != XWing::View::STATIONARY) && ! Head.VR )
 		{
 			LookYaw = ( (fabs(mouse_x_percent) <= 1.) ? mouse_x_percent : Num::Sign(mouse_x_percent) ) * 180.;
 			LookPitch = ( (fabs(mouse_y_percent) <= 1.) ? mouse_y_percent : Num::Sign(mouse_y_percent) ) * -90.;
@@ -1080,12 +1156,22 @@ void XWingGame::Update( double dt )
 			LookPitch = glance_up_back * behind;
 			LookYaw = ((LookYaw >= 0.) ? 180. : -180.) * behind + LookYaw * (1. - behind);
 		}
+		if( View == XWing::View::STATIONARY )
+		{
+			LookYaw   =  90. * look_x * FrameTime;
+			LookPitch = -90. * look_y * FrameTime;
+		}
 	}
 	
 	// Held Digital Buttons
 	double glance_x = Num::Clamp( Input.ControlTotal( XWing::Control::GLANCE_RIGHT ) + Input.ControlTotal( XWing::Control::GLANCE_UP_RIGHT  ) + Input.ControlTotal( XWing::Control::GLANCE_BACK_RIGHT ) - Input.ControlTotal( XWing::Control::GLANCE_LEFT ) - Input.ControlTotal( XWing::Control::GLANCE_UP_LEFT ) - Input.ControlTotal( XWing::Control::GLANCE_BACK_LEFT ), -1., 1. );
 	double glance_y = Num::Clamp( Input.ControlTotal( XWing::Control::GLANCE_BACK  ) + Input.ControlTotal( XWing::Control::GLANCE_BACK_LEFT ) + Input.ControlTotal( XWing::Control::GLANCE_BACK_RIGHT ) - Input.ControlTotal( XWing::Control::GLANCE_UP   ) - Input.ControlTotal( XWing::Control::GLANCE_UP_LEFT ) - Input.ControlTotal( XWing::Control::GLANCE_UP_RIGHT  ), -1., 1. );
-	if( glance_x || glance_y )
+	if( View == XWing::View::STATIONARY )
+	{
+		LookYaw   +=  90. * glance_x * FrameTime;
+		LookPitch += -90. * glance_y * FrameTime;
+	}
+	else if( glance_x || glance_y )
 	{
 		if( ! ThumbstickLook )
 		{
@@ -1381,8 +1467,6 @@ void XWingGame::Update( double dt )
 						if( (falling2 > 0.) && (speed < prev_speed) )
 							my_ship->MotionVector.ScaleTo( prev_speed );
 					}
-					my_ship->Fwd = my_ship->MotionVector.Unit();
-					my_ship->FixVectors();
 				}
 			}
 #endif
@@ -1453,7 +1537,7 @@ void XWingGame::Update( double dt )
 				}
 			}
 			
-			for( std::list<Ship*>::iterator ship_iter = ships.begin(); ship_iter != ships.end(); ship_iter ++ )
+			for( std::vector<Ship*>::const_iterator ship_iter = ships.begin(); ship_iter != ships.end(); ship_iter ++ )
 			{
 				if( (*ship_iter)->ID != my_ship_id )
 				{
@@ -1504,6 +1588,23 @@ void XWingGame::Update( double dt )
 				}
 			}
 			
+			for( std::vector<Shot*>::const_iterator shot_iter = missiles.begin(); shot_iter != missiles.end(); shot_iter ++ )
+			{
+				const Shot *shot = *shot_iter;
+				
+				Vec3D vec_to_shot( shot->X - my_pos->X, shot->Y - my_pos->Y, shot->Z - my_pos->Z );
+				vec_to_shot.ScaleTo( 1. );
+				double dot = my_fwd.Dot( &vec_to_shot );
+				
+				if( (dot > 0.) && ((dot > best_dot) || ! id) )
+				{
+					id = shot->ID;
+					subsystem = 0;
+					best_ship = NULL;
+					best_dot  = dot;
+				}
+			}
+			
 			if( best_ship )
 				subsystem = best_hit.empty() ? 0 : best_ship->SubsystemID( best_hit );
 			
@@ -1532,7 +1633,7 @@ void XWingGame::Update( double dt )
 					error_beep_allowed = false;
 			}
 			
-			for( std::list<Ship*>::iterator ship_iter = ships.begin(); ship_iter != ships.end(); ship_iter ++ )
+			for( std::vector<Ship*>::const_iterator ship_iter = ships.begin(); ship_iter != ships.end(); ship_iter ++ )
 			{
 				// FIXME: Dirty hack to make sure we don't rapidly cycle in FFA.
 				if( target_target_attacker && ! error_beep_allowed )
@@ -1540,7 +1641,7 @@ void XWingGame::Update( double dt )
 				
 				if( (*ship_iter)->ID != my_ship_id )
 				{
-					Ship *ship = *ship_iter;
+					const Ship *ship = *ship_iter;
 					
 					if( ship->Health <= 0. )
 						continue;
@@ -1657,14 +1758,14 @@ void XWingGame::Update( double dt )
 			else
 			{
 				double best_dist = 0.;
-				Ship *best = NULL;
+				const Ship *best = NULL;
 				std::vector<std::string> objectives = Str::SplitToVector( mission_objs, "," );
 				
-				for( std::list<Ship*>::iterator ship_iter = ships.begin(); ship_iter != ships.end(); ship_iter ++ )
+				for( std::vector<Ship*>::const_iterator ship_iter = ships.begin(); ship_iter != ships.end(); ship_iter ++ )
 				{
 					if( (*ship_iter)->ID != my_ship_id )
 					{
-						Ship *ship = *ship_iter;
+						const Ship *ship = *ship_iter;
 						
 						if( ship->Health <= 0. )
 							continue;
@@ -1746,13 +1847,13 @@ void XWingGame::Update( double dt )
 		else if( target_dockable )
 		{
 			double best_dist = 0.;
-			Ship *best = NULL;
+			const Ship *best = NULL;
 			
-			for( std::list<Ship*>::iterator ship_iter = ships.begin(); ship_iter != ships.end(); ship_iter ++ )
+			for( std::vector<Ship*>::const_iterator ship_iter = ships.begin(); ship_iter != ships.end(); ship_iter ++ )
 			{
 				if( (*ship_iter)->ID != my_ship_id )
 				{
-					Ship *ship = *ship_iter;
+					const Ship *ship = *ship_iter;
 					
 					if( ship->Health <= 0. )
 						continue;
@@ -1788,33 +1889,45 @@ void XWingGame::Update( double dt )
 			bool best_player = false;
 			uint32_t id = 0;
 			const Ship *ship = my_turret ? my_turret->ParentShip() : my_ship;
-			uint8_t my_group = ship ? ship->Group : 0;
-			Player *my_player = Data.GetPlayer( PlayerID );
-			if( my_player )
-				my_group = my_player->PropertyAsInt("group",my_group);
-			
 			if( ship && my_team )
 			{
-				for( std::list<Ship*>::const_iterator ship_iter = ships.begin(); ship_iter != ships.end(); ship_iter ++ )
+				const Player *my_player = Data.GetPlayer( PlayerID );
+				uint8_t my_group = my_player ? my_player->PropertyAsInt( "group", ship->Group ) : ship->Group;
+				uint8_t my_skin = my_group;
+				if( ship->Class && ! my_skin )
+					my_skin = ship->Class->DefaultSkinGroup();  // X-Wings are Red, B-Wing are Blue, etc...
+				
+				for( std::vector<Ship*>::const_iterator ship_iter = ships.begin(); ship_iter != ships.end(); ship_iter ++ )
 				{
-					if( (*ship_iter != ship) && ((*ship_iter)->Team == my_team) && ((*ship_iter)->Group == my_group) && ((*ship_iter)->Health > 0.) )
+					if( (*ship_iter == ship) || ((*ship_iter)->Team != my_team) || ((*ship_iter)->Health <= 0.) )
+						continue;
+					
+					// Prefer player groupmates.
+					if( best_player && ! (*ship_iter)->PlayerID )
+						continue;
+					
+					uint8_t group = (*ship_iter)->Group;
+					if( (group >= 100) && (group < 200) && ! (*ship_iter)->PlayerID )  // Ignore automatic AI respawn groups.
+						group = 0;
+					uint8_t skin = group;
+					if( (*ship_iter)->Class && ! skin )
+						skin = (*ship_iter)->Class->DefaultSkinGroup();
+					
+					// Must match same skin/group.
+					if( skin != my_skin )
+						continue;
+					
+					// If no skin (TIEs, YT-1300, etc) only match AI ships that are the same class.
+					if( (ship->Class != (*ship_iter)->Class) && ! (skin || (*ship_iter)->PlayerID) )
+						continue;
+					
+					// Finally prefer nearer ships.
+					double dist = my_pos->Dist(*ship_iter);
+					if( (dist < best_dist) || ((*ship_iter)->PlayerID && ! best_player) || ! id )
 					{
-						// When not in a flight group, target other players on your team not in a flight group, or friendly AI ships of same category.
-						if( (! my_group) && ship && (ship->Category() != (*ship_iter)->Category()) && ! (*ship_iter)->PlayerID )
-							continue;
-						
-						// Primarily prefer player ships.
-						if( best_player && ! (*ship_iter)->PlayerID )
-							continue;
-						
-						// Secondarily prefer nearer ships.
-						double dist = my_pos->Dist(*ship_iter);
-						if( (dist < best_dist) || ((*ship_iter)->PlayerID && ! best_player) || ! id )
-						{
-							id = (*ship_iter)->ID;
-							best_dist = dist;
-							best_player = (*ship_iter)->PlayerID;
-						}
+						id = (*ship_iter)->ID;
+						best_dist = dist;
+						best_player = (*ship_iter)->PlayerID;
 					}
 				}
 			}
@@ -1868,7 +1981,7 @@ void XWingGame::Update( double dt )
 					if( my_player )
 						my_group = my_player->PropertyAsInt("group",my_group);
 					
-					for( std::list<Ship*>::const_iterator ship_iter = ships.begin(); ship_iter != ships.end(); ship_iter ++ )
+					for( std::vector<Ship*>::const_iterator ship_iter = ships.begin(); ship_iter != ships.end(); ship_iter ++ )
 					{
 						if( (*ship_iter != ship) && ((*ship_iter)->Team == my_team) && ((*ship_iter)->Group == my_group) && ((*ship_iter)->Health > 0.) && (*ship_iter)->Target )
 						{
@@ -1912,11 +2025,11 @@ void XWingGame::Update( double dt )
 			double best = 0.;
 			uint32_t id = 0;
 			
-			for( std::list<Ship*>::iterator ship_iter = ships.begin(); ship_iter != ships.end(); ship_iter ++ )
+			for( std::vector<Ship*>::const_iterator ship_iter = ships.begin(); ship_iter != ships.end(); ship_iter ++ )
 			{
 				if( (*ship_iter)->ID != my_ship_id )
 				{
-					Ship *ship = *ship_iter;
+					const Ship *ship = *ship_iter;
 					
 					if( ship->Health <= 0. )
 						continue;
@@ -2344,7 +2457,8 @@ bool XWingGame::ControlPressed( uint8_t control )
 	
 	
 	// Build a list of all ships because we'll refer to it often, and find the player's ship and/or turret.
-	std::list<Ship*> ships;
+	std::vector<Ship*> ships;
+	std::vector<Shot*> missiles;
 	Ship *my_ship = NULL;
 	Turret *my_turret = NULL;
 	for( std::map<uint32_t,GameObject*>::iterator obj_iter = Data.GameObjects.begin(); obj_iter != Data.GameObjects.end(); obj_iter ++ )
@@ -2363,6 +2477,12 @@ bool XWingGame::ControlPressed( uint8_t control )
 			if( turret->PlayerID == PlayerID )
 				my_turret = turret;
 		}
+		else if( obj_iter->second->Type() == XWing::Object::SHOT )
+		{
+			Shot *shot = (Shot*) obj_iter->second;
+			if( shot->CollisionType() == XWing::Object::SHOT_MISSILE )
+				missiles.push_back( shot );
+		}
 	}
 	
 	
@@ -2373,27 +2493,27 @@ bool XWingGame::ControlPressed( uint8_t control )
 		std::string var = (alive || screensaver || (Cfg.SettingAsString("view") != "auto")) ? "view" : "spectator_view";
 		
 		std::string value = "auto";
-		if( control ==  XWing::Control::VIEW_COCKPIT  )
+		if( control ==  XWing::Control::VIEW_COCKPIT )
 			value = alive ? "auto" : "cockpit";
-		else if( control ==  XWing::Control::VIEW_CROSSHAIR  )
+		else if( control ==  XWing::Control::VIEW_CROSSHAIR )
 			value = "crosshair";
-		else if( control ==  XWing::Control::VIEW_CHASE  )
+		else if( control ==  XWing::Control::VIEW_CHASE )
 			value = "chase";
-		else if( control ==  XWing::Control::VIEW_PADLOCK  )
+		else if( control ==  XWing::Control::VIEW_PADLOCK )
 			value = "padlock";
-		else if( control ==  XWing::Control::VIEW_STATIONARY  )
+		else if( control ==  XWing::Control::VIEW_STATIONARY )
 			value = "stationary";
-		else if( control ==  XWing::Control::VIEW_CINEMA  )
+		else if( control ==  XWing::Control::VIEW_CINEMA )
 			value = "cinema";
-		else if( control ==  XWing::Control::VIEW_FIXED  )
+		else if( control ==  XWing::Control::VIEW_FIXED )
 			value = "fixed";
-		else if( control ==  XWing::Control::VIEW_SELFIE  )
+		else if( control ==  XWing::Control::VIEW_SELFIE )
 			value = "selfie";
-		else if( control ==  XWing::Control::VIEW_GUNNER  )
+		else if( control ==  XWing::Control::VIEW_GUNNER )
 			value = "gunner";
-		else if( control ==  XWing::Control::VIEW_CYCLE  )
+		else if( control ==  XWing::Control::VIEW_CYCLE )
 			value = "cycle";
-		else if( control ==  XWing::Control::VIEW_INSTRUMENTS  )
+		else if( control ==  XWing::Control::VIEW_INSTRUMENTS )
 			value = "instruments";
 		
 		if( value == Cfg.SettingAsString(var) )  // View buttons toggle.
@@ -2404,6 +2524,9 @@ bool XWingGame::ControlPressed( uint8_t control )
 			Cfg.Settings[ "view" ] = "auto";
 		else if( screensaver )
 			Cfg.Settings[ "spectator_view" ] = "auto";
+		
+		if( value == "stationary" )
+			LookYaw = LookPitch = 0.;  // Don't reapply view offset after dropping the camera.
 		
 		return true;
 	}
@@ -2526,7 +2649,7 @@ bool XWingGame::ControlPressed( uint8_t control )
 		Ship *prev_ship = NULL;
 		bool found = false, find_last = false;
 		
-		for( std::list<Ship*>::iterator ship_iter = ships.begin(); ship_iter != ships.end(); ship_iter ++ )
+		for( std::vector<Ship*>::const_iterator ship_iter = ships.begin(); ship_iter != ships.end(); ship_iter ++ )
 		{
 			// Don't spectate the Death Star exhaust port.
 			if( (*ship_iter)->Category() == ShipClass::CATEGORY_TARGET )
@@ -2569,7 +2692,7 @@ bool XWingGame::ControlPressed( uint8_t control )
 		
 		if( (! found) && (! observe_prev) )
 		{
-			for( std::list<Ship*>::iterator ship_iter = ships.begin(); ship_iter != ships.end(); ship_iter ++ )
+			for( std::vector<Ship*>::const_iterator ship_iter = ships.begin(); ship_iter != ships.end(); ship_iter ++ )
 			{
 				// Don't spectate the Death Star exhaust port.
 				if( (*ship_iter)->Category() == ShipClass::CATEGORY_TARGET )
@@ -2592,12 +2715,12 @@ bool XWingGame::ControlPressed( uint8_t control )
 		uint32_t my_ship_id = my_turret_parent ? my_turret_parent->ID : (my_ship ? my_ship->ID : 0);
 		uint8_t my_team = my_turret ? my_turret->Team : (my_ship ? my_ship->Team : 0);
 		
-		std::map<uint32_t,Ship*> potential_targets;
-		for( std::list<Ship*>::iterator ship_iter = ships.begin(); ship_iter != ships.end(); ship_iter ++ )
+		std::map<uint32_t,const GameObject*> potential_targets;
+		for( std::vector<Ship*>::const_iterator ship_iter = ships.begin(); ship_iter != ships.end(); ship_iter ++ )
 		{
 			if( (*ship_iter)->ID != my_ship_id )
 			{
-				Ship *ship = *ship_iter;
+				const Ship *ship = *ship_iter;
 				
 				if( ship->Health <= 0. )
 					continue;
@@ -2614,7 +2737,13 @@ bool XWingGame::ControlPressed( uint8_t control )
 			}
 		}
 		
-		std::map<uint32_t,Ship*>::iterator target_iter = potential_targets.find( target_id );
+		if( target_next || target_prev )
+		{
+			for( std::vector<Shot*>::const_iterator shot_iter = missiles.begin(); shot_iter != missiles.end(); shot_iter ++ )
+				potential_targets[ (*shot_iter)->ID ] = *shot_iter;
+		}
+		
+		std::map<uint32_t,const GameObject*>::iterator target_iter = potential_targets.find( target_id );
 		if( target_prev || target_prev_enemy || target_prev_friendly || target_prev_player ) // Prev
 		{
 			if( target_iter == potential_targets.begin() )
@@ -3546,6 +3675,8 @@ bool XWingGame::ProcessPacket( Packet *packet )
 		{
 			Cfg.Settings[ "rebel_mission"    ] = next_mission;
 			Cfg.Settings[ "rebel_difficulty" ] = Data.PropertyAsString( "ai_skill", "1" );
+			if( ! Cfg.HasSetting("empire_difficulty") )
+				Cfg.Settings[ "empire_difficulty" ] = Cfg.Settings[ "rebel_difficulty" ];
 		}
 		else if( next_mission.length() && Str::BeginsWith( current_mission, "empire" )
 		&& ( Str::EqualsInsensitive( current_mission, Cfg.SettingAsString("empire_mission") )
@@ -3553,6 +3684,8 @@ bool XWingGame::ProcessPacket( Packet *packet )
 		{
 			Cfg.Settings[ "empire_mission"    ] = next_mission;
 			Cfg.Settings[ "empire_difficulty" ] = Data.PropertyAsString( "ai_skill", "1" );
+			if( ! Cfg.HasSetting("rebel_difficulty") )
+				Cfg.Settings[ "rebel_difficulty" ] = Cfg.Settings[ "empire_difficulty" ];
 		}
 		
 		ClientConfig campaign;

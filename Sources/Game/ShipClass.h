@@ -85,6 +85,7 @@ public:
 	void Update( double dt );
 	
 	bool PlayersCanFly( void ) const;
+	uint8_t DefaultSkinGroup( void ) const;
 	
 	bool operator < ( const ShipClass &other ) const;
 	

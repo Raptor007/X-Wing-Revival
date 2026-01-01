@@ -25,7 +25,7 @@ alert r0_lap.wav Go ahead and give it one more lap.
 wait 1
 message See how fast you can do it.
 
-on player checkpoint #13
+on player checkpoint #13 while player alive
 wait 3
 chat Sensors detect 1 unknown starfighter arriving.
 wait 1

@@ -6,6 +6,7 @@ player_team rebel
 player_ship X/W Y/W
 yavin_time_limit 15
 yavin_repair_bay false
+yavin_goalie false
 yavin_turrets 150
 rebel_waves 5
 ai_fighter_ratio 3

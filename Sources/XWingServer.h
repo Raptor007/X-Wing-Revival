@@ -45,8 +45,9 @@ public:
 	Clock RoundTimer;
 	Clock RoundEndedTimer;
 	double RoundEndedDelay;
-	std::map<uint8_t,Clock> GroupStagger;
-	std::set<uint32_t> GroupJumpingIn;
+	std::map< uint8_t, std::map<uint8_t,Pos3D> > GroupSpawns;
+	std::map<uint8_t,Clock> GroupStagger; // FIXME: Separate these by team?
+	std::set<uint32_t> GroupJumpingIn;    //
 	std::map<uint8_t,int> TeamScores;
 	std::map<uint32_t,int> ShipScores;
 	std::set<uint16_t> Cheaters;

@@ -1084,6 +1084,7 @@ void PrefsMenu::UpdateContents( void )
 		rect.x += rect.w + 5;
 		rect.w = 105;
 		PrefsMenuDropDown *joy_smooth_x_dropdown = new PrefsMenuDropDown( &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, 0, "joy_smooth_x" );
+		joy_smooth_x_dropdown->InvertMouseWheel = false;
 		joy_smooth_x_dropdown->AddItem( "-1", "Digital" );
 		joy_smooth_x_dropdown->AddItem( "-0.75", "Sharpest" );
 		joy_smooth_x_dropdown->AddItem( "-0.5", "Sharper" );
@@ -1106,6 +1107,7 @@ void PrefsMenu::UpdateContents( void )
 		rect.x += rect.w + 5;
 		rect.w = 105;
 		PrefsMenuDropDown *joy_smooth_y_dropdown = new PrefsMenuDropDown( &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, 0, "joy_smooth_y" );
+		joy_smooth_y_dropdown->InvertMouseWheel = false;
 		joy_smooth_y_dropdown->AddItem( "-1", "Digital" );
 		joy_smooth_y_dropdown->AddItem( "-0.75", "Sharpest" );
 		joy_smooth_y_dropdown->AddItem( "-0.5", "Sharper" );
@@ -1128,6 +1130,7 @@ void PrefsMenu::UpdateContents( void )
 		rect.x += rect.w + 5;
 		rect.w = 105;
 		PrefsMenuDropDown *joy_smooth_z_dropdown = new PrefsMenuDropDown( &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, 0, "joy_smooth_z" );
+		joy_smooth_z_dropdown->InvertMouseWheel = false;
 		joy_smooth_z_dropdown->AddItem( "-1", "Digital" );
 		joy_smooth_z_dropdown->AddItem( "-0.75", "Sharpest" );
 		joy_smooth_z_dropdown->AddItem( "-0.5", "Sharper" );
@@ -1195,6 +1198,7 @@ void PrefsMenu::UpdateContents( void )
 		rect.x += rect.w + 5;
 		rect.w = 105;
 		PrefsMenuDropDown *joy_smooth_thumbsticks_dropdown = new PrefsMenuDropDown( &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, 0, "joy_smooth_thumbsticks" );
+		joy_smooth_thumbsticks_dropdown->InvertMouseWheel = false;
 		joy_smooth_thumbsticks_dropdown->AddItem( "-1", "Digital" );
 		joy_smooth_thumbsticks_dropdown->AddItem( "-0.75", "Sharpest" );
 		joy_smooth_thumbsticks_dropdown->AddItem( "-0.5", "Sharper" );
@@ -1217,6 +1221,7 @@ void PrefsMenu::UpdateContents( void )
 		rect.x += rect.w + 5;
 		rect.w = 105;
 		PrefsMenuDropDown *joy_smooth_triggers_dropdown = new PrefsMenuDropDown( &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, 0, "joy_smooth_triggers" );
+		joy_smooth_triggers_dropdown->InvertMouseWheel = false;
 		joy_smooth_triggers_dropdown->AddItem( "-1", "Digital" );
 		joy_smooth_triggers_dropdown->AddItem( "-0.75", "Sharpest" );
 		joy_smooth_triggers_dropdown->AddItem( "-0.5", "Sharper" );
@@ -1247,6 +1252,7 @@ void PrefsMenu::UpdateContents( void )
 		rect.x += rect.w + 5;
 		rect.w = 110;
 		PrefsMenuDropDown *mouse_mode_dropdown = new PrefsMenuDropDown( &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, 0, "mouse_mode" );
+		mouse_mode_dropdown->InvertMouseWheel = false;
 		mouse_mode_dropdown->AddItem( "disabled", "Disabled" );
 		mouse_mode_dropdown->AddItem( "gunner", "Turret Aim" );
 		mouse_mode_dropdown->AddItem( "fly", "Yaw/Pitch" );
@@ -1267,6 +1273,7 @@ void PrefsMenu::UpdateContents( void )
 		rect.x += rect.w + 5;
 		rect.w = 105;
 		PrefsMenuDropDown *mouse_smooth_dropdown = new PrefsMenuDropDown( &rect, ItemFont, Font::ALIGN_MIDDLE_CENTER, 0, "mouse_smooth" );
+		mouse_smooth_dropdown->InvertMouseWheel = false;
 		mouse_smooth_dropdown->AddItem( "-0.75", "Sharpest" );
 		mouse_smooth_dropdown->AddItem( "-0.5", "Sharper" );
 		mouse_smooth_dropdown->AddItem( "-0.25", "Sharp" );

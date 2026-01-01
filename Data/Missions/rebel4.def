@@ -12,8 +12,8 @@ empire_fighter T/F
 empire_bomber GUN
 rebel_waves 2
 empire_waves 3
-rebel_wave_dist 5000
-empire_wave_dist 4500
+rebel_wave_dist 6000
+empire_wave_dist 5500
 ai_fighter_ratio 10
 player_spawn 8000 0 0 -0.95 0 -0.15
 rebel_spawn 7700 0 0 -0.95 0 -0.15

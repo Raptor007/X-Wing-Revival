@@ -226,6 +226,15 @@ void Shot::ClientInit( void )
 }
 
 
+uint32_t Shot::CollisionType( void ) const
+{
+	if( (ShotType == TYPE_TORPEDO) || (ShotType == TYPE_MISSILE) )
+		return XWing::Object::SHOT_MISSILE;
+	
+	return Type();
+}
+
+
 double Shot::Damage( void ) const
 {
 	if( ShotType == TYPE_TURBO_LASER_GREEN )
@@ -261,9 +270,9 @@ double Shot::HullDamage( void ) const
 double Shot::AsteroidDamage( void ) const
 {
 	if( ShotType == TYPE_TURBO_LASER_GREEN )
-		return 150.;
+		return 100. / std::max<double>( 0.5, Lifetime.ElapsedSeconds() );
 	else if( ShotType == TYPE_TURBO_LASER_RED )
-		return 50.;
+		return 100. / std::max<double>( 2., Lifetime.ElapsedSeconds() );
 	else if( ShotType == TYPE_QUAD_LASER_RED )
 		return 0.5;
 	else if( ShotType == TYPE_ION_CANNON )
@@ -290,9 +299,9 @@ double Shot::Speed( void ) const
 	else if( ShotType == TYPE_ION_CANNON )
 		return 550.;
 	else if( ShotType == TYPE_TORPEDO )
-		return 400.;
+		return 350.;
 	else if( ShotType == TYPE_MISSILE )
-		return 500.;
+		return 450.;
 	else if( ShotType == TYPE_SUPERLASER )
 		return 10000.;
 	
@@ -303,9 +312,9 @@ double Shot::Speed( void ) const
 double Shot::TurnRate( void ) const
 {
 	if( ShotType == TYPE_TORPEDO )
-		return 90.;
+		return 15.;
 	else if( ShotType == TYPE_MISSILE )
-		return 120.;
+		return 60.;
 	
 	return 0.;
 }
@@ -331,9 +340,9 @@ double Shot::MaxLifetime( void ) const
 	else if( ShotType == TYPE_QUAD_LASER_RED )
 		return 1.5;
 	else if( ShotType == TYPE_TORPEDO )
-		return 8.;
+		return 15.;
 	else if( ShotType == TYPE_MISSILE )
-		return 6.;
+		return 10.;
 	
 	return 2.;
 }
@@ -446,7 +455,7 @@ bool Shot::ServerShouldUpdateOthers( void ) const
 
 bool Shot::CanCollideWithOwnType( void ) const
 {
-	return false;
+	return (CollisionType() == XWing::Object::SHOT_MISSILE);
 }
 
 bool Shot::CanCollideWithOtherTypes( void ) const
@@ -577,18 +586,17 @@ bool Shot::WillCollide( const GameObject *other, double dt, std::string *this_ob
 {
 	if( other->Type() == XWing::Object::SHOT )
 	{
-		/*
-		// FIXME: Commented-out because Shot::CanCollideWithOwnType() is always false.
-		// If we ever want to be able to shoot down missiles and torpedoes, they'll need to be their own object type that can collide with shots.
 		Shot *shot = (Shot*) other;
-		if( (shot->FiredFrom != FiredFrom) && ((shot->ShotType == TYPE_TORPEDO) || (ShotType == TYPE_TORPEDO) || (shot->ShotType == TYPE_MISSILE) || (ShotType == TYPE_MISSILE)) )
-		{
-			double dist = Math3D::MinimumDistance( this, &MotionVector, other, &(other->MotionVector), dt );
-			if( dist <= 1. )
-				return true;
-		}
-		*/
-		return false;
+		
+		// Lasers cannot be shot by other lasers.
+		if( (CollisionType() != XWing::Object::SHOT_MISSILE) && (shot->CollisionType() != XWing::Object::SHOT_MISSILE) )
+			return false;
+		
+		// Shots fired in pairs should not hit each other.
+		if( (shot->FiredFrom == FiredFrom) && (shot->ShotType == ShotType) && (shot->WeaponIndex != WeaponIndex) && (fabs( shot->Lifetime.ElapsedSeconds() - Lifetime.ElapsedSeconds() ) < 0.25) )
+			return false;
+		
+		return Math3D::MinimumDistance( this, &MotionVector, other, &(other->MotionVector), dt ) <= ((shot->FiredFrom == FiredFrom) ? 4. : 5.);
 	}
 	
 	// Let other objects determine whether collisions with shots occur.
@@ -667,14 +675,24 @@ void Shot::Update( double dt )
 			Up.Copy( &vec_to_target );
 			FixVectors();
 			
+			// NOTE: Client must calculate PitchRate because GameObject update precision -127 does not transmit it!
 			double fwd_dot = Fwd.Dot(&vec_to_target);
 			if( fwd_dot < 0.95 )
 				PitchRate = TurnRate();
 			else
 				PitchRate = TurnRate() * (1. - fwd_dot) * 20.;
 			
-			MotionVector.Copy( &Fwd );
-			MotionVector.ScaleTo( Speed() );
+			if( ClientSide() )
+			{
+				double speed = MotionVector.Length();  // Use the server's shot speed.
+				MotionVector.Copy( &Fwd );
+				MotionVector.ScaleTo( speed );
+			}
+			else
+			{
+				MotionVector.Copy( &Fwd );
+				MotionVector.ScaleTo( Speed() );
+			}
 		}
 	}
 	
@@ -987,9 +1005,9 @@ double Shot::DrawBehind( void ) const
 	else if( ShotType == TYPE_ION_CANNON )
 		behind = 40.;
 	else if( ShotType == TYPE_TORPEDO )
-		behind = 25.;
+		behind = 100.;
 	else if( ShotType == TYPE_MISSILE )
-		behind = 20.;
+		behind = 25.;
 	else if( ShotType == TYPE_SUPERLASER )
 		behind = Speed() * 1.5;
 	

@@ -26,7 +26,7 @@ weapon ion_cannon -0.24 1.05 0.13
 firetime ion_cannon 0.33
 weapon missile 1.6 -0.4 1.55
 weapon missile -1.6 -0.4 1.55
-firetime missile 1
+firetime missile 1.5
 ammo missile 12
 engine 1.42 -0.41 -4.8 engine_blue.png 1.1 1 1 1 0.33
 engine -1.42 -0.41 -4.8 engine_blue.png 1.1 1 1 1 0.33

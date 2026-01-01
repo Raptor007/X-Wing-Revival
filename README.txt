@@ -1,6 +1,6 @@
 -------------------------------------------
 |              X-Wing Revival             |
-|         0.5.4 Alpha (2025-11-01)        |
+|         0.5.5 Alpha (2025-12-31)        |
 |  https://raptor007.com/x-wing-revival/  |
 |    Code by Raptor007 (Blair Sherman)    |
 |       Ship models by XWA Upgrade:       |
@@ -338,7 +338,7 @@ MacOS says the application "X-Wing Revival.app" cannot be opened.
    Joy Button 7: Target Attacker
    Joy Button 8: Target Incoming Warhead
    Joy Button 9: Recall Stored Target 1
-   Joy Button 10: Recall Stored Target 2
+   Joy Button 10: Target Mission Objective
    Joy Button 11: Change Shield Direction
    Joy Button 12: Show Scores
 
@@ -356,10 +356,10 @@ MacOS says the application "X-Wing Revival.app" cannot be opened.
    X52 Button 12 (T4): Toggle Co-Pilot (Chewie)
    X52 Button 13 (T5): Gunner Seat 1
    X52 Button 14 (T6): Gunner Seat 2
-   X52 Button 20 (Hat 2 Up): Recall Stored Target 1
-   X52 Button 21 (Hat 2 Right): Recall Stored Target 2
-   X52 Button 22 (Hat 2 Down): Recall Stored Target 3
-   X52 Button 23 (Hat 2 Left): Recall Stored Target 4
+   X52 Button 20 (Hat 2 Up): Target Mission Objective
+   X52 Button 21 (Hat 2 Right): Recall Stored Target 3
+   X52 Button 22 (Hat 2 Down): Recall Stored Target 2
+   X52 Button 23 (Hat 2 Left): Recall Stored Target 1
    X52 Button 24 (Hat 3 Up): Hold to Store Target
    X52 Button 25 (Hat 3 Right): Target Next
    X52 Button 26 (Hat 3 Down): Show Scores
@@ -375,6 +375,59 @@ MacOS says the application "X-Wing Revival.app" cannot be opened.
    SideWinder Button 7 (C): Target Incoming Warhead
    SideWinder Button 8 (D): Change Shield Direction
    SideWinder Button 9 (Shift): Look Center / VR Head Center
+
+   Gunfighter Button 1 (Trigger): Fire
+   Gunfighter Button 3 (Red): Change Weapon
+   Gunfighter Button 4 (Grey): Change Firing Mode
+   Gunfighter Button 5 (Pinkie): Look Center / VR Head Center
+   Gunfighter Button 6 (Hat 2 Up): Target Ahead
+   Gunfighter Button 7 (Hat 2 Right): Target Nearest Enemy
+   Gunfighter Button 8 (Hat 2 Down): Target Attacker
+   Gunfighter Button 9 (Hat 2 Left): Target Incoming Warhead
+   Gunfighter Button 11 (Hat 3 Up): Target Mission Objective
+   Gunfighter Button 12 (Hat 3 Right): Recall Stored Target 3
+   Gunfighter Button 13 (Hat 3 Down): Recall Stored Target 2
+   Gunfighter Button 14 (Hat 3 Left): Recall Stored Target 1
+   Gunfighter Button 16 (Hat 4 Up): Team Voice Transmit
+   Gunfighter Button 17 (Hat 4 Right): Change Shield Direction
+   Gunfighter Button 18 (Hat 4 Down): Open Voice Transmit
+   Gunfighter Button 19 (Hat 4 Left): Show Scores
+   Gunfighter Button 21 (Alt Trigger): Target Next
+   Gunfighter Button 22 (Alt Trigger): Target Previous
+
+   Throttle Axis 1: Throttle
+   Throttle Button 1 (E): Change Shield Direction
+   Throttle Button 2 (F): Target Attacker
+   Throttle Button 3 (G): Target Nearest Enemy
+   Throttle Button 4 (H): Target Incoming Warhead
+   Throttle Button 5 (I): Hold to Store Target
+   Throttle Button 6 (SW1): Target Previous Enemy
+   Throttle Button 7 (SW2): Target Next Enemy
+   Throttle Button 8 (SW3): Target Previous Friendly
+   Throttle Button 9 (SW3): Target Next Enemy
+   Throttle Button 10 (SW5): Target Previous Player
+   Throttle Button 11 (SW6): Target Next Player
+   Throttle Button 12 (TGL1 Up): Target Data-Link
+   Throttle Button 13 (TGL1 Down): Target Groupmate
+   Throttle Button 14 (TGL2 Up): Target Mission Objective
+   Throttle Button 15 (TGL2 Down): Target Dockable
+   Throttle Button 16 (TGL3 Up): Change Firing Mode
+   Throttle Button 17 (TGL3 Down): Change Weapon
+   Throttle Button 18 (TGL4 Up): Show Scores
+   Throttle Button 19 (TGL4 Down): Look Center / VR Head Center
+   Throttle Button 20 (H3 Up): Recall Stored Target 4
+   Throttle Button 21 (H3 Right): Recall Stored Target 3
+   Throttle Button 22 (H3 Down): Recall Stored Target 2
+   Throttle Button 23 (H3 Left): Recall Stored Target 1
+   Throttle Button 24 (H4 Up): Gunner Seat 1
+   Throttle Button 25 (H4 Right): Cockpit Seat
+   Throttle Button 26 (H4 Down): Gunner Seat 2
+   Throttle Button 27 (H4 Left): Toggle Co-Pilot (Chewie)
+   Throttle Button 28 (K1 Up): Team Voice Transmit
+   Throttle Button 29 (K1 Down): Open Voice Transmit
+   Throttle Button 30 (Knob Up): Target Next
+   Throttle Button 31 (Knob Down): Target Previous
+   Throttle Button 32 (Clutch): Target Incoming Warhead
 
    Xbox Left Stick: Yaw/Pitch
    Xbox Right Stick: Look Around
@@ -420,7 +473,7 @@ MacOS says the application "X-Wing Revival.app" cannot be opened.
    Y: Target Previous
    U: Target Newest
    I: Target Incoming
-   O: Target Objective
+   O: Target Mission Objective
    P: Target Next Player
    A: Target Current Target's Attacker
    S: Shield Direction
@@ -566,6 +619,18 @@ console commands to execute, such as "sv gametype yavin" or "sv rebel_fighter A/
 
 
 == VERSION HISTORY ==
+
+Alpha 0.5.5 (2025-12-31):
+ * Missiles and torpedoes track less aggressively, and can now be shot down!
+ * Reworked some of the trench turret placements in Battle of Yavin.
+ * Improved respawn positions in Fleet Battle.
+ * Fixed ability for dead players to control AI ships in Team Elimination.
+ * Fixed players in flight groups seeing respawn countdown too early.
+ * Fixed the Target Groupmate control.
+ * Fixed rotation speed of look controls when using stationary camera.
+ * Fixed possible server crash starting Kessel Run.  (Thanks @jls28 on GitHub!)
+ * Minor improvements to campaign missions and AI behavior.
+ * Added default binds for VKB Gunfighter joystick and Saitek X56 throttle.
 
 Alpha 0.5.4 (2025-11-01):
  * Fixed a few bugs in campaign mission scripting.

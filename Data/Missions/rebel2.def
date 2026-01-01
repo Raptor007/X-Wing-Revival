@@ -75,7 +75,7 @@ jump "Medevac 4"
 at 1:26 if player alive
 alert r2_transports.wav The transports are away!
 
-when ( phase 2 ) and ( no rebel fighters within 3K of "Redemption" )
+when ( phase 2 ) and ( no rebel fighters within 2K of "Redemption" )
 wait 2
 phase 3
 

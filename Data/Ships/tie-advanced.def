@@ -23,7 +23,7 @@ weapon laser_green -0.2 -0.9 1
 firetime laser_green 0.25
 weapon missile 1.5 0 0.36
 weapon missile -1.5 0 0.36
-firetime missile 1
+firetime missile 1.5
 ammo missile 6
 engine 0.84 0.36 -0.94 engine_yellow.ani 0.4 1 0.1 0.1 0.4
 engine -0.84 0.36 -0.94 engine_yellow.ani 0.4 1 0.1 0.1 0.4

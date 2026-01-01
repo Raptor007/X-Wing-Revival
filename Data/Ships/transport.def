@@ -18,8 +18,8 @@ recover 10
 recharge 5
 ramming 600
 explode 0.9
-weapon laser 0.7 -2 8.5
-weapon laser -0.7 -2 8.5
+weapon laser_green 0.7 -2 8.5
+weapon laser_green -0.7 -2 8.5
 firetime laser_green 0.4
 engine 2.75 2 -7 engine_blue.png 1.1 1 1 1 0.33
 engine -2.75 2 -7 engine_blue.png 1.1 1 1 1 0.33

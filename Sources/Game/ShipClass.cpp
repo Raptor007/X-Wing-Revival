@@ -846,6 +846,21 @@ bool ShipClass::PlayersCanFly( void ) const
 }
 
 
+uint8_t ShipClass::DefaultSkinGroup( void ) const
+{
+	if( GroupSkins.empty() )
+		return 0;
+	
+	for( uint8_t i = 1; i <= GroupSkins.size(); i ++ )
+	{
+		if( GroupSkins.find( i ) == GroupSkins.end() )
+			return i;
+	}
+	
+	return GroupSkins.size() + 1;  // If we have alternate skins for groups 1-3, the default skin matches group 4.
+}
+
+
 bool ShipClass::operator < ( const ShipClass &other ) const
 {
 	if( (Category == CATEGORY_TARGET) && (other.Category != CATEGORY_TARGET) )

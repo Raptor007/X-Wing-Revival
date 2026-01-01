@@ -2,14 +2,15 @@ mission_name Empire 4: Resurgence
 mission_desc FIXME
 gametype fleet
 player_team empire
-player_ship T/F T/I T/B GUN
+player_ship GUN T/B T/F T/I
 defending_team empire
 empire_fighter T/F
-empire_bomber T/F
+empire_bomber GUN
 empire_fighter_squadron Mu
-empire_bomber_squadron Mu
+empire_bomber_squadron Tau
 rebel_fighter Y/W
 rebel_bomber X/W
+ai_fighter_ratio 3
 rebel_flagship FRG
 empire_flagship ISD
 rebel_flagship_name Resurgence

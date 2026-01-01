@@ -23,7 +23,7 @@ weapon laser_red -1.7 -0.07 0.7
 firetime laser_red 0.25
 weapon missile 0.95 -0.06 1.5
 weapon missile -0.95 -0.06 1.5
-firetime missile 1
+firetime missile 1.5
 ammo missile 8
 engine 0.96 -0.06 -2.2 engine_yellow.ani 0.95 1 1 1 0.5
 engine -0.96 -0.06 -2.2 engine_yellow.ani 0.95 1 1 1 0.5

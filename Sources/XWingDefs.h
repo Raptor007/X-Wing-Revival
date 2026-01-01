@@ -58,6 +58,7 @@ namespace XWing
 			SHIP = 'Ship',
 			SHIP_CLASS = 'ShpC',
 			SHOT = 'Shot',
+			SHOT_MISSILE = 'Misl',
 			ASTEROID = 'Rock',
 			TURRET = 'Turr',
 			DEATH_STAR = 'Moon',

@@ -799,6 +799,8 @@ void RenderLayer::Draw( void )
 	
 	// Determine which view we'll actually render.
 	
+	bool ejected = (game->View == XWing::View::COCKPIT) && observed_ship && (observed_ship->Health <= 0.);
+	
 	if( game->View == XWing::View::AUTO )
 		game->View = vr ? XWing::View::FIXED : XWing::View::CINEMA;
 	
@@ -999,6 +1001,8 @@ void RenderLayer::Draw( void )
 		{
 			// Move camera back from the ship, moreso when dead or jumping in from hyperspace.
 			double camera_dist = -20. - observed_ship->Shape.GetTriagonal();
+			if( ejected )
+				camera_dist *= std::min<double>( 1., sqrt(observed_ship->DeathClock.ElapsedSeconds()) );
 			double lifetime = observed_ship->Lifetime.ElapsedSeconds();
 			if( lifetime < 1.5 )
 				camera_dist *= cos( lifetime * M_PI / 1.5 ) + 2.;
@@ -1081,6 +1085,8 @@ void RenderLayer::Draw( void )
 			Cam = observed_turret->HeadPos();
 			game->View = XWing::View::GUNNER;
 		}
+		else
+			game->View = XWing::View::STATIONARY;
 		
 		// Apply camera angle change, then clear it to prevent endless spinning.
 		Cam.Yaw( game->LookYaw );

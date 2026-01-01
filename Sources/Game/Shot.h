@@ -33,6 +33,7 @@ public:
 	void Copy( const Shot *other, bool keep_pos = false );
 	
 	void ClientInit( void );
+	uint32_t CollisionType( void ) const;
 	
 	double Damage( void ) const;
 	double HullDamage( void ) const;
